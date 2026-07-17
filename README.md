@@ -101,6 +101,10 @@ Setelah dataset Roboflow ditambahkan sebagai Kaggle Input, jalankan satu sel ini
 Sel akan mencari `data.yaml`, mengaudit data, membuat grouped split bila ada
 duplikasi lintas split, lalu melatih dan mengevaluasi `D0` pada test split.
 
+Grouped split memakai exact image hash dan parent ID Roboflow. Kemiripan visual
+berbasis perceptual hash hanya dilaporkan sebagai peringatan karena gambar biji
+kopi yang homogen dapat membentuk false-positive chain bila dipakai sebagai grup.
+
 ```python
 %cd /kaggle/working/coffee-bean-detection
 

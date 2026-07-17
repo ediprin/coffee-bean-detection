@@ -113,7 +113,7 @@ def prepare_dataset(
     data_root: str | Path,
     output_root: str | Path,
     seed: int = 42,
-    near_threshold: int = 4,
+    near_threshold: int = -1,
     ratios: tuple[float, float, float] = (0.70, 0.15, 0.15),
     drop_exact_duplicates: bool = True,
 ) -> dict:
@@ -201,7 +201,15 @@ def main() -> None:
     parser.add_argument("--data-root", required=True)
     parser.add_argument("--output-root", required=True)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--near-threshold", type=int, default=4)
+    parser.add_argument(
+        "--near-threshold",
+        type=int,
+        default=-1,
+        help=(
+            "Ambang dHash untuk grouping; -1 menonaktifkan grouping visual dan "
+            "hanya memakai exact duplicate serta parent Roboflow."
+        ),
+    )
     parser.add_argument("--keep-exact-duplicates", action="store_true")
     args = parser.parse_args()
     result = prepare_dataset(

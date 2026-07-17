@@ -70,3 +70,16 @@ def test_prepare_creates_non_overlapping_grouped_dataset(tmp_path: Path) -> None
     assert set(result["images"]) == {"train", "val", "test"}
     assert audit["cross_split_duplicate_components"] == 0
     assert not audit["errors"]
+
+
+def test_default_split_does_not_group_merely_similar_images(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write_dataset(raw)
+
+    # Flat-color images share the same dHash, so visual grouping would connect
+    # them despite representing distinct source files.
+    output = tmp_path / "prepared"
+    result = prepare_dataset(raw, output, seed=11)
+
+    assert set(result["images"]) == {"train", "val", "test"}
+    assert result["near_threshold"] == -1

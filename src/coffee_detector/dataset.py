@@ -235,6 +235,16 @@ def duplicate_components(
                 union_find.union(indices[0], index)
                 counters[counter_name] += 1
 
+    # Negative thresholds intentionally disable perceptual grouping. Exact hashes
+    # and Roboflow parent IDs are definitive leakage signals; visual hashes are
+    # only candidates because homogeneous fine-grained datasets can form giant
+    # transitive chains of merely similar samples.
+    if near_threshold < 0:
+        components: dict[int, list[int]] = defaultdict(list)
+        for index in range(len(records)):
+            components[union_find.find(index)].append(index)
+        return list(components.values()), counters
+
     # Eight 8-bit bands make candidate discovery cheap. With Hamming distance <= 4,
     # at least one band must be identical.
     buckets: dict[tuple[int, int], list[int]] = defaultdict(list)
@@ -266,7 +276,13 @@ def duplicate_components(
 
 def build_audit(layout: DatasetLayout, near_threshold: int = 4) -> dict:
     records, errors = collect_records(layout)
-    components, pair_counts = duplicate_components(records, near_threshold)
+    # Only exact identity and a shared Roboflow parent determine whether a split
+    # is unsafe. Perceptual matches remain useful warnings, but are too ambiguous
+    # to group visually uniform beans automatically.
+    components, pair_counts = duplicate_components(records, near_threshold=-1)
+    if near_threshold >= 0:
+        _, visual_pair_counts = duplicate_components(records, near_threshold)
+        pair_counts["near_pairs"] = visual_pair_counts["near_pairs"]
     split_images = Counter(record.split for record in records)
     split_boxes = Counter()
     class_boxes = Counter()
@@ -312,6 +328,7 @@ def build_audit(layout: DatasetLayout, near_threshold: int = 4) -> dict:
         "boxes_by_class": {layout.names[key]: class_boxes[key] for key in sorted(layout.names)},
         "images_by_class": {layout.names[key]: class_images[key] for key in sorted(layout.names)},
         "duplicate_pair_candidates": pair_counts,
+        "near_duplicates_are_warning_only": True,
         "duplicate_components": sum(len(component) > 1 for component in components),
         "cross_split_duplicate_components": len(cross_split_groups),
         "cross_split_examples": cross_split_groups[:50],
