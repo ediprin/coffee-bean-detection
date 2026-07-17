@@ -26,6 +26,14 @@ def load_verified_audit(path: str | Path, data_root: str | Path) -> dict:
     return payload
 
 
+def is_training_complete(run_dir: str | Path) -> bool:
+    run_dir = Path(run_dir)
+    return (
+        (run_dir / "weights" / "best.pt").is_file()
+        and (run_dir / "experiment_manifest.json").is_file()
+    )
+
+
 def run_baseline(
     data_root: str | Path,
     output_root: str | Path,
@@ -59,8 +67,10 @@ def run_baseline(
     code = str(config["code"])
     run_dir = output_root / f"{code}_seed{seed}"
     best = run_dir / "weights" / "best.pt"
-    if not best.is_file():
-        print(f"START TRAINING: {code} | seed {seed}", flush=True)
+    training_complete = is_training_complete(run_dir)
+    if not training_complete:
+        action = "RESUME TRAINING" if (run_dir / "weights" / "last.pt").is_file() else "START TRAINING"
+        print(f"{action}: {code} | seed {seed}", flush=True)
         run_dir = train_experiment(
             config_path,
             data_root,
@@ -71,7 +81,10 @@ def run_baseline(
         )
         best = run_dir / "weights" / "best.pt"
     else:
-        print(f"SKIP TRAINING: checkpoint ditemukan {best}", flush=True)
+        print(
+            f"SKIP TRAINING: run selesai dan checkpoint ditemukan {best}",
+            flush=True,
+        )
     if not best.is_file():
         raise FileNotFoundError(f"Training selesai tanpa best.pt: {best}")
 

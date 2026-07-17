@@ -89,6 +89,10 @@ audit JSON yang telah menyatakan dataset aman:
 Runner memverifikasi bahwa `dataset_root` dalam JSON sama dengan `--data-root`;
 audit dari dataset lain akan ditolak.
 
+`best.pt` dapat muncul sebelum training selesai. Runner hanya melewati training
+bila `best.pt` dan `experiment_manifest.json` sama-sama ada. Run yang terputus
+akan dilanjutkan dari `last.pt`, bukan salah dianggap selesai.
+
 Hasil utama disimpan di:
 
 ```text

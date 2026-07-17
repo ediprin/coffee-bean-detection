@@ -39,3 +39,15 @@ def test_verified_audit_must_match_dataset_root(tmp_path: Path) -> None:
 
     with pytest.raises(RuntimeError, match="dataset berbeda"):
         baseline_module.load_verified_audit(audit_path, data_root)
+
+
+def test_partial_checkpoint_is_not_a_completion_marker(tmp_path: Path) -> None:
+    run_dir = tmp_path / "D0_seed42"
+    best = run_dir / "weights" / "best.pt"
+    best.parent.mkdir(parents=True)
+    best.write_bytes(b"partial checkpoint")
+
+    assert not baseline_module.is_training_complete(run_dir)
+
+    (run_dir / "experiment_manifest.json").write_text("{}", encoding="utf-8")
+    assert baseline_module.is_training_complete(run_dir)
