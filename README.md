@@ -22,6 +22,10 @@ Metadata penuh menyimpan visible/full mask, z-order, visibility ratio, dan ID
 aset sumber, sedangkan label YOLO menggunakan visible bounding box. Protokol dan
 perintah lengkap ada di [docs/VA_DCP_IMPLEMENTATION.md](docs/VA_DCP_IMPLEMENTATION.md).
 
+Notebook Colab yang hanya menyiapkan data sampai status `TRAINING_READY`, tanpa
+menjalankan training, tersedia di
+[notebooks/VA_DCP_Setup_Colab.ipynb](notebooks/VA_DCP_Setup_Colab.ipynb).
+
 ## Baseline aktif
 
 - `D0`: YOLO26n standar, tanpa HBP, attention, loss tambahan, atau modifikasi
