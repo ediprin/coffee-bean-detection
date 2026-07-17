@@ -4,6 +4,24 @@ Repo ini khusus untuk object detection biji kopi. Ia tidak mengimpor, mengubah,
 atau memakai checkpoint repo klasifikasi Coffee-17. Baseline pertama adalah
 YOLO26n; keluarga detector lain baru ditambahkan setelah baseline terkunci.
 
+## Eksperimen VA-DCP
+
+Pipeline offline `Visibility-Aware Dense Copy-Paste` sudah tersedia tanpa
+mengubah internal YOLO:
+
+```text
+prepare_object_library
+        -> generate_vadcp_dataset (naive atau visibility)
+        -> audit_vadcp
+        -> run_vadcp_visual_audit
+        -> run_vadcp_ablation (A0/A1/A2)
+```
+
+Val dan test selalu berasal dari data nyata; generator hanya menambah train.
+Metadata penuh menyimpan visible/full mask, z-order, visibility ratio, dan ID
+aset sumber, sedangkan label YOLO menggunakan visible bounding box. Protokol dan
+perintah lengkap ada di [docs/VA_DCP_IMPLEMENTATION.md](docs/VA_DCP_IMPLEMENTATION.md).
+
 ## Baseline aktif
 
 - `D0`: YOLO26n standar, tanpa HBP, attention, loss tambahan, atau modifikasi
