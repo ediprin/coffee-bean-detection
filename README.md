@@ -183,6 +183,7 @@ python -u -m coffee_detector.run_visual_audit \
   --data-root /path/to/dataset \
   --output-root /path/to/visual-audit \
   --samples 12 \
+  --batch-size 16 \
   --device 0
 ```
 

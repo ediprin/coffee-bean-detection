@@ -113,6 +113,7 @@ def run_visual_audit(
     seed: int = 42,
     device: str | None = None,
     confidence: float = 0.25,
+    batch_size: int = 16,
 ) -> dict:
     try:
         from ultralytics import YOLO
@@ -131,33 +132,44 @@ def run_visual_audit(
     pairs_root = output_root / "pairs"
     pairs_root.mkdir(parents=True, exist_ok=True)
 
-    kwargs = {"source": [str(path) for path in image_paths], "conf": confidence, "stream": True, "verbose": False}
-    if device is not None:
-        kwargs["device"] = device
+    if batch_size <= 0:
+        raise ValueError("batch_size harus positif")
+    print(f"LOAD CHECKPOINT: {checkpoint}", flush=True)
     model = YOLO(str(checkpoint))
+    print("CHECKPOINT SIAP", flush=True)
     rows = []
     valid_ids = set(layout.names)
     print(f"PREDICT TEST: {len(image_paths)} gambar", flush=True)
-    predictions = model.predict(**kwargs)
-    for index, (expected_path, result) in enumerate(zip(image_paths, predictions), 1):
-        image_path = expected_path.resolve()
-        relative = image_path.relative_to(image_root.resolve())
-        label_path = (label_root / relative).with_suffix(".txt")
-        ground_truth = parse_label(label_path, valid_ids)
-        confidences = [] if result.boxes is None else result.boxes.conf.detach().cpu().tolist()
-        prediction_count = len(confidences)
-        row = {
-            "image": str(image_path),
-            "label": str(label_path),
-            "ground_truth_count": len(ground_truth),
-            "prediction_count": prediction_count,
-            "absolute_count_error": abs(prediction_count - len(ground_truth)),
-            "minimum_confidence": min(confidences, default=0.0),
-            "mean_confidence": sum(confidences) / len(confidences) if confidences else 0.0,
+    for start in range(0, len(image_paths), batch_size):
+        batch_paths = image_paths[start : start + batch_size]
+        kwargs = {
+            "source": [str(path) for path in batch_paths],
+            "conf": confidence,
+            "stream": False,
+            "verbose": False,
+            "batch": len(batch_paths),
         }
-        rows.append(row)
-        if index % 50 == 0 or index == len(image_paths):
-            print(f"  {index}/{len(image_paths)}", flush=True)
+        if device is not None:
+            kwargs["device"] = device
+        batch_results = model.predict(**kwargs)
+        for expected_path, result in zip(batch_paths, batch_results):
+            image_path = expected_path.resolve()
+            relative = image_path.relative_to(image_root.resolve())
+            label_path = (label_root / relative).with_suffix(".txt")
+            ground_truth = parse_label(label_path, valid_ids)
+            confidences = [] if result.boxes is None else result.boxes.conf.detach().cpu().tolist()
+            prediction_count = len(confidences)
+            row = {
+                "image": str(image_path),
+                "label": str(label_path),
+                "ground_truth_count": len(ground_truth),
+                "prediction_count": prediction_count,
+                "absolute_count_error": abs(prediction_count - len(ground_truth)),
+                "minimum_confidence": min(confidences, default=0.0),
+                "mean_confidence": sum(confidences) / len(confidences) if confidences else 0.0,
+            }
+            rows.append(row)
+        print(f"  {min(start + len(batch_paths), len(image_paths))}/{len(image_paths)}", flush=True)
 
     selected = select_audit_rows(rows, samples, seed)
     comparison_images = []
@@ -213,6 +225,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device")
     parser.add_argument("--confidence", type=float, default=0.25)
+    parser.add_argument("--batch-size", type=int, default=16)
     args = parser.parse_args()
     payload = run_visual_audit(
         args.checkpoint,
@@ -222,6 +235,7 @@ def main() -> None:
         seed=args.seed,
         device=args.device,
         confidence=args.confidence,
+        batch_size=args.batch_size,
     )
     print("\n=== VISUAL AUDIT ===")
     print(f"Test images            : {payload['test_images']}")
