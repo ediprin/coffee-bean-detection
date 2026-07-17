@@ -171,3 +171,20 @@ Output yang perlu disimpan:
     ├── D0_seed42_test.json
     └── D0_seed42_summary.json
 ```
+
+## Audit visual baseline
+
+Setelah test selesai, audit seluruh gambar test dan buat pasangan ground truth
+versus prediksi untuk kasus dengan count error atau confidence terendah:
+
+```bash
+python -u -m coffee_detector.run_visual_audit \
+  --checkpoint /path/to/D0_seed42/weights/best.pt \
+  --data-root /path/to/dataset \
+  --output-root /path/to/visual-audit \
+  --samples 12 \
+  --device 0
+```
+
+Runner menulis `visual_audit.json`, gambar individual di `pairs/`, dan
+`contact_sheet.jpg`. Kotak ground truth berwarna biru dan prediksi merah.
