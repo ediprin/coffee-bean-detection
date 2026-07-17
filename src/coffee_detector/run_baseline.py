@@ -9,6 +9,23 @@ from .evaluate import evaluate
 from .train import load_experiment, train_experiment
 
 
+def load_verified_audit(path: str | Path, data_root: str | Path) -> dict:
+    path = Path(path).expanduser().resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"Audit JSON tidak ditemukan: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not payload.get("safe_for_training"):
+        raise RuntimeError(f"Audit belum menyatakan dataset aman: {path}")
+    audited_root = Path(payload.get("dataset_root", "")).expanduser().resolve()
+    expected_root = Path(data_root).expanduser().resolve()
+    if audited_root != expected_root:
+        raise RuntimeError(
+            "Audit berasal dari dataset berbeda: "
+            f"{audited_root} != {expected_root}"
+        )
+    return payload
+
+
 def run_baseline(
     data_root: str | Path,
     output_root: str | Path,
@@ -16,14 +33,22 @@ def run_baseline(
     seed: int = 42,
     device: str | None = None,
     resume: bool = True,
+    verified_audit: str | Path | None = None,
 ) -> dict:
     """Audit, train, and evaluate one locked detector baseline."""
     output_root = Path(output_root).expanduser().resolve()
     reports = output_root / "reports"
     reports.mkdir(parents=True, exist_ok=True)
 
-    audit_path = reports / "dataset_audit.json"
-    audit = audit_dataset(data_root, audit_path)
+    if verified_audit is not None:
+        audit_path = Path(verified_audit).expanduser().resolve()
+        print(f"REUSE AUDIT: {audit_path}", flush=True)
+        audit = load_verified_audit(audit_path, data_root)
+    else:
+        audit_path = reports / "dataset_audit.json"
+        print("AUDIT DATASET (exact hash + parent Roboflow)...", flush=True)
+        audit = audit_dataset(data_root, audit_path, near_threshold=-1)
+        print(f"AUDIT SELESAI: {audit_path}", flush=True)
     if not audit["safe_for_training"]:
         raise RuntimeError(
             "Dataset belum aman untuk training. Periksa "
@@ -79,6 +104,10 @@ def main() -> None:
     parser.add_argument("--config", default="configs/D0_yolo26n.yaml")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device")
+    parser.add_argument(
+        "--verified-audit",
+        help="Gunakan audit JSON yang sudah aman dan cocok dengan --data-root.",
+    )
     parser.add_argument("--no-resume", action="store_true")
     args = parser.parse_args()
     result = run_baseline(
@@ -88,6 +117,7 @@ def main() -> None:
         seed=args.seed,
         device=args.device,
         resume=not args.no_resume,
+        verified_audit=args.verified_audit,
     )
     print("\n=== BASELINE YOLO26n TEST ===")
     print(json.dumps(result["metrics"], indent=2, ensure_ascii=False))

@@ -79,6 +79,16 @@ subprocess.run([
 ], check=True)
 ```
 
+Jika audit sudah dijalankan terpisah, hindari pemindaian ulang dengan memberikan
+audit JSON yang telah menyatakan dataset aman:
+
+```text
+--verified-audit /path/to/coffee-defect-raw-audit.json
+```
+
+Runner memverifikasi bahwa `dataset_root` dalam JSON sama dengan `--data-root`;
+audit dari dataset lain akan ditolak.
+
 Hasil utama disimpan di:
 
 ```text
