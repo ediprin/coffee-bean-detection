@@ -138,8 +138,9 @@ def run_visual_audit(
     rows = []
     valid_ids = set(layout.names)
     print(f"PREDICT TEST: {len(image_paths)} gambar", flush=True)
-    for index, result in enumerate(model.predict(**kwargs), 1):
-        image_path = Path(result.path).resolve()
+    predictions = model.predict(**kwargs)
+    for index, (expected_path, result) in enumerate(zip(image_paths, predictions), 1):
+        image_path = expected_path.resolve()
         relative = image_path.relative_to(image_root.resolve())
         label_path = (label_root / relative).with_suffix(".txt")
         ground_truth = parse_label(label_path, valid_ids)
