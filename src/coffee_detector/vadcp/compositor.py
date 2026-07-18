@@ -750,11 +750,18 @@ def compose_scene(
         mode_rng,
     ) = streams
     if calibration is not None:
-        sampled_count = int(selection_rng.choice(calibration.scene_counts))
+        if calibration.scene_count_scale_pairs:
+            sampled_count, scene_scale = selection_rng.choice(
+                calibration.scene_count_scale_pairs
+            )
+            sampled_count = int(sampled_count)
+            scene_scale = float(scene_scale)
+        else:
+            sampled_count = int(selection_rng.choice(calibration.scene_counts))
+            scene_scale = float(
+                geometry_plan_rng.choice(calibration.scene_scale_medians)
+            )
         count = min(max(sampled_count, spec.object_range[0]), spec.object_range[1])
-        scene_scale = float(
-            geometry_plan_rng.choice(calibration.scene_scale_medians)
-        )
     else:
         count = selection_rng.randint(spec.object_range[0], spec.object_range[1])
         scene_scale = None

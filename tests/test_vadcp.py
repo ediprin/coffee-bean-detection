@@ -655,12 +655,19 @@ def test_calibrated_physics_scene_and_realism_audit(tmp_path: Path) -> None:
     )
 
     assert restored.source_images == 1
+    assert restored.scene_count_scale_pairs == ((2, pytest.approx(0.25)),)
     assert restored.bbox_width_height_ratios == pytest.approx((0.8, 0.8))
     assert restored.bbox_width_height_ratios_by_class == {
         0: pytest.approx((0.8,)),
         1: pytest.approx((0.8,)),
     }
     assert manifest["scene_calibration"]["summary"]["source_boxes"] == 2
+    assert (
+        manifest["scene_calibration"]["summary"][
+            "paired_scene_count_scale_records"
+        ]
+        == 1
+    )
     assert manifest["spec"]["object_range"] == (2, 2)
     assert sum(manifest["scene_modes"].values()) == 4
     assert manifest["repeated_assets"] >= 0

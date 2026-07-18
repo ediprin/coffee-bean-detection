@@ -27,6 +27,7 @@ class SceneCalibration:
     background_sensor_std: tuple[float, ...]
     source_images: int
     source_boxes: int
+    scene_count_scale_pairs: tuple[tuple[int, float], ...] = ()
     bbox_width_height_ratios_by_class: dict[int, tuple[float, ...]] = field(
         default_factory=dict
     )
@@ -44,6 +45,11 @@ class SceneCalibration:
             raise ValueError("Kalibrasi scene harus memiliki count dan skala objek")
         if any(value <= 0 for value in self.scene_counts):
             raise ValueError("Scene count harus positif")
+        if any(
+            count <= 0 or scale <= 0
+            for count, scale in self.scene_count_scale_pairs
+        ):
+            raise ValueError("Pasangan count/scale scene harus positif")
         if any(not 0 < value <= 1 for value in self.object_long_sides):
             raise ValueError("Skala long-side harus berada pada (0, 1]")
         if any(value <= 0 for value in self.bbox_width_height_ratios):
@@ -61,7 +67,7 @@ class SceneCalibration:
 
     def to_payload(self) -> dict:
         return {
-            "format": "coffee_detector.scene_calibration.v5",
+            "format": "coffee_detector.scene_calibration.v6",
             **asdict(self),
             "summary": calibration_summary(self),
         }
@@ -102,6 +108,9 @@ def calibration_summary(calibration: SceneCalibration) -> dict:
             if values
         },
         "scene_scale_median_fraction": _quantiles(calibration.scene_scale_medians),
+        "paired_scene_count_scale_records": len(
+            calibration.scene_count_scale_pairs
+        ),
         "within_scene_scale_ratio": _quantiles(calibration.within_scene_scale_ratios),
         "background_rgb_median": (
             [float(value) for value in np.median(colors, axis=0)]
@@ -279,6 +288,14 @@ def build_scene_calibration(
         gradients = [4.0]
         sensors = [1.5]
 
+    pair_rng = random.Random(seed ^ 0xC0FFEE)
+    pair_indices = list(range(len(counts)))
+    if len(pair_indices) > 512:
+        pair_indices = sorted(pair_rng.sample(pair_indices, 512))
+    paired_count_scales = tuple(
+        (int(round(counts[index])), float(scene_scale_medians[index]))
+        for index in pair_indices
+    )
     return SceneCalibration(
         scene_counts=tuple(int(round(value)) for value in _quantile_sample(counts, 512)),
         object_long_sides=_quantile_sample(long_sides, 1024),
@@ -292,6 +309,7 @@ def build_scene_calibration(
         background_sensor_std=tuple(sensors),
         source_images=len(image_paths),
         source_boxes=int(sum(counts)),
+        scene_count_scale_pairs=paired_count_scales,
         bbox_width_height_ratios_by_class=trimmed_ratios_by_class,
         canvas_width_height_ratios=_quantile_sample(
             canvas_width_height_ratios, 256
@@ -319,6 +337,7 @@ def load_scene_calibration(path: str | Path) -> SceneCalibration:
         "coffee_detector.scene_calibration.v3",
         "coffee_detector.scene_calibration.v4",
         "coffee_detector.scene_calibration.v5",
+        "coffee_detector.scene_calibration.v6",
     }:
         raise ValueError(f"Format scene calibration tidak dikenal: {path}")
     if "bbox_width_height_ratios" not in payload:
@@ -351,6 +370,10 @@ def load_scene_calibration(path: str | Path) -> SceneCalibration:
         ),
         source_images=int(payload["source_images"]),
         source_boxes=int(payload["source_boxes"]),
+        scene_count_scale_pairs=tuple(
+            (int(count), float(scale))
+            for count, scale in payload.get("scene_count_scale_pairs", [])
+        ),
         bbox_width_height_ratios_by_class={
             int(class_id): tuple(float(value) for value in values)
             for class_id, values in payload.get(
