@@ -75,6 +75,13 @@ def _real_profile(data_root: str | Path) -> dict[str, list[float]]:
     return dict(profile)
 
 
+def build_realism_reference(
+    real_data_root: str | Path,
+) -> dict[str, list[float]]:
+    """Build one reusable train-only reference for several synthetic arms."""
+    return _real_profile(real_data_root)
+
+
 def _synthetic_profile(
     data_root: str | Path,
 ) -> tuple[dict[str, list[float]], dict[str, list[float]], dict]:
@@ -198,8 +205,13 @@ def audit_vadcp_realism(
     output: str | Path,
     *,
     seed: int = 42,
+    real_profile: dict[str, list[float]] | None = None,
 ) -> dict:
-    real = _real_profile(real_data_root)
+    real = (
+        real_profile
+        if real_profile is not None
+        else build_realism_reference(real_data_root)
+    )
     synthetic, synthetic_full, physics = _synthetic_profile(synthetic_data_root)
     rng = random.Random(seed)
     comparisons = {

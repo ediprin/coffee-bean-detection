@@ -11,7 +11,10 @@ import yaml
 from PIL import Image, ImageDraw
 
 from coffee_detector.audit_vadcp import audit_vadcp_dataset, decode_uncompressed_rle
-from coffee_detector.audit_vadcp_realism import audit_vadcp_realism
+from coffee_detector.audit_vadcp_realism import (
+    audit_vadcp_realism,
+    build_realism_reference,
+)
 from coffee_detector.generate_vadcp_dataset import generate_vadcp_dataset
 from coffee_detector.evaluate_visibility import (
     count_metrics,
@@ -187,10 +190,17 @@ def test_calibrated_rotation_matches_signed_bbox_ratio() -> None:
 def test_transformed_cutout_matches_ratio_and_final_long_side(
     tmp_path: Path,
 ) -> None:
-    mask = np.zeros((64, 96), dtype=bool)
-    yy, xx = np.ogrid[:64, :96]
-    mask[((xx - 48) / 38) ** 2 + ((yy - 32) / 15) ** 2 <= 1] = True
-    pixels = np.zeros((64, 96, 4), dtype=np.uint8)
+    # A diagonal source catches the y-down mask versus PIL rotation sign.
+    # A horizontal ellipse cannot distinguish the two symmetric signs.
+    mask = np.zeros((96, 96), dtype=bool)
+    yy, xx = np.ogrid[:96, :96]
+    angle = np.deg2rad(37.0)
+    centered_x = xx - 48
+    centered_y = yy - 48
+    major_axis = centered_x * np.cos(angle) + centered_y * np.sin(angle)
+    minor_axis = -centered_x * np.sin(angle) + centered_y * np.cos(angle)
+    mask[(major_axis / 38) ** 2 + (minor_axis / 15) ** 2 <= 1] = True
+    pixels = np.zeros((96, 96, 4), dtype=np.uint8)
     pixels[mask, :3] = (80, 45, 25)
     pixels[mask, 3] = 255
     asset_path = tmp_path / "elongated.png"
@@ -441,8 +451,13 @@ def test_calibrated_physics_scene_and_realism_audit(tmp_path: Path) -> None:
     cutout_visual = run_cutout_visual_audit(
         library, tmp_path / "cutout-visual", samples=4, seed=5
     )
+    reference = build_realism_reference(real)
     realism = audit_vadcp_realism(
-        real, output, tmp_path / "realism.json", seed=5
+        real,
+        output,
+        tmp_path / "realism.json",
+        seed=5,
+        real_profile=reference,
     )
 
     assert restored.source_images == 1

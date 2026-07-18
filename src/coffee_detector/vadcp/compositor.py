@@ -238,7 +238,10 @@ def _rotation_and_projected_size(
     major, minor, source_axis = geometry or _principal_mask_geometry(mask)
     if target_width_height_ratio is None:
         rotation = rng.uniform(0.0, 360.0)
-        target_axis = source_axis + math.radians(rotation)
+        # PIL's positive angle is counter-clockwise on screen while mask
+        # coordinates use y-down.  In mask coordinates the resulting axis is
+        # therefore source_axis - rotation.
+        target_axis = source_axis - math.radians(rotation)
     else:
         target_ratio = max(float(target_width_height_ratio), 1e-6)
         scored: list[tuple[float, float]] = []
@@ -256,7 +259,7 @@ def _rotation_and_projected_size(
         target_axis = rng.choice(candidates) + math.radians(
             rng.uniform(-0.5, 0.5)
         )
-        rotation = math.degrees(target_axis - source_axis)
+        rotation = math.degrees(source_axis - target_axis)
         if rng.random() < 0.5:
             rotation += 180.0
     projected_size = _projected_ellipse_size(major, minor, target_axis)
