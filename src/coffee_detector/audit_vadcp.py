@@ -159,6 +159,9 @@ def audit_vadcp_dataset(
             str(key): classes[key] for key in sorted(classes)
         },
         "scene_density": {str(key): densities[key] for key in sorted(densities)},
+        "focus_target_hit_rate": {
+            str(key): value for key, value in sorted(target_rates.items())
+        },
         "errors": errors[:200],
         "error_count": len(errors),
         "warnings": warnings,
@@ -173,6 +176,30 @@ def audit_vadcp_dataset(
     return report
 
 
+def print_audit_summary(report: dict, *, label: str | None = None) -> None:
+    """Print a compact audit summary for CLIs and notebooks."""
+    title = "=== AUDIT VA-DCP"
+    if label:
+        title += f" — {label}"
+    print(title + " ===")
+    print(f"Images          : {report['synthetic_images']}")
+    print(f"Annotations     : {report['synthetic_annotations']}")
+    print(f"Visibility      : {report['labeled_instances_by_visibility']}")
+    print(f"Target hit rate : {report.get('focus_target_hit_rate', {})}")
+    print(f"Scene density   : {report['scene_density']}")
+    print(f"Warnings        : {len(report['warnings'])}")
+    print(f"Errors          : {report['error_count']}")
+    print(f"AMAN TRAINING   : {'YA' if report['safe_for_training'] else 'BELUM'}")
+    if report["warnings"]:
+        print("WARNING EXAMPLES")
+        for item in report["warnings"][:10]:
+            print("-", item)
+    if report["errors"]:
+        print("ERROR EXAMPLES")
+        for item in report["errors"][:20]:
+            print("-", item)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Audit mask, z-order, visibility, leakage, dan label dataset VA-DCP."
@@ -181,17 +208,7 @@ def main() -> None:
     parser.add_argument("--output")
     args = parser.parse_args()
     report = audit_vadcp_dataset(args.data_root, args.output)
-    print("=== AUDIT VA-DCP ===")
-    print(f"Images       : {report['synthetic_images']}")
-    print(f"Annotations  : {report['synthetic_annotations']}")
-    print(f"Visibility   : {report['labeled_instances_by_visibility']}")
-    print(f"Warnings     : {len(report['warnings'])}")
-    print(f"Errors       : {report['error_count']}")
-    print(f"AMAN TRAINING: {'YA' if report['safe_for_training'] else 'BELUM'}")
-    if report["errors"]:
-        print("\nERROR EXAMPLES")
-        for item in report["errors"][:20]:
-            print("-", item)
+    print_audit_summary(report)
 
 
 if __name__ == "__main__":
