@@ -121,6 +121,18 @@ def _file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _calibrated_canvas_size(
+    long_side: int,
+    calibration: SceneCalibration,
+) -> tuple[int, int]:
+    if long_side <= 0:
+        raise ValueError("canvas_size harus positif")
+    ratio = float(np.median(calibration.canvas_width_height_ratios))
+    if ratio >= 1.0:
+        return long_side, max(1, int(round(long_side / ratio)))
+    return max(1, int(round(long_side * ratio))), long_side
+
+
 def generate_vadcp_dataset(
     real_data_root: str | Path,
     object_library: str | Path,
@@ -187,8 +199,10 @@ def generate_vadcp_dataset(
             flush=True,
         )
 
+    calibrated_canvas = _calibrated_canvas_size(canvas_size, calibration)
+    print(f"CANVAS SINTETIS: {calibrated_canvas[0]}x{calibrated_canvas[1]}", flush=True)
     spec = CompositionSpec(
-        canvas_size=(canvas_size, canvas_size),
+        canvas_size=calibrated_canvas,
         object_range=object_range,
         object_scale=object_scale,
         minimum_visibility=minimum_visibility,
@@ -313,8 +327,8 @@ def generate_vadcp_dataset(
             {
                 "id": image_id,
                 "file_name": f"train/images/{image_path.name}",
-                "width": canvas_size,
-                "height": canvas_size,
+                "width": spec.canvas_size[0],
+                "height": spec.canvas_size[1],
                 "background": str(background_path) if background_path else "procedural",
                 "target_visibility_bin": scene.target_visibility_bin,
                 "target_visibility_hit": scene.target_visibility_hit,

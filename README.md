@@ -24,7 +24,7 @@ aset sumber, sedangkan label YOLO menggunakan visible bounding box. Protokol dan
 perintah lengkap ada di [docs/VA_DCP_IMPLEMENTATION.md](docs/VA_DCP_IMPLEMENTATION.md).
 Generator memakai physics-informed 2.5D projected packing: skala dan jumlah
 objek dikalibrasi dari train nyata dalam koordinat piksel isotropik, penempatan
-contact-constrained, z-order
+contact-constrained, aspect ratio canvas mengikuti kamera sumber, z-order
 eksplisit, rotasi mengikuti distribusi aspect ratio kotak nyata, matte di-feather
 ke dalam, serta target bentuk per kelas dipasangkan dengan cutout yang mampu
 mencapainya tanpa meregangkan piksel. Cahaya/bayangan tetap koheren per scene.

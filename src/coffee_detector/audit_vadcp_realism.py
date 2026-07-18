@@ -61,9 +61,12 @@ def _append_scene(
     canvas_size: tuple[float, float] = (1.0, 1.0),
 ) -> None:
     profile["labeled_density"].append(float(len(boxes)))
+    canvas_width, canvas_height = canvas_size
+    profile["canvas_absolute_aspect_ratio"].append(
+        max(canvas_width / canvas_height, canvas_height / canvas_width)
+    )
     if not boxes:
         return
-    canvas_width, canvas_height = canvas_size
     canvas_area = max(canvas_width * canvas_height, 1e-8)
     nearest, overlap_rate = _pairwise_scene_metrics(boxes)
     profile["nearest_center_normalized"].extend(nearest)
@@ -274,9 +277,12 @@ def audit_vadcp_realism(
             real.get(name, []), values, rng
         )
     critical = (
+        "canvas_absolute_aspect_ratio",
         "labeled_density",
         "full_long_side_fraction",
         "full_absolute_aspect_ratio",
+        "full_bbox_area_fraction",
+        "full_summed_bbox_coverage",
     )
     critical_shifts = [
         name for name in critical if comparisons.get(name, {}).get("status") == "shifted"

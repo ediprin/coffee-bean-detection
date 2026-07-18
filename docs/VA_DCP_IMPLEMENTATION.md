@@ -144,6 +144,8 @@ projected packing**, not as a 3D rigid-body simulator:
   stretched anisotropically, and every unavoidable fallback is counted;
 - YOLO boxes from non-square images are converted to an isotropic pixel frame
   before scale, distance, area, and aspect statistics are calibrated or audited;
+- synthetic canvas width/height follows the empirical source-camera ratio, so
+  object area, scene coverage, and long-side scale are jointly reproducible;
 - an older object-library manifest is geometry-profiled once with visible
   progress, saved atomically, and then reused by both paired augmentation arms;
 - uncertain mask edges are eroded into a trusted color core, feathered inward,

@@ -15,7 +15,10 @@ from coffee_detector.audit_vadcp_realism import (
     audit_vadcp_realism,
     build_realism_reference,
 )
-from coffee_detector.generate_vadcp_dataset import generate_vadcp_dataset
+from coffee_detector.generate_vadcp_dataset import (
+    _calibrated_canvas_size,
+    generate_vadcp_dataset,
+)
 from coffee_detector.evaluate_visibility import (
     count_metrics,
     evaluate_predictions_by_visibility,
@@ -163,6 +166,9 @@ def test_rectangular_images_use_isotropic_pixel_geometry(tmp_path: Path) -> None
     # The normalized YOLO box is 0.2 x 0.2, but in pixels it is 40 x 20.
     assert calibration.bbox_width_height_ratios == pytest.approx((2.0,))
     assert calibration.object_long_sides == pytest.approx((0.2,))
+    assert calibration.canvas_width_height_ratios == pytest.approx((2.0,))
+    assert _calibrated_canvas_size(640, calibration) == (640, 320)
+    assert realism["canvas_absolute_aspect_ratio"] == pytest.approx([2.0])
     assert realism["absolute_aspect_ratio"] == pytest.approx([2.0])
     assert realism["long_side_fraction"] == pytest.approx([0.2])
     assert realism["bbox_area_fraction"] == pytest.approx([0.04])
