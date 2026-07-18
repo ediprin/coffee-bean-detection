@@ -134,6 +134,40 @@ def test_uncompressed_rle_round_trip() -> None:
     assert np.array_equal(decoded, mask)
 
 
+def test_rectangular_images_use_isotropic_pixel_geometry(tmp_path: Path) -> None:
+    root = tmp_path / "rectangular"
+    image_root = root / "train" / "images"
+    label_root = root / "train" / "labels"
+    image_root.mkdir(parents=True)
+    label_root.mkdir(parents=True)
+    (root / "data.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "path": str(root),
+                "train": "train/images",
+                "names": {0: "bean"},
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    Image.new("RGB", (200, 100), "white").save(image_root / "scene.jpg")
+    (label_root / "scene.txt").write_text(
+        "0 0.5 0.5 0.2 0.2\n", encoding="utf-8"
+    )
+
+    layout = discover_layout(root)
+    calibration = build_scene_calibration(layout, background_samples=1)
+    realism = build_realism_reference(root)
+
+    # The normalized YOLO box is 0.2 x 0.2, but in pixels it is 40 x 20.
+    assert calibration.bbox_width_height_ratios == pytest.approx((2.0,))
+    assert calibration.object_long_sides == pytest.approx((0.2,))
+    assert realism["absolute_aspect_ratio"] == pytest.approx([2.0])
+    assert realism["long_side_fraction"] == pytest.approx([0.2])
+    assert realism["bbox_area_fraction"] == pytest.approx([0.04])
+
+
 def test_component_selection_prefers_annotated_box_center() -> None:
     mask = np.zeros((20, 30), dtype=bool)
     mask[2:18, 2:12] = True

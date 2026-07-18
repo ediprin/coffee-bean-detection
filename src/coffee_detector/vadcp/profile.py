@@ -56,7 +56,7 @@ class SceneCalibration:
 
     def to_payload(self) -> dict:
         return {
-            "format": "coffee_detector.scene_calibration.v3",
+            "format": "coffee_detector.scene_calibration.v4",
             **asdict(self),
             "summary": calibration_summary(self),
         }
@@ -188,15 +188,24 @@ def build_scene_calibration(
         boxes = parse_label((label_root / relative).with_suffix(".txt"), valid_ids)
         labels_by_image[image_path] = boxes
         if boxes:
+            with Image.open(image_path) as source_image:
+                image_width, image_height = source_image.size
+            canvas_long = float(max(image_width, image_height))
             counts.append(float(len(boxes)))
-            image_scales = [max(box.width, box.height) for box in boxes]
+            image_scales = [
+                max(box.width * image_width, box.height * image_height)
+                / canvas_long
+                for box in boxes
+            ]
             bbox_width_height_ratios.extend(
-                box.width / box.height for box in boxes if box.height > 0
+                (box.width * image_width) / (box.height * image_height)
+                for box in boxes
+                if box.height > 0
             )
             for box in boxes:
                 if box.height > 0:
                     bbox_width_height_ratios_by_class[box.class_id].append(
-                        box.width / box.height
+                        (box.width * image_width) / (box.height * image_height)
                     )
             median_scale = float(np.median(image_scales))
             long_sides.extend(image_scales)
@@ -295,6 +304,7 @@ def load_scene_calibration(path: str | Path) -> SceneCalibration:
         "coffee_detector.scene_calibration.v1",
         "coffee_detector.scene_calibration.v2",
         "coffee_detector.scene_calibration.v3",
+        "coffee_detector.scene_calibration.v4",
     }:
         raise ValueError(f"Format scene calibration tidak dikenal: {path}")
     if "bbox_width_height_ratios" not in payload:

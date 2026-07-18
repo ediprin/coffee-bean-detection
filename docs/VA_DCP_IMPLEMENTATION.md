@@ -142,6 +142,8 @@ projected packing**, not as a 3D rigid-body simulator:
 - target aspect ratios are sampled per class and assigned hardest-first to
   real cutouts whose intrinsic silhouette can realize them; pixels are never
   stretched anisotropically, and every unavoidable fallback is counted;
+- YOLO boxes from non-square images are converted to an isotropic pixel frame
+  before scale, distance, area, and aspect statistics are calibrated or audited;
 - an older object-library manifest is geometry-profiled once with visible
   progress, saved atomically, and then reused by both paired augmentation arms;
 - uncertain mask edges are eroded into a trusted color core, feathered inward,

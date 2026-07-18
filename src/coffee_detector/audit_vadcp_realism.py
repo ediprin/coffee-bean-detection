@@ -7,8 +7,27 @@ from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
+from PIL import Image
 
 from .dataset import IMAGE_SUFFIXES, discover_layout, parse_label
+
+
+def _canonical_box(
+    x_center: float,
+    y_center: float,
+    width: float,
+    height: float,
+    image_width: float,
+    image_height: float,
+) -> tuple[float, float, float, float]:
+    """Map normalized YOLO geometry into an isotropic pixel coordinate frame."""
+    scale = max(float(image_width), float(image_height))
+    return (
+        x_center * image_width / scale,
+        y_center * image_height / scale,
+        width * image_width / scale,
+        height * image_height / scale,
+    )
 
 
 def _pairwise_scene_metrics(boxes: list[tuple[float, float, float, float]]) -> tuple[list[float], float]:
@@ -36,23 +55,31 @@ def _pairwise_scene_metrics(boxes: list[tuple[float, float, float, float]]) -> t
     return [float(value) for value in nearest], overlap_rate
 
 
-def _append_scene(profile: dict[str, list[float]], boxes: list[tuple[float, float, float, float]]) -> None:
+def _append_scene(
+    profile: dict[str, list[float]],
+    boxes: list[tuple[float, float, float, float]],
+    canvas_size: tuple[float, float] = (1.0, 1.0),
+) -> None:
     profile["labeled_density"].append(float(len(boxes)))
     if not boxes:
         return
+    canvas_width, canvas_height = canvas_size
+    canvas_area = max(canvas_width * canvas_height, 1e-8)
     nearest, overlap_rate = _pairwise_scene_metrics(boxes)
     profile["nearest_center_normalized"].extend(nearest)
     profile["pair_overlap_rate"].append(overlap_rate)
-    profile["summed_bbox_coverage"].append(float(sum(width * height for _, _, width, height in boxes)))
+    profile["summed_bbox_coverage"].append(
+        float(sum(width * height for _, _, width, height in boxes) / canvas_area)
+    )
     for x, y, width, height in boxes:
         profile["long_side_fraction"].append(max(width, height))
-        profile["bbox_area_fraction"].append(width * height)
+        profile["bbox_area_fraction"].append(width * height / canvas_area)
         profile["absolute_aspect_ratio"].append(max(width / height, height / width))
         touches = (
-            x - width / 2 <= 0.002
-            or y - height / 2 <= 0.002
-            or x + width / 2 >= 0.998
-            or y + height / 2 >= 0.998
+            x - width / 2 <= 0.002 * canvas_width
+            or y - height / 2 <= 0.002 * canvas_height
+            or x + width / 2 >= 0.998 * canvas_width
+            or y + height / 2 >= 0.998 * canvas_height
         )
         profile["border_touch"].append(float(touches))
 
@@ -68,8 +95,25 @@ def _real_profile(data_root: str | Path) -> dict[str, list[float]]:
     for index, image_path in enumerate(image_paths, 1):
         relative = image_path.relative_to(image_root)
         rows = parse_label((label_root / relative).with_suffix(".txt"), valid_ids)
-        boxes = [(row.x_center, row.y_center, row.width, row.height) for row in rows]
-        _append_scene(profile, boxes)
+        with Image.open(image_path) as source_image:
+            image_width, image_height = source_image.size
+        scale = float(max(image_width, image_height))
+        boxes = [
+            _canonical_box(
+                row.x_center,
+                row.y_center,
+                row.width,
+                row.height,
+                image_width,
+                image_height,
+            )
+            for row in rows
+        ]
+        _append_scene(
+            profile,
+            boxes,
+            (image_width / scale, image_height / scale),
+        )
         if index % 2000 == 0 or index == len(image_paths):
             print(f"  realism real: {index}/{len(image_paths)} gambar", flush=True)
     return dict(profile)
@@ -108,30 +152,37 @@ def _synthetic_profile(
                 float(value) for value in row["full_bbox"]
             )
             full_by_image[int(row["image_id"])].append(
-                (
+                _canonical_box(
                     (x + box_width / 2) / width,
                     (y + box_height / 2) / height,
                     box_width / width,
                     box_height / height,
+                    width,
+                    height,
                 )
             )
         if int(row.get("ignore", 0)) or row.get("bbox") is None:
             continue
         x, y, box_width, box_height = (float(value) for value in row["bbox"])
         by_image[int(row["image_id"])].append(
-            (
+            _canonical_box(
                 (x + box_width / 2) / width,
                 (y + box_height / 2) / height,
                 box_width / width,
                 box_height / height,
+                width,
+                height,
             )
         )
     profile: dict[str, list[float]] = defaultdict(list)
     full_profile: dict[str, list[float]] = defaultdict(list)
     for image in metadata["images"]:
         image_id = int(image["id"])
-        _append_scene(profile, by_image.get(image_id, []))
-        _append_scene(full_profile, full_by_image.get(image_id, []))
+        width, height = float(image["width"]), float(image["height"])
+        scale = max(width, height)
+        canvas_size = (width / scale, height / scale)
+        _append_scene(profile, by_image.get(image_id, []), canvas_size)
+        _append_scene(full_profile, full_by_image.get(image_id, []), canvas_size)
     physics = {
         "generated_instances": len(metadata["annotations"]),
         "labeled_instances": len(metadata["annotations"]) - ignored,
