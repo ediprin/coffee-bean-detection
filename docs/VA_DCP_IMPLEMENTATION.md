@@ -258,6 +258,12 @@ configs to A0/A1/A2 at seed 42 and writes resumable checkpoints to Drive. The
 100-epoch configs above remain reserved for confirmation after A2 shows a
 useful signal.
 
+When synthesis ran on a CPU Colab runtime, execute the final archive cell in
+`VA_DCP_Setup_Colab.ipynb` before switching to GPU. It saves only `data.yaml`,
+synthetic `train`, and metadata as sequential tar files on Drive; duplicated
+real val/test files are excluded. The training notebook restores these archives
+with progress output and downloads A0 again after the runtime reset.
+
 ## 6. Visibility-stratified real-test evaluation
 
 The final real test metadata uses the same COCO-like fields `image_id`,
