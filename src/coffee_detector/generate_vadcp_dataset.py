@@ -155,7 +155,7 @@ def generate_vadcp_dataset(
     mode: str = "visibility",
     background_root: str | Path | None = None,
     canvas_size: int = 640,
-    object_range: tuple[int, int] = (12, 30),
+    object_range: tuple[int, int] | None = None,
     object_scale: tuple[float, float] = (0.08, 0.18),
     minimum_visibility: float = 0.10,
     include_real_train: bool = True,
@@ -190,6 +190,17 @@ def generate_vadcp_dataset(
         scene_profile_path = None
         print("KALIBRASI REAL TRAIN: menghitung prior scene...", flush=True)
         calibration = build_scene_calibration(layout, split="train", seed=seed)
+
+    if object_range is None:
+        object_range = (
+            min(calibration.scene_counts),
+            max(calibration.scene_counts),
+        )
+        print(
+            "RENTANG OBJEK EMPIRIS: "
+            f"{object_range[0]}-{object_range[1]} per scene",
+            flush=True,
+        )
 
     output_root = Path(output_root).expanduser().resolve()
     if output_root.exists() and any(output_root.iterdir()):
@@ -459,8 +470,16 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--mode", choices=("naive", "visibility"), default="visibility")
     parser.add_argument("--canvas-size", type=int, default=640)
-    parser.add_argument("--objects-min", type=int, default=12)
-    parser.add_argument("--objects-max", type=int, default=30)
+    parser.add_argument(
+        "--objects-min",
+        type=int,
+        help="Batas bawah opsional; default mengikuti minimum profil train nyata.",
+    )
+    parser.add_argument(
+        "--objects-max",
+        type=int,
+        help="Batas atas opsional; default mengikuti maksimum profil train nyata.",
+    )
     parser.add_argument("--scale-min", type=float, default=0.08)
     parser.add_argument("--scale-max", type=float, default=0.18)
     parser.add_argument("--minimum-visibility", type=float, default=0.10)
@@ -471,6 +490,13 @@ def main() -> None:
         help="Profil empiris train nyata dari coffee_detector.profile_vadcp_source.",
     )
     args = parser.parse_args()
+    if (args.objects_min is None) != (args.objects_max is None):
+        parser.error("--objects-min dan --objects-max harus diberikan bersama")
+    object_range = (
+        None
+        if args.objects_min is None
+        else (args.objects_min, args.objects_max)
+    )
     result = generate_vadcp_dataset(
         args.real_data_root,
         args.object_library,
@@ -480,7 +506,7 @@ def main() -> None:
         mode=args.mode,
         background_root=args.background_root,
         canvas_size=args.canvas_size,
-        object_range=(args.objects_min, args.objects_max),
+        object_range=object_range,
         object_scale=(args.scale_min, args.scale_max),
         minimum_visibility=args.minimum_visibility,
         include_real_train=not args.synthetic_only_train,

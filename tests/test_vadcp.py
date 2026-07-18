@@ -639,7 +639,6 @@ def test_calibrated_physics_scene_and_realism_audit(tmp_path: Path) -> None:
         seed=5,
         mode="visibility",
         canvas_size=128,
-        object_range=(4, 6),
         include_real_train=False,
         scene_profile=restored,
     )
@@ -662,10 +661,11 @@ def test_calibrated_physics_scene_and_realism_audit(tmp_path: Path) -> None:
         1: pytest.approx((0.8,)),
     }
     assert manifest["scene_calibration"]["summary"]["source_boxes"] == 2
+    assert manifest["spec"]["object_range"] == (2, 2)
     assert sum(manifest["scene_modes"].values()) == 4
     assert manifest["repeated_assets"] >= 0
     assert Path(cutout_visual["contact_sheet"]).is_file()
-    assert realism["synthetic_physics"]["generated_instances"] >= 16
+    assert realism["synthetic_physics"]["generated_instances"] >= 8
     assert "labeled_density" in realism["comparisons"]
 
 
