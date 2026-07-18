@@ -245,6 +245,19 @@ The runner audits each arm, resumes interrupted runs, evaluates locked real test
 data, and reports mAP plus count error.  It treats a run as complete only when
 both `best.pt` and `experiment_manifest.json` exist.
 
+`A1` and `A2` arguments point to the synthetic-only outputs produced by the
+setup notebook. The runner creates a no-copy Ultralytics dataset view whose
+train split is `[A0 real train, synthetic train]`; validation, test, and count
+audit always use A0 real data. The generated `combined_view_manifest.json`
+records both image counts and `files_copied: 0`, preventing an accidental
+synthetic-only comparison or duplicated real train set.
+
+For the compute-bounded first screen, use
+`notebooks/VA_DCP_Train_Colab.ipynb`. It applies identical 10-epoch YOLO26n
+configs to A0/A1/A2 at seed 42 and writes resumable checkpoints to Drive. The
+100-epoch configs above remain reserved for confirmation after A2 shows a
+useful signal.
+
 ## 6. Visibility-stratified real-test evaluation
 
 The final real test metadata uses the same COCO-like fields `image_id`,

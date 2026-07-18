@@ -6,11 +6,13 @@ from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
+import yaml
 
 from .audit_dataset import audit_dataset
 from .audit_vadcp import audit_vadcp_dataset
+from .dataset import IMAGE_SUFFIXES, discover_layout
 from .evaluate import evaluate
-from .run_baseline import is_training_complete
+from .run_baseline import is_training_complete, load_verified_audit
 from .run_visual_audit import run_visual_audit
 from .train import load_experiment, train_experiment
 
@@ -59,6 +61,82 @@ def _audit_arm(code: str, data_root: Path, reports: Path) -> Path:
     return output
 
 
+def _count_images(root: Path) -> int:
+    return sum(
+        path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
+        for path in root.rglob("*")
+    )
+
+
+def build_combined_training_view(
+    code: str,
+    real_root: str | Path,
+    synthetic_root: str | Path,
+    output_root: str | Path,
+) -> Path:
+    """Create a no-copy Ultralytics view for real + synthetic train data."""
+    if code == "A0":
+        raise ValueError("A0 tidak memerlukan combined training view")
+    real = discover_layout(real_root)
+    synthetic = discover_layout(synthetic_root)
+    if real.names != synthetic.names:
+        raise ValueError(f"Nama/urutan kelas {code} berbeda dari A0")
+    missing_real = sorted({"train", "val", "test"} - set(real.splits))
+    if missing_real:
+        raise FileNotFoundError(
+            "A0 harus memiliki train/val/test: " + ", ".join(missing_real)
+        )
+    metadata_path = (
+        synthetic.root / "metadata" / "generation_manifest.json"
+    )
+    if not metadata_path.is_file():
+        raise FileNotFoundError(f"Manifest synthetic {code} tidak ditemukan: {metadata_path}")
+    generation = json.loads(metadata_path.read_text(encoding="utf-8"))
+    if generation.get("include_real_train"):
+        raise RuntimeError(
+            f"Synthetic arm {code} sudah memuat real train; kombinasi akan menduplikasi A0"
+        )
+
+    output_root = Path(output_root).expanduser().resolve()
+    view_root = output_root / "dataset_views" / code
+    for split in ("train", "val", "test"):
+        (view_root / split / "images").mkdir(parents=True, exist_ok=True)
+        (view_root / split / "labels").mkdir(parents=True, exist_ok=True)
+    real_train_images = real.splits["train"][0]
+    synthetic_train_images = synthetic.splits["train"][0]
+    payload = {
+        "path": str(view_root),
+        "train": [str(real_train_images), str(synthetic_train_images)],
+        "val": str(real.splits["val"][0]),
+        "test": str(real.splits["test"][0]),
+        "names": real.names,
+    }
+    (view_root / "data.yaml").write_text(
+        yaml.safe_dump(payload, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+    manifest = {
+        "format": "coffee_detector.combined_training_view.v1",
+        "code": code,
+        "real_root": str(real.root),
+        "synthetic_root": str(synthetic.root),
+        "real_train_images": _count_images(real_train_images),
+        "synthetic_train_images": _count_images(synthetic_train_images),
+        "val_root": str(real.splits["val"][0]),
+        "test_root": str(real.splits["test"][0]),
+        "files_copied": 0,
+    }
+    (view_root / "combined_view_manifest.json").write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    print(
+        f"TRAIN VIEW {code}: {manifest['real_train_images']} real + "
+        f"{manifest['synthetic_train_images']} synthetic | tanpa copy",
+        flush=True,
+    )
+    return view_root
+
+
 def run_vadcp_ablation(
     arms: dict[str, str | Path],
     output_root: str | Path,
@@ -69,6 +147,7 @@ def run_vadcp_ablation(
     resume: bool = True,
     count_audit: bool = True,
     count_confidence: float = 0.25,
+    verified_audits: dict[str, str | Path] | None = None,
 ) -> dict:
     if "A0" not in arms:
         raise ValueError("Arm A0 real-only wajib sebagai baseline")
@@ -84,14 +163,27 @@ def run_vadcp_ablation(
     resolved_arms = {
         code: Path(path).expanduser().resolve() for code, path in arms.items()
     }
-    audit_paths = {
-        code: str(_audit_arm(code, data_root, reports))
-        for code, data_root in resolved_arms.items()
-    }
+    verified_audits = verified_audits or {}
+    audit_paths = {}
+    for code, data_root in resolved_arms.items():
+        if code in verified_audits:
+            path = Path(verified_audits[code]).expanduser().resolve()
+            load_verified_audit(path, data_root)
+            print(f"REUSE AUDIT {code}: {path}", flush=True)
+        else:
+            path = _audit_arm(code, data_root, reports)
+        audit_paths[code] = str(path)
+
+    real_test_root = resolved_arms["A0"]
+    training_roots = {"A0": real_test_root}
+    for code in sorted(set(resolved_arms) - {"A0"}):
+        training_roots[code] = build_combined_training_view(
+            code, real_test_root, resolved_arms[code], output_root
+        )
     runs: dict[str, dict[str, dict]] = defaultdict(dict)
 
     for seed in seeds:
-        for code, data_root in resolved_arms.items():
+        for code, data_root in training_roots.items():
             config_path = Path(configs[code]).expanduser().resolve()
             config = load_experiment(config_path)
             if str(config["code"]) != code:
@@ -117,13 +209,17 @@ def run_vadcp_ablation(
                 raise FileNotFoundError(f"best.pt tidak ditemukan: {checkpoint}")
             evaluation_path = reports / f"{code}_seed{seed}_test.json"
             evaluation = evaluate(
-                checkpoint, data_root, evaluation_path, split="test", device=device
+                checkpoint,
+                real_test_root,
+                evaluation_path,
+                split="test",
+                device=device,
             )
             count_payload = None
             if count_audit:
                 count_payload = run_visual_audit(
                     checkpoint,
-                    data_root,
+                    real_test_root,
                     output_root / "count_audit" / f"{code}_seed{seed}",
                     samples=0,
                     seed=seed,
@@ -132,6 +228,7 @@ def run_vadcp_ablation(
                 )
             runs[code][str(seed)] = {
                 "data_root": str(data_root),
+                "evaluation_data_root": str(real_test_root),
                 "config": str(config_path),
                 "checkpoint": str(checkpoint),
                 "evaluation": str(evaluation_path),
@@ -154,7 +251,13 @@ def run_vadcp_ablation(
             }
 
     aggregate = {}
-    tracked = ("mAP50-95", "mAP50", "precision", "recall")
+    tracked = (
+        "mAP50-95",
+        "mAP50",
+        "precision",
+        "recall",
+        "worst_class_map50_95",
+    )
     for code, seed_rows in runs.items():
         aggregate[code] = {}
         for metric_name in tracked:
@@ -199,6 +302,9 @@ def run_vadcp_ablation(
     payload = {
         "format": "coffee_detector.vadcp_ablation.v1",
         "arms": {code: str(path) for code, path in resolved_arms.items()},
+        "training_roots": {
+            code: str(path) for code, path in training_roots.items()
+        },
         "audits": audit_paths,
         "seeds": list(seeds),
         "runs": dict(runs),
@@ -235,6 +341,12 @@ def main() -> None:
     parser.add_argument("--no-resume", action="store_true")
     parser.add_argument("--skip-count-audit", action="store_true")
     parser.add_argument("--count-confidence", type=float, default=0.25)
+    parser.add_argument(
+        "--verified-audit",
+        action="append",
+        default=[],
+        help="Audit yang sudah ada sebagai CODE=/path/audit.json.",
+    )
     args = parser.parse_args()
     result = run_vadcp_ablation(
         _parse_pairs(args.arm, "--arm"),
@@ -245,6 +357,11 @@ def main() -> None:
         resume=not args.no_resume,
         count_audit=not args.skip_count_audit,
         count_confidence=args.count_confidence,
+        verified_audits=(
+            _parse_pairs(args.verified_audit, "--verified-audit")
+            if args.verified_audit
+            else None
+        ),
     )
     print("\n=== VA-DCP ABLATION ===")
     for code, metrics in result["aggregate"].items():
