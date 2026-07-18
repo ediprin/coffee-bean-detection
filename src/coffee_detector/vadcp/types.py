@@ -35,6 +35,7 @@ class Cutout:
     source_id: str
     source_split: str = "train"
     source_parent_id: str | None = None
+    intrinsic_aspect_ratio: float | None = None
 
 
 @dataclass
@@ -42,6 +43,8 @@ class TransformedCutout:
     cutout: Cutout
     rgba: Image.Image
     mask: np.ndarray
+    target_bbox_ratio: float | None = None
+    achieved_bbox_ratio: float | None = None
 
 
 @dataclass
@@ -56,6 +59,8 @@ class PlacedInstance:
     visibility_ratio: float = 0.0
     visibility_bin: str = "ignored"
     is_focus: bool = False
+    target_bbox_ratio: float | None = None
+    achieved_bbox_ratio: float | None = None
 
 
 @dataclass
@@ -68,3 +73,6 @@ class SyntheticScene:
     controlled_instances: int = 0
     controlled_hits: int = 0
     repeated_assets: int = 0
+    geometry_targets: int = 0
+    geometry_hits: int = 0
+    geometry_fallbacks: int = 0

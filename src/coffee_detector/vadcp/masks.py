@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections import deque
 
 import numpy as np
@@ -235,3 +236,34 @@ def mask_bbox(mask: np.ndarray) -> tuple[int, int, int, int] | None:
     left, top = int(xs.min()), int(ys.min())
     right, bottom = int(xs.max()) + 1, int(ys.max()) + 1
     return left, top, right - left, bottom - top
+
+
+def principal_mask_geometry(mask: np.ndarray) -> tuple[float, float, float]:
+    """Return silhouette major/minor extent and major-axis angle.
+
+    Unlike an axis-aligned crop ratio, this geometry is invariant to the
+    cutout's original rotation and therefore represents the aspect ratios a
+    rigid rotation can physically realize without stretching pixels.
+    """
+    ys, xs = np.nonzero(mask)
+    if len(xs) < 3:
+        box = mask_bbox(mask)
+        if box is None:
+            raise ValueError("Mask objek kosong")
+        _, _, width, height = box
+        if width >= height:
+            return float(width), float(height), 0.0
+        return float(height), float(width), math.pi / 2.0
+    coordinates = np.column_stack((xs, ys)).astype(np.float64)
+    coordinates -= coordinates.mean(axis=0, keepdims=True)
+    covariance = np.cov(coordinates, rowvar=False)
+    _, eigenvectors = np.linalg.eigh(covariance)
+    major_vector = eigenvectors[:, -1]
+    minor_vector = np.asarray((-major_vector[1], major_vector[0]))
+    major = float(np.ptp(coordinates @ major_vector) + 1.0)
+    minor = float(np.ptp(coordinates @ minor_vector) + 1.0)
+    if major < minor:
+        major, minor = minor, major
+        major_vector = minor_vector
+    angle = math.atan2(float(major_vector[1]), float(major_vector[0]))
+    return max(major, 1.0), max(minor, 1.0), angle

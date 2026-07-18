@@ -25,12 +25,17 @@ from coffee_detector.run_vadcp_visual_audit import run_vadcp_visual_audit
 from coffee_detector.run_cutout_visual_audit import run_cutout_visual_audit
 from coffee_detector.vadcp.compositor import (
     CompositionSpec,
+    _choose_unique_cutouts,
     _rotation_and_projected_size,
     _transform_cutout,
     compose_scene,
 )
 from coffee_detector.vadcp import library as library_module
-from coffee_detector.vadcp.library import load_object_library, prepare_yolo_library
+from coffee_detector.vadcp.library import (
+    backfill_intrinsic_geometry,
+    load_object_library,
+    prepare_yolo_library,
+)
 from coffee_detector.vadcp.masks import (
     binary_mask_rle,
     crop_to_mask,
@@ -238,16 +243,127 @@ def test_transformed_cutout_matches_ratio_and_final_long_side(
         assert box[2] / box[3] == pytest.approx(target_ratio, abs=0.12)
 
 
+def test_geometry_aware_selection_prefers_capable_cutout(tmp_path: Path) -> None:
+    round_cutout = Cutout(
+        "round", 0, "bean", tmp_path / "round.png", "round-source",
+        intrinsic_aspect_ratio=1.10,
+    )
+    elongated_cutout = Cutout(
+        "elongated", 0, "bean", tmp_path / "elongated.png", "long-source",
+        intrinsic_aspect_ratio=2.20,
+    )
+    calibration = SceneCalibration(
+        scene_counts=(1,),
+        object_long_sides=(0.25,),
+        bbox_width_height_ratios=(2.0,),
+        scene_scale_medians=(0.25,),
+        within_scene_scale_ratios=(1.0,),
+        background_colors=((230.0, 230.0, 230.0),),
+        background_gradient_std=(1.0,),
+        background_sensor_std=(1.0,),
+        source_images=1,
+        source_boxes=1,
+        bbox_width_height_ratios_by_class={0: (2.0,)},
+    )
+
+    chosen, targets, repeated, fallbacks = _choose_unique_cutouts(
+        [round_cutout, elongated_cutout],
+        1,
+        CompositionSpec(object_range=(1, 1)),
+        random.Random(5),
+        calibration=calibration,
+        geometry_rng=random.Random(7),
+    )
+
+    assert chosen == [elongated_cutout]
+    assert targets == [2.0]
+    assert repeated == 0
+    assert fallbacks == 0
+
+    fallback_choice, _, _, fallback_count = _choose_unique_cutouts(
+        [round_cutout],
+        1,
+        CompositionSpec(object_range=(1, 1)),
+        random.Random(5),
+        calibration=calibration,
+        geometry_rng=random.Random(7),
+    )
+    assert fallback_choice == [round_cutout]
+    assert fallback_count == 1
+
+
+def test_geometry_match_precedes_parent_uniqueness(tmp_path: Path) -> None:
+    cutouts = [
+        Cutout(
+            f"long-{class_id}",
+            class_id,
+            f"class-{class_id}",
+            tmp_path / f"long-{class_id}.png",
+            f"long-source-{class_id}",
+            source_parent_id="shared-parent",
+            intrinsic_aspect_ratio=2.2,
+        )
+        for class_id in (0, 1)
+    ] + [
+        Cutout(
+            f"round-{class_id}",
+            class_id,
+            f"class-{class_id}",
+            tmp_path / f"round-{class_id}.png",
+            f"round-source-{class_id}",
+            source_parent_id=f"unique-parent-{class_id}",
+            intrinsic_aspect_ratio=1.1,
+        )
+        for class_id in (0, 1)
+    ]
+    calibration = SceneCalibration(
+        scene_counts=(2,),
+        object_long_sides=(0.25,),
+        bbox_width_height_ratios=(2.0,),
+        scene_scale_medians=(0.25,),
+        within_scene_scale_ratios=(1.0,),
+        background_colors=((230.0, 230.0, 230.0),),
+        background_gradient_std=(1.0,),
+        background_sensor_std=(1.0,),
+        source_images=1,
+        source_boxes=2,
+        bbox_width_height_ratios_by_class={0: (2.0,), 1: (2.0,)},
+    )
+
+    chosen, _, repeated, fallbacks = _choose_unique_cutouts(
+        cutouts,
+        2,
+        CompositionSpec(object_range=(2, 2)),
+        random.Random(13),
+        calibration=calibration,
+        geometry_rng=random.Random(17),
+    )
+
+    assert {item.asset_id for item in chosen} == {"long-0", "long-1"}
+    assert repeated == 0
+    assert fallbacks == 0
+
+
 def test_object_library_uses_train_and_excludes_test(tmp_path: Path) -> None:
     source = tmp_path / "classification"
     output = tmp_path / "library"
     _write_classification_assets(source)
 
     result = prepare_classification_library(source, output)
+    manifest_path = output / "object_library.json"
+    legacy_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for row in legacy_manifest["assets"]:
+        row.pop("intrinsic_aspect_ratio", None)
+    manifest_path.write_text(json.dumps(legacy_manifest), encoding="utf-8")
+    upgrade = backfill_intrinsic_geometry(output, progress_every=2)
+    repeated_upgrade = backfill_intrinsic_geometry(output, progress_every=2)
     classes, cutouts, info = load_object_library(output)
 
+    assert upgrade == {"assets": 4, "profiled": 4, "remaining": 0}
+    assert repeated_upgrade == {"assets": 4, "profiled": 0, "remaining": 0}
     assert set(classes.values()) == {"normal", "defect"}
     assert len(cutouts) == 4
+    assert all(item.intrinsic_aspect_ratio is not None for item in cutouts)
     assert {item.source_split for item in cutouts} == {"train"}
     assert result["source"]["skipped_by_split"] == {"test": 4}
     assert info["rejected_splits"] == {}
@@ -359,13 +475,29 @@ def test_naive_and_visibility_arms_share_assets_and_transform_scales(
         use_shadows=False,
     )
     background = Image.new("RGB", base.canvas_size, "white")
+    calibration = SceneCalibration(
+        scene_counts=(4,),
+        object_long_sides=(0.22,),
+        bbox_width_height_ratios=(1.4,),
+        scene_scale_medians=(0.22,),
+        within_scene_scale_ratios=(1.0,),
+        background_colors=((230.0, 230.0, 230.0),),
+        background_gradient_std=(1.0,),
+        background_sensor_std=(1.0,),
+        source_images=1,
+        source_boxes=4,
+        bbox_width_height_ratios_by_class={0: (1.4,), 1: (1.4,)},
+    )
 
-    naive = compose_scene(background, cutouts, base, random.Random(23))
+    naive = compose_scene(
+        background, cutouts, base, random.Random(23), calibration=calibration
+    )
     visibility = compose_scene(
         background,
         cutouts,
         replace(base, mode="visibility"),
         random.Random(23),
+        calibration=calibration,
     )
 
     assert [item.cutout.asset_id for item in naive.instances] == [
@@ -374,6 +506,13 @@ def test_naive_and_visibility_arms_share_assets_and_transform_scales(
     assert [int(item.full_mask.sum()) for item in naive.instances] == [
         int(item.full_mask.sum()) for item in visibility.instances
     ]
+    assert [mask_bbox(item.full_mask)[2:] for item in naive.instances] == [
+        mask_bbox(item.full_mask)[2:] for item in visibility.instances
+    ]
+    assert [item.target_bbox_ratio for item in naive.instances] == [
+        item.target_bbox_ratio for item in visibility.instances
+    ]
+    assert all(item.target_bbox_ratio == pytest.approx(1.4) for item in naive.instances)
     assert naive.scene_mode == visibility.scene_mode
 
 
@@ -404,8 +543,10 @@ def test_generate_and_audit_vadcp_dataset(tmp_path: Path) -> None:
     )
 
     assert manifest["synthetic_images"] == 3
+    assert manifest["geometry_target_hit_rate"] is not None
     assert manifest["real_images"] == {"train": 1, "val": 1, "test": 1}
     assert audit["safe_for_training"], audit["errors"]
+    assert isinstance(audit["geometry_ready"], bool)
     assert audit["synthetic_images"] == 3
     assert visual["samples"] == 2
     assert Path(visual["contact_sheet"]).is_file()
@@ -462,6 +603,10 @@ def test_calibrated_physics_scene_and_realism_audit(tmp_path: Path) -> None:
 
     assert restored.source_images == 1
     assert restored.bbox_width_height_ratios == pytest.approx((0.8, 0.8))
+    assert restored.bbox_width_height_ratios_by_class == {
+        0: pytest.approx((0.8,)),
+        1: pytest.approx((0.8,)),
+    }
     assert manifest["scene_calibration"]["summary"]["source_boxes"] == 2
     assert sum(manifest["scene_modes"].values()) == 4
     assert manifest["repeated_assets"] >= 0

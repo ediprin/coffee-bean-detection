@@ -25,8 +25,9 @@ perintah lengkap ada di [docs/VA_DCP_IMPLEMENTATION.md](docs/VA_DCP_IMPLEMENTATI
 Generator memakai physics-informed 2.5D projected packing: skala dan jumlah
 objek dikalibrasi dari train nyata, penempatan contact-constrained, z-order
 eksplisit, rotasi mengikuti distribusi aspect ratio kotak nyata, matte di-feather
-ke dalam, dan cahaya/bayangan koheren per scene. Ini bukan klaim simulasi fisika
-3D penuh.
+ke dalam, serta target bentuk per kelas dipasangkan dengan cutout yang mampu
+mencapainya tanpa meregangkan piksel. Cahaya/bayangan tetap koheren per scene.
+Ini bukan klaim simulasi fisika 3D penuh.
 
 Notebook Colab yang hanya menyiapkan data sampai status `TRAINING_READY`, tanpa
 menjalankan training, tersedia di

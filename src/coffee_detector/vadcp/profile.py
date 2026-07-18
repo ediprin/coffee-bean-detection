@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 import math
 import random
-from dataclasses import asdict, dataclass
+from collections import defaultdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -26,6 +27,9 @@ class SceneCalibration:
     background_sensor_std: tuple[float, ...]
     source_images: int
     source_boxes: int
+    bbox_width_height_ratios_by_class: dict[int, tuple[float, ...]] = field(
+        default_factory=dict
+    )
     split: str = "train"
 
     def __post_init__(self) -> None:
@@ -43,10 +47,16 @@ class SceneCalibration:
             raise ValueError("Skala long-side harus berada pada (0, 1]")
         if any(value <= 0 for value in self.bbox_width_height_ratios):
             raise ValueError("Rasio width/height bounding box harus positif")
+        if any(
+            value <= 0
+            for values in self.bbox_width_height_ratios_by_class.values()
+            for value in values
+        ):
+            raise ValueError("Rasio bbox per kelas harus positif")
 
     def to_payload(self) -> dict:
         return {
-            "format": "coffee_detector.scene_calibration.v2",
+            "format": "coffee_detector.scene_calibration.v3",
             **asdict(self),
             "summary": calibration_summary(self),
         }
@@ -76,6 +86,13 @@ def calibration_summary(calibration: SceneCalibration) -> dict:
                 for value in calibration.bbox_width_height_ratios
             )
         ),
+        "bbox_width_height_ratio_by_class": {
+            str(class_id): _quantiles(values)
+            for class_id, values in sorted(
+                calibration.bbox_width_height_ratios_by_class.items()
+            )
+            if values
+        },
         "scene_scale_median_fraction": _quantiles(calibration.scene_scale_medians),
         "within_scene_scale_ratio": _quantiles(calibration.within_scene_scale_ratios),
         "background_rgb_median": (
@@ -162,6 +179,7 @@ def build_scene_calibration(
     counts: list[float] = []
     long_sides: list[float] = []
     bbox_width_height_ratios: list[float] = []
+    bbox_width_height_ratios_by_class: dict[int, list[float]] = defaultdict(list)
     scene_scale_medians: list[float] = []
     within_scene_scale_ratios: list[float] = []
     labels_by_image: dict[Path, tuple] = {}
@@ -175,6 +193,11 @@ def build_scene_calibration(
             bbox_width_height_ratios.extend(
                 box.width / box.height for box in boxes if box.height > 0
             )
+            for box in boxes:
+                if box.height > 0:
+                    bbox_width_height_ratios_by_class[box.class_id].append(
+                        box.width / box.height
+                    )
             median_scale = float(np.median(image_scales))
             long_sides.extend(image_scales)
             scene_scale_medians.append(median_scale)
@@ -204,6 +227,17 @@ def build_scene_calibration(
         for value in bbox_width_height_ratios
         if bbox_ratio_low <= value <= bbox_ratio_high
     ]
+    trimmed_ratios_by_class: dict[int, tuple[float, ...]] = {}
+    for class_id, values in sorted(bbox_width_height_ratios_by_class.items()):
+        if len(values) >= 20:
+            array = np.asarray(values, dtype=np.float64)
+            class_low, class_high = np.quantile(array, (0.01, 0.99))
+            trimmed = [
+                value for value in values if class_low <= value <= class_high
+            ]
+        else:
+            trimmed = values
+        trimmed_ratios_by_class[class_id] = _quantile_sample(trimmed, 512)
 
     rng = random.Random(seed)
     candidates = image_paths.copy()
@@ -239,6 +273,7 @@ def build_scene_calibration(
         background_sensor_std=tuple(sensors),
         source_images=len(image_paths),
         source_boxes=int(sum(counts)),
+        bbox_width_height_ratios_by_class=trimmed_ratios_by_class,
         split=split,
     )
 
@@ -259,6 +294,7 @@ def load_scene_calibration(path: str | Path) -> SceneCalibration:
     if payload.get("format") not in {
         "coffee_detector.scene_calibration.v1",
         "coffee_detector.scene_calibration.v2",
+        "coffee_detector.scene_calibration.v3",
     }:
         raise ValueError(f"Format scene calibration tidak dikenal: {path}")
     if "bbox_width_height_ratios" not in payload:
@@ -291,5 +327,11 @@ def load_scene_calibration(path: str | Path) -> SceneCalibration:
         ),
         source_images=int(payload["source_images"]),
         source_boxes=int(payload["source_boxes"]),
+        bbox_width_height_ratios_by_class={
+            int(class_id): tuple(float(value) for value in values)
+            for class_id, values in payload.get(
+                "bbox_width_height_ratios_by_class", {}
+            ).items()
+        },
         split=str(payload.get("split", "train")),
     )

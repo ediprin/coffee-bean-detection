@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import random
 import re
@@ -209,6 +210,9 @@ def generate_vadcp_dataset(
     ignored_instances = 0
     scene_modes = Counter()
     repeated_assets = 0
+    geometry_targets = 0
+    geometry_hits = 0
+    geometry_fallbacks = 0
 
     for scene_index in range(synthetic_images):
         # A per-scene RNG keeps source selection and backgrounds paired across
@@ -237,6 +241,9 @@ def generate_vadcp_dataset(
             focus_hits[scene.target_visibility_bin] += scene.controlled_hits
         scene_modes[scene.scene_mode] += 1
         repeated_assets += scene.repeated_assets
+        geometry_targets += scene.geometry_targets
+        geometry_hits += scene.geometry_hits
+        geometry_fallbacks += scene.geometry_fallbacks
         for instance in scene.instances:
             assert instance.visible_mask is not None
             visible_bbox = mask_bbox(instance.visible_mask)
@@ -274,6 +281,30 @@ def generate_vadcp_dataset(
                     "visibility_ratio": instance.visibility_ratio,
                     "visibility_bin": instance.visibility_bin,
                     "is_focus": instance.is_focus,
+                    "target_bbox_ratio": instance.target_bbox_ratio,
+                    "achieved_bbox_ratio": instance.achieved_bbox_ratio,
+                    "intrinsic_aspect_ratio": instance.cutout.intrinsic_aspect_ratio,
+                    "geometry_reachable": (
+                        max(
+                            float(instance.target_bbox_ratio),
+                            1.0 / float(instance.target_bbox_ratio),
+                        )
+                        <= float(instance.cutout.intrinsic_aspect_ratio) / 0.97
+                        if instance.target_bbox_ratio is not None
+                        and instance.cutout.intrinsic_aspect_ratio is not None
+                        else None
+                    ),
+                    "geometry_log_error": (
+                        abs(
+                            math.log(
+                                float(instance.achieved_bbox_ratio)
+                                / float(instance.target_bbox_ratio)
+                            )
+                        )
+                        if instance.target_bbox_ratio is not None
+                        and instance.achieved_bbox_ratio is not None
+                        else None
+                    ),
                 }
             )
             annotation_id += 1
@@ -291,6 +322,9 @@ def generate_vadcp_dataset(
                 "controlled_hits": scene.controlled_hits,
                 "scene_mode": scene.scene_mode,
                 "repeated_assets": scene.repeated_assets,
+                "geometry_targets": scene.geometry_targets,
+                "geometry_hits": scene.geometry_hits,
+                "geometry_fallbacks": scene.geometry_fallbacks,
                 "generation_seed": scene_seed,
                 "sha256": _file_sha256(image_path),
             }
@@ -356,6 +390,12 @@ def generate_vadcp_dataset(
         },
         "scene_modes": dict(sorted(scene_modes.items())),
         "repeated_assets": repeated_assets,
+        "geometry_targets": geometry_targets,
+        "geometry_hits": geometry_hits,
+        "geometry_target_hit_rate": (
+            geometry_hits / geometry_targets if geometry_targets else None
+        ),
+        "geometry_fallbacks": geometry_fallbacks,
         "instances_by_visibility": dict(sorted(visibility_counts.items())),
         "instances_by_class": dict(sorted(class_counts.items())),
         "ignored_instances": ignored_instances,
@@ -419,6 +459,8 @@ def main() -> None:
     print(f"Target hit   : {result['focus_target_hit_rate']}")
     print(f"Scene modes  : {result['scene_modes']}")
     print(f"Repeated     : {result['repeated_assets']}")
+    print(f"Geometry hit : {result['geometry_target_hit_rate']}")
+    print(f"Geom fallback: {result['geometry_fallbacks']}")
     print(f"Ignored      : {result['ignored_instances']}")
 
 

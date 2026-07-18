@@ -139,6 +139,11 @@ projected packing**, not as a 3D rigid-body simulator:
   contact/cast-shadow model is shared by the whole frame;
 - the empirical signed width/height distribution selects each rotation, so
   diagonal rotation does not collapse axis-aligned bean boxes toward squares;
+- target aspect ratios are sampled per class and assigned hardest-first to
+  real cutouts whose intrinsic silhouette can realize them; pixels are never
+  stretched anisotropically, and every unavoidable fallback is counted;
+- an older object-library manifest is geometry-profiled once with visible
+  progress, saved atomically, and then reused by both paired augmentation arms;
 - uncertain mask edges are eroded into a trusted color core, feathered inward,
   edge-bled, and transformed in premultiplied-alpha space to suppress paste
   halos without expanding annotation masks;

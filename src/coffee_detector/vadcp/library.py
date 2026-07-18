@@ -20,7 +20,12 @@ from ..dataset import (
     parse_label,
     roboflow_parent_id,
 )
-from .masks import crop_to_mask, estimate_foreground_mask
+from .masks import (
+    crop_to_mask,
+    estimate_foreground_mask,
+    mask_bbox,
+    principal_mask_geometry,
+)
 from .types import Cutout
 
 
@@ -205,6 +210,11 @@ def _write_asset(
                     f"{centroid_distance_fraction:.3f}"
                 )
         rgba, cropped_mask = crop_to_mask(image, mask, padding=padding)
+        cropped_box = mask_bbox(cropped_mask)
+        if cropped_box is None:
+            raise ValueError("mask hasil crop kosong")
+        intrinsic_major, intrinsic_minor, _ = principal_mask_geometry(cropped_mask)
+        intrinsic_aspect_ratio = intrinsic_major / max(intrinsic_minor, 1e-6)
         asset_digest = hashlib.sha256(rgba.tobytes()).hexdigest()
         asset_id = _stable_id(class_name, source_id, asset_digest)
         class_folder = output_root / "assets" / class_name
@@ -225,6 +235,7 @@ def _write_asset(
                 "centroid_distance_fraction": centroid_distance_fraction,
                 "width": rgba.width,
                 "height": rgba.height,
+                "intrinsic_aspect_ratio": intrinsic_aspect_ratio,
                 "sha256_rgba": asset_digest,
             },
             None,
@@ -523,8 +534,59 @@ def load_object_library(path: str | Path, *, train_only: bool = True) -> tuple[d
                     if row.get("source_parent_id") is not None
                     else None
                 ),
+                intrinsic_aspect_ratio=(
+                    float(row["intrinsic_aspect_ratio"])
+                    if row.get("intrinsic_aspect_ratio") is not None
+                    else None
+                ),
             )
         )
     if not cutouts:
         raise RuntimeError("Object library tidak memiliki aset train/unspecified")
     return classes, cutouts, {"manifest": payload, "rejected_splits": dict(rejected)}
+
+
+def backfill_intrinsic_geometry(
+    path: str | Path,
+    *,
+    progress_every: int = 100,
+) -> dict[str, int]:
+    """Persist rotation-invariant silhouette capability in an old library.
+
+    Older object libraries remain valid, but their manifests predate the
+    `intrinsic_aspect_ratio` field. Persisting it once avoids rescanning every
+    PNG independently in the A1 and A2 generation subprocesses.
+    """
+    manifest_path = Path(path).expanduser().resolve()
+    if manifest_path.is_dir():
+        manifest_path = manifest_path / "object_library.json"
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assets = payload.get("assets", [])
+    missing = [row for row in assets if row.get("intrinsic_aspect_ratio") is None]
+    if not missing:
+        return {"assets": len(assets), "profiled": 0, "remaining": 0}
+
+    library_root = manifest_path.parent
+    total = len(missing)
+    print(f"PROFIL GEOMETRI CUTOUT: 0/{total}")
+    for index, row in enumerate(missing, start=1):
+        image_path = library_root / str(row["image"])
+        with Image.open(image_path) as source:
+            alpha = np.asarray(
+                source.convert("RGBA").getchannel("A"), dtype=np.uint8
+            )
+        major, minor, _ = principal_mask_geometry(alpha >= 32)
+        row["intrinsic_aspect_ratio"] = major / max(minor, 1e-6)
+        if index % max(progress_every, 1) == 0 or index == total:
+            print(f"PROFIL GEOMETRI CUTOUT: {index}/{total}")
+
+    payload["geometry_profile"] = {
+        "method": "principal_mask_extent.v1",
+        "profiled_assets": total,
+    }
+    temporary_path = manifest_path.with_suffix(manifest_path.suffix + ".tmp")
+    temporary_path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    temporary_path.replace(manifest_path)
+    return {"assets": len(assets), "profiled": total, "remaining": 0}

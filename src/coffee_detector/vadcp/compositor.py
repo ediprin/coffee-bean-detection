@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageEnhance, ImageFilter
 
-from .masks import mask_bbox
+from .masks import mask_bbox, principal_mask_geometry
 from .profile import SceneCalibration
 from .types import (
     Cutout,
@@ -175,38 +175,21 @@ def _resize_rotate_premultiplied(
     return Image.fromarray((output * 255.0).astype(np.uint8), mode="RGBA")
 
 
-def _principal_mask_geometry(mask: np.ndarray) -> tuple[float, float, float]:
-    """Return major/minor diameter and major-axis angle for a bean mask."""
-    ys, xs = np.nonzero(mask)
-    if len(xs) < 3:
-        box = mask_bbox(mask)
-        if box is None:
-            raise ValueError("Mask objek kosong")
-        _, _, width, height = box
-        if width >= height:
-            return float(width), float(height), 0.0
-        return float(height), float(width), math.pi / 2.0
-    coordinates = np.column_stack((xs, ys)).astype(np.float64)
-    coordinates -= coordinates.mean(axis=0, keepdims=True)
-    covariance = np.cov(coordinates, rowvar=False)
-    _, eigenvectors = np.linalg.eigh(covariance)
-    major_vector = eigenvectors[:, -1]
-    minor_vector = np.asarray((-major_vector[1], major_vector[0]))
-    major = float(np.ptp(coordinates @ major_vector) + 1.0)
-    minor = float(np.ptp(coordinates @ minor_vector) + 1.0)
-    if major < minor:
-        major, minor = minor, major
-        major_vector = minor_vector
-    angle = math.atan2(float(major_vector[1]), float(major_vector[0]))
-    return max(major, 1.0), max(minor, 1.0), angle
-
-
 @lru_cache(maxsize=4096)
 def _cutout_principal_geometry(path: str) -> tuple[float, float, float]:
     """Cache mask geometry; it is invariant to RGB reflectance jitter."""
     image = _load_rgba_cached(path)
     mask = np.asarray(image.getchannel("A"), dtype=np.uint8) >= 32
-    return _principal_mask_geometry(mask)
+    return principal_mask_geometry(mask)
+
+
+def _cutout_intrinsic_aspect(cutout: Cutout) -> float:
+    if cutout.intrinsic_aspect_ratio is not None:
+        return max(float(cutout.intrinsic_aspect_ratio), 1.0)
+    major, minor, _ = _cutout_principal_geometry(str(cutout.image_path))
+    aspect = major / max(minor, 1e-6)
+    cutout.intrinsic_aspect_ratio = aspect
+    return aspect
 
 
 def _projected_ellipse_size(
@@ -235,7 +218,7 @@ def _rotation_and_projected_size(
     candidates.  A random 180-degree flip preserves appearance diversity
     without changing the axis-aligned target box.
     """
-    major, minor, source_axis = geometry or _principal_mask_geometry(mask)
+    major, minor, source_axis = geometry or principal_mask_geometry(mask)
     if target_width_height_ratio is None:
         rotation = rng.uniform(0.0, 360.0)
         # PIL's positive angle is counter-clockwise on screen while mask
@@ -273,6 +256,7 @@ def _transform_cutout(
     *,
     scene_scale: float | None = None,
     calibration: SceneCalibration | None = None,
+    target_width_height_ratio: float | None = None,
 ) -> TransformedCutout:
     image = load_cutout(cutout)
     alpha = image.getchannel("A")
@@ -295,11 +279,9 @@ def _transform_cutout(
         fraction = rng.uniform(spec.object_scale[0], spec.object_scale[1])
     target_long_side = max(6, int(round(canvas_long * fraction)))
     source_mask = np.asarray(image.getchannel("A"), dtype=np.uint8) >= 32
-    target_ratio = (
-        float(rng.choice(calibration.bbox_width_height_ratios))
-        if calibration is not None
-        else None
-    )
+    target_ratio = target_width_height_ratio
+    if target_ratio is None and calibration is not None:
+        target_ratio = float(rng.choice(calibration.bbox_width_height_ratios))
     angle, projected_size = _rotation_and_projected_size(
         source_mask,
         rng,
@@ -331,7 +313,19 @@ def _transform_cutout(
             mask = np.asarray(image.getchannel("A"), dtype=np.uint8) >= 32
     if not np.any(mask):
         raise ValueError(f"Transformasi menghasilkan mask kosong: {cutout.asset_id}")
-    return TransformedCutout(cutout=cutout, rgba=image, mask=mask)
+    achieved_box = mask_bbox(mask)
+    achieved_ratio = (
+        achieved_box[2] / achieved_box[3]
+        if achieved_box is not None and achieved_box[3] > 0
+        else None
+    )
+    return TransformedCutout(
+        cutout=cutout,
+        rgba=image,
+        mask=mask,
+        target_bbox_ratio=target_ratio,
+        achieved_bbox_ratio=achieved_ratio,
+    )
 
 
 def _global_mask(
@@ -569,6 +563,8 @@ def _render_scene(
                 z_order=index,
                 full_mask=_global_mask(item.mask, x, y, spec.canvas_size),
                 is_focus=is_focus,
+                target_bbox_ratio=item.target_bbox_ratio,
+                achieved_bbox_ratio=item.achieved_bbox_ratio,
             )
         )
 
@@ -587,50 +583,116 @@ def _choose_unique_cutouts(
     count: int,
     spec: CompositionSpec,
     rng: random.Random,
-) -> tuple[list[Cutout], int]:
+    *,
+    calibration: SceneCalibration | None = None,
+    geometry_rng: random.Random | None = None,
+) -> tuple[list[Cutout], list[float | None], int, int]:
+    """Choose class-balanced assets that can realize sampled bbox geometry.
+
+    Requested ratios are sampled per class from real train.  Hardest ratios are
+    allocated first so elongated assets are not consumed by easy targets.  No
+    anisotropic warping is used; a fallback is recorded when no remaining real
+    cutout can physically realize the requested aspect.
+    """
     by_class: dict[int, list[Cutout]] = {}
     for cutout in cutouts:
         by_class.setdefault(cutout.class_id, []).append(cutout)
     for values in by_class.values():
         rng.shuffle(values)
-    chosen: list[Cutout] = []
-    used_assets: set[str] = set()
-    used_parents: set[str] = set()
     class_counts = {class_id: 0 for class_id in by_class}
-    repeated = 0
+    class_slots: list[int] = []
     for _ in range(count):
         class_ids = list(by_class)
         if spec.class_balanced:
             minimum = min(class_counts.values())
             class_ids = [key for key in class_ids if class_counts[key] == minimum]
-        rng.shuffle(class_ids)
-        candidate = None
-        for class_id in class_ids:
-            candidates = [
-                item
-                for item in by_class[class_id]
-                if item.asset_id not in used_assets
-                and (
-                    item.source_parent_id is None
-                    or item.source_parent_id not in used_parents
-                )
-            ]
-            if not candidates:
-                candidates = [
-                    item for item in by_class[class_id] if item.asset_id not in used_assets
-                ]
-            if candidates:
-                candidate = rng.choice(candidates)
-                break
-        if candidate is None:
-            candidate = rng.choice(cutouts)
+        class_id = rng.choice(class_ids)
+        class_slots.append(class_id)
+        class_counts[class_id] += 1
+
+    ratio_rng = geometry_rng or rng
+    target_ratios: list[float | None] = []
+    for class_id in class_slots:
+        if calibration is None:
+            target_ratios.append(None)
+            continue
+        distribution = (
+            calibration.bbox_width_height_ratios_by_class.get(class_id)
+            or calibration.bbox_width_height_ratios
+        )
+        target_ratios.append(float(ratio_rng.choice(distribution)))
+
+    chosen: list[Cutout | None] = [None] * count
+    used_assets: set[str] = set()
+    used_parents: set[str] = set()
+    repeated = 0
+    geometry_fallbacks = 0
+    allocation_order = sorted(
+        range(count),
+        key=lambda index: (
+            max(
+                float(target_ratios[index]),
+                1.0 / float(target_ratios[index]),
+            )
+            if target_ratios[index] is not None
+            else 1.0
+        ),
+        reverse=True,
+    )
+    for index in allocation_order:
+        class_id = class_slots[index]
+        candidates = [
+            item
+            for item in by_class[class_id]
+            if item.asset_id not in used_assets
+        ]
+        if not candidates:
+            candidates = list(by_class[class_id])
             repeated += 1
-        chosen.append(candidate)
+        target_ratio = target_ratios[index]
+        if target_ratio is not None:
+            target_aspect = max(target_ratio, 1.0 / target_ratio)
+            capable = [
+                item
+                for item in candidates
+                if _cutout_intrinsic_aspect(item) >= target_aspect * 0.97
+            ]
+            if capable:
+                gaps = {
+                    item.asset_id: _cutout_intrinsic_aspect(item) - target_aspect
+                    for item in capable
+                }
+                best_gap = min(gaps.values())
+                candidates = [
+                    item
+                    for item in capable
+                    if gaps[item.asset_id] <= best_gap + 0.05
+                ]
+            else:
+                best = max(_cutout_intrinsic_aspect(item) for item in candidates)
+                candidates = [
+                    item
+                    for item in candidates
+                    if _cutout_intrinsic_aspect(item) >= best * 0.995
+                ]
+                geometry_fallbacks += 1
+        unused_parent_candidates = [
+            item
+            for item in candidates
+            if item.source_parent_id is None
+            or item.source_parent_id not in used_parents
+        ]
+        if unused_parent_candidates:
+            candidates = unused_parent_candidates
+        candidate = rng.choice(candidates)
+        chosen[index] = candidate
         used_assets.add(candidate.asset_id)
         if candidate.source_parent_id is not None:
             used_parents.add(candidate.source_parent_id)
-        class_counts[candidate.class_id] += 1
-    return chosen, repeated
+    selected = [item for item in chosen if item is not None]
+    if len(selected) != count:
+        raise RuntimeError("Pemilihan geometry-aware menghasilkan slot kosong")
+    return selected, target_ratios, repeated, geometry_fallbacks
 
 
 def _sample_lighting(
@@ -677,28 +739,54 @@ def compose_scene(
     """
     if not cutouts:
         raise ValueError("Pustaka cutout kosong")
-    streams = [random.Random(rng.getrandbits(64)) for _ in range(6)]
-    selection_rng, geometry_rng, placement_rng, lighting_rng, camera_rng, mode_rng = streams
+    streams = [random.Random(rng.getrandbits(64)) for _ in range(7)]
+    (
+        selection_rng,
+        geometry_plan_rng,
+        transform_rng,
+        placement_rng,
+        lighting_rng,
+        camera_rng,
+        mode_rng,
+    ) = streams
     if calibration is not None:
         sampled_count = int(selection_rng.choice(calibration.scene_counts))
         count = min(max(sampled_count, spec.object_range[0]), spec.object_range[1])
-        scene_scale = float(geometry_rng.choice(calibration.scene_scale_medians))
+        scene_scale = float(
+            geometry_plan_rng.choice(calibration.scene_scale_medians)
+        )
     else:
         count = selection_rng.randint(spec.object_range[0], spec.object_range[1])
         scene_scale = None
-    chosen, repeated_assets = _choose_unique_cutouts(
-        cutouts, count, spec, selection_rng
+    chosen, target_ratios, repeated_assets, geometry_fallbacks = _choose_unique_cutouts(
+        cutouts,
+        count,
+        spec,
+        selection_rng,
+        calibration=calibration,
+        geometry_rng=geometry_plan_rng,
     )
     transformed_items = [
         _transform_cutout(
             item,
             spec,
-            geometry_rng,
+            transform_rng,
             scene_scale=scene_scale,
             calibration=calibration,
+            target_width_height_ratio=target_ratio,
         )
-        for item in chosen
+        for item, target_ratio in zip(chosen, target_ratios)
     ]
+    geometry_targets = sum(item.target_bbox_ratio is not None for item in transformed_items)
+    geometry_hits = sum(
+        item.target_bbox_ratio is not None
+        and item.achieved_bbox_ratio is not None
+        and abs(
+            math.log(item.achieved_bbox_ratio / item.target_bbox_ratio)
+        )
+        <= math.log(1.10)
+        for item in transformed_items
+    )
     median_pixels = float(np.median([max(item.rgba.size) for item in transformed_items]))
     lighting = _sample_lighting(calibration, median_pixels, lighting_rng)
     mode_names = list(spec.scene_mode_weights)
@@ -810,6 +898,9 @@ def compose_scene(
         controlled_instances=len(focus_instances),
         controlled_hits=controlled_hits,
         repeated_assets=repeated_assets,
+        geometry_targets=geometry_targets,
+        geometry_hits=geometry_hits,
+        geometry_fallbacks=geometry_fallbacks,
     )
 
 

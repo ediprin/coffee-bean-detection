@@ -145,6 +145,28 @@ def audit_vadcp_dataset(
                 f"Target visibility {name} hanya tercapai {float(rate):.1%}; "
                 "periksa skala objek atau jumlah placement attempts."
             )
+    geometry_rate = manifest.get("geometry_target_hit_rate")
+    geometry_targets = int(manifest.get("geometry_targets", 0))
+    geometry_fallbacks = int(manifest.get("geometry_fallbacks", 0))
+    geometry_fallback_rate = (
+        geometry_fallbacks / geometry_targets if geometry_targets else None
+    )
+    if geometry_rate is not None and float(geometry_rate) < 0.90:
+        warnings.append(
+            f"Target aspect ratio hanya tercapai {float(geometry_rate):.1%}; "
+            "periksa distribusi bentuk object library."
+        )
+    if geometry_fallback_rate is not None and geometry_fallback_rate > 0.10:
+        warnings.append(
+            f"Geometry fallback {geometry_fallbacks}/{geometry_targets}; "
+            "terlalu sedikit cutout yang mampu mencapai target aspect ratio."
+        )
+    geometry_ready = bool(
+        geometry_rate is not None
+        and float(geometry_rate) >= 0.90
+        and geometry_fallback_rate is not None
+        and geometry_fallback_rate <= 0.10
+    )
     general_path = data_root / "metadata" / "dataset_audit.json"
     general = audit_dataset(data_root, general_path, near_threshold=-1)
     if not general["safe_for_training"]:
@@ -169,6 +191,10 @@ def audit_vadcp_dataset(
         },
         "scene_modes": manifest.get("scene_modes", {}),
         "repeated_assets": int(manifest.get("repeated_assets", 0)),
+        "geometry_target_hit_rate": geometry_rate,
+        "geometry_fallbacks": geometry_fallbacks,
+        "geometry_fallback_rate": geometry_fallback_rate,
+        "geometry_ready": geometry_ready,
         "errors": errors[:200],
         "error_count": len(errors),
         "warnings": warnings,
@@ -197,6 +223,13 @@ def print_audit_summary(report: dict, *, label: str | None = None) -> None:
     print(f"Labeled density : {report.get('labeled_scene_density', {})}")
     print(f"Scene modes     : {report.get('scene_modes', {})}")
     print(f"Repeated assets : {report.get('repeated_assets', 0)}")
+    print(f"Geometry hit    : {report.get('geometry_target_hit_rate')}")
+    print(
+        "Geom fallback   : "
+        f"{report.get('geometry_fallbacks', 0)} "
+        f"({report.get('geometry_fallback_rate')})"
+    )
+    print(f"Geometry ready  : {report.get('geometry_ready', False)}")
     print(f"Warnings        : {len(report['warnings'])}")
     print(f"Errors          : {report['error_count']}")
     print(f"AMAN TRAINING   : {'YA' if report['safe_for_training'] else 'BELUM'}")
