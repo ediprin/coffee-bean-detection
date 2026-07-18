@@ -126,10 +126,12 @@ def estimate_foreground_mask(
         distance = np.sqrt(np.sum((rgb - background) ** 2, axis=2))
         mask = distance >= float(threshold)
 
-    # A small close/open sequence suppresses isolated dust while preserving
-    # narrow bean cracks and tips.
+    # A neutral 3x3 close suppresses isolated dust without expanding the
+    # foreground into the bright crop background.  The previous 5x5 dilate
+    # followed by a 3x3 erode had a net outward growth and retained a visible
+    # white rim around some beans.
     mask_image = Image.fromarray((mask.astype(np.uint8) * 255), mode="L")
-    mask_image = mask_image.filter(ImageFilter.MaxFilter(5))
+    mask_image = mask_image.filter(ImageFilter.MaxFilter(3))
     mask_image = mask_image.filter(ImageFilter.MinFilter(3))
     mask = np.asarray(mask_image, dtype=np.uint8) >= 128
     return fill_holes(largest_component(mask, preferred_point=preferred_point))
@@ -156,7 +158,17 @@ def crop_to_mask(
     # narrow transparent padding before writing alpha.
     rgba = np.asarray(cropped_image, dtype=np.uint8).copy()
     rgb = rgba[:, :, :3].astype(np.float32)
-    known = cropped_mask.copy()
+    hard_mask_image = Image.fromarray(cropped_mask.astype(np.uint8) * 255, mode="L")
+    core = np.asarray(
+        hard_mask_image.filter(ImageFilter.MinFilter(3)), dtype=np.uint8
+    ) >= 128
+    # Tiny masks can disappear under a 3x3 erosion; retain them unchanged.
+    if not np.any(core):
+        core = cropped_mask.copy()
+    # Boundary pixels are deliberately not trusted as RGB sources.  Flooding
+    # outward from the eroded bean core replaces any segmented white rim as
+    # well as the hidden RGB in transparent padding.
+    known = core.copy()
     crop_height, crop_width = known.shape
     for _ in range(max(2, padding + 2)):
         accum = np.zeros_like(rgb)
@@ -185,7 +197,17 @@ def crop_to_mask(
         known |= frontier
     rgba[:, :, :3] = np.clip(rgb, 0, 255).astype(np.uint8)
     cropped_image = Image.fromarray(rgba, mode="RGBA")
-    alpha = Image.fromarray(cropped_mask.astype(np.uint8) * 255, mode="L")
+    # Feather inward only: antialias the last foreground pixel but never add
+    # alpha outside the binary annotation mask.  Thus visual blending improves
+    # while the mask used to derive boxes/visibility stays unchanged.
+    hard_alpha = cropped_mask.astype(np.uint8) * 255
+    softened = np.asarray(
+        Image.fromarray(core.astype(np.uint8) * 255, mode="L").filter(
+            ImageFilter.GaussianBlur(radius=0.70)
+        ),
+        dtype=np.uint8,
+    )
+    alpha = Image.fromarray(np.minimum(softened, hard_alpha), mode="L")
     cropped_image.putalpha(alpha)
     return cropped_image, cropped_mask
 

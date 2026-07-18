@@ -24,7 +24,8 @@ aset sumber, sedangkan label YOLO menggunakan visible bounding box. Protokol dan
 perintah lengkap ada di [docs/VA_DCP_IMPLEMENTATION.md](docs/VA_DCP_IMPLEMENTATION.md).
 Generator memakai physics-informed 2.5D projected packing: skala dan jumlah
 objek dikalibrasi dari train nyata, penempatan contact-constrained, z-order
-eksplisit, dan cahaya/bayangan koheren per scene. Ini bukan klaim simulasi fisika
+eksplisit, rotasi mengikuti distribusi aspect ratio kotak nyata, matte di-feather
+ke dalam, dan cahaya/bayangan koheren per scene. Ini bukan klaim simulasi fisika
 3D penuh.
 
 Notebook Colab yang hanya menyiapkan data sampai status `TRAINING_READY`, tanpa

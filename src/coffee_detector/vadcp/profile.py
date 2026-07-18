@@ -18,6 +18,7 @@ class SceneCalibration:
 
     scene_counts: tuple[int, ...]
     object_long_sides: tuple[float, ...]
+    bbox_width_height_ratios: tuple[float, ...]
     scene_scale_medians: tuple[float, ...]
     within_scene_scale_ratios: tuple[float, ...]
     background_colors: tuple[tuple[float, float, float], ...]
@@ -31,6 +32,7 @@ class SceneCalibration:
         if (
             not self.scene_counts
             or not self.object_long_sides
+            or not self.bbox_width_height_ratios
             or not self.scene_scale_medians
             or not self.within_scene_scale_ratios
         ):
@@ -39,10 +41,12 @@ class SceneCalibration:
             raise ValueError("Scene count harus positif")
         if any(not 0 < value <= 1 for value in self.object_long_sides):
             raise ValueError("Skala long-side harus berada pada (0, 1]")
+        if any(value <= 0 for value in self.bbox_width_height_ratios):
+            raise ValueError("Rasio width/height bounding box harus positif")
 
     def to_payload(self) -> dict:
         return {
-            "format": "coffee_detector.scene_calibration.v1",
+            "format": "coffee_detector.scene_calibration.v2",
             **asdict(self),
             "summary": calibration_summary(self),
         }
@@ -63,6 +67,15 @@ def calibration_summary(calibration: SceneCalibration) -> dict:
         "source_boxes": calibration.source_boxes,
         "scene_count": _quantiles(calibration.scene_counts),
         "object_long_side_fraction": _quantiles(calibration.object_long_sides),
+        "bbox_width_height_ratio": _quantiles(
+            calibration.bbox_width_height_ratios
+        ),
+        "bbox_absolute_aspect_ratio": _quantiles(
+            tuple(
+                max(value, 1.0 / value)
+                for value in calibration.bbox_width_height_ratios
+            )
+        ),
         "scene_scale_median_fraction": _quantiles(calibration.scene_scale_medians),
         "within_scene_scale_ratio": _quantiles(calibration.within_scene_scale_ratios),
         "background_rgb_median": (
@@ -148,6 +161,7 @@ def build_scene_calibration(
     valid_ids = set(layout.names)
     counts: list[float] = []
     long_sides: list[float] = []
+    bbox_width_height_ratios: list[float] = []
     scene_scale_medians: list[float] = []
     within_scene_scale_ratios: list[float] = []
     labels_by_image: dict[Path, tuple] = {}
@@ -158,6 +172,9 @@ def build_scene_calibration(
         if boxes:
             counts.append(float(len(boxes)))
             image_scales = [max(box.width, box.height) for box in boxes]
+            bbox_width_height_ratios.extend(
+                box.width / box.height for box in boxes if box.height > 0
+            )
             median_scale = float(np.median(image_scales))
             long_sides.extend(image_scales)
             scene_scale_medians.append(median_scale)
@@ -179,6 +196,13 @@ def build_scene_calibration(
         value
         for value in within_scene_scale_ratios
         if ratio_low <= value <= ratio_high
+    ]
+    bbox_ratio_array = np.asarray(bbox_width_height_ratios, dtype=np.float64)
+    bbox_ratio_low, bbox_ratio_high = np.quantile(bbox_ratio_array, (0.01, 0.99))
+    bbox_width_height_ratios = [
+        value
+        for value in bbox_width_height_ratios
+        if bbox_ratio_low <= value <= bbox_ratio_high
     ]
 
     rng = random.Random(seed)
@@ -205,6 +229,9 @@ def build_scene_calibration(
     return SceneCalibration(
         scene_counts=tuple(int(round(value)) for value in _quantile_sample(counts, 512)),
         object_long_sides=_quantile_sample(long_sides, 1024),
+        bbox_width_height_ratios=_quantile_sample(
+            bbox_width_height_ratios, 1024
+        ),
         scene_scale_medians=_quantile_sample(scene_scale_medians, 512),
         within_scene_scale_ratios=_quantile_sample(within_scene_scale_ratios, 1024),
         background_colors=tuple(colors),
@@ -229,11 +256,22 @@ def save_scene_calibration(calibration: SceneCalibration, path: str | Path) -> P
 def load_scene_calibration(path: str | Path) -> SceneCalibration:
     path = Path(path).expanduser().resolve()
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if payload.get("format") != "coffee_detector.scene_calibration.v1":
+    if payload.get("format") not in {
+        "coffee_detector.scene_calibration.v1",
+        "coffee_detector.scene_calibration.v2",
+    }:
         raise ValueError(f"Format scene calibration tidak dikenal: {path}")
+    if "bbox_width_height_ratios" not in payload:
+        raise ValueError(
+            "Scene calibration lama belum memiliki distribusi aspect ratio; "
+            f"bangun ulang profil dengan profile_vadcp_source: {path}"
+        )
     return SceneCalibration(
         scene_counts=tuple(int(value) for value in payload["scene_counts"]),
         object_long_sides=tuple(float(value) for value in payload["object_long_sides"]),
+        bbox_width_height_ratios=tuple(
+            float(value) for value in payload["bbox_width_height_ratios"]
+        ),
         scene_scale_medians=tuple(
             float(value)
             for value in payload.get("scene_scale_medians", payload["object_long_sides"])

@@ -137,8 +137,11 @@ projected packing**, not as a 3D rigid-body simulator:
 - severe/extreme cases use multiple empirical-size occluders;
 - one light direction, exposure, white balance, camera noise, and scale-aware
   contact/cast-shadow model is shared by the whole frame;
-- transparent RGB is edge-bled and transformed in premultiplied-alpha space to
-  suppress paste halos;
+- the empirical signed width/height distribution selects each rotation, so
+  diagonal rotation does not collapse axis-aligned bean boxes toward squares;
+- uncertain mask edges are eroded into a trusted color core, feathered inward,
+  edge-bled, and transformed in premultiplied-alpha space to suppress paste
+  halos without expanding annotation masks;
 - the same scene seed, objects, scales, rotations, background, and photometry
   are preselected for A1/A2; only visibility-aware placement differs.
 

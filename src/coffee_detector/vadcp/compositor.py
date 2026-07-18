@@ -175,6 +175,94 @@ def _resize_rotate_premultiplied(
     return Image.fromarray((output * 255.0).astype(np.uint8), mode="RGBA")
 
 
+def _principal_mask_geometry(mask: np.ndarray) -> tuple[float, float, float]:
+    """Return major/minor diameter and major-axis angle for a bean mask."""
+    ys, xs = np.nonzero(mask)
+    if len(xs) < 3:
+        box = mask_bbox(mask)
+        if box is None:
+            raise ValueError("Mask objek kosong")
+        _, _, width, height = box
+        if width >= height:
+            return float(width), float(height), 0.0
+        return float(height), float(width), math.pi / 2.0
+    coordinates = np.column_stack((xs, ys)).astype(np.float64)
+    coordinates -= coordinates.mean(axis=0, keepdims=True)
+    covariance = np.cov(coordinates, rowvar=False)
+    _, eigenvectors = np.linalg.eigh(covariance)
+    major_vector = eigenvectors[:, -1]
+    minor_vector = np.asarray((-major_vector[1], major_vector[0]))
+    major = float(np.ptp(coordinates @ major_vector) + 1.0)
+    minor = float(np.ptp(coordinates @ minor_vector) + 1.0)
+    if major < minor:
+        major, minor = minor, major
+        major_vector = minor_vector
+    angle = math.atan2(float(major_vector[1]), float(major_vector[0]))
+    return max(major, 1.0), max(minor, 1.0), angle
+
+
+@lru_cache(maxsize=4096)
+def _cutout_principal_geometry(path: str) -> tuple[float, float, float]:
+    """Cache mask geometry; it is invariant to RGB reflectance jitter."""
+    image = _load_rgba_cached(path)
+    mask = np.asarray(image.getchannel("A"), dtype=np.uint8) >= 32
+    return _principal_mask_geometry(mask)
+
+
+def _projected_ellipse_size(
+    major: float,
+    minor: float,
+    axis_angle: float,
+) -> tuple[float, float]:
+    """Approximate the axis-aligned box of an oriented oval bean."""
+    cosine = math.cos(axis_angle)
+    sine = math.sin(axis_angle)
+    width = math.sqrt((major * cosine) ** 2 + (minor * sine) ** 2)
+    height = math.sqrt((major * sine) ** 2 + (minor * cosine) ** 2)
+    return max(width, 1.0), max(height, 1.0)
+
+
+def _rotation_and_projected_size(
+    mask: np.ndarray,
+    rng: random.Random,
+    target_width_height_ratio: float | None,
+    geometry: tuple[float, float, float] | None = None,
+) -> tuple[float, tuple[float, float]]:
+    """Plan a rotation, optionally matching a real bbox aspect/orientation.
+
+    The calibration target is a signed width/height ratio.  Searching the
+    projected principal ellipse is cheap and avoids rendering dozens of angle
+    candidates.  A random 180-degree flip preserves appearance diversity
+    without changing the axis-aligned target box.
+    """
+    major, minor, source_axis = geometry or _principal_mask_geometry(mask)
+    if target_width_height_ratio is None:
+        rotation = rng.uniform(0.0, 360.0)
+        target_axis = source_axis + math.radians(rotation)
+    else:
+        target_ratio = max(float(target_width_height_ratio), 1e-6)
+        scored: list[tuple[float, float]] = []
+        for degrees in range(180):
+            axis = math.radians(float(degrees))
+            width, height = _projected_ellipse_size(major, minor, axis)
+            score = abs(math.log((width / height) / target_ratio))
+            scored.append((score, axis))
+        best_score = min(score for score, _ in scored)
+        # Symmetric angles are equally valid.  Keeping all near-optimal
+        # candidates prevents a deterministic directional artifact.
+        candidates = [
+            axis for score, axis in scored if score <= best_score + 0.003
+        ]
+        target_axis = rng.choice(candidates) + math.radians(
+            rng.uniform(-0.5, 0.5)
+        )
+        rotation = math.degrees(target_axis - source_axis)
+        if rng.random() < 0.5:
+            rotation += 180.0
+    projected_size = _projected_ellipse_size(major, minor, target_axis)
+    return rotation, projected_size
+
+
 def _transform_cutout(
     cutout: Cutout,
     spec: CompositionSpec,
@@ -203,13 +291,41 @@ def _transform_cutout(
     else:
         fraction = rng.uniform(spec.object_scale[0], spec.object_scale[1])
     target_long_side = max(6, int(round(canvas_long * fraction)))
-    scale = target_long_side / max(image.size)
+    source_mask = np.asarray(image.getchannel("A"), dtype=np.uint8) >= 32
+    target_ratio = (
+        float(rng.choice(calibration.bbox_width_height_ratios))
+        if calibration is not None
+        else None
+    )
+    angle, projected_size = _rotation_and_projected_size(
+        source_mask,
+        rng,
+        target_ratio,
+        geometry=_cutout_principal_geometry(str(cutout.image_path)),
+    )
+    # Calibrate the final visible mask, not the transparent RGBA crop.  This
+    # keeps long-side scale correct even when a bean is rotated diagonally.
+    scale = target_long_side / max(projected_size)
     size = (
         max(3, int(round(image.width * scale))),
         max(3, int(round(image.height * scale))),
     )
-    image = _resize_rotate_premultiplied(image, size, rng.uniform(0.0, 360.0))
+    source_image = image
+    image = _resize_rotate_premultiplied(source_image, size, angle)
     mask = np.asarray(image.getchannel("A"), dtype=np.uint8) >= 32
+    transformed_box = mask_bbox(mask)
+    if transformed_box is not None:
+        actual_long_side = max(transformed_box[2], transformed_box[3])
+        if actual_long_side > 0 and abs(actual_long_side - target_long_side) > 1:
+            correction = target_long_side / actual_long_side
+            corrected_size = (
+                max(3, int(round(size[0] * correction))),
+                max(3, int(round(size[1] * correction))),
+            )
+            image = _resize_rotate_premultiplied(
+                source_image, corrected_size, angle
+            )
+            mask = np.asarray(image.getchannel("A"), dtype=np.uint8) >= 32
     if not np.any(mask):
         raise ValueError(f"Transformasi menghasilkan mask kosong: {cutout.asset_id}")
     return TransformedCutout(cutout=cutout, rgba=image, mask=mask)

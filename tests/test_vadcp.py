@@ -20,15 +20,28 @@ from coffee_detector.evaluate_visibility import (
 from coffee_detector.prepare_object_library import prepare_classification_library
 from coffee_detector.run_vadcp_visual_audit import run_vadcp_visual_audit
 from coffee_detector.run_cutout_visual_audit import run_cutout_visual_audit
-from coffee_detector.vadcp.compositor import CompositionSpec, compose_scene
+from coffee_detector.vadcp.compositor import (
+    CompositionSpec,
+    _rotation_and_projected_size,
+    _transform_cutout,
+    compose_scene,
+)
 from coffee_detector.vadcp import library as library_module
 from coffee_detector.vadcp.library import load_object_library, prepare_yolo_library
-from coffee_detector.vadcp.masks import binary_mask_rle, largest_component
+from coffee_detector.vadcp.masks import (
+    binary_mask_rle,
+    crop_to_mask,
+    estimate_foreground_mask,
+    largest_component,
+    mask_bbox,
+)
 from coffee_detector.vadcp.profile import (
+    SceneCalibration,
     build_scene_calibration,
     load_scene_calibration,
     save_scene_calibration,
 )
+from coffee_detector.vadcp.types import Cutout
 from coffee_detector.dataset import discover_layout
 
 
@@ -124,6 +137,95 @@ def test_component_selection_prefers_annotated_box_center() -> None:
     assert largest[:, 2:12].sum() == 160
     assert centered[:, 22:28].sum() == 42
     assert centered[:, 2:12].sum() == 0
+
+
+def test_cutout_alpha_is_feathered_inward_without_expanding_mask() -> None:
+    image = Image.new("RGB", (32, 24), "white")
+    draw = ImageDraw.Draw(image)
+    draw.ellipse((5, 4, 26, 19), fill=(75, 45, 25))
+    mask = np.zeros((24, 32), dtype=bool)
+    mask[4:20, 5:27] = True
+
+    rgba, cropped_mask = crop_to_mask(image, mask, padding=2)
+    alpha = np.asarray(rgba.getchannel("A"), dtype=np.uint8)
+
+    assert np.all(alpha[~cropped_mask] == 0)
+    assert np.any((alpha[cropped_mask] > 0) & (alpha[cropped_mask] < 255))
+    assert np.all(alpha[cropped_mask] > 0)
+
+
+def test_foreground_mask_and_matte_do_not_retain_white_rim() -> None:
+    image = Image.new("RGB", (40, 32), "white")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((8, 7, 31, 24), fill=(80, 45, 25))
+
+    mask = estimate_foreground_mask(image, threshold=24)
+    assert mask_bbox(mask) == (8, 7, 24, 18)
+    rgba, _ = crop_to_mask(image, mask, padding=2)
+    pixels = np.asarray(rgba, dtype=np.uint8)
+    positive_alpha = pixels[:, :, 3] > 0
+
+    assert int(pixels[:, :, :3][positive_alpha].max()) < 160
+
+
+def test_calibrated_rotation_matches_signed_bbox_ratio() -> None:
+    mask = np.zeros((64, 96), dtype=bool)
+    yy, xx = np.ogrid[:64, :96]
+    mask[((xx - 48) / 38) ** 2 + ((yy - 32) / 15) ** 2 <= 1] = True
+
+    for target_ratio in (2.0, 0.5):
+        _, projected = _rotation_and_projected_size(
+            mask,
+            random.Random(31),
+            target_ratio,
+        )
+        assert projected[0] / projected[1] == pytest.approx(
+            target_ratio, abs=0.04
+        )
+
+
+def test_transformed_cutout_matches_ratio_and_final_long_side(
+    tmp_path: Path,
+) -> None:
+    mask = np.zeros((64, 96), dtype=bool)
+    yy, xx = np.ogrid[:64, :96]
+    mask[((xx - 48) / 38) ** 2 + ((yy - 32) / 15) ** 2 <= 1] = True
+    pixels = np.zeros((64, 96, 4), dtype=np.uint8)
+    pixels[mask, :3] = (80, 45, 25)
+    pixels[mask, 3] = 255
+    asset_path = tmp_path / "elongated.png"
+    Image.fromarray(pixels, mode="RGBA").save(asset_path)
+    cutout = Cutout("asset", 0, "bean", asset_path, "source")
+    spec = CompositionSpec(
+        canvas_size=(128, 128),
+        object_range=(1, 1),
+        use_shadows=False,
+    )
+
+    for target_ratio in (2.0, 0.5):
+        calibration = SceneCalibration(
+            scene_counts=(1,),
+            object_long_sides=(0.25,),
+            bbox_width_height_ratios=(target_ratio,),
+            scene_scale_medians=(0.25,),
+            within_scene_scale_ratios=(1.0,),
+            background_colors=((230.0, 230.0, 230.0),),
+            background_gradient_std=(1.0,),
+            background_sensor_std=(1.0,),
+            source_images=1,
+            source_boxes=1,
+        )
+        transformed = _transform_cutout(
+            cutout,
+            spec,
+            random.Random(31),
+            scene_scale=0.25,
+            calibration=calibration,
+        )
+        box = mask_bbox(transformed.mask)
+        assert box is not None
+        assert max(box[2], box[3]) == pytest.approx(32, abs=1)
+        assert box[2] / box[3] == pytest.approx(target_ratio, abs=0.12)
 
 
 def test_object_library_uses_train_and_excludes_test(tmp_path: Path) -> None:
@@ -344,6 +446,7 @@ def test_calibrated_physics_scene_and_realism_audit(tmp_path: Path) -> None:
     )
 
     assert restored.source_images == 1
+    assert restored.bbox_width_height_ratios == pytest.approx((0.8, 0.8))
     assert manifest["scene_calibration"]["summary"]["source_boxes"] == 2
     assert sum(manifest["scene_modes"].values()) == 4
     assert manifest["repeated_assets"] >= 0
