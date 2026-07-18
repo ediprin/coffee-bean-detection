@@ -18,6 +18,12 @@ from .dataset import IMAGE_SUFFIXES, discover_layout
 from .vadcp.compositor import CompositionSpec, compose_scene, load_background
 from .vadcp.library import load_object_library
 from .vadcp.masks import binary_mask_rle, mask_bbox
+from .vadcp.profile import (
+    SceneCalibration,
+    build_scene_calibration,
+    calibration_summary,
+    load_scene_calibration,
+)
 from .vadcp.types import Cutout
 
 
@@ -129,6 +135,7 @@ def generate_vadcp_dataset(
     minimum_visibility: float = 0.10,
     include_real_train: bool = True,
     use_shadows: bool = True,
+    scene_profile: str | Path | SceneCalibration | None = None,
 ) -> dict:
     if synthetic_images <= 0:
         raise ValueError("synthetic_images harus positif")
@@ -147,6 +154,17 @@ def generate_vadcp_dataset(
         raise RuntimeError(
             "Synthetic train memuat aset non-train: " + ", ".join(invalid_sources)
         )
+
+    if isinstance(scene_profile, SceneCalibration):
+        calibration = scene_profile
+        scene_profile_path = None
+    elif scene_profile is not None:
+        scene_profile_path = Path(scene_profile).expanduser().resolve()
+        calibration = load_scene_calibration(scene_profile_path)
+    else:
+        scene_profile_path = None
+        print("KALIBRASI REAL TRAIN: menghitung prior scene...", flush=True)
+        calibration = build_scene_calibration(layout, split="train", seed=seed)
 
     output_root = Path(output_root).expanduser().resolve()
     if output_root.exists() and any(output_root.iterdir()):
@@ -189,6 +207,8 @@ def generate_vadcp_dataset(
     focus_targets = Counter()
     focus_hits = Counter()
     ignored_instances = 0
+    scene_modes = Counter()
+    repeated_assets = 0
 
     for scene_index in range(synthetic_images):
         # A per-scene RNG keeps source selection and backgrounds paired across
@@ -200,8 +220,12 @@ def generate_vadcp_dataset(
         )
         scene_rng = random.Random(scene_seed)
         background_path = scene_rng.choice(backgrounds) if backgrounds else None
-        background = load_background(background_path, spec.canvas_size, scene_rng)
-        scene = compose_scene(background, cutouts, spec, scene_rng)
+        background = load_background(
+            background_path, spec.canvas_size, scene_rng, calibration
+        )
+        scene = compose_scene(
+            background, cutouts, spec, scene_rng, calibration=calibration
+        )
         stem = f"{mode}_seed{seed}_{scene_index:06d}"
         image_path = train_images / f"{stem}.jpg"
         label_path = train_labels / f"{stem}.txt"
@@ -209,9 +233,10 @@ def generate_vadcp_dataset(
         label_lines = []
         image_id = scene_index + 1
         if scene.target_visibility_bin:
-            focus_targets[scene.target_visibility_bin] += 1
-            if scene.target_visibility_hit:
-                focus_hits[scene.target_visibility_bin] += 1
+            focus_targets[scene.target_visibility_bin] += scene.controlled_instances
+            focus_hits[scene.target_visibility_bin] += scene.controlled_hits
+        scene_modes[scene.scene_mode] += 1
+        repeated_assets += scene.repeated_assets
         for instance in scene.instances:
             assert instance.visible_mask is not None
             visible_bbox = mask_bbox(instance.visible_mask)
@@ -262,6 +287,10 @@ def generate_vadcp_dataset(
                 "background": str(background_path) if background_path else "procedural",
                 "target_visibility_bin": scene.target_visibility_bin,
                 "target_visibility_hit": scene.target_visibility_hit,
+                "controlled_instances": scene.controlled_instances,
+                "controlled_hits": scene.controlled_hits,
+                "scene_mode": scene.scene_mode,
+                "repeated_assets": scene.repeated_assets,
                 "generation_seed": scene_seed,
                 "sha256": _file_sha256(image_path),
             }
@@ -275,13 +304,14 @@ def generate_vadcp_dataset(
     names = {int(index): name for index, name in layout.names.items()}
     metadata = {
         "info": {
-            "format": "coffee_detector.vadcp.v1",
+            "format": "coffee_detector.vadcp.v2",
             "mode": mode,
             "seed": seed,
             "real_data_root": str(layout.root),
             "object_library": str(Path(object_library).expanduser().resolve()),
             "background_root": str(Path(background_root).expanduser().resolve()) if background_root else None,
             "claim_scope": "Synthetic augmentation; validation and test remain real.",
+            "generation_model": "physics-informed 2.5D projected packing",
         },
         "images": images,
         "annotations": annotations,
@@ -308,7 +338,7 @@ def generate_vadcp_dataset(
         for name, count in sorted(focus_targets.items())
     }
     manifest = {
-        "format": "coffee_detector.vadcp_manifest.v1",
+        "format": "coffee_detector.vadcp_manifest.v2",
         "output": str(output_root),
         "mode": mode,
         "seed": seed,
@@ -320,6 +350,12 @@ def generate_vadcp_dataset(
         "library_audit": library_info["manifest"].get("audit", {}),
         "background_images": len(backgrounds),
         "procedural_background": not bool(backgrounds),
+        "scene_calibration": {
+            "path": str(scene_profile_path) if scene_profile_path else None,
+            "summary": calibration_summary(calibration),
+        },
+        "scene_modes": dict(sorted(scene_modes.items())),
+        "repeated_assets": repeated_assets,
         "instances_by_visibility": dict(sorted(visibility_counts.items())),
         "instances_by_class": dict(sorted(class_counts.items())),
         "ignored_instances": ignored_instances,
@@ -353,6 +389,10 @@ def main() -> None:
     parser.add_argument("--minimum-visibility", type=float, default=0.10)
     parser.add_argument("--synthetic-only-train", action="store_true")
     parser.add_argument("--no-shadows", action="store_true")
+    parser.add_argument(
+        "--scene-profile",
+        help="Profil empiris train nyata dari coffee_detector.profile_vadcp_source.",
+    )
     args = parser.parse_args()
     result = generate_vadcp_dataset(
         args.real_data_root,
@@ -368,6 +408,7 @@ def main() -> None:
         minimum_visibility=args.minimum_visibility,
         include_real_train=not args.synthetic_only_train,
         use_shadows=not args.no_shadows,
+        scene_profile=args.scene_profile,
     )
     print("\n=== VA-DCP DATASET SELESAI ===")
     print(f"Output       : {result['output']}")
@@ -376,6 +417,8 @@ def main() -> None:
     print(f"Real         : {result['real_images']}")
     print(f"Visibility   : {result['instances_by_visibility']}")
     print(f"Target hit   : {result['focus_target_hit_rate']}")
+    print(f"Scene modes  : {result['scene_modes']}")
+    print(f"Repeated     : {result['repeated_assets']}")
     print(f"Ignored      : {result['ignored_instances']}")
 
 

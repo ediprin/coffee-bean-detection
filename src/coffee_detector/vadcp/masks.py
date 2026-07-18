@@ -6,12 +6,20 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 
-def largest_component(mask: np.ndarray) -> np.ndarray:
-    """Keep the largest 8-connected foreground component."""
+def largest_component(
+    mask: np.ndarray,
+    preferred_point: tuple[float, float] | None = None,
+) -> np.ndarray:
+    """Select an 8-connected component.
+
+    Classification images use the largest component. YOLO crops can provide
+    the annotated box centre so a neighbouring bean is not silently selected
+    merely because it has a slightly larger segmented area.
+    """
     mask = np.asarray(mask, dtype=bool)
     height, width = mask.shape
     visited = np.zeros_like(mask, dtype=bool)
-    best: list[tuple[int, int]] = []
+    components: list[list[tuple[int, int]]] = []
     for start_y, start_x in zip(*np.nonzero(mask & ~visited)):
         if visited[start_y, start_x]:
             continue
@@ -34,9 +42,21 @@ def largest_component(mask: np.ndarray) -> np.ndarray:
                     ):
                         visited[ny, nx] = True
                         queue.append((ny, nx))
-        if len(component) > len(best):
-            best = component
+        components.append(component)
     result = np.zeros_like(mask, dtype=bool)
+    if not components:
+        return result
+    if preferred_point is None:
+        best = max(components, key=len)
+    else:
+        point_x, point_y = preferred_point
+        best = min(
+            components,
+            key=lambda component: min(
+                (x - point_x) ** 2 + (y - point_y) ** 2
+                for y, x in component
+            ),
+        )
     if best:
         ys, xs = zip(*best)
         result[np.asarray(ys), np.asarray(xs)] = True
@@ -78,6 +98,7 @@ def estimate_foreground_mask(
     image: Image.Image,
     threshold: float = 24.0,
     border_fraction: float = 0.06,
+    preferred_point: tuple[float, float] | None = None,
 ) -> np.ndarray:
     """Estimate a bean mask from a mostly uniform border background.
 
@@ -111,7 +132,7 @@ def estimate_foreground_mask(
     mask_image = mask_image.filter(ImageFilter.MaxFilter(5))
     mask_image = mask_image.filter(ImageFilter.MinFilter(3))
     mask = np.asarray(mask_image, dtype=np.uint8) >= 128
-    return fill_holes(largest_component(mask))
+    return fill_holes(largest_component(mask, preferred_point=preferred_point))
 
 
 def crop_to_mask(
@@ -129,6 +150,41 @@ def crop_to_mask(
     bottom = min(mask.shape[0], int(ys.max()) + padding + 1)
     cropped_image = image.convert("RGBA").crop((left, top, right, bottom))
     cropped_mask = mask[top:bottom, left:right]
+    # Transparent pixels retain their original background RGB.  Resampling
+    # straight-alpha RGBA can pull that hidden color into the silhouette and
+    # create a white/black halo.  Propagate nearby foreground RGB into the
+    # narrow transparent padding before writing alpha.
+    rgba = np.asarray(cropped_image, dtype=np.uint8).copy()
+    rgb = rgba[:, :, :3].astype(np.float32)
+    known = cropped_mask.copy()
+    crop_height, crop_width = known.shape
+    for _ in range(max(2, padding + 2)):
+        accum = np.zeros_like(rgb)
+        counts = np.zeros((crop_height, crop_width), dtype=np.float32)
+        for dy, dx in (
+            (-1, 0),
+            (1, 0),
+            (0, -1),
+            (0, 1),
+            (-1, -1),
+            (-1, 1),
+            (1, -1),
+            (1, 1),
+        ):
+            source_y = slice(max(0, -dy), min(crop_height, crop_height - dy))
+            source_x = slice(max(0, -dx), min(crop_width, crop_width - dx))
+            target_y = slice(max(0, dy), min(crop_height, crop_height + dy))
+            target_x = slice(max(0, dx), min(crop_width, crop_width + dx))
+            valid = known[source_y, source_x]
+            accum[target_y, target_x] += rgb[source_y, source_x] * valid[..., None]
+            counts[target_y, target_x] += valid
+        frontier = (~known) & (counts > 0)
+        if not np.any(frontier):
+            break
+        rgb[frontier] = accum[frontier] / counts[frontier, None]
+        known |= frontier
+    rgba[:, :, :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+    cropped_image = Image.fromarray(rgba, mode="RGBA")
     alpha = Image.fromarray(cropped_mask.astype(np.uint8) * 255, mode="L")
     cropped_image.putalpha(alpha)
     return cropped_image, cropped_mask

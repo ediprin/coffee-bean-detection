@@ -168,9 +168,14 @@ def _write_asset(
     padding: int,
     minimum_fraction: float,
     maximum_fraction: float,
+    preferred_center: tuple[float, float] | None = None,
 ) -> tuple[dict | None, str | None]:
     try:
-        mask = estimate_foreground_mask(image, threshold=mask_threshold)
+        mask = estimate_foreground_mask(
+            image,
+            threshold=mask_threshold,
+            preferred_point=preferred_center,
+        )
         fraction = float(mask.mean())
         if not (minimum_fraction <= fraction <= maximum_fraction):
             raise ValueError(
@@ -186,6 +191,19 @@ def _write_asset(
             raise ValueError(
                 "foreground menyentuh batas crop; full/amodal mask berpotensi terpotong"
             )
+        centroid_y, centroid_x = np.mean(np.argwhere(mask), axis=0)
+        centroid_distance_fraction = None
+        if preferred_center is not None:
+            distance = np.hypot(
+                centroid_x - preferred_center[0],
+                centroid_y - preferred_center[1],
+            )
+            centroid_distance_fraction = float(distance / max(image.size))
+            if centroid_distance_fraction > 0.35:
+                raise ValueError(
+                    "centroid foreground terlalu jauh dari pusat bbox: "
+                    f"{centroid_distance_fraction:.3f}"
+                )
         rgba, cropped_mask = crop_to_mask(image, mask, padding=padding)
         asset_digest = hashlib.sha256(rgba.tobytes()).hexdigest()
         asset_id = _stable_id(class_name, source_id, asset_digest)
@@ -204,6 +222,7 @@ def _write_asset(
                 "source_path": str(source_path),
                 "source_foreground_fraction": fraction,
                 "cropped_foreground_fraction": cropped_fraction,
+                "centroid_distance_fraction": centroid_distance_fraction,
                 "width": rgba.width,
                 "height": rgba.height,
                 "sha256_rgba": asset_digest,
@@ -325,6 +344,7 @@ def prepare_classification_library(
             padding,
             minimum_fraction,
             maximum_fraction,
+            None,
         )
         if item:
             assets.append(item)
@@ -441,6 +461,10 @@ def prepare_yolo_library(
             padding,
             minimum_fraction,
             maximum_fraction,
+            (
+                box.x_center * image.width - pixel_box[0],
+                box.y_center * image.height - pixel_box[1],
+            ),
         )
         if item:
             item["source_box_index"] = box_index
@@ -494,6 +518,11 @@ def load_object_library(path: str | Path, *, train_only: bool = True) -> tuple[d
                 image_path=(root / row["image"]).resolve(),
                 source_id=str(row["source_id"]),
                 source_split=source_split,
+                source_parent_id=(
+                    str(row["source_parent_id"])
+                    if row.get("source_parent_id") is not None
+                    else None
+                ),
             )
         )
     if not cutouts:

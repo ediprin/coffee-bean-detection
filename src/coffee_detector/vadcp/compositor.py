@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import random
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -9,6 +10,7 @@ import numpy as np
 from PIL import Image, ImageEnhance, ImageFilter
 
 from .masks import mask_bbox
+from .profile import SceneCalibration
 from .types import (
     Cutout,
     PlacedInstance,
@@ -30,7 +32,9 @@ DEFAULT_VISIBILITY_BINS = (
 class CompositionSpec:
     canvas_size: tuple[int, int] = (640, 640)
     object_range: tuple[int, int] = (12, 30)
+    # Fallback only. With a SceneCalibration, scale is bootstrapped from real train.
     object_scale: tuple[float, float] = (0.08, 0.18)
+    calibrated_scale_limits: tuple[float, float] = (0.02, 0.30)
     minimum_visibility: float = 0.10
     mode: str = "visibility"
     visibility_bins: tuple[VisibilityBin, ...] = DEFAULT_VISIBILITY_BINS
@@ -42,10 +46,21 @@ class CompositionSpec:
             "extreme": 0.20,
         }
     )
+    scene_mode_weights: dict[str, float] = field(
+        default_factory=lambda: {"spread": 0.40, "cluster": 0.35, "pile": 0.25}
+    )
+    support_overlap_ranges: dict[str, tuple[float, float]] = field(
+        default_factory=lambda: {
+            "spread": (0.00, 0.05),
+            "cluster": (0.00, 0.22),
+            "pile": (0.08, 0.35),
+        }
+    )
+    controlled_fraction: float = 0.25
     use_shadows: bool = True
-    color_jitter: float = 0.08
+    per_object_reflectance_jitter: float = 0.02
     class_balanced: bool = True
-    max_position_attempts: int = 400
+    max_position_attempts: int = 180
 
     def __post_init__(self) -> None:
         width, height = self.canvas_size
@@ -55,21 +70,73 @@ class CompositionSpec:
             raise ValueError("object_range tidak valid")
         if not (0 < self.object_scale[0] <= self.object_scale[1] < 1):
             raise ValueError("object_scale harus berupa fraksi canvas antara 0 dan 1")
+        if not (0 < self.calibrated_scale_limits[0] < self.calibrated_scale_limits[1] < 1):
+            raise ValueError("calibrated_scale_limits tidak valid")
         if self.mode not in {"naive", "visibility"}:
             raise ValueError("mode harus naive atau visibility")
         if not (0.0 <= self.minimum_visibility < 1.0):
             raise ValueError("minimum_visibility harus di antara 0 dan 1")
+        if not (0.0 < self.controlled_fraction <= 0.50):
+            raise ValueError("controlled_fraction harus berada pada (0, 0.5]")
         known = {item.name for item in self.visibility_bins}
         if set(self.target_bin_weights) - known:
             raise ValueError("target_bin_weights memuat visibility bin yang tidak dikenal")
         if sum(self.target_bin_weights.values()) <= 0:
             raise ValueError("Bobot target visibility harus positif")
+        if set(self.scene_mode_weights) != set(self.support_overlap_ranges):
+            raise ValueError("Scene mode dan overlap range harus memiliki key yang sama")
+        for name, (minimum, maximum) in self.support_overlap_ranges.items():
+            if not 0 <= minimum <= maximum < 1:
+                raise ValueError(f"Overlap range {name} tidak valid")
+
+
+@dataclass(frozen=True)
+class _SceneLighting:
+    exposure: float
+    contrast: float
+    gamma: float
+    red_gain: float
+    blue_gain: float
+    shadow_dx: int
+    shadow_dy: int
+    shadow_blur: float
+    shadow_opacity: float
+    contact_blur: float
+    contact_opacity: float
+    sensor_noise_std: float
+    defocus_radius: float
+
+
+def _bleed_transparent_rgb(image: Image.Image, iterations: int = 4) -> Image.Image:
+    """Propagate edge colors into transparent padding to prevent white halos."""
+    rgba = np.asarray(image.convert("RGBA"), dtype=np.uint8).copy()
+    rgb = rgba[:, :, :3].astype(np.float32)
+    known = rgba[:, :, 3] >= 32
+    height, width = known.shape
+    for _ in range(iterations):
+        accum = np.zeros_like(rgb)
+        counts = np.zeros((height, width), dtype=np.float32)
+        for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)):
+            source_y = slice(max(0, -dy), min(height, height - dy))
+            source_x = slice(max(0, -dx), min(width, width - dx))
+            target_y = slice(max(0, dy), min(height, height + dy))
+            target_x = slice(max(0, dx), min(width, width + dx))
+            valid = known[source_y, source_x]
+            accum[target_y, target_x] += rgb[source_y, source_x] * valid[..., None]
+            counts[target_y, target_x] += valid
+        frontier = (~known) & (counts > 0)
+        if not np.any(frontier):
+            break
+        rgb[frontier] = accum[frontier] / counts[frontier, None]
+        known |= frontier
+    rgba[:, :, :3] = np.clip(rgb, 0, 255).astype(np.uint8)
+    return Image.fromarray(rgba, mode="RGBA")
 
 
 @lru_cache(maxsize=512)
 def _load_rgba_cached(path: str) -> Image.Image:
     with Image.open(path) as source:
-        return source.convert("RGBA")
+        return _bleed_transparent_rgb(source.convert("RGBA"))
 
 
 def load_cutout(cutout: Cutout) -> Image.Image:
@@ -81,34 +148,67 @@ def load_cutout(cutout: Cutout) -> Image.Image:
     return image
 
 
+def _resize_rotate_premultiplied(
+    image: Image.Image,
+    size: tuple[int, int],
+    angle: float,
+) -> Image.Image:
+    array = np.asarray(image.convert("RGBA"), dtype=np.float32) / 255.0
+    alpha = array[:, :, 3:4]
+    premultiplied = np.concatenate((array[:, :, :3] * alpha, alpha), axis=2)
+    working = Image.fromarray(
+        np.clip(premultiplied * 255.0, 0, 255).astype(np.uint8), mode="RGBA"
+    )
+    working = working.resize(size, Image.Resampling.LANCZOS)
+    working = working.rotate(
+        angle, resample=Image.Resampling.BICUBIC, expand=True
+    )
+    transformed = np.asarray(working, dtype=np.float32) / 255.0
+    out_alpha = transformed[:, :, 3:4]
+    rgb = np.divide(
+        transformed[:, :, :3],
+        np.maximum(out_alpha, 1.0 / 255.0),
+        out=np.zeros_like(transformed[:, :, :3]),
+        where=out_alpha > 0,
+    )
+    output = np.concatenate((np.clip(rgb, 0, 1), out_alpha), axis=2)
+    return Image.fromarray((output * 255.0).astype(np.uint8), mode="RGBA")
+
+
 def _transform_cutout(
     cutout: Cutout,
     spec: CompositionSpec,
     rng: random.Random,
-    target_long_side: int | None = None,
+    *,
+    scene_scale: float | None = None,
+    calibration: SceneCalibration | None = None,
 ) -> TransformedCutout:
     image = load_cutout(cutout)
+    alpha = image.getchannel("A")
+    reflectance = rng.uniform(
+        1.0 - spec.per_object_reflectance_jitter,
+        1.0 + spec.per_object_reflectance_jitter,
+    )
+    rgb = ImageEnhance.Brightness(image.convert("RGB")).enhance(reflectance)
+    rgb.putalpha(alpha)
+    image = rgb
     canvas_long = max(spec.canvas_size)
-    if target_long_side is None:
-        target_long_side = int(
-            round(canvas_long * rng.uniform(spec.object_scale[0], spec.object_scale[1]))
+    if calibration is not None and scene_scale is not None:
+        ratio = rng.choice(calibration.within_scene_scale_ratios)
+        fraction = scene_scale * ratio
+        fraction = min(
+            max(fraction, spec.calibrated_scale_limits[0]),
+            spec.calibrated_scale_limits[1],
         )
+    else:
+        fraction = rng.uniform(spec.object_scale[0], spec.object_scale[1])
+    target_long_side = max(6, int(round(canvas_long * fraction)))
     scale = target_long_side / max(image.size)
     size = (
         max(3, int(round(image.width * scale))),
         max(3, int(round(image.height * scale))),
     )
-    image = image.resize(size, Image.Resampling.LANCZOS)
-    if spec.color_jitter > 0:
-        low, high = 1.0 - spec.color_jitter, 1.0 + spec.color_jitter
-        image = ImageEnhance.Brightness(image).enhance(rng.uniform(low, high))
-        image = ImageEnhance.Contrast(image).enhance(rng.uniform(low, high))
-        image = ImageEnhance.Color(image).enhance(rng.uniform(low, high))
-    image = image.rotate(
-        rng.uniform(0.0, 360.0),
-        resample=Image.Resampling.BICUBIC,
-        expand=True,
-    )
+    image = _resize_rotate_premultiplied(image, size, rng.uniform(0.0, 360.0))
     mask = np.asarray(image.getchannel("A"), dtype=np.uint8) >= 32
     if not np.any(mask):
         raise ValueError(f"Transformasi menghasilkan mask kosong: {cutout.asset_id}")
@@ -140,17 +240,73 @@ def _random_position(
     )
 
 
-def _focus_position(
-    transformed: TransformedCutout,
+def _scene_centers(
+    mode: str,
     canvas_size: tuple[int, int],
     rng: random.Random,
-) -> tuple[int, int]:
+) -> tuple[tuple[float, float], ...]:
+    if mode == "spread":
+        return ()
     width, height = canvas_size
-    center_x = width // 2 + rng.randint(-width // 8, width // 8)
-    center_y = height // 2 + rng.randint(-height // 8, height // 8)
-    x = min(max(0, center_x - transformed.rgba.width // 2), width - transformed.rgba.width)
-    y = min(max(0, center_y - transformed.rgba.height // 2), height - transformed.rgba.height)
-    return int(x), int(y)
+    count = rng.randint(2, 4) if mode == "cluster" else rng.randint(1, 2)
+    margin_x, margin_y = width * 0.12, height * 0.12
+    return tuple(
+        (
+            rng.uniform(margin_x, width - margin_x),
+            rng.uniform(margin_y, height - margin_y),
+        )
+        for _ in range(count)
+    )
+
+
+def _candidate_position(
+    item: TransformedCutout,
+    canvas_size: tuple[int, int],
+    mode: str,
+    centers: tuple[tuple[float, float], ...],
+    rng: random.Random,
+) -> tuple[int, int]:
+    if mode == "spread" or not centers:
+        return _random_position(item, canvas_size, rng)
+    width, height = canvas_size
+    center_x, center_y = rng.choice(centers)
+    sigma = (0.13 if mode == "cluster" else 0.075) * max(canvas_size)
+    x = round(rng.gauss(center_x, sigma) - item.rgba.width / 2)
+    y = round(rng.gauss(center_y, sigma) - item.rgba.height / 2)
+    return (
+        int(min(max(0, x), width - item.rgba.width)),
+        int(min(max(0, y), height - item.rgba.height)),
+    )
+
+
+def _place_contact_constrained(
+    item: TransformedCutout,
+    occupied: np.ndarray,
+    spec: CompositionSpec,
+    mode: str,
+    centers: tuple[tuple[float, float], ...],
+    rng: random.Random,
+    *,
+    overlap_range: tuple[float, float] | None = None,
+) -> tuple[int, int, float]:
+    minimum, maximum = overlap_range or spec.support_overlap_ranges[mode]
+    target = (minimum + maximum) / 2.0
+    best: tuple[int, int, float] | None = None
+    best_distance = float("inf")
+    area = max(int(item.mask.sum()), 1)
+    for _ in range(spec.max_position_attempts):
+        x, y = _candidate_position(item, spec.canvas_size, mode, centers, rng)
+        height, width = item.mask.shape
+        overlap = float(np.logical_and(occupied[y : y + height, x : x + width], item.mask).sum()) / area
+        distance = abs(overlap - target)
+        if distance < best_distance:
+            best = x, y, overlap
+            best_distance = distance
+        if minimum <= overlap <= maximum:
+            return x, y, overlap
+    if best is None:
+        raise RuntimeError("Tidak dapat menempatkan objek")
+    return best
 
 
 def _select_target_bin(spec: CompositionSpec, rng: random.Random) -> VisibilityBin:
@@ -163,16 +319,16 @@ def _select_target_bin(spec: CompositionSpec, rng: random.Random) -> VisibilityB
 def _find_occluder_position(
     transformed: TransformedCutout,
     focus_mask: np.ndarray,
-    target: VisibilityBin,
+    already_occluded: np.ndarray,
+    desired_visibility: float,
     spec: CompositionSpec,
     rng: random.Random,
-) -> tuple[int, int, float, bool]:
+) -> tuple[int, int, float]:
     focus_box = mask_bbox(focus_mask)
     if focus_box is None:
         raise ValueError("Focus mask kosong")
     fx, fy, fw, fh = focus_box
-    focus_area = int(focus_mask.sum())
-    target_mid = (target.minimum + target.maximum) / 2.0
+    focus_area = max(int(focus_mask.sum()), 1)
     best: tuple[int, int, float] | None = None
     best_distance = float("inf")
     width, height = spec.canvas_size
@@ -188,21 +344,21 @@ def _find_occluder_position(
             height - transformed.rgba.height,
         )
         local_height, local_width = transformed.mask.shape
-        focus_region = focus_mask[
-            int(y) : int(y) + local_height,
-            int(x) : int(x) + local_width,
-        ]
-        intersection = np.logical_and(focus_region, transformed.mask).sum()
-        visible = 1.0 - float(intersection) / max(focus_area, 1)
-        distance = abs(visible - target_mid)
+        focus_region = focus_mask[y : y + local_height, x : x + local_width]
+        previous_region = already_occluded[y : y + local_height, x : x + local_width]
+        new_overlap = np.logical_and(focus_region, transformed.mask)
+        new_pixels = np.logical_and(new_overlap, ~previous_region).sum()
+        total_occluded = int(already_occluded.sum()) + int(new_pixels)
+        visible = 1.0 - float(total_occluded) / focus_area
+        distance = abs(visible - desired_visibility)
         if distance < best_distance:
             best = int(x), int(y), visible
             best_distance = distance
-        if target.contains(visible, is_last=target.maximum == 1.0):
-            return int(x), int(y), visible, True
+        if distance <= 0.02:
+            return int(x), int(y), visible
     if best is None:
         raise RuntimeError("Tidak dapat menempatkan occluder")
-    return best[0], best[1], best[2], False
+    return best
 
 
 def _visibility_bin(value: float, spec: CompositionSpec) -> str:
@@ -214,10 +370,58 @@ def _visibility_bin(value: float, spec: CompositionSpec) -> str:
     return "ignored"
 
 
+def _alpha_composite_clipped(
+    canvas: Image.Image,
+    overlay: Image.Image,
+    x: int,
+    y: int,
+) -> None:
+    left, top = max(0, x), max(0, y)
+    right, bottom = min(canvas.width, x + overlay.width), min(canvas.height, y + overlay.height)
+    if left >= right or top >= bottom:
+        return
+    crop = overlay.crop((left - x, top - y, right - x, bottom - y))
+    canvas.alpha_composite(crop, (left, top))
+
+
+def _shadow_layer(alpha: Image.Image, blur: float, opacity: float) -> Image.Image:
+    filtered = alpha.filter(ImageFilter.GaussianBlur(radius=max(0.1, blur)))
+    layer = Image.new("RGBA", alpha.size, (0, 0, 0, 0))
+    layer.putalpha(filtered.point(lambda value: int(value * opacity)))
+    return layer
+
+
+def _apply_camera_pipeline(
+    image: Image.Image,
+    lighting: _SceneLighting,
+    rng: random.Random,
+) -> Image.Image:
+    array = np.asarray(image.convert("RGB"), dtype=np.float32) / 255.0
+    gains = np.asarray(
+        [lighting.red_gain, 1.0, lighting.blue_gain], dtype=np.float32
+    ).reshape(1, 1, 3)
+    array = np.clip(array * gains * lighting.exposure, 0.0, 1.0)
+    array = np.clip((array - 0.5) * lighting.contrast + 0.5, 0.0, 1.0)
+    array = np.power(array, lighting.gamma)
+    numpy_rng = np.random.default_rng(rng.getrandbits(64))
+    noise = numpy_rng.normal(
+        0.0,
+        lighting.sensor_noise_std / 255.0,
+        size=array.shape[:2] + (1,),
+    )
+    array = np.clip(array + noise, 0.0, 1.0)
+    result = Image.fromarray((array * 255.0).astype(np.uint8), mode="RGB")
+    if lighting.defocus_radius > 0.05:
+        result = result.filter(ImageFilter.GaussianBlur(lighting.defocus_radius))
+    return result
+
+
 def _render_scene(
     background: Image.Image,
     transformed: list[tuple[TransformedCutout, int, int, bool]],
     spec: CompositionSpec,
+    lighting: _SceneLighting,
+    camera_rng: random.Random,
 ) -> tuple[Image.Image, list[PlacedInstance]]:
     canvas = background.convert("RGBA")
     if canvas.size != spec.canvas_size:
@@ -225,11 +429,18 @@ def _render_scene(
     instances: list[PlacedInstance] = []
     for index, (item, x, y, is_focus) in enumerate(transformed):
         if spec.use_shadows:
-            alpha = item.rgba.getchannel("A").filter(ImageFilter.GaussianBlur(radius=2.0))
-            shadow = Image.new("RGBA", item.rgba.size, (0, 0, 0, 0))
-            shadow.putalpha(alpha.point(lambda value: int(value * 0.18)))
-            canvas.alpha_composite(shadow, (min(x + 2, canvas.width - shadow.width), min(y + 3, canvas.height - shadow.height)))
-        canvas.alpha_composite(item.rgba, (x, y))
+            alpha = item.rgba.getchannel("A")
+            cast = _shadow_layer(
+                alpha, lighting.shadow_blur, lighting.shadow_opacity
+            )
+            contact = _shadow_layer(
+                alpha, lighting.contact_blur, lighting.contact_opacity
+            )
+            _alpha_composite_clipped(
+                canvas, cast, x + lighting.shadow_dx, y + lighting.shadow_dy
+            )
+            _alpha_composite_clipped(canvas, contact, x, y + 1)
+        _alpha_composite_clipped(canvas, item.rgba, x, y)
         instances.append(
             PlacedInstance(
                 instance_id=index + 1,
@@ -249,7 +460,87 @@ def _render_scene(
         instance.visibility_ratio = float(instance.visible_mask.sum()) / max(full_area, 1)
         instance.visibility_bin = _visibility_bin(instance.visibility_ratio, spec)
         occlusion |= instance.full_mask
-    return canvas.convert("RGB"), instances
+    return _apply_camera_pipeline(canvas.convert("RGB"), lighting, camera_rng), instances
+
+
+def _choose_unique_cutouts(
+    cutouts: list[Cutout],
+    count: int,
+    spec: CompositionSpec,
+    rng: random.Random,
+) -> tuple[list[Cutout], int]:
+    by_class: dict[int, list[Cutout]] = {}
+    for cutout in cutouts:
+        by_class.setdefault(cutout.class_id, []).append(cutout)
+    for values in by_class.values():
+        rng.shuffle(values)
+    chosen: list[Cutout] = []
+    used_assets: set[str] = set()
+    used_parents: set[str] = set()
+    class_counts = {class_id: 0 for class_id in by_class}
+    repeated = 0
+    for _ in range(count):
+        class_ids = list(by_class)
+        if spec.class_balanced:
+            minimum = min(class_counts.values())
+            class_ids = [key for key in class_ids if class_counts[key] == minimum]
+        rng.shuffle(class_ids)
+        candidate = None
+        for class_id in class_ids:
+            candidates = [
+                item
+                for item in by_class[class_id]
+                if item.asset_id not in used_assets
+                and (
+                    item.source_parent_id is None
+                    or item.source_parent_id not in used_parents
+                )
+            ]
+            if not candidates:
+                candidates = [
+                    item for item in by_class[class_id] if item.asset_id not in used_assets
+                ]
+            if candidates:
+                candidate = rng.choice(candidates)
+                break
+        if candidate is None:
+            candidate = rng.choice(cutouts)
+            repeated += 1
+        chosen.append(candidate)
+        used_assets.add(candidate.asset_id)
+        if candidate.source_parent_id is not None:
+            used_parents.add(candidate.source_parent_id)
+        class_counts[candidate.class_id] += 1
+    return chosen, repeated
+
+
+def _sample_lighting(
+    calibration: SceneCalibration | None,
+    median_object_pixels: float,
+    rng: random.Random,
+) -> _SceneLighting:
+    angle = rng.uniform(0.0, math.tau)
+    shadow_length = rng.uniform(0.015, 0.04) * median_object_pixels
+    sensor_std = (
+        rng.choice(calibration.background_sensor_std)
+        if calibration is not None and calibration.background_sensor_std
+        else rng.uniform(0.8, 1.8)
+    )
+    return _SceneLighting(
+        exposure=rng.uniform(0.98, 1.02),
+        contrast=rng.uniform(0.985, 1.015),
+        gamma=rng.uniform(0.985, 1.015),
+        red_gain=rng.uniform(0.985, 1.015),
+        blue_gain=rng.uniform(0.985, 1.015),
+        shadow_dx=int(round(math.cos(angle) * shadow_length)),
+        shadow_dy=int(round(math.sin(angle) * shadow_length)),
+        shadow_blur=max(0.6, median_object_pixels * rng.uniform(0.025, 0.055)),
+        shadow_opacity=rng.uniform(0.08, 0.16),
+        contact_blur=max(0.4, median_object_pixels * rng.uniform(0.008, 0.018)),
+        contact_opacity=rng.uniform(0.14, 0.24),
+        sensor_noise_std=min(max(float(sensor_std), 0.4), 2.5),
+        defocus_radius=rng.uniform(0.0, 0.25),
+    )
 
 
 def compose_scene(
@@ -257,109 +548,197 @@ def compose_scene(
     cutouts: list[Cutout],
     spec: CompositionSpec,
     rng: random.Random,
+    calibration: SceneCalibration | None = None,
 ) -> SyntheticScene:
-    """Compose one deterministic scene using the supplied ``rng``.
+    """Create a deterministic physics-informed 2.5D projected scene.
 
-    Visibility-aware mode guarantees one focus instance and attempts to place a
-    single foreground occluder in the requested visibility band.  Other support
-    objects are placed behind the focus, so they cannot silently change its
-    final visibility ratio.
+    Named RNG streams and pre-transformed assets keep A1/A2 paired. Support
+    objects use contact-constrained projected packing. A2 then creates several
+    explicit focus/occluder layers in the requested visibility band.
     """
     if not cutouts:
         raise ValueError("Pustaka cutout kosong")
-    count = rng.randint(spec.object_range[0], spec.object_range[1])
-    if spec.class_balanced:
-        by_class: dict[int, list[Cutout]] = {}
-        for cutout in cutouts:
-            by_class.setdefault(cutout.class_id, []).append(cutout)
-        class_ids = sorted(by_class)
-        chosen = [rng.choice(by_class[rng.choice(class_ids)]) for _ in range(count)]
+    streams = [random.Random(rng.getrandbits(64)) for _ in range(6)]
+    selection_rng, geometry_rng, placement_rng, lighting_rng, camera_rng, mode_rng = streams
+    if calibration is not None:
+        sampled_count = int(selection_rng.choice(calibration.scene_counts))
+        count = min(max(sampled_count, spec.object_range[0]), spec.object_range[1])
+        scene_scale = float(geometry_rng.choice(calibration.scene_scale_medians))
     else:
-        chosen = [rng.choice(cutouts) for _ in range(count)]
+        count = selection_rng.randint(spec.object_range[0], spec.object_range[1])
+        scene_scale = None
+    chosen, repeated_assets = _choose_unique_cutouts(
+        cutouts, count, spec, selection_rng
+    )
+    transformed_items = [
+        _transform_cutout(
+            item,
+            spec,
+            geometry_rng,
+            scene_scale=scene_scale,
+            calibration=calibration,
+        )
+        for item in chosen
+    ]
+    median_pixels = float(np.median([max(item.rgba.size) for item in transformed_items]))
+    lighting = _sample_lighting(calibration, median_pixels, lighting_rng)
+    mode_names = list(spec.scene_mode_weights)
+    scene_mode = mode_rng.choices(
+        mode_names,
+        weights=[spec.scene_mode_weights[name] for name in mode_names],
+        k=1,
+    )[0]
+    centers = _scene_centers(scene_mode, spec.canvas_size, mode_rng)
+    occupied = np.zeros((spec.canvas_size[1], spec.canvas_size[0]), dtype=bool)
     placed: list[tuple[TransformedCutout, int, int, bool]] = []
     target: VisibilityBin | None = None
-    target_hit = False
+    controlled_count = 0
+
+    def place_support(item: TransformedCutout) -> None:
+        x, y, _ = _place_contact_constrained(
+            item, occupied, spec, scene_mode, centers, placement_rng
+        )
+        placed.append((item, x, y, False))
+        occupied[:] |= _global_mask(item.mask, x, y, spec.canvas_size)
 
     if spec.mode == "naive" or count == 1:
-        for cutout in chosen:
-            item = _transform_cutout(cutout, spec, rng)
-            x, y = _random_position(item, spec.canvas_size, rng)
-            placed.append((item, x, y, False))
+        for item in transformed_items:
+            place_support(item)
     else:
-        target = _select_target_bin(spec, rng)
-        needs_occluder = target.name != "clear"
-        support_count = max(0, count - 1 - int(needs_occluder))
-        for cutout in chosen[:support_count]:
-            item = _transform_cutout(cutout, spec, rng)
-            x, y = _random_position(item, spec.canvas_size, rng)
-            placed.append((item, x, y, False))
-
-        focus_cutout = chosen[support_count]
-        focus = _transform_cutout(focus_cutout, spec, rng)
-        focus_x, focus_y = _focus_position(focus, spec.canvas_size, rng)
-        focus_mask = _global_mask(focus.mask, focus_x, focus_y, spec.canvas_size)
-        placed.append((focus, focus_x, focus_y, True))
-
-        if needs_occluder:
-            occluder_cutout = chosen[support_count + 1]
-            focus_long = max(focus.rgba.size)
-            best_item: TransformedCutout | None = None
-            best_position: tuple[int, int, float, bool] | None = None
-            best_distance = float("inf")
-            target_mid = (target.minimum + target.maximum) / 2.0
-            for _ in range(8):
-                target_size = max(8, int(round(focus_long * rng.uniform(0.80, 1.35))))
-                candidate = _transform_cutout(
-                    occluder_cutout, spec, rng, target_long_side=target_size
-                )
-                position = _find_occluder_position(
-                    candidate, focus_mask, target, spec, rng
-                )
-                distance = abs(position[2] - target_mid)
-                if distance < best_distance:
-                    best_item, best_position = candidate, position
-                    best_distance = distance
-                if position[3]:
-                    break
-            assert best_item is not None and best_position is not None
-            placed.append((best_item, best_position[0], best_position[1], False))
-            target_hit = best_position[3]
+        target = _select_target_bin(spec, placement_rng)
+        occluders_per_focus = {
+            "clear": 0,
+            "mild": 1,
+            "severe": 2,
+            "extreme": 2,
+        }[target.name]
+        occluders_per_focus = min(occluders_per_focus, max(0, count - 1))
+        desired_focuses = max(2, int(math.ceil(count * spec.controlled_fraction)))
+        if occluders_per_focus:
+            maximum_focuses = max(1, count // (1 + occluders_per_focus))
+            controlled_count = min(desired_focuses, maximum_focuses)
         else:
-            target_hit = True
+            controlled_count = min(desired_focuses, count)
+        support_count = count - controlled_count * (1 + occluders_per_focus)
+        cursor = 0
+        for item in transformed_items[:support_count]:
+            place_support(item)
+            cursor += 1
 
-    image, instances = _render_scene(background, placed, spec)
-    focus_instance = next((item for item in instances if item.is_focus), None)
-    if target is not None and focus_instance is not None:
-        target_hit = target.contains(
-            focus_instance.visibility_ratio,
-            is_last=target.maximum == 1.0,
+        target_mid = (target.minimum + target.maximum) / 2.0
+        for _ in range(controlled_count):
+            focus = transformed_items[cursor]
+            cursor += 1
+            focus_x, focus_y, _ = _place_contact_constrained(
+                focus,
+                occupied,
+                spec,
+                scene_mode,
+                centers,
+                placement_rng,
+                overlap_range=(0.0, 0.04),
+            )
+            focus_mask = _global_mask(
+                focus.mask, focus_x, focus_y, spec.canvas_size
+            )
+            placed.append((focus, focus_x, focus_y, True))
+            occupied[:] |= focus_mask
+            already_occluded = np.zeros_like(occupied)
+            current_visibility = 1.0
+            for occluder_index in range(occluders_per_focus):
+                occluder = transformed_items[cursor]
+                cursor += 1
+                remaining = occluders_per_focus - occluder_index
+                desired = target_mid + (current_visibility - target_mid) * (
+                    (remaining - 1) / remaining
+                )
+                x, y, current_visibility = _find_occluder_position(
+                    occluder,
+                    focus_mask,
+                    already_occluded,
+                    desired,
+                    spec,
+                    placement_rng,
+                )
+                occluder_mask = _global_mask(
+                    occluder.mask, x, y, spec.canvas_size
+                )
+                already_occluded |= occluder_mask & focus_mask
+                occupied |= occluder_mask
+                placed.append((occluder, x, y, False))
+
+    image, instances = _render_scene(
+        background, placed, spec, lighting, camera_rng
+    )
+    focus_instances = [item for item in instances if item.is_focus]
+    controlled_hits = 0
+    if target is not None:
+        controlled_hits = sum(
+            target.contains(
+                item.visibility_ratio,
+                is_last=target.maximum == 1.0,
+            )
+            for item in focus_instances
         )
     return SyntheticScene(
         image=image,
         instances=instances,
         target_visibility_bin=target.name if target else None,
-        target_visibility_hit=target_hit,
+        target_visibility_hit=(
+            controlled_hits == len(focus_instances) if focus_instances else False
+        ),
+        scene_mode=scene_mode,
+        controlled_instances=len(focus_instances),
+        controlled_hits=controlled_hits,
+        repeated_assets=repeated_assets,
     )
 
 
-def load_background(path: Path | None, size: tuple[int, int], rng: random.Random) -> Image.Image:
+def load_background(
+    path: Path | None,
+    size: tuple[int, int],
+    rng: random.Random,
+    calibration: SceneCalibration | None = None,
+) -> Image.Image:
     if path is None:
-        base = rng.randint(205, 242)
-        height, width = size[1], size[0]
+        width, height = size
+        if calibration is not None and calibration.background_colors:
+            base_color = np.asarray(
+                rng.choice(calibration.background_colors), dtype=np.float32
+            )
+            gradient_std = rng.choice(calibration.background_gradient_std)
+        else:
+            base = rng.randint(210, 240)
+            base_color = np.asarray(
+                [base + rng.randint(-3, 3) for _ in range(3)], dtype=np.float32
+            )
+            gradient_std = rng.uniform(2.0, 6.0)
+        gradient_std = min(max(float(gradient_std), 1.0), 10.0)
+        yy, xx = np.mgrid[-0.5:0.5:complex(height), -0.5:0.5:complex(width)]
+        angle = rng.uniform(0.0, math.tau)
+        plane = xx * math.cos(angle) + yy * math.sin(angle)
+        plane = plane / max(float(plane.std()), 1e-6) * gradient_std
         numpy_rng = np.random.default_rng(rng.getrandbits(64))
-        noise = numpy_rng.integers(
-            -5, 6, size=(height, width, 1), dtype=np.int16
+        coarse = numpy_rng.normal(0.0, gradient_std * 0.30, size=(16, 16))
+        texture = np.asarray(
+            Image.fromarray(coarse.astype(np.float32), mode="F").resize(
+                (width, height), Image.Resampling.BICUBIC
+            ),
+            dtype=np.float32,
         )
-        color = np.asarray(
-            [base + rng.randint(-3, 3) for _ in range(3)], dtype=np.int16
-        ).reshape(1, 1, 3)
-        pixels = np.clip(color + noise, 0, 255).astype(np.uint8)
-        return Image.fromarray(pixels, mode="RGB")
+        radial = xx**2 + yy**2
+        vignette = radial * rng.uniform(0.0, 3.0)
+        pixels = base_color.reshape(1, 1, 3) + plane[..., None] + texture[..., None]
+        pixels -= vignette[..., None]
+        return Image.fromarray(np.clip(pixels, 0, 255).astype(np.uint8), mode="RGB")
     image = Image.open(path).convert("RGB")
     target_width, target_height = size
     scale = max(target_width / image.width, target_height / image.height)
     resized = image.resize(
-        (max(target_width, int(round(image.width * scale))), max(target_height, int(round(image.height * scale)))),
+        (
+            max(target_width, int(round(image.width * scale))),
+            max(target_height, int(round(image.height * scale))),
+        ),
         Image.Resampling.LANCZOS,
     )
     max_x, max_y = resized.width - target_width, resized.height - target_height

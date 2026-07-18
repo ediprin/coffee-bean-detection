@@ -56,6 +56,7 @@ def audit_vadcp_dataset(
     visibility = Counter()
     classes = Counter()
     densities = Counter()
+    labeled_densities = Counter()
     seen_annotation_ids = set()
 
     for row in metadata["annotations"]:
@@ -104,6 +105,7 @@ def audit_vadcp_dataset(
             errors.append(f"image sintetis tidak ditemukan: {image_path}")
         rows = sorted(by_image.get(image_id, []), key=lambda item: int(item["z_order"]))
         densities[len(rows)] += 1
+        labeled_densities[sum(not int(row.get("ignore", 0)) for row in rows)] += 1
         z_orders = [int(row["z_order"]) for row in rows]
         if z_orders != list(range(len(rows))):
             errors.append(f"image {image_id}: z_order tidak kontigu {z_orders}")
@@ -148,7 +150,7 @@ def audit_vadcp_dataset(
     if not general["safe_for_training"]:
         errors.append("Audit dataset YOLO umum menyatakan dataset belum aman")
     report = {
-        "format": "coffee_detector.vadcp_audit.v1",
+        "format": "coffee_detector.vadcp_audit.v2",
         "dataset_root": str(data_root),
         "metadata": str(metadata_path),
         "manifest": str(manifest_path),
@@ -159,9 +161,14 @@ def audit_vadcp_dataset(
             str(key): classes[key] for key in sorted(classes)
         },
         "scene_density": {str(key): densities[key] for key in sorted(densities)},
+        "labeled_scene_density": {
+            str(key): labeled_densities[key] for key in sorted(labeled_densities)
+        },
         "focus_target_hit_rate": {
             str(key): value for key, value in sorted(target_rates.items())
         },
+        "scene_modes": manifest.get("scene_modes", {}),
+        "repeated_assets": int(manifest.get("repeated_assets", 0)),
         "errors": errors[:200],
         "error_count": len(errors),
         "warnings": warnings,
@@ -187,6 +194,9 @@ def print_audit_summary(report: dict, *, label: str | None = None) -> None:
     print(f"Visibility      : {report['labeled_instances_by_visibility']}")
     print(f"Target hit rate : {report.get('focus_target_hit_rate', {})}")
     print(f"Scene density   : {report['scene_density']}")
+    print(f"Labeled density : {report.get('labeled_scene_density', {})}")
+    print(f"Scene modes     : {report.get('scene_modes', {})}")
+    print(f"Repeated assets : {report.get('repeated_assets', 0)}")
     print(f"Warnings        : {len(report['warnings'])}")
     print(f"Errors          : {report['error_count']}")
     print(f"AMAN TRAINING   : {'YA' if report['safe_for_training'] else 'BELUM'}")

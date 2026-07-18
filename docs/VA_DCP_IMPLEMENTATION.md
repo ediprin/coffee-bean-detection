@@ -12,8 +12,8 @@ The first locked ablation is:
 | Arm | Training data | Detector |
 |---|---|---|
 | A0 | real only | YOLO26n |
-| A1 | real + naive copy-paste | YOLO26n |
-| A2 | real + VA-DCP | YOLO26n |
+| A1 | real + empirical-layout copy-paste | YOLO26n |
+| A2 | A1 + visibility-aware 2.5D layers | YOLO26n |
 
 Curriculum (A3) and visibility-weighted loss are deliberately deferred until A2
 beats A1.  This prevents a failed data hypothesis from being hidden by several
@@ -57,9 +57,11 @@ python -u -m coffee_detector.prepare_object_library \
   --allowed-splits train unspecified
 ```
 
-The command estimates the foreground against the border background, keeps the
-largest component, fills holes, crops the bean, saves an RGBA asset, removes
-pixel-identical assets, and records failures in `object_library.json`.
+The command estimates the foreground against the border background, selects the
+largest component for classification images or the component nearest the
+annotated box centre for YOLO crops, fills holes, crops the bean, saves an RGBA
+asset, removes pixel-identical assets, and records failures in
+`object_library.json`.
 By default it retains at most 500 successful assets per class, sampled with seed
 42, so a dataset containing hundreds of thousands of boxes is not exhaustively
 cropped merely for a pilot.
@@ -76,7 +78,24 @@ but visual review is still required to remove partially hidden source beans.
 Do not continue before visually checking masks from every class.  Automatic
 foreground extraction is a draft annotation, not unquestionable ground truth.
 
-## 2. Generate A1 and A2
+## 2. Calibrate the scene prior from real train
+
+Count, projected scale, within-frame scale variation, and background statistics
+are learned only from the real train split. One scene-scale is sampled first and
+all beans in that frame receive only the empirical within-scene residual. This
+avoids mixing camera distances inside one synthetic frame.
+
+```bash
+python -u -m coffee_detector.profile_vadcp_source \
+  --data-root /path/to/real-dataset \
+  --output /path/to/real-scene-calibration.json \
+  --seed 42
+```
+
+The profile stores a compact empirical quantile sample, not training images.
+It must be rebuilt when the real train split or camera geometry changes.
+
+## 3. Generate A1 and A2
 
 Use the same real dataset, object library, number of generated scenes, and seed.
 Only `mode` differs.
@@ -86,6 +105,7 @@ python -u -m coffee_detector.generate_vadcp_dataset \
   --real-data-root /path/to/real-dataset \
   --object-library /path/to/object-library \
   --background-root /path/to/blank-real-backgrounds \
+  --scene-profile /path/to/real-scene-calibration.json \
   --output-root /path/to/A1-naive \
   --mode naive \
   --synthetic-images 2000 \
@@ -95,6 +115,7 @@ python -u -m coffee_detector.generate_vadcp_dataset \
   --real-data-root /path/to/real-dataset \
   --object-library /path/to/object-library \
   --background-root /path/to/blank-real-backgrounds \
+  --scene-profile /path/to/real-scene-calibration.json \
   --output-root /path/to/A2-vadcp \
   --mode visibility \
   --synthetic-images 2000 \
@@ -102,8 +123,24 @@ python -u -m coffee_detector.generate_vadcp_dataset \
 ```
 
 If `--background-root` is omitted, the generator creates a procedural light
-background.  That is suitable for a software smoke test, not the final thesis
-experiment.
+background whose color, low-frequency gradient, and sensor-noise range are
+calibrated from unannotated pixels in real train. This remains a fallback for a
+software smoke test. The final thesis experiment should use blank tray/conveyor
+frames captured by the target camera.
+
+The implementation is deliberately described as **physics-informed 2.5D
+projected packing**, not as a 3D rigid-body simulator:
+
+- `spread`, `cluster`, and `pile` scenes use contact/overlap constraints;
+- one z-order creates full and visible masks;
+- 25% of instances are visibility-controlled in A2;
+- severe/extreme cases use multiple empirical-size occluders;
+- one light direction, exposure, white balance, camera noise, and scale-aware
+  contact/cast-shadow model is shared by the whole frame;
+- transparent RGB is edge-bled and transformed in premultiplied-alpha space to
+  suppress paste halos;
+- the same scene seed, objects, scales, rotations, background, and photometry
+  are preselected for A1/A2; only visibility-aware placement differs.
 
 Every synthetic instance stores:
 
@@ -116,7 +153,7 @@ visible_mask, full_mask, visibility_ratio, visibility_bin
 Only visible boxes with visibility at least 0.10 enter the YOLO label.  Full
 masks remain metadata and are not presented as visible supervision.
 
-## 3. Audit generated data
+## 4. Audit generated data
 
 ```bash
 python -u -m coffee_detector.audit_vadcp \
@@ -148,7 +185,34 @@ python -u -m coffee_detector.run_vadcp_visual_audit \
 Blue boxes are visible boxes, yellow dashed boxes are full/amodal boxes, and a
 pink box marks the visibility-controlled focus instance.
 
-## 4. Run the locked ablation
+The visual runner also writes `contact_sheet_raw.jpg`. Audit cutout boundaries
+independently on black, white, and checkerboard backgrounds:
+
+```bash
+python -u -m coffee_detector.run_cutout_visual_audit \
+  --object-library /path/to/object-library \
+  --output-root /path/to/cutout-audit \
+  --samples 18
+```
+
+Internal correctness is not evidence of realism. Compare visible YOLO geometry
+against the real train distribution. The report uses matched-size real-vs-real
+resampling as its null variation rather than a universal arbitrary distance:
+
+```bash
+python -u -m coffee_detector.audit_vadcp_realism \
+  --real-data-root /path/to/real-dataset \
+  --synthetic-data-root /path/to/A2-vadcp \
+  --output /path/to/A2-realism.json \
+  --seed 42
+```
+
+It reports visible labeled density separately from generated density, plus
+long-side, area, aspect ratio, nearest-neighbor spacing, overlap, border touch,
+and synthetic visibility/ignored rates. `PASS_GEOMETRY` still requires manual
+approval of the raw and cutout contact sheets.
+
+## 5. Run the locked ablation
 
 Start with seed 42:
 
@@ -166,7 +230,7 @@ The runner audits each arm, resumes interrupted runs, evaluates locked real test
 data, and reports mAP plus count error.  It treats a run as complete only when
 both `best.pt` and `experiment_manifest.json` exist.
 
-## 5. Visibility-stratified real-test evaluation
+## 6. Visibility-stratified real-test evaluation
 
 The final real test metadata uses the same COCO-like fields `image_id`,
 `category_id`, `bbox`, and `visibility_bin`. Objects from non-target bins are
@@ -207,3 +271,20 @@ to both A0 and A1, especially count MAE, count bias, recall, and difficult
 visibility strata.  Overall mAP must not fall materially.  If it fails, do not
 add a custom loss to rescue the claim; inspect mask quality, compositing realism,
 and the real-test domain gap first.
+
+## Method basis
+
+The design follows four results rather than inventing unconstrained graphics:
+
+- Toda et al. generated dense barley-seed images from cutouts, controlled
+  overlap, and automatically derived instance labels—the closest crop/seed
+  precedent: <https://pmc.ncbi.nlm.nih.gov/articles/PMC7160130/>.
+- Simple Copy-Paste shows that correct mask/box updates and a strong paired
+  baseline matter more than elaborate blending:
+  <https://openaccess.thecvf.com/content/CVPR2021/html/Ghiasi_Simple_Copy-Paste_Is_a_Strong_Data_Augmentation_Method_for_Instance_CVPR_2021_paper.html>.
+- CrowdAug shows targeted crowded placement and paste order provide useful
+  pseudo-depth for crowded detection:
+  <https://ojs.aaai.org/index.php/AAAI/article/view/25124>.
+- Coffee inspection literature already stratifies synthetic scene density and
+  rejects implausible overlap, supporting a domain-specific quality gate:
+  <https://www.mdpi.com/2076-3417/9/19/4166>.

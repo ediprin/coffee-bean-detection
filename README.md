@@ -11,9 +11,10 @@ mengubah internal YOLO:
 
 ```text
 prepare_object_library
-        -> generate_vadcp_dataset (naive atau visibility)
+        -> profile_vadcp_source (prior empiris train nyata)
+        -> generate_vadcp_dataset (empirical A1 atau visibility-aware A2)
         -> audit_vadcp
-        -> run_vadcp_visual_audit
+        -> audit_vadcp_realism + visual/cutout audit
         -> run_vadcp_ablation (A0/A1/A2)
 ```
 
@@ -21,6 +22,10 @@ Val dan test selalu berasal dari data nyata; generator hanya menambah train.
 Metadata penuh menyimpan visible/full mask, z-order, visibility ratio, dan ID
 aset sumber, sedangkan label YOLO menggunakan visible bounding box. Protokol dan
 perintah lengkap ada di [docs/VA_DCP_IMPLEMENTATION.md](docs/VA_DCP_IMPLEMENTATION.md).
+Generator memakai physics-informed 2.5D projected packing: skala dan jumlah
+objek dikalibrasi dari train nyata, penempatan contact-constrained, z-order
+eksplisit, dan cahaya/bayangan koheren per scene. Ini bukan klaim simulasi fisika
+3D penuh.
 
 Notebook Colab yang hanya menyiapkan data sampai status `TRAINING_READY`, tanpa
 menjalankan training, tersedia di

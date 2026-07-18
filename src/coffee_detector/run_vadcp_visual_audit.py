@@ -57,6 +57,36 @@ def _select_images(images: list[dict], samples: int, seed: int) -> list[dict]:
     return selected
 
 
+def _contact_sheet(
+    images: list[Image.Image],
+    output: Path,
+    *,
+    columns: int = 4,
+    thumb_width: int = 360,
+) -> None:
+    if not images:
+        return
+    columns = min(columns, len(images))
+    thumbs = []
+    for item in images:
+        ratio = thumb_width / item.width
+        thumbs.append(
+            item.resize(
+                (thumb_width, max(1, int(round(item.height * ratio)))),
+                Image.Resampling.LANCZOS,
+            )
+        )
+    rows = (len(thumbs) + columns - 1) // columns
+    row_height = max(item.height for item in thumbs)
+    sheet = Image.new("RGB", (columns * thumb_width, rows * row_height), "white")
+    for index, item in enumerate(thumbs):
+        sheet.paste(
+            item,
+            ((index % columns) * thumb_width, (index // columns) * row_height),
+        )
+    sheet.save(output, quality=90)
+
+
 def run_vadcp_visual_audit(
     data_root: str | Path,
     output_root: str | Path,
@@ -78,11 +108,13 @@ def run_vadcp_visual_audit(
     images_root = output_root / "images"
     images_root.mkdir(parents=True, exist_ok=True)
     rendered = []
+    raw_images = []
     selected_rows = []
     for rank, image_row in enumerate(selected, 1):
         image_path = data_root / image_row["file_name"]
         with Image.open(image_path) as source:
             image = source.convert("RGB")
+        raw_images.append(image.copy())
         header = 30
         canvas = Image.new("RGB", (image.width, image.height + header), "white")
         canvas.paste(image, (0, header))
@@ -127,24 +159,9 @@ def run_vadcp_visual_audit(
         )
 
     contact_sheet = output_root / "contact_sheet.jpg"
-    if rendered:
-        columns = min(4, len(rendered))
-        thumb_width = 360
-        thumbs = []
-        for item in rendered:
-            ratio = thumb_width / item.width
-            thumbs.append(
-                item.resize(
-                    (thumb_width, max(1, int(round(item.height * ratio)))),
-                    Image.Resampling.LANCZOS,
-                )
-            )
-        rows = (len(thumbs) + columns - 1) // columns
-        row_height = max(item.height for item in thumbs)
-        sheet = Image.new("RGB", (columns * thumb_width, rows * row_height), "white")
-        for index, item in enumerate(thumbs):
-            sheet.paste(item, ((index % columns) * thumb_width, (index // columns) * row_height))
-        sheet.save(contact_sheet, quality=90)
+    raw_contact_sheet = output_root / "contact_sheet_raw.jpg"
+    _contact_sheet(rendered, contact_sheet)
+    _contact_sheet(raw_images, raw_contact_sheet)
     payload = {
         "data_root": str(data_root),
         "samples": len(selected_rows),
@@ -155,6 +172,7 @@ def run_vadcp_visual_audit(
         },
         "selected": selected_rows,
         "contact_sheet": str(contact_sheet),
+        "raw_contact_sheet": str(raw_contact_sheet),
     }
     (output_root / "visual_audit.json").write_text(
         json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
@@ -177,6 +195,7 @@ def main() -> None:
     print("=== VISUAL AUDIT VA-DCP ===")
     print(f"Samples      : {result['samples']}")
     print(f"Contact sheet: {result['contact_sheet']}")
+    print(f"Raw sheet    : {result['raw_contact_sheet']}")
 
 
 if __name__ == "__main__":

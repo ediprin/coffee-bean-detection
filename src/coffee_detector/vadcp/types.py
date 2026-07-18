@@ -34,6 +34,7 @@ class Cutout:
     image_path: Path
     source_id: str
     source_split: str = "train"
+    source_parent_id: str | None = None
 
 
 @dataclass
@@ -63,3 +64,7 @@ class SyntheticScene:
     instances: list[PlacedInstance]
     target_visibility_bin: str | None
     target_visibility_hit: bool
+    scene_mode: str = "uniform"
+    controlled_instances: int = 0
+    controlled_hits: int = 0
+    repeated_assets: int = 0
