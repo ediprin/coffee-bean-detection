@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Callable
 
 import yaml
 
@@ -29,6 +30,7 @@ def train_experiment(
     seed: int,
     device: str | None = None,
     resume: bool = False,
+    on_checkpoint: Callable[[Path, int], None] | None = None,
 ) -> Path:
     try:
         from ultralytics import YOLO
@@ -63,6 +65,12 @@ def train_experiment(
             f"Run sudah memiliki checkpoint: {last_checkpoint}. Gunakan --resume atau output baru."
         )
     model = YOLO(str(last_checkpoint if resume and last_checkpoint.is_file() else config["model"]))
+    if on_checkpoint is not None:
+        def _persist_checkpoint(trainer) -> None:
+            epoch = int(getattr(trainer, "epoch", -1)) + 1
+            on_checkpoint(Path(trainer.save_dir), epoch)
+
+        model.add_callback("on_model_save", _persist_checkpoint)
     if resume and last_checkpoint.is_file():
         train_args = {"resume": True}
         if device is not None:

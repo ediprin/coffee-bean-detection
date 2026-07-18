@@ -12,6 +12,7 @@ from .audit_dataset import audit_dataset
 from .audit_vadcp import audit_vadcp_dataset
 from .dataset import IMAGE_SUFFIXES, discover_layout
 from .evaluate import evaluate
+from .hf_sync import HuggingFaceSync
 from .run_baseline import is_training_complete, load_verified_audit
 from .run_visual_audit import run_visual_audit
 from .train import load_experiment, train_experiment
@@ -148,6 +149,9 @@ def run_vadcp_ablation(
     count_audit: bool = True,
     count_confidence: float = 0.25,
     verified_audits: dict[str, str | Path] | None = None,
+    hf_repo_id: str | None = None,
+    hf_path_prefix: str = "vadcp-ablation-screen-v10",
+    hf_private: bool = True,
 ) -> dict:
     if "A0" not in arms:
         raise ValueError("Arm A0 real-only wajib sebagai baseline")
@@ -164,6 +168,15 @@ def run_vadcp_ablation(
         code: Path(path).expanduser().resolve() for code, path in arms.items()
     }
     verified_audits = verified_audits or {}
+    hub = (
+        HuggingFaceSync(
+            hf_repo_id,
+            path_prefix=hf_path_prefix,
+            private=hf_private,
+        )
+        if hf_repo_id
+        else None
+    )
     audit_paths = {}
     for code, data_root in resolved_arms.items():
         if code in verified_audits:
@@ -201,6 +214,11 @@ def run_vadcp_ablation(
                     seed,
                     device=device,
                     resume=resume,
+                    on_checkpoint=(
+                        (lambda path, epoch: hub.sync_run(path, epoch))
+                        if hub is not None
+                        else None
+                    ),
                 )
             else:
                 print(f"SKIP TRAINING: {code} seed {seed} sudah lengkap", flush=True)
@@ -249,6 +267,8 @@ def run_vadcp_ablation(
                     else None
                 ),
             }
+            if hub is not None:
+                hub.sync_output(output_root, f"{code} seed {seed} evaluated")
 
     aggregate = {}
     tracked = (
@@ -310,12 +330,23 @@ def run_vadcp_ablation(
         "runs": dict(runs),
         "aggregate": aggregate,
         "comparisons": comparisons,
+        "huggingface": (
+            {
+                "repo_id": hub.repo_id,
+                "repo_type": hub.repo_type,
+                "path_prefix": hub.path_prefix,
+            }
+            if hub is not None
+            else None
+        ),
     }
     summary_path = reports / "vadcp_ablation_summary.json"
     summary_path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     payload["summary"] = str(summary_path)
+    if hub is not None:
+        hub.sync_output(output_root, "ablation summary complete")
     return payload
 
 
@@ -341,6 +372,13 @@ def main() -> None:
     parser.add_argument("--no-resume", action="store_true")
     parser.add_argument("--skip-count-audit", action="store_true")
     parser.add_argument("--count-confidence", type=float, default=0.25)
+    parser.add_argument("--hf-repo-id")
+    parser.add_argument(
+        "--hf-path-prefix", default="vadcp-ablation-screen-v10"
+    )
+    parser.add_argument(
+        "--hf-public", action="store_true", help="Buat repo Hub publik; default privat."
+    )
     parser.add_argument(
         "--verified-audit",
         action="append",
@@ -362,6 +400,9 @@ def main() -> None:
             if args.verified_audit
             else None
         ),
+        hf_repo_id=args.hf_repo_id,
+        hf_path_prefix=args.hf_path_prefix,
+        hf_private=not args.hf_public,
     )
     print("\n=== VA-DCP ABLATION ===")
     for code, metrics in result["aggregate"].items():
