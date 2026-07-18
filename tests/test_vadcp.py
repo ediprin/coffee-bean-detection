@@ -12,6 +12,7 @@ from PIL import Image, ImageDraw
 
 from coffee_detector.audit_vadcp import audit_vadcp_dataset, decode_uncompressed_rle
 from coffee_detector.audit_vadcp_realism import (
+    _comparison,
     audit_vadcp_realism,
     build_realism_reference,
 )
@@ -172,6 +173,19 @@ def test_rectangular_images_use_isotropic_pixel_geometry(tmp_path: Path) -> None
     assert realism["absolute_aspect_ratio"] == pytest.approx([2.0])
     assert realism["long_side_fraction"] == pytest.approx([0.2])
     assert realism["bbox_area_fraction"] == pytest.approx([0.04])
+
+
+def test_realism_comparison_uses_practical_equivalence_margin() -> None:
+    real = np.linspace(0.0, 1.0, 2000).tolist()
+    small_raster_shift = (np.linspace(0.0, 1.0, 2000) + 0.06).tolist()
+    large_shift = (np.linspace(0.0, 1.0, 2000) + 0.50).tolist()
+
+    practical = _comparison(real, small_raster_shift, random.Random(11))
+    rejected = _comparison(real, large_shift, random.Random(11))
+
+    assert practical["normalized_quantile_distance"] < 0.15
+    assert practical["status"] == "within_practical_equivalence_margin"
+    assert rejected["status"] == "shifted"
 
 
 def test_component_selection_prefers_annotated_box_center() -> None:

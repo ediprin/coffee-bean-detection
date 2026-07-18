@@ -146,6 +146,9 @@ projected packing**, not as a 3D rigid-body simulator:
   before scale, distance, area, and aspect statistics are calibrated or audited;
 - synthetic canvas width/height follows the empirical source-camera ratio, so
   object area, scene coverage, and long-side scale are jointly reproducible;
+- realism comparisons accept either real-real sampling variation or a fixed
+  practical-equivalence margin of 0.15 reference IQR to avoid rejecting only
+  sub-pixel rasterization effects;
 - an older object-library manifest is geometry-profiled once with visible
   progress, saved atomically, and then reused by both paired augmentation arms;
 - uncertain mask edges are eroded into a trusted color core, feathered inward,

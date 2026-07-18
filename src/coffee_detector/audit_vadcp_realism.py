@@ -225,6 +225,7 @@ def _comparison(
     synthetic_values: list[float],
     rng: random.Random,
     repeats: int = 20,
+    practical_margin_iqr: float = 0.15,
 ) -> dict:
     real = np.asarray(real_values, dtype=np.float64)
     synthetic = np.asarray(synthetic_values, dtype=np.float64)
@@ -240,16 +241,21 @@ def _comparison(
             left, right = indices[:sample_size], indices[sample_size:]
             null.append(_quantile_distance(real[left], real[right]))
     null_p95 = float(np.quantile(null, 0.95)) if null else None
+    acceptance_threshold = max(null_p95 or 0.0, practical_margin_iqr)
+    if null_p95 is not None and distance <= null_p95:
+        status = "within_real_sampling_variation"
+    elif distance <= practical_margin_iqr:
+        status = "within_practical_equivalence_margin"
+    else:
+        status = "shifted"
     return {
         "normalized_quantile_distance": distance,
         "real_real_null_median": float(np.median(null)) if null else None,
         "real_real_null_p95": null_p95,
+        "practical_equivalence_margin_iqr": practical_margin_iqr,
+        "acceptance_threshold": acceptance_threshold,
         "excess_ratio": distance / max(null_p95, 1e-8) if null_p95 else None,
-        "status": (
-            "within_real_sampling_variation"
-            if null_p95 is not None and distance <= null_p95
-            else "shifted"
-        ),
+        "status": status,
     }
 
 
