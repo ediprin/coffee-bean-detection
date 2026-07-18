@@ -8,6 +8,7 @@ import os
 import random
 import re
 import shutil
+import time
 from collections import Counter
 from dataclasses import asdict, replace
 from pathlib import Path
@@ -78,10 +79,14 @@ def _copy_real_split(
     output_root: Path,
     split: str,
 ) -> int:
-    count = 0
-    for image_path in sorted(
+    image_paths = sorted(
         path for path in image_root.rglob("*") if path.suffix.lower() in IMAGE_SUFFIXES
-    ):
+    )
+    total = len(image_paths)
+    started = time.perf_counter()
+    print(f"REAL SPLIT {split}: mulai 0/{total}", flush=True)
+    count = 0
+    for image_path in image_paths:
         relative = image_path.relative_to(image_root)
         label_path = (label_root / relative).with_suffix(".txt")
         if not label_path.is_file():
@@ -89,6 +94,13 @@ def _copy_real_split(
         _materialize(image_path, output_root / split / "images" / relative)
         _materialize(label_path, output_root / split / "labels" / relative.with_suffix(".txt"))
         count += 1
+        if count % 500 == 0 or count == total:
+            elapsed = time.perf_counter() - started
+            print(
+                f"REAL SPLIT {split}: {count}/{total} "
+                f"({elapsed:.1f}s)",
+                flush=True,
+            )
     return count
 
 
@@ -228,6 +240,12 @@ def generate_vadcp_dataset(
     geometry_hits = 0
     geometry_fallbacks = 0
 
+    generation_started = time.perf_counter()
+    progress_every = max(1, min(25, synthetic_images // 20 or 1))
+    print(
+        f"VA-DCP {mode}: mulai 0/{synthetic_images} gambar",
+        flush=True,
+    )
     for scene_index in range(synthetic_images):
         # A per-scene RNG keeps source selection and backgrounds paired across
         # A1/A2 even though the two placement algorithms consume different
@@ -343,9 +361,14 @@ def generate_vadcp_dataset(
                 "sha256": _file_sha256(image_path),
             }
         )
-        if (scene_index + 1) % 100 == 0 or scene_index + 1 == synthetic_images:
+        completed = scene_index + 1
+        if completed % progress_every == 0 or completed == synthetic_images:
+            elapsed = time.perf_counter() - generation_started
+            rate = completed / max(elapsed, 1e-8)
+            eta = (synthetic_images - completed) / max(rate, 1e-8)
             print(
-                f"VA-DCP {mode}: {scene_index + 1}/{synthetic_images} gambar",
+                f"VA-DCP {mode}: {completed}/{synthetic_images} gambar | "
+                f"{rate:.2f} img/s | ETA {eta / 60:.1f} menit",
                 flush=True,
             )
 
