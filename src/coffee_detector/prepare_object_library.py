@@ -24,6 +24,8 @@ def main() -> None:
     parser.add_argument("--mask-threshold", type=float, default=24.0)
     parser.add_argument("--padding", type=int, default=2)
     parser.add_argument("--max-assets-per-class", type=int, default=500)
+    parser.add_argument("--candidate-multiplier", type=int, default=2)
+    parser.add_argument("--max-assets-per-image-class", type=int, default=3)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
@@ -46,6 +48,8 @@ def main() -> None:
             padding=args.padding,
             max_assets_per_class=args.max_assets_per_class,
             seed=args.seed,
+            candidate_multiplier=args.candidate_multiplier,
+            max_assets_per_image_class=args.max_assets_per_image_class,
         )
     audit = result["audit"]
     print("=== OBJECT LIBRARY ===")

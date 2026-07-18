@@ -190,7 +190,12 @@ def roboflow_parent_id(path: Path) -> str:
     return stem
 
 
-def collect_records(layout: DatasetLayout) -> tuple[list[ImageRecord], list[str]]:
+def collect_records(
+    layout: DatasetLayout,
+    *,
+    compute_visual_features: bool = True,
+    progress: bool = False,
+) -> tuple[list[ImageRecord], list[str]]:
     records: list[ImageRecord] = []
     errors: list[str] = []
     valid_ids = set(layout.names)
@@ -198,7 +203,7 @@ def collect_records(layout: DatasetLayout) -> tuple[list[ImageRecord], list[str]
         image_paths = sorted(
             path for path in image_root.rglob("*") if path.suffix.lower() in IMAGE_SUFFIXES
         )
-        for image_path in image_paths:
+        for image_index, image_path in enumerate(image_paths, 1):
             relative = image_path.relative_to(image_root)
             label_path = (label_root / relative).with_suffix(".txt")
             try:
@@ -210,13 +215,22 @@ def collect_records(layout: DatasetLayout) -> tuple[list[ImageRecord], list[str]
                         label_path=label_path,
                         boxes=boxes,
                         sha256=image_sha256(image_path),
-                        dhash=image_dhash(image_path),
-                        mean_rgb=image_mean_rgb(image_path),
+                        dhash=image_dhash(image_path) if compute_visual_features else 0,
+                        mean_rgb=(
+                            image_mean_rgb(image_path)
+                            if compute_visual_features
+                            else (0.0, 0.0, 0.0)
+                        ),
                         parent_id=roboflow_parent_id(image_path),
                     )
                 )
             except (OSError, ValueError) as error:
                 errors.append(str(error))
+            if progress and (image_index % 1000 == 0 or image_index == len(image_paths)):
+                print(
+                    f"  audit {split}: {image_index}/{len(image_paths)} gambar",
+                    flush=True,
+                )
     return records, errors
 
 
@@ -274,8 +288,17 @@ def duplicate_components(
     return list(components.values()), counters
 
 
-def build_audit(layout: DatasetLayout, near_threshold: int = 4) -> dict:
-    records, errors = collect_records(layout)
+def build_audit(
+    layout: DatasetLayout,
+    near_threshold: int = 4,
+    *,
+    progress: bool = False,
+) -> dict:
+    records, errors = collect_records(
+        layout,
+        compute_visual_features=near_threshold >= 0,
+        progress=progress,
+    )
     # Only exact identity and a shared Roboflow parent determine whether a split
     # is unsafe. Perceptual matches remain useful warnings, but are too ambiguous
     # to group visually uniform beans automatically.

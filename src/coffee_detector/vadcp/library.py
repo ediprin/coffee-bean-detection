@@ -3,13 +3,23 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+import time
 from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
 
-from ..dataset import IMAGE_SUFFIXES, collect_records, discover_layout
+from ..dataset import (
+    IMAGE_SUFFIXES,
+    Box,
+    DatasetLayout,
+    discover_layout,
+    image_sha256,
+    parse_label,
+    roboflow_parent_id,
+)
 from .masks import crop_to_mask, estimate_foreground_mask
 from .types import Cutout
 
@@ -22,6 +32,109 @@ SPLIT_NAMES = {
     "validation": "val",
     "test": "test",
 }
+
+
+@dataclass(frozen=True)
+class _BoxCandidate:
+    image_path: Path
+    box_index: int
+    box: Box
+    parent_id: str
+
+
+def _sample_yolo_candidates(
+    layout: DatasetLayout,
+    source_split: str,
+    *,
+    max_assets_per_class: int | None,
+    candidate_multiplier: int,
+    max_assets_per_image_class: int,
+    seed: int,
+) -> tuple[list[_BoxCandidate], dict]:
+    """Reservoir-sample boxes without opening or hashing every image.
+
+    The previous implementation reused ``collect_records`` and therefore
+    calculated SHA-256, dHash, and mean RGB for every image before sampling.
+    Object-library preparation only needs labels at this stage, so a lightweight
+    label pass is both equivalent and substantially faster.
+    """
+    if source_split not in layout.splits:
+        raise FileNotFoundError(f"Split sumber tidak ditemukan: {source_split}")
+    if candidate_multiplier <= 0:
+        raise ValueError("candidate_multiplier harus positif")
+    if max_assets_per_image_class <= 0:
+        raise ValueError("max_assets_per_image_class harus positif")
+    capacity = (
+        None
+        if max_assets_per_class is None
+        else max_assets_per_class * candidate_multiplier
+    )
+    image_root, label_root = layout.splits[source_split]
+    image_paths = sorted(
+        path for path in image_root.rglob("*") if path.suffix.lower() in IMAGE_SUFFIXES
+    )
+    valid_ids = set(layout.names)
+    reservoirs: dict[int, list[_BoxCandidate]] = {
+        class_id: [] for class_id in layout.names
+    }
+    seen = Counter()
+    eligible = Counter()
+    skipped_per_image_cap = Counter()
+    errors: list[str] = []
+    rng = random.Random(seed)
+    started = time.perf_counter()
+    for image_index, image_path in enumerate(image_paths, 1):
+        relative = image_path.relative_to(image_root)
+        label_path = (label_root / relative).with_suffix(".txt")
+        try:
+            boxes = parse_label(label_path, valid_ids)
+        except (OSError, ValueError) as error:
+            errors.append(str(error))
+            continue
+        per_image = Counter()
+        parent_id = roboflow_parent_id(image_path)
+        for box_index, box in enumerate(boxes):
+            seen[box.class_id] += 1
+            if per_image[box.class_id] >= max_assets_per_image_class:
+                skipped_per_image_cap[box.class_id] += 1
+                continue
+            per_image[box.class_id] += 1
+            eligible[box.class_id] += 1
+            candidate = _BoxCandidate(image_path, box_index, box, parent_id)
+            reservoir = reservoirs[box.class_id]
+            if capacity is None or len(reservoir) < capacity:
+                reservoir.append(candidate)
+            else:
+                replacement = rng.randrange(eligible[box.class_id])
+                if replacement < capacity:
+                    reservoir[replacement] = candidate
+        if image_index % 1000 == 0 or image_index == len(image_paths):
+            elapsed = time.perf_counter() - started
+            print(
+                f"  label index: {image_index}/{len(image_paths)} "
+                f"({elapsed:.1f}s)",
+                flush=True,
+            )
+    candidates = [item for items in reservoirs.values() for item in items]
+    rng.shuffle(candidates)
+    stats = {
+        "images_indexed": len(image_paths),
+        "boxes_seen_by_class": {
+            layout.names[key]: seen[key] for key in sorted(layout.names)
+        },
+        "eligible_by_class": {
+            layout.names[key]: eligible[key] for key in sorted(layout.names)
+        },
+        "sampled_candidates_by_class": {
+            layout.names[key]: len(reservoirs[key]) for key in sorted(layout.names)
+        },
+        "skipped_by_per_image_cap": {
+            layout.names[key]: skipped_per_image_cap[key] for key in sorted(layout.names)
+        },
+        "errors": errors,
+        "elapsed_seconds": time.perf_counter() - started,
+    }
+    return candidates, stats
 
 
 def _stable_id(*parts: object) -> str:
@@ -242,17 +355,15 @@ def prepare_yolo_library(
     source_split: str = "train",
     mask_threshold: float = 24.0,
     padding: int = 2,
-    box_padding_fraction: float = 0.04,
+    box_padding_fraction: float = 0.12,
     minimum_fraction: float = 0.03,
     maximum_fraction: float = 0.96,
     max_assets_per_class: int | None = 500,
     seed: int = 42,
+    candidate_multiplier: int = 2,
+    max_assets_per_image_class: int = 3,
 ) -> dict:
     layout = discover_layout(data_root)
-    print("INDEX YOLO DATASET: membaca gambar dan label...", flush=True)
-    records, errors = collect_records(layout)
-    if errors:
-        raise RuntimeError("Dataset YOLO tidak valid:\n- " + "\n- ".join(errors[:20]))
     source_split = SPLIT_NAMES.get(source_split.lower(), source_split.lower())
     output_root = Path(output_root).expanduser().resolve()
     if output_root.exists() and any(output_root.iterdir()):
@@ -260,32 +371,45 @@ def prepare_yolo_library(
     output_root.mkdir(parents=True, exist_ok=True)
     assets: list[dict] = []
     failures: list[str] = []
-    candidates = [
-        (record, box_index, box)
-        for record in records
-        if record.split == source_split
-        for box_index, box in enumerate(record.boxes)
-    ]
+    print("INDEX YOLO DATASET: reservoir-sampling label train...", flush=True)
+    candidates, index_stats = _sample_yolo_candidates(
+        layout,
+        source_split,
+        max_assets_per_class=max_assets_per_class,
+        candidate_multiplier=candidate_multiplier,
+        max_assets_per_image_class=max_assets_per_image_class,
+        seed=seed,
+    )
+    if index_stats["errors"]:
+        raise RuntimeError(
+            "Dataset YOLO tidak valid:\n- "
+            + "\n- ".join(index_stats["errors"][:20])
+        )
     print(
-        f"INDEX SELESAI: {len(records)} gambar, {len(candidates)} kandidat box {source_split}",
+        f"INDEX SELESAI: {index_stats['images_indexed']} gambar, "
+        f"{len(candidates)} kandidat terpilih ({index_stats['elapsed_seconds']:.1f}s)",
         flush=True,
     )
-    random.Random(seed).shuffle(candidates)
     accepted_by_class = Counter()
     image_cache: dict[Path, Image.Image] = {}
-    for record, box_index, box in candidates:
+    image_hash_cache: dict[Path, str] = {}
+    extraction_started = time.perf_counter()
+    for candidate in candidates:
+        image_path = candidate.image_path
+        box_index = candidate.box_index
+        box = candidate.box
         class_name = layout.names[box.class_id]
         if (
             max_assets_per_class is not None
             and accepted_by_class[class_name] >= max_assets_per_class
         ):
             continue
-        if record.image_path not in image_cache:
-            with Image.open(record.image_path) as source_image:
-                image_cache[record.image_path] = source_image.convert("RGBA")
+        if image_path not in image_cache:
+            with Image.open(image_path) as source_image:
+                image_cache[image_path] = source_image.convert("RGBA")
             if len(image_cache) > 32:
                 image_cache.pop(next(iter(image_cache)))
-        image = image_cache[record.image_path]
+        image = image_cache[image_path]
         left = (box.x_center - box.width / 2.0) * image.width
         top = (box.y_center - box.height / 2.0) * image.height
         right = (box.x_center + box.width / 2.0) * image.width
@@ -298,8 +422,10 @@ def prepare_yolo_library(
             min(image.height, int(np.ceil(bottom + pad))),
         )
         crop = image.crop(pixel_box)
+        if image_path not in image_hash_cache:
+            image_hash_cache[image_path] = image_sha256(image_path)
         source_id = _stable_id(
-            record.sha256,
+            image_hash_cache[image_path],
             box_index,
             box.class_id,
             *(round(value, 8) for value in (box.x_center, box.y_center, box.width, box.height)),
@@ -309,7 +435,7 @@ def prepare_yolo_library(
             class_name,
             source_id,
             source_split,
-            record.image_path,
+            image_path,
             crop,
             mask_threshold,
             padding,
@@ -318,7 +444,7 @@ def prepare_yolo_library(
         )
         if item:
             item["source_box_index"] = box_index
-            item["source_parent_id"] = record.parent_id
+            item["source_parent_id"] = candidate.parent_id
             assets.append(item)
             accepted_by_class[class_name] += 1
             if len(assets) % 100 == 0:
@@ -335,6 +461,10 @@ def prepare_yolo_library(
             "source_split": source_split,
             "max_assets_per_class": max_assets_per_class,
             "seed": seed,
+            "candidate_multiplier": candidate_multiplier,
+            "max_assets_per_image_class": max_assets_per_image_class,
+            "index": index_stats,
+            "extraction_elapsed_seconds": time.perf_counter() - extraction_started,
         },
     )
 

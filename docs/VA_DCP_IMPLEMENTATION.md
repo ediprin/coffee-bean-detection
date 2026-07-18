@@ -64,6 +64,11 @@ By default it retains at most 500 successful assets per class, sampled with seed
 42, so a dataset containing hundreds of thousands of boxes is not exhaustively
 cropped merely for a pilot.
 
+YOLO object-library indexing uses a class-balanced reservoir sampler. It parses
+labels without opening, hashing, or calculating perceptual features for every
+image, caps candidates from one source image, and only opens/hashes selected
+assets. This avoids the former full-dataset audit cost during cutout sampling.
+
 The source bean must be complete and unoccluded; otherwise its mask is not a
 valid `full_mask`. Assets whose foreground touches the crop boundary are rejected,
 but visual review is still required to remove partially hidden source beans.

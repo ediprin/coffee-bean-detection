@@ -5,6 +5,7 @@ import random
 from pathlib import Path
 
 import numpy as np
+import pytest
 import yaml
 from PIL import Image, ImageDraw
 
@@ -17,7 +18,8 @@ from coffee_detector.evaluate_visibility import (
 from coffee_detector.prepare_object_library import prepare_classification_library
 from coffee_detector.run_vadcp_visual_audit import run_vadcp_visual_audit
 from coffee_detector.vadcp.compositor import CompositionSpec, compose_scene
-from coffee_detector.vadcp.library import load_object_library
+from coffee_detector.vadcp import library as library_module
+from coffee_detector.vadcp.library import load_object_library, prepare_yolo_library
 from coffee_detector.vadcp.masks import binary_mask_rle
 
 
@@ -65,6 +67,33 @@ def _write_real_dataset(root: Path) -> None:
         )
 
 
+def _write_yolo_cutout_source(root: Path, images_per_class: int = 8) -> None:
+    names = {0: "defect", 1: "normal"}
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "data.yaml").write_text(
+        yaml.safe_dump(
+            {"path": str(root), "train": "train/images", "names": names},
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    image_dir = root / "train" / "images"
+    label_dir = root / "train" / "labels"
+    image_dir.mkdir(parents=True)
+    label_dir.mkdir(parents=True)
+    colors = {0: (80, 45, 25), 1: (65, 125, 55)}
+    for class_id in names:
+        for index in range(images_per_class):
+            image = Image.new("RGB", (128, 128), "white")
+            draw = ImageDraw.Draw(image)
+            draw.ellipse((32, 40, 96, 88), fill=colors[class_id])
+            stem = f"class{class_id}-{index}"
+            image.save(image_dir / f"{stem}.png")
+            (label_dir / f"{stem}.txt").write_text(
+                f"{class_id} 0.5 0.5 0.5 0.375\n", encoding="utf-8"
+            )
+
+
 def test_uncompressed_rle_round_trip() -> None:
     mask = np.zeros((7, 9), dtype=bool)
     mask[1:5, 2:7] = True
@@ -88,6 +117,37 @@ def test_object_library_uses_train_and_excludes_test(tmp_path: Path) -> None:
     assert {item.source_split for item in cutouts} == {"train"}
     assert result["source"]["skipped_by_split"] == {"test": 4}
     assert info["rejected_splits"] == {}
+
+
+def test_yolo_library_hashes_only_reservoir_selected_images(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "yolo"
+    output = tmp_path / "library"
+    _write_yolo_cutout_source(source, images_per_class=8)
+    original_hash = library_module.image_sha256
+    hashed_paths = []
+
+    def counted_hash(path: Path) -> str:
+        hashed_paths.append(path)
+        return original_hash(path)
+
+    monkeypatch.setattr(library_module, "image_sha256", counted_hash)
+    result = prepare_yolo_library(
+        source,
+        output,
+        max_assets_per_class=1,
+        candidate_multiplier=1,
+        max_assets_per_image_class=1,
+        box_padding_fraction=0.12,
+        seed=9,
+    )
+
+    assert result["audit"]["assets_by_class"] == {"defect": 1, "normal": 1}
+    assert len(hashed_paths) == 2
+    index = result["source"]["index"]
+    assert index["images_indexed"] == 16
+    assert index["sampled_candidates_by_class"] == {"defect": 1, "normal": 1}
 
 
 def test_visibility_compositor_is_deterministic_and_masks_are_consistent(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -65,10 +66,16 @@ class CompositionSpec:
             raise ValueError("Bobot target visibility harus positif")
 
 
+@lru_cache(maxsize=512)
+def _load_rgba_cached(path: str) -> Image.Image:
+    with Image.open(path) as source:
+        return source.convert("RGBA")
+
+
 def load_cutout(cutout: Cutout) -> Image.Image:
     if not cutout.image_path.is_file():
         raise FileNotFoundError(f"Asset cutout tidak ditemukan: {cutout.image_path}")
-    image = Image.open(cutout.image_path).convert("RGBA")
+    image = _load_rgba_cached(str(cutout.image_path))
     if not np.any(np.asarray(image.getchannel("A")) >= 32):
         raise ValueError(f"Asset tidak memiliki foreground: {cutout.image_path}")
     return image
