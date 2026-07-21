@@ -34,6 +34,12 @@ Notebook Colab yang hanya menyiapkan data sampai status `TRAINING_READY`, tanpa
 menjalankan training, tersedia di
 [notebooks/VA_DCP_Setup_Colab.ipynb](notebooks/VA_DCP_Setup_Colab.ipynb).
 
+Preview scene high-count bergaya sampel 300 g dapat dibuka langsung di Colab:
+
+[![Open SNI 300g Preview in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ediprin/coffee-bean-detection/blob/agent/add-vadcp-pipeline/notebooks/SNI_300g_CopyPaste_Preview_Colab.ipynb)
+
+Notebook preview tersebut tidak menjalankan training.
+
 ## Baseline aktif
 
 - `D0`: YOLO26n standar, tanpa HBP, attention, loss tambahan, atau modifikasi
