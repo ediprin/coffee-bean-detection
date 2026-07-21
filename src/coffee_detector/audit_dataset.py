@@ -8,7 +8,9 @@ from .dataset import build_audit, discover_layout, write_json
 
 
 def audit_dataset(data_root: str | Path, output: str | Path, near_threshold: int = 4) -> dict:
-    audit = build_audit(discover_layout(data_root), near_threshold=near_threshold)
+    audit = build_audit(
+        discover_layout(data_root), near_threshold=near_threshold, progress=True
+    )
     write_json(audit, output)
     return audit
 
@@ -43,4 +45,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

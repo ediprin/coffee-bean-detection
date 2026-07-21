@@ -4,6 +4,42 @@ Repo ini khusus untuk object detection biji kopi. Ia tidak mengimpor, mengubah,
 atau memakai checkpoint repo klasifikasi Coffee-17. Baseline pertama adalah
 YOLO26n; keluarga detector lain baru ditambahkan setelah baseline terkunci.
 
+## Eksperimen VA-DCP
+
+Pipeline offline `Visibility-Aware Dense Copy-Paste` sudah tersedia tanpa
+mengubah internal YOLO:
+
+```text
+prepare_object_library
+        -> profile_vadcp_source (prior empiris train nyata)
+        -> generate_vadcp_dataset (empirical A1 atau visibility-aware A2)
+        -> audit_vadcp
+        -> audit_vadcp_realism + visual/cutout audit
+        -> run_vadcp_ablation (A0/A1/A2)
+```
+
+Val dan test selalu berasal dari data nyata; generator hanya menambah train.
+Metadata penuh menyimpan visible/full mask, z-order, visibility ratio, dan ID
+aset sumber, sedangkan label YOLO menggunakan visible bounding box. Protokol dan
+perintah lengkap ada di [docs/VA_DCP_IMPLEMENTATION.md](docs/VA_DCP_IMPLEMENTATION.md).
+Generator memakai physics-informed 2.5D projected packing: skala dan jumlah
+objek dikalibrasi dari train nyata dalam koordinat piksel isotropik, penempatan
+contact-constrained, aspect ratio canvas mengikuti kamera sumber, z-order
+eksplisit, rotasi mengikuti distribusi aspect ratio kotak nyata, matte di-feather
+ke dalam, serta target bentuk per kelas dipasangkan dengan cutout yang mampu
+mencapainya tanpa meregangkan piksel. Cahaya/bayangan tetap koheren per scene.
+Ini bukan klaim simulasi fisika 3D penuh.
+
+Notebook Colab yang hanya menyiapkan data sampai status `TRAINING_READY`, tanpa
+menjalankan training, tersedia di
+[notebooks/VA_DCP_Setup_Colab.ipynb](notebooks/VA_DCP_Setup_Colab.ipynb).
+
+Preview scene high-count bergaya sampel 300 g dapat dibuka langsung di Colab:
+
+[![Open SNI 300g Preview in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ediprin/coffee-bean-detection/blob/agent/add-vadcp-pipeline/notebooks/SNI_300g_CopyPaste_Preview_Colab.ipynb)
+
+Notebook preview tersebut tidak menjalankan training.
+
 ## Baseline aktif
 
 - `D0`: YOLO26n standar, tanpa HBP, attention, loss tambahan, atau modifikasi

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import statistics
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -165,6 +166,7 @@ def run_visual_audit(
                 "ground_truth_count": len(ground_truth),
                 "prediction_count": prediction_count,
                 "absolute_count_error": abs(prediction_count - len(ground_truth)),
+                "signed_count_error": prediction_count - len(ground_truth),
                 "minimum_confidence": min(confidences, default=0.0),
                 "mean_confidence": sum(confidences) / len(confidences) if confidences else 0.0,
             }
@@ -193,6 +195,9 @@ def run_visual_audit(
     _make_contact_sheet(comparison_images, contact_sheet)
 
     exact_count_matches = sum(row["absolute_count_error"] == 0 for row in rows)
+    over_count = sum(row["signed_count_error"] > 0 for row in rows)
+    under_count = sum(row["signed_count_error"] < 0 for row in rows)
+    signed_errors = [row["signed_count_error"] for row in rows]
     payload = {
         "checkpoint": str(checkpoint),
         "data_root": str(layout.root),
@@ -205,6 +210,12 @@ def run_visual_audit(
         "mean_absolute_count_error": (
             sum(row["absolute_count_error"] for row in rows) / len(rows) if rows else 0.0
         ),
+        "mean_count_bias": sum(signed_errors) / len(rows) if rows else 0.0,
+        "median_count_error": statistics.median(signed_errors) if rows else 0.0,
+        "over_count_images": over_count,
+        "under_count_images": under_count,
+        "over_count_rate": over_count / len(rows) if rows else 0.0,
+        "under_count_rate": under_count / len(rows) if rows else 0.0,
         "confidence_threshold": confidence,
         "selected": selected,
         "rows": rows,
