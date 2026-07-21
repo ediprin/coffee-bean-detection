@@ -145,6 +145,55 @@ def _calibrated_canvas_size(
     return max(1, int(round(long_side * ratio))), long_side
 
 
+def composition_spec_for_preset(
+    preset: str,
+    *,
+    mode: str,
+    canvas_size: tuple[int, int],
+    object_range: tuple[int, int],
+    object_scale: tuple[float, float],
+    minimum_visibility: float,
+    use_shadows: bool,
+) -> CompositionSpec:
+    """Build an explicit scene policy without changing legacy VA-DCP defaults."""
+    if preset == "default":
+        return CompositionSpec(
+            canvas_size=canvas_size,
+            object_range=object_range,
+            object_scale=object_scale,
+            minimum_visibility=minimum_visibility,
+            mode=mode,
+            use_shadows=use_shadows,
+        )
+    if preset != "sni_spread":
+        raise ValueError(f"Preset VA-DCP tidak dikenal: {preset}")
+    return CompositionSpec(
+        canvas_size=canvas_size,
+        object_range=object_range,
+        object_scale=object_scale,
+        calibrated_scale_limits=(0.015, 0.09),
+        minimum_visibility=minimum_visibility,
+        mode=mode,
+        target_bin_weights={
+            "clear": 0.70,
+            "mild": 0.25,
+            "severe": 0.05,
+            "extreme": 0.0,
+        },
+        scene_mode_weights={"spread": 1.0},
+        support_overlap_ranges={
+            "spread": (0.00, 0.015),
+        },
+        controlled_fraction=0.08,
+        use_shadows=use_shadows,
+        per_object_reflectance_jitter=0.015,
+        class_balanced=False,
+        use_empirical_scene_count=False,
+        use_empirical_object_scale=False,
+        max_position_attempts=100,
+    )
+
+
 def generate_vadcp_dataset(
     real_data_root: str | Path,
     object_library: str | Path,
@@ -154,13 +203,15 @@ def generate_vadcp_dataset(
     seed: int = 42,
     mode: str = "visibility",
     background_root: str | Path | None = None,
-    canvas_size: int = 640,
+    canvas_size: int | None = None,
     object_range: tuple[int, int] | None = None,
     object_scale: tuple[float, float] = (0.08, 0.18),
     minimum_visibility: float = 0.10,
     include_real_train: bool = True,
+    materialize_real_splits: bool = True,
     use_shadows: bool = True,
     scene_profile: str | Path | SceneCalibration | None = None,
+    preset: str = "default",
 ) -> dict:
     if synthetic_images <= 0:
         raise ValueError("synthetic_images harus positif")
@@ -191,14 +242,21 @@ def generate_vadcp_dataset(
         print("KALIBRASI REAL TRAIN: menghitung prior scene...", flush=True)
         calibration = build_scene_calibration(layout, split="train", seed=seed)
 
+    if preset not in {"default", "sni_spread"}:
+        raise ValueError(f"Preset VA-DCP tidak dikenal: {preset}")
     if object_range is None:
         object_range = (
-            min(calibration.scene_counts),
-            max(calibration.scene_counts),
+            (220, 340)
+            if preset == "sni_spread"
+            else (min(calibration.scene_counts), max(calibration.scene_counts))
+        )
+        range_label = (
+            "RENTANG OBJEK SNI 300G"
+            if preset == "sni_spread"
+            else "RENTANG OBJEK EMPIRIS"
         )
         print(
-            "RENTANG OBJEK EMPIRIS: "
-            f"{object_range[0]}-{object_range[1]} per scene",
+            f"{range_label}: {object_range[0]}-{object_range[1]} per scene",
             flush=True,
         )
 
@@ -208,7 +266,7 @@ def generate_vadcp_dataset(
     output_root.mkdir(parents=True, exist_ok=True)
     real_counts = {}
     for split in ("train", "val", "test"):
-        if split == "train" and not include_real_train:
+        if not materialize_real_splits or (split == "train" and not include_real_train):
             (output_root / split / "images").mkdir(parents=True, exist_ok=True)
             (output_root / split / "labels").mkdir(parents=True, exist_ok=True)
             real_counts[split] = 0
@@ -222,14 +280,23 @@ def generate_vadcp_dataset(
             flush=True,
         )
 
-    calibrated_canvas = _calibrated_canvas_size(canvas_size, calibration)
+    if canvas_size is None:
+        canvas_size = 768 if preset == "sni_spread" else 640
+    calibrated_canvas = (
+        (max(1, int(round(canvas_size * 0.75))), canvas_size)
+        if preset == "sni_spread"
+        else _calibrated_canvas_size(canvas_size, calibration)
+    )
     print(f"CANVAS SINTETIS: {calibrated_canvas[0]}x{calibrated_canvas[1]}", flush=True)
-    spec = CompositionSpec(
+    if preset == "sni_spread" and object_scale == (0.08, 0.18):
+        object_scale = (0.025, 0.055)
+    spec = composition_spec_for_preset(
+        preset,
+        mode=mode,
         canvas_size=calibrated_canvas,
         object_range=object_range,
         object_scale=object_scale,
         minimum_visibility=minimum_visibility,
-        mode=mode,
         use_shadows=use_shadows,
     )
     backgrounds = _background_paths(background_root)
@@ -388,6 +455,7 @@ def generate_vadcp_dataset(
         "info": {
             "format": "coffee_detector.vadcp.v2",
             "mode": mode,
+            "preset": preset,
             "seed": seed,
             "real_data_root": str(layout.root),
             "object_library": str(Path(object_library).expanduser().resolve()),
@@ -423,10 +491,12 @@ def generate_vadcp_dataset(
         "format": "coffee_detector.vadcp_manifest.v2",
         "output": str(output_root),
         "mode": mode,
+        "preset": preset,
         "seed": seed,
         "synthetic_images": synthetic_images,
         "real_images": real_counts,
         "include_real_train": include_real_train,
+        "materialize_real_splits": materialize_real_splits,
         "classes": names,
         "spec": asdict(spec),
         "library_audit": library_info["manifest"].get("audit", {}),
@@ -469,7 +539,13 @@ def main() -> None:
     parser.add_argument("--synthetic-images", type=int, default=2000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--mode", choices=("naive", "visibility"), default="visibility")
-    parser.add_argument("--canvas-size", type=int, default=640)
+    parser.add_argument("--canvas-size", type=int)
+    parser.add_argument(
+        "--preset",
+        choices=("default", "sni_spread"),
+        default="default",
+        help="sni_spread membuat scene padat dominan satu lapis; jumlah biji dapat dikalibrasi.",
+    )
     parser.add_argument(
         "--objects-min",
         type=int,
@@ -484,6 +560,11 @@ def main() -> None:
     parser.add_argument("--scale-max", type=float, default=0.18)
     parser.add_argument("--minimum-visibility", type=float, default=0.10)
     parser.add_argument("--synthetic-only-train", action="store_true")
+    parser.add_argument(
+        "--preview-only",
+        action="store_true",
+        help="Jangan salin train/val/test nyata; khusus preview cepat, bukan training.",
+    )
     parser.add_argument("--no-shadows", action="store_true")
     parser.add_argument(
         "--scene-profile",
@@ -510,12 +591,15 @@ def main() -> None:
         object_scale=(args.scale_min, args.scale_max),
         minimum_visibility=args.minimum_visibility,
         include_real_train=not args.synthetic_only_train,
+        materialize_real_splits=not args.preview_only,
         use_shadows=not args.no_shadows,
         scene_profile=args.scene_profile,
+        preset=args.preset,
     )
     print("\n=== VA-DCP DATASET SELESAI ===")
     print(f"Output       : {result['output']}")
     print(f"Mode         : {result['mode']}")
+    print(f"Preset       : {result['preset']}")
     print(f"Synthetic    : {result['synthetic_images']}")
     print(f"Real         : {result['real_images']}")
     print(f"Visibility   : {result['instances_by_visibility']}")

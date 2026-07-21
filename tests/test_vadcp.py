@@ -18,6 +18,7 @@ from coffee_detector.audit_vadcp_realism import (
 )
 from coffee_detector.generate_vadcp_dataset import (
     _calibrated_canvas_size,
+    composition_spec_for_preset,
     generate_vadcp_dataset,
 )
 from coffee_detector.evaluate_visibility import (
@@ -346,6 +347,78 @@ def test_geometry_aware_selection_prefers_capable_cutout(tmp_path: Path) -> None
     assert fallback_count == 1
 
 
+def test_sni_spread_preset_is_high_count_low_overlap() -> None:
+    spec = composition_spec_for_preset(
+        "sni_spread",
+        mode="visibility",
+        canvas_size=(576, 768),
+        object_range=(220, 340),
+        object_scale=(0.025, 0.055),
+        minimum_visibility=0.10,
+        use_shadows=True,
+    )
+
+    assert spec.object_range == (220, 340)
+    assert spec.scene_mode_weights == {"spread": 1.0}
+    assert "pile" not in spec.scene_mode_weights
+    assert spec.support_overlap_ranges["spread"][1] <= 0.015
+    assert spec.target_bin_weights["clear"] == pytest.approx(0.70)
+    assert not spec.class_balanced
+    assert not spec.use_empirical_scene_count
+    assert not spec.use_empirical_object_scale
+
+
+def test_empirical_class_prior_is_used_when_not_balanced(tmp_path: Path) -> None:
+    cutouts = [
+        Cutout(
+            f"d-{index}", 0, "defect", tmp_path / f"d-{index}.png", "source",
+            intrinsic_aspect_ratio=1.5,
+        )
+        for index in range(20)
+    ] + [
+        Cutout(
+            f"n-{index}", 1, "normal", tmp_path / f"n-{index}.png", "source",
+            intrinsic_aspect_ratio=1.5,
+        )
+        for index in range(20)
+    ]
+    calibration = SceneCalibration(
+        scene_counts=(100,),
+        object_long_sides=(0.04,),
+        bbox_width_height_ratios=(1.4,),
+        scene_scale_medians=(0.04,),
+        within_scene_scale_ratios=(1.0,),
+        background_colors=((230.0, 230.0, 230.0),),
+        background_gradient_std=(1.0,),
+        background_sensor_std=(1.0,),
+        source_images=1,
+        source_boxes=100,
+        class_probabilities={0: 0.10, 1: 0.90},
+    )
+    spec = replace(
+        composition_spec_for_preset(
+            "sni_spread",
+            mode="naive",
+            canvas_size=(256, 320),
+            object_range=(100, 100),
+            object_scale=(0.03, 0.05),
+            minimum_visibility=0.10,
+            use_shadows=False,
+        ),
+        object_range=(100, 100),
+    )
+
+    chosen, _, _, _ = _choose_unique_cutouts(
+        cutouts,
+        100,
+        spec,
+        random.Random(17),
+        calibration=calibration,
+    )
+
+    assert sum(item.class_id == 1 for item in chosen) >= 80
+
+
 def test_geometry_match_precedes_parent_uniqueness(tmp_path: Path) -> None:
     cutouts = [
         Cutout(
@@ -452,6 +525,36 @@ def test_yolo_library_hashes_only_reservoir_selected_images(
     index = result["source"]["index"]
     assert index["images_indexed"] == 16
     assert index["sampled_candidates_by_class"] == {"defect": 1, "normal": 1}
+
+
+def test_yolo_segmentation_polygon_becomes_exact_cutout_mask(tmp_path: Path) -> None:
+    source = tmp_path / "segmentation"
+    image_root = source / "train" / "images"
+    label_root = source / "train" / "labels"
+    image_root.mkdir(parents=True)
+    label_root.mkdir(parents=True)
+    (source / "data.yaml").write_text(
+        yaml.safe_dump({"path": str(source), "train": "train/images", "names": {0: "bean"}}),
+        encoding="utf-8",
+    )
+    image = Image.new("RGB", (100, 100), "white")
+    ImageDraw.Draw(image).polygon(((25, 75), (50, 20), (75, 75)), fill=(90, 55, 30))
+    image.save(image_root / "bean.png")
+    (label_root / "bean.txt").write_text(
+        "0 0.25 0.75 0.50 0.20 0.75 0.75\n", encoding="utf-8"
+    )
+
+    result = prepare_yolo_library(
+        source,
+        tmp_path / "library",
+        max_assets_per_class=1,
+        candidate_multiplier=1,
+        max_assets_per_image_class=1,
+    )
+
+    assert result["audit"]["assets"] == 1
+    assert result["assets"][0]["mask_source"] == "segmentation_polygon"
+    assert result["assets"][0]["cropped_foreground_fraction"] < 0.75
 
 
 def test_visibility_compositor_is_deterministic_and_masks_are_consistent(
@@ -615,6 +718,44 @@ def test_generate_and_audit_vadcp_dataset(tmp_path: Path) -> None:
         row["source_split"] in {"train", "unspecified"}
         for row in metadata["annotations"]
     )
+
+
+def test_generate_sni_spread_smoke_uses_requested_density(tmp_path: Path) -> None:
+    source = tmp_path / "classification"
+    library = tmp_path / "library"
+    real = tmp_path / "real"
+    output = tmp_path / "sni-spread"
+    _write_classification_assets(source)
+    _write_real_dataset(real)
+    prepare_classification_library(source, library)
+
+    manifest = generate_vadcp_dataset(
+        real,
+        library,
+        output,
+        synthetic_images=1,
+        seed=19,
+        mode="naive",
+        preset="sni_spread",
+        canvas_size=256,
+        object_range=(12, 12),
+        object_scale=(0.035, 0.055),
+        include_real_train=False,
+        use_shadows=False,
+    )
+
+    assert manifest["preset"] == "sni_spread"
+    assert manifest["spec"]["object_range"] == (12, 12)
+    assert manifest["spec"]["canvas_size"] == (192, 256)
+    assert manifest["spec"]["use_empirical_scene_count"] is False
+    assert sum(manifest["scene_modes"].values()) == 1
+    assert "pile" not in manifest["scene_modes"]
+    metadata = json.loads(
+        (output / "metadata" / "instances_synthetic_train.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert len(metadata["annotations"]) == 12
 
 
 def test_calibrated_physics_scene_and_realism_audit(tmp_path: Path) -> None:

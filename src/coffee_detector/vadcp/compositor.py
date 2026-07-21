@@ -60,6 +60,8 @@ class CompositionSpec:
     use_shadows: bool = True
     per_object_reflectance_jitter: float = 0.02
     class_balanced: bool = True
+    use_empirical_scene_count: bool = True
+    use_empirical_object_scale: bool = True
     max_position_attempts: int = 180
 
     def __post_init__(self) -> None:
@@ -606,7 +608,19 @@ def _choose_unique_cutouts(
         if spec.class_balanced:
             minimum = min(class_counts.values())
             class_ids = [key for key in class_ids if class_counts[key] == minimum]
-        class_id = rng.choice(class_ids)
+        if (
+            not spec.class_balanced
+            and calibration is not None
+            and calibration.class_probabilities
+        ):
+            weights = [calibration.class_probabilities.get(key, 0.0) for key in class_ids]
+            class_id = (
+                rng.choices(class_ids, weights=weights, k=1)[0]
+                if sum(weights) > 0
+                else rng.choice(class_ids)
+            )
+        else:
+            class_id = rng.choice(class_ids)
         class_slots.append(class_id)
         class_counts[class_id] += 1
 
@@ -749,7 +763,7 @@ def compose_scene(
         camera_rng,
         mode_rng,
     ) = streams
-    if calibration is not None:
+    if calibration is not None and spec.use_empirical_scene_count:
         if calibration.scene_count_scale_pairs:
             sampled_count, scene_scale = selection_rng.choice(
                 calibration.scene_count_scale_pairs
@@ -764,6 +778,12 @@ def compose_scene(
         count = min(max(sampled_count, spec.object_range[0]), spec.object_range[1])
     else:
         count = selection_rng.randint(spec.object_range[0], spec.object_range[1])
+        scene_scale = (
+            float(geometry_plan_rng.choice(calibration.scene_scale_medians))
+            if calibration is not None and spec.use_empirical_object_scale
+            else None
+        )
+    if not spec.use_empirical_object_scale:
         scene_scale = None
     chosen, target_ratios, repeated_assets, geometry_fallbacks = _choose_unique_cutouts(
         cutouts,

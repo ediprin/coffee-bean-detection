@@ -32,6 +32,7 @@ class SceneCalibration:
         default_factory=dict
     )
     canvas_width_height_ratios: tuple[float, ...] = (1.0,)
+    class_probabilities: dict[int, float] = field(default_factory=dict)
     split: str = "train"
 
     def __post_init__(self) -> None:
@@ -64,10 +65,14 @@ class SceneCalibration:
             for value in values
         ):
             raise ValueError("Rasio bbox per kelas harus positif")
+        if any(value < 0 for value in self.class_probabilities.values()):
+            raise ValueError("Probabilitas kelas tidak boleh negatif")
+        if self.class_probabilities and sum(self.class_probabilities.values()) <= 0:
+            raise ValueError("Probabilitas kelas harus memiliki massa positif")
 
     def to_payload(self) -> dict:
         return {
-            "format": "coffee_detector.scene_calibration.v6",
+            "format": "coffee_detector.scene_calibration.v7",
             **asdict(self),
             "summary": calibration_summary(self),
         }
@@ -106,6 +111,10 @@ def calibration_summary(calibration: SceneCalibration) -> dict:
                 calibration.bbox_width_height_ratios_by_class.items()
             )
             if values
+        },
+        "class_probabilities": {
+            str(class_id): float(value)
+            for class_id, value in sorted(calibration.class_probabilities.items())
         },
         "scene_scale_median_fraction": _quantiles(calibration.scene_scale_medians),
         "paired_scene_count_scale_records": len(
@@ -197,6 +206,7 @@ def build_scene_calibration(
     long_sides: list[float] = []
     bbox_width_height_ratios: list[float] = []
     bbox_width_height_ratios_by_class: dict[int, list[float]] = defaultdict(list)
+    class_counts: dict[int, int] = defaultdict(int)
     canvas_width_height_ratios: list[float] = []
     scene_scale_medians: list[float] = []
     within_scene_scale_ratios: list[float] = []
@@ -222,6 +232,7 @@ def build_scene_calibration(
                 if box.height > 0
             )
             for box in boxes:
+                class_counts[box.class_id] += 1
                 if box.height > 0:
                     bbox_width_height_ratios_by_class[box.class_id].append(
                         (box.width * image_width) / (box.height * image_height)
@@ -314,6 +325,10 @@ def build_scene_calibration(
         canvas_width_height_ratios=_quantile_sample(
             canvas_width_height_ratios, 256
         ),
+        class_probabilities={
+            class_id: count / max(sum(class_counts.values()), 1)
+            for class_id, count in sorted(class_counts.items())
+        },
         split=split,
     )
 
@@ -338,6 +353,7 @@ def load_scene_calibration(path: str | Path) -> SceneCalibration:
         "coffee_detector.scene_calibration.v4",
         "coffee_detector.scene_calibration.v5",
         "coffee_detector.scene_calibration.v6",
+        "coffee_detector.scene_calibration.v7",
     }:
         raise ValueError(f"Format scene calibration tidak dikenal: {path}")
     if "bbox_width_height_ratios" not in payload:
@@ -384,5 +400,9 @@ def load_scene_calibration(path: str | Path) -> SceneCalibration:
             float(value)
             for value in payload.get("canvas_width_height_ratios", [1.0])
         ),
+        class_probabilities={
+            int(class_id): float(value)
+            for class_id, value in payload.get("class_probabilities", {}).items()
+        },
         split=str(payload.get("split", "train")),
     )

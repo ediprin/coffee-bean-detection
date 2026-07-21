@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from ..dataset import (
     IMAGE_SUFFIXES,
@@ -174,13 +174,20 @@ def _write_asset(
     minimum_fraction: float,
     maximum_fraction: float,
     preferred_center: tuple[float, float] | None = None,
+    explicit_mask: np.ndarray | None = None,
 ) -> tuple[dict | None, str | None]:
     try:
-        mask = estimate_foreground_mask(
-            image,
-            threshold=mask_threshold,
-            preferred_point=preferred_center,
+        mask = (
+            np.asarray(explicit_mask, dtype=bool)
+            if explicit_mask is not None
+            else estimate_foreground_mask(
+                image,
+                threshold=mask_threshold,
+                preferred_point=preferred_center,
+            )
         )
+        if mask.shape != (image.height, image.width):
+            raise ValueError("Ukuran explicit mask tidak sama dengan crop")
         fraction = float(mask.mean())
         if not (minimum_fraction <= fraction <= maximum_fraction):
             raise ValueError(
@@ -237,6 +244,7 @@ def _write_asset(
                 "height": rgba.height,
                 "intrinsic_aspect_ratio": intrinsic_aspect_ratio,
                 "sha256_rgba": asset_digest,
+                "mask_source": "segmentation_polygon" if explicit_mask is not None else "estimated_foreground",
             },
             None,
         )
@@ -424,6 +432,7 @@ def prepare_yolo_library(
     accepted_by_class = Counter()
     image_cache: dict[Path, Image.Image] = {}
     image_hash_cache: dict[Path, str] = {}
+    label_line_cache: dict[Path, list[str]] = {}
     extraction_started = time.perf_counter()
     for candidate in candidates:
         image_path = candidate.image_path
@@ -453,6 +462,30 @@ def prepare_yolo_library(
             min(image.height, int(np.ceil(bottom + pad))),
         )
         crop = image.crop(pixel_box)
+        relative = image_path.relative_to(layout.splits[source_split][0])
+        label_path = (layout.splits[source_split][1] / relative).with_suffix(".txt")
+        if label_path not in label_line_cache:
+            label_line_cache[label_path] = [
+                line.strip()
+                for line in label_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            if len(label_line_cache) > 64:
+                label_line_cache.pop(next(iter(label_line_cache)))
+        fields = label_line_cache[label_path][box_index].split()
+        values = [float(value) for value in fields[1:]]
+        explicit_mask = None
+        if len(values) > 4:
+            polygon = [
+                (
+                    values[offset] * image.width - pixel_box[0],
+                    values[offset + 1] * image.height - pixel_box[1],
+                )
+                for offset in range(0, len(values), 2)
+            ]
+            polygon_image = Image.new("L", crop.size, 0)
+            ImageDraw.Draw(polygon_image).polygon(polygon, fill=255)
+            explicit_mask = np.asarray(polygon_image, dtype=np.uint8) > 0
         if image_path not in image_hash_cache:
             image_hash_cache[image_path] = image_sha256(image_path)
         source_id = _stable_id(
@@ -476,6 +509,7 @@ def prepare_yolo_library(
                 box.x_center * image.width - pixel_box[0],
                 box.y_center * image.height - pixel_box[1],
             ),
+            explicit_mask,
         )
         if item:
             item["source_box_index"] = box_index
@@ -491,7 +525,7 @@ def prepare_yolo_library(
         assets,
         failures,
         {
-            "type": "yolo_detection",
+            "type": "yolo_detection_or_segmentation",
             "root": str(layout.root),
             "source_split": source_split,
             "max_assets_per_class": max_assets_per_class,
