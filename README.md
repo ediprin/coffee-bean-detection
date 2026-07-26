@@ -40,6 +40,12 @@ Preview scene high-count bergaya sampel 300 g dapat dibuka langsung di Colab:
 
 Notebook preview tersebut tidak menjalankan training.
 
+Untuk paket sharded `coffee-sni-instance-crop-v1` dengan 21 kelas, gunakan
+notebook berikut. Ia mempertahankan kelas normal sebagai mayoritas dan
+membandingkan komposisi sumber-empiris dengan defect-enriched:
+
+[![Open SNI Crop 300g Preview in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ediprin/coffee-bean-detection/blob/agent/add-vadcp-pipeline/notebooks/SNI_Crop_300g_Preview_Colab.ipynb)
+
 ## Baseline aktif
 
 - `D0`: YOLO26n standar, tanpa HBP, attention, loss tambahan, atau modifikasi

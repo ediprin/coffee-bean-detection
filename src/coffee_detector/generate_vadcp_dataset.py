@@ -195,7 +195,7 @@ def composition_spec_for_preset(
 
 
 def generate_vadcp_dataset(
-    real_data_root: str | Path,
+    real_data_root: str | Path | None,
     object_library: str | Path,
     output_root: str | Path,
     *,
@@ -212,17 +212,32 @@ def generate_vadcp_dataset(
     use_shadows: bool = True,
     scene_profile: str | Path | SceneCalibration | None = None,
     preset: str = "default",
+    target_names: dict[int, str] | None = None,
 ) -> dict:
     if synthetic_images <= 0:
         raise ValueError("synthetic_images harus positif")
-    layout = discover_layout(real_data_root)
-    missing_splits = sorted({"train", "val", "test"} - set(layout.splits))
-    if missing_splits:
-        raise FileNotFoundError(
-            "Dataset nyata harus memiliki train/val/test: " + ", ".join(missing_splits)
-        )
+    layout = discover_layout(real_data_root) if real_data_root is not None else None
+    if layout is not None:
+        missing_splits = sorted({"train", "val", "test"} - set(layout.splits))
+        if missing_splits:
+            raise FileNotFoundError(
+                "Dataset nyata harus memiliki train/val/test: "
+                + ", ".join(missing_splits)
+            )
+        names = {int(index): name for index, name in layout.names.items()}
+    else:
+        if target_names is None:
+            raise ValueError("target_names wajib ketika real_data_root tidak diberikan")
+        if include_real_train or materialize_real_splits:
+            raise ValueError(
+                "Preview tanpa dataset nyata harus synthetic-only dan tidak "
+                "mematerialisasi split nyata"
+            )
+        names = {int(index): str(name) for index, name in target_names.items()}
+        if sorted(names) != list(range(len(names))):
+            raise ValueError("target_names harus memakai ID kontigu mulai dari 0")
     _, cutouts, library_info = load_object_library(object_library, train_only=True)
-    cutouts = _remap_cutouts(cutouts, layout.names)
+    cutouts = _remap_cutouts(cutouts, names)
     invalid_sources = sorted(
         {item.source_split for item in cutouts if item.source_split not in {"train", "unspecified"}}
     )
@@ -239,6 +254,10 @@ def generate_vadcp_dataset(
         calibration = load_scene_calibration(scene_profile_path)
     else:
         scene_profile_path = None
+        if layout is None:
+            raise ValueError(
+                "scene_profile wajib untuk preview tanpa dataset nyata"
+            )
         print("KALIBRASI REAL TRAIN: menghitung prior scene...", flush=True)
         calibration = build_scene_calibration(layout, split="train", seed=seed)
 
@@ -266,11 +285,16 @@ def generate_vadcp_dataset(
     output_root.mkdir(parents=True, exist_ok=True)
     real_counts = {}
     for split in ("train", "val", "test"):
-        if not materialize_real_splits or (split == "train" and not include_real_train):
+        if (
+            layout is None
+            or not materialize_real_splits
+            or (split == "train" and not include_real_train)
+        ):
             (output_root / split / "images").mkdir(parents=True, exist_ok=True)
             (output_root / split / "labels").mkdir(parents=True, exist_ok=True)
             real_counts[split] = 0
             continue
+        assert layout is not None
         image_root, label_root = layout.splits[split]
         real_counts[split] = _copy_real_split(
             image_root, label_root, output_root, split
@@ -450,17 +474,20 @@ def generate_vadcp_dataset(
                 flush=True,
             )
 
-    names = {int(index): name for index, name in layout.names.items()}
     metadata = {
         "info": {
             "format": "coffee_detector.vadcp.v2",
             "mode": mode,
             "preset": preset,
             "seed": seed,
-            "real_data_root": str(layout.root),
+            "real_data_root": str(layout.root) if layout is not None else None,
             "object_library": str(Path(object_library).expanduser().resolve()),
             "background_root": str(Path(background_root).expanduser().resolve()) if background_root else None,
-            "claim_scope": "Synthetic augmentation; validation and test remain real.",
+            "claim_scope": (
+                "Synthetic augmentation; validation and test remain real."
+                if layout is not None
+                else "Synthetic preview only; no real validation or test."
+            ),
             "generation_model": "physics-informed 2.5D projected packing",
         },
         "images": images,

@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
 import random
+import re
+import shutil
+import tarfile
 import time
-from collections import Counter
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -383,6 +388,258 @@ def prepare_classification_library(
             "skipped_by_split": dict(skipped_splits),
             "max_assets_per_class": max_assets_per_class,
             "seed": seed,
+        },
+    )
+
+
+def prepare_sni_crop_manifest_library(
+    dataset_root: str | Path,
+    output_root: str | Path,
+    *,
+    source_split: str = "train",
+    normal_class: str = "biji_normal",
+    max_normal_assets: int = 300,
+    max_defect_assets_per_class: int = 60,
+    mask_threshold: float = 24.0,
+    padding: int = 2,
+    minimum_fraction: float = 0.03,
+    maximum_fraction: float = 0.96,
+    seed: int = 42,
+    shard_cache_root: str | Path | None = None,
+) -> dict:
+    """Build a train-only cutout library from the sharded SNI crop package.
+
+    The crop package intentionally stores JPEG crops rather than alpha masks.
+    Foreground masks are therefore estimated and must pass the same boundary
+    checks as ordinary classification assets.  Selection is grouped by source
+    identity before filling any remaining capacity, reducing repeated views
+    from one parent scene.
+    """
+    dataset_root = Path(dataset_root).expanduser().resolve()
+    output_root = Path(output_root).expanduser().resolve()
+    source_split = SPLIT_NAMES.get(source_split.lower(), source_split.lower())
+    manifest_path = dataset_root / "manifest.csv"
+    shard_root = dataset_root / "shards"
+    complete_path = dataset_root / "complete.json"
+    if not manifest_path.is_file():
+        raise FileNotFoundError(f"Manifest crop tidak ditemukan: {manifest_path}")
+    if not shard_root.is_dir():
+        raise FileNotFoundError(f"Folder shard tidak ditemukan: {shard_root}")
+    if not complete_path.is_file():
+        raise FileNotFoundError(f"Marker complete tidak ditemukan: {complete_path}")
+    completion = json.loads(complete_path.read_text(encoding="utf-8"))
+    if completion.get("status") != "complete":
+        raise RuntimeError(f"Dataset crop belum lengkap: {complete_path}")
+    if max_normal_assets <= 0 or max_defect_assets_per_class <= 0:
+        raise ValueError("Batas aset per kelas harus positif")
+    if output_root.exists() and any(output_root.iterdir()):
+        raise FileExistsError(f"Output object library tidak kosong: {output_root}")
+    output_root.mkdir(parents=True, exist_ok=True)
+
+    required = {
+        "dataset",
+        "generated_split",
+        "image_id",
+        "source_identity",
+        "canonical_class",
+        "crop_sha256",
+        "crop_path",
+    }
+    rows_by_class: dict[str, list[dict[str, str]]] = defaultdict(list)
+    split_counts = Counter()
+    with manifest_path.open("r", encoding="utf-8-sig", newline="") as stream:
+        reader = csv.DictReader(stream)
+        missing = sorted(required - set(reader.fieldnames or ()))
+        if missing:
+            raise ValueError("Kolom manifest belum lengkap: " + ", ".join(missing))
+        for row in reader:
+            split = SPLIT_NAMES.get(
+                str(row["generated_split"]).strip().lower(),
+                str(row["generated_split"]).strip().lower(),
+            )
+            split_counts[split] += 1
+            if split == source_split:
+                rows_by_class[str(row["canonical_class"])].append(row)
+    if not rows_by_class:
+        raise RuntimeError(f"Manifest tidak memiliki crop split {source_split}")
+    if normal_class not in rows_by_class:
+        raise ValueError(f"Kelas normal tidak ditemukan: {normal_class}")
+
+    rng = random.Random(seed)
+    selected: list[dict[str, str]] = []
+    selected_by_class = Counter()
+    for class_name in sorted(rows_by_class):
+        capacity = (
+            max_normal_assets
+            if class_name == normal_class
+            else max_defect_assets_per_class
+        )
+        by_parent: dict[str, list[dict[str, str]]] = defaultdict(list)
+        for row in rows_by_class[class_name]:
+            by_parent[str(row["source_identity"])].append(row)
+        parent_ids = sorted(by_parent)
+        rng.shuffle(parent_ids)
+        class_rows: list[dict[str, str]] = []
+        for parent_id in parent_ids:
+            candidates = by_parent[parent_id]
+            class_rows.append(rng.choice(candidates))
+            if len(class_rows) >= capacity:
+                break
+        if len(class_rows) < capacity:
+            used_paths = {row["crop_path"] for row in class_rows}
+            remaining = [
+                row
+                for row in rows_by_class[class_name]
+                if row["crop_path"] not in used_paths
+            ]
+            rng.shuffle(remaining)
+            class_rows.extend(remaining[: capacity - len(class_rows)])
+        selected.extend(class_rows)
+        selected_by_class[class_name] = len(class_rows)
+
+    wanted = {str(row["crop_path"]): row for row in selected}
+    payloads: dict[str, bytes] = {}
+    shard_paths = sorted(shard_root.glob("*.tar"))
+    if not shard_paths:
+        raise FileNotFoundError(f"Shard TAR tidak ditemukan: {shard_root}")
+    shard_ranges = []
+    for shard_path in shard_paths:
+        match = re.fullmatch(
+            r"crop_shard_(\d+)_(\d+)\.tar", shard_path.name
+        )
+        if match is None:
+            raise ValueError(f"Nama shard tidak dikenal: {shard_path.name}")
+        shard_ranges.append((int(match.group(1)), int(match.group(2)), shard_path))
+    wanted_by_shard: dict[Path, set[str]] = defaultdict(set)
+    for crop_path, row in wanted.items():
+        try:
+            image_id = int(row["image_id"])
+        except (TypeError, ValueError) as error:
+            raise ValueError(f"image_id tidak valid untuk {crop_path}") from error
+        matched_shard = next(
+            (
+                shard_path
+                for first, last, shard_path in shard_ranges
+                if first <= image_id <= last
+            ),
+            None,
+        )
+        if matched_shard is None:
+            raise FileNotFoundError(
+                f"Shard untuk image_id={image_id} tidak ditemukan: {crop_path}"
+            )
+        wanted_by_shard[matched_shard].add(crop_path)
+    cache_root = (
+        Path(shard_cache_root).expanduser().resolve()
+        if shard_cache_root is not None
+        else None
+    )
+    if cache_root is not None:
+        cache_root.mkdir(parents=True, exist_ok=True)
+    print(
+        f"INDEX SNI CROP: {len(wanted)} crop train dipilih dari "
+        f"{len(wanted_by_shard)}/{len(shard_paths)} shard",
+        flush=True,
+    )
+    relevant_shards = sorted(wanted_by_shard)
+    for shard_index, source_shard in enumerate(relevant_shards, 1):
+        shard_path = source_shard
+        if cache_root is not None:
+            cached = cache_root / source_shard.name
+            if not cached.is_file() or cached.stat().st_size != source_shard.stat().st_size:
+                print(
+                    f"  cache shard {shard_index}/{len(relevant_shards)}: "
+                    f"{source_shard.name} ({source_shard.stat().st_size / 1e6:.1f} MB)",
+                    flush=True,
+                )
+                temporary = cached.with_suffix(cached.suffix + ".part")
+                shutil.copy2(source_shard, temporary)
+                temporary.replace(cached)
+            shard_path = cached
+        targets = wanted_by_shard[source_shard]
+        with tarfile.open(shard_path, "r") as archive:
+            for member in archive:
+                if (
+                    member.name not in targets
+                    or member.name in payloads
+                    or not member.isfile()
+                ):
+                    continue
+                extracted = archive.extractfile(member)
+                if extracted is not None:
+                    payloads[member.name] = extracted.read()
+        print(
+            f"  baca shard {shard_index}/{len(relevant_shards)} | "
+            f"crop ditemukan {len(payloads)}/{len(wanted)}",
+            flush=True,
+        )
+    missing_paths = sorted(set(wanted) - set(payloads))
+    if missing_paths:
+        raise FileNotFoundError(
+            f"{len(missing_paths)} crop terpilih tidak ditemukan dalam shard; "
+            f"contoh: {missing_paths[0]}"
+        )
+
+    assets: list[dict] = []
+    failures: list[str] = []
+    accepted_by_class = Counter()
+    for index, row in enumerate(selected, 1):
+        crop_path = str(row["crop_path"])
+        class_name = str(row["canonical_class"])
+        try:
+            with Image.open(io.BytesIO(payloads[crop_path])) as source_image:
+                image = source_image.convert("RGBA")
+        except OSError as error:
+            failures.append(f"{crop_path}: {error}")
+            continue
+        item, failure = _write_asset(
+            output_root,
+            class_name,
+            str(row["crop_sha256"]),
+            source_split,
+            Path(crop_path),
+            image,
+            mask_threshold,
+            padding,
+            minimum_fraction,
+            maximum_fraction,
+        )
+        if item:
+            item["source_parent_id"] = str(row["source_identity"])
+            item["source_dataset"] = str(row["dataset"])
+            assets.append(item)
+            accepted_by_class[class_name] += 1
+        if failure:
+            failures.append(failure)
+        if index % 100 == 0 or index == len(selected):
+            print(
+                f"  mask crop: {index}/{len(selected)} | valid={len(assets)}",
+                flush=True,
+            )
+    return _finalize_library(
+        output_root,
+        assets,
+        failures,
+        {
+            "type": "sni_crop_manifest",
+            "root": str(dataset_root),
+            "manifest": str(manifest_path),
+            "source_split": source_split,
+            "normal_class": normal_class,
+            "selected_by_class": dict(sorted(selected_by_class.items())),
+            "accepted_by_class_before_dedup": dict(
+                sorted(accepted_by_class.items())
+            ),
+            "split_counts": dict(sorted(split_counts.items())),
+            "max_normal_assets": max_normal_assets,
+            "max_defect_assets_per_class": max_defect_assets_per_class,
+            "relevant_shards": len(relevant_shards),
+            "shard_cache_root": str(cache_root) if cache_root is not None else None,
+            "seed": seed,
+            "mask_provenance": (
+                "estimated from stored JPEG crop; original polygon/alpha is "
+                "not present in crop package"
+            ),
         },
     )
 

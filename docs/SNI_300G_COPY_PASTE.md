@@ -46,3 +46,31 @@ Copy-paste ini adalah augmentasi terkontrol, bukan pengganti data nyata. Keputus
 akhir tetap harus memakai validation/test foto sampel 300 g nyata yang tidak
 berasal dari cutout train. Preview harus ditolak bila skala, tepi cutout, bayangan,
 warna, atau kepadatan terlihat tidak realistis.
+
+## Paket `coffee-sni-instance-crop-v1`
+
+Paket ini menyediakan 31.074 crop dalam 21 kelas dan split berbasis identitas.
+Crop disimpan sebagai JPEG tanpa alpha/polygon, sehingga tidak boleh langsung
+ditempel sebagai kotak. Adapter khusus:
+
+- hanya memilih `generated_split=train`;
+- membatasi pengambilan dari satu `source_identity`;
+- membaca sampel langsung dari 37 shard tanpa mengekstrak semuanya;
+- mengestimasi foreground mask dan menolak objek yang menyentuh tepi crop;
+- menyimpan parent identity untuk mengurangi pengulangan aset saudara dalam
+  satu scene.
+
+Preview membandingkan dua kebijakan komposisi:
+
+| Policy | Komposisi |
+|---|---|
+| `source_empirical` | Frekuensi train paket crop; normal 12.681/21.273 = 59,61% |
+| `defect_enriched` | Normal tetap dominan 55%; cacat mengikuti proporsi kondisional train |
+
+`source_empirical` bukan estimasi prevalensi dunia nyata. `defect_enriched`
+adalah augmentasi training terkontrol. Validation/test final harus berupa scene
+nyata dengan komposisi alami.
+
+Notebook Colab train-free:
+
+[![Open SNI Crop 300g Preview in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ediprin/coffee-bean-detection/blob/agent/add-vadcp-pipeline/notebooks/SNI_Crop_300g_Preview_Colab.ipynb)
