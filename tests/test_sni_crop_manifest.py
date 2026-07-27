@@ -16,6 +16,7 @@ def _write_crop_package(root: Path) -> None:
     payloads = {}
     sample_id = 0
     for split, count in (("train", 8), ("val", 2), ("test", 2)):
+        archive_image_id = 0
         for class_name, color in (
             ("biji_normal", (130, 100, 55)),
             ("biji_hitam", (40, 30, 25)),
@@ -41,10 +42,9 @@ def _write_crop_package(root: Path) -> None:
                 rows.append(
                     {
                         "dataset": "fixture",
+                        "archive_split": split,
                         "generated_split": split,
-                        # Production manifest IDs are zero-based, whereas
-                        # shard filenames use one-based ordinal ranges.
-                        "image_id": str(sample_id - 1),
+                        "image_id": str(archive_image_id),
                         "source_identity": f"{split}-{class_name}-{index}",
                         "canonical_class": class_name,
                         "bbox_width": "36",
@@ -53,10 +53,28 @@ def _write_crop_package(root: Path) -> None:
                         "crop_path": crop_path,
                     }
                 )
+                archive_image_id += 1
     root.mkdir(parents=True)
     (root / "shards").mkdir()
     (root / "complete.json").write_text(
         json.dumps({"status": "complete"}), encoding="utf-8"
+    )
+    (root / "audit.json").write_text(
+        json.dumps(
+            {
+                "source_audits": {
+                    "fixture": {
+                        "images": 24,
+                        "archive_counts": {
+                            "train": {"images": 16},
+                            "val": {"images": 4},
+                            "test": {"images": 4},
+                        },
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
     )
     with (root / "manifest.csv").open(
         "w", encoding="utf-8", newline=""
@@ -99,6 +117,85 @@ def test_sni_crop_library_is_train_only_and_parent_aware(tmp_path: Path) -> None
         "train": 16,
         "val": 4,
     }
+
+
+def test_sni_crop_shards_use_global_dataset_offsets(tmp_path: Path) -> None:
+    source = tmp_path / "multi-dataset-crops"
+    output = tmp_path / "library"
+    (source / "shards").mkdir(parents=True)
+    (source / "complete.json").write_text(
+        json.dumps({"status": "complete"}), encoding="utf-8"
+    )
+    (source / "audit.json").write_text(
+        json.dumps(
+            {
+                "source_audits": {
+                    "dataset_a": {
+                        "images": 1,
+                        "archive_counts": {"train": {"images": 1}},
+                    },
+                    "dataset_b": {
+                        "images": 1,
+                        "archive_counts": {"train": {"images": 1}},
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    rows = []
+    for ordinal, (dataset, class_name, color) in enumerate(
+        (
+            ("dataset_a", "biji_normal", (130, 100, 55)),
+            ("dataset_b", "biji_hitam", (35, 30, 25)),
+        ),
+        1,
+    ):
+        crop_path = f"source/train/{class_name}/{dataset}__train__0000000.jpg"
+        image = Image.new("RGB", (64, 64), (238, 235, 230))
+        ImageDraw.Draw(image).ellipse((14, 20, 50, 44), fill=color)
+        buffer = io.BytesIO()
+        image.save(buffer, format="JPEG", quality=95)
+        with tarfile.open(
+            source / "shards" / f"crop_shard_{ordinal:05d}_{ordinal:05d}.tar",
+            "w",
+        ) as archive:
+            info = tarfile.TarInfo(crop_path)
+            info.size = len(buffer.getvalue())
+            archive.addfile(info, io.BytesIO(buffer.getvalue()))
+        rows.append(
+            {
+                "dataset": dataset,
+                "archive_split": "train",
+                "generated_split": "train",
+                "image_id": "0",
+                "source_identity": f"{dataset}-source",
+                "canonical_class": class_name,
+                "bbox_width": "36",
+                "bbox_height": "24",
+                "crop_sha256": f"{dataset}-digest",
+                "crop_path": crop_path,
+            }
+        )
+    with (source / "manifest.csv").open(
+        "w", encoding="utf-8", newline=""
+    ) as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+    result = prepare_sni_crop_manifest_library(
+        source,
+        output,
+        max_normal_assets=1,
+        max_defect_assets_per_class=1,
+    )
+
+    assert result["audit"]["assets_by_class"] == {
+        "biji_hitam": 1,
+        "biji_normal": 1,
+    }
+    assert result["source"]["global_source_images"] == 2
 
 
 def test_sni_crop_composition_keeps_normal_dominant(tmp_path: Path) -> None:

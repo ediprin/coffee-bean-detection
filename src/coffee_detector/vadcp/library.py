@@ -28,6 +28,8 @@ from ..dataset import (
 from .masks import (
     crop_to_mask,
     estimate_foreground_mask,
+    fill_holes,
+    largest_component,
     mask_bbox,
     principal_mask_geometry,
 )
@@ -180,6 +182,7 @@ def _write_asset(
     maximum_fraction: float,
     preferred_center: tuple[float, float] | None = None,
     explicit_mask: np.ndarray | None = None,
+    border_trim_fraction: float = 0.0,
 ) -> tuple[dict | None, str | None]:
     try:
         mask = (
@@ -193,6 +196,19 @@ def _write_asset(
         )
         if mask.shape != (image.height, image.width):
             raise ValueError("Ukuran explicit mask tidak sama dengan crop")
+        if explicit_mask is None and border_trim_fraction > 0:
+            trim = max(
+                1,
+                int(round(min(image.width, image.height) * border_trim_fraction)),
+            )
+            mask = mask.copy()
+            mask[:trim] = False
+            mask[-trim:] = False
+            mask[:, :trim] = False
+            mask[:, -trim:] = False
+            mask = fill_holes(
+                largest_component(mask, preferred_point=preferred_center)
+            )
         fraction = float(mask.mean())
         if not (minimum_fraction <= fraction <= maximum_fraction):
             raise ValueError(
@@ -400,6 +416,7 @@ def prepare_sni_crop_manifest_library(
     normal_class: str = "biji_normal",
     max_normal_assets: int = 300,
     max_defect_assets_per_class: int = 60,
+    candidate_multiplier: int = 1,
     mask_threshold: float = 24.0,
     padding: int = 2,
     minimum_fraction: float = 0.03,
@@ -421,23 +438,29 @@ def prepare_sni_crop_manifest_library(
     manifest_path = dataset_root / "manifest.csv"
     shard_root = dataset_root / "shards"
     complete_path = dataset_root / "complete.json"
+    audit_path = dataset_root / "audit.json"
     if not manifest_path.is_file():
         raise FileNotFoundError(f"Manifest crop tidak ditemukan: {manifest_path}")
     if not shard_root.is_dir():
         raise FileNotFoundError(f"Folder shard tidak ditemukan: {shard_root}")
     if not complete_path.is_file():
         raise FileNotFoundError(f"Marker complete tidak ditemukan: {complete_path}")
+    if not audit_path.is_file():
+        raise FileNotFoundError(f"Audit dataset tidak ditemukan: {audit_path}")
     completion = json.loads(complete_path.read_text(encoding="utf-8"))
     if completion.get("status") != "complete":
         raise RuntimeError(f"Dataset crop belum lengkap: {complete_path}")
     if max_normal_assets <= 0 or max_defect_assets_per_class <= 0:
         raise ValueError("Batas aset per kelas harus positif")
+    if candidate_multiplier <= 0:
+        raise ValueError("candidate_multiplier harus positif")
     if output_root.exists() and any(output_root.iterdir()):
         raise FileExistsError(f"Output object library tidak kosong: {output_root}")
     output_root.mkdir(parents=True, exist_ok=True)
 
     required = {
         "dataset",
+        "archive_split",
         "generated_split",
         "image_id",
         "source_identity",
@@ -465,6 +488,34 @@ def prepare_sni_crop_manifest_library(
     if normal_class not in rows_by_class:
         raise ValueError(f"Kelas normal tidak ditemukan: {normal_class}")
 
+    audit_payload = json.loads(audit_path.read_text(encoding="utf-8"))
+    source_audits = audit_payload.get("source_audits")
+    if not isinstance(source_audits, dict) or not source_audits:
+        raise ValueError(f"source_audits tidak tersedia: {audit_path}")
+    archive_offsets: dict[tuple[str, str], tuple[int, int]] = {}
+    global_offset = 0
+    for dataset_name, source_audit in source_audits.items():
+        archive_counts = source_audit.get("archive_counts", {})
+        if not isinstance(archive_counts, dict) or not archive_counts:
+            raise ValueError(
+                f"archive_counts tidak tersedia untuk {dataset_name}"
+            )
+        dataset_images = 0
+        for archive_split, split_audit in archive_counts.items():
+            split_images = int(split_audit["images"])
+            archive_offsets[(str(dataset_name), str(archive_split))] = (
+                global_offset + dataset_images,
+                split_images,
+            )
+            dataset_images += split_images
+        declared_images = int(source_audit.get("images", dataset_images))
+        if declared_images != dataset_images:
+            raise ValueError(
+                f"Jumlah image {dataset_name} tidak konsisten: "
+                f"{declared_images} vs {dataset_images}"
+            )
+        global_offset += dataset_images
+
     rng = random.Random(seed)
     selected: list[dict[str, str]] = []
     selected_by_class = Counter()
@@ -474,6 +525,7 @@ def prepare_sni_crop_manifest_library(
             if class_name == normal_class
             else max_defect_assets_per_class
         )
+        candidate_capacity = capacity * candidate_multiplier
         by_parent: dict[str, list[dict[str, str]]] = defaultdict(list)
         for row in rows_by_class[class_name]:
             by_parent[str(row["source_identity"])].append(row)
@@ -483,9 +535,9 @@ def prepare_sni_crop_manifest_library(
         for parent_id in parent_ids:
             candidates = by_parent[parent_id]
             class_rows.append(rng.choice(candidates))
-            if len(class_rows) >= capacity:
+            if len(class_rows) >= candidate_capacity:
                 break
-        if len(class_rows) < capacity:
+        if len(class_rows) < candidate_capacity:
             used_paths = {row["crop_path"] for row in class_rows}
             remaining = [
                 row
@@ -493,7 +545,7 @@ def prepare_sni_crop_manifest_library(
                 if row["crop_path"] not in used_paths
             ]
             rng.shuffle(remaining)
-            class_rows.extend(remaining[: capacity - len(class_rows)])
+            class_rows.extend(remaining[: candidate_capacity - len(class_rows)])
         selected.extend(class_rows)
         selected_by_class[class_name] = len(class_rows)
 
@@ -516,9 +568,21 @@ def prepare_sni_crop_manifest_library(
             image_id = int(row["image_id"])
         except (TypeError, ValueError) as error:
             raise ValueError(f"image_id tidak valid untuk {crop_path}") from error
-        # Manifest uses zero-based image_id, while shard names encode the
-        # one-based ordinal range: image_id 0 belongs to shard 00001_00250.
-        shard_ordinal = image_id + 1
+        archive_key = (str(row["dataset"]), str(row["archive_split"]))
+        archive_position = archive_offsets.get(archive_key)
+        if archive_position is None:
+            raise ValueError(
+                f"Dataset/archive_split tidak ada dalam audit: {archive_key}"
+            )
+        archive_offset, archive_images = archive_position
+        if not 0 <= image_id < archive_images:
+            raise ValueError(
+                f"image_id={image_id} di luar rentang {archive_key}: "
+                f"0-{archive_images - 1}"
+            )
+        # Shard ranges use a one-based global source-image ordinal. COCO
+        # image_id restarts from zero for every dataset/archive split.
+        shard_ordinal = archive_offset + image_id + 1
         matched_shard = next(
             (
                 shard_path
@@ -590,6 +654,13 @@ def prepare_sni_crop_manifest_library(
     for index, row in enumerate(selected, 1):
         crop_path = str(row["crop_path"])
         class_name = str(row["canonical_class"])
+        target_assets = (
+            max_normal_assets
+            if class_name == normal_class
+            else max_defect_assets_per_class
+        )
+        if accepted_by_class[class_name] >= target_assets:
+            continue
         try:
             with Image.open(io.BytesIO(payloads[crop_path])) as source_image:
                 image = source_image.convert("RGBA")
@@ -607,6 +678,9 @@ def prepare_sni_crop_manifest_library(
             padding,
             minimum_fraction,
             maximum_fraction,
+            (image.width / 2.0, image.height / 2.0),
+            None,
+            0.03,
         )
         if item:
             item["source_parent_id"] = str(row["source_identity"])
@@ -637,7 +711,9 @@ def prepare_sni_crop_manifest_library(
             "split_counts": dict(sorted(split_counts.items())),
             "max_normal_assets": max_normal_assets,
             "max_defect_assets_per_class": max_defect_assets_per_class,
+            "candidate_multiplier": candidate_multiplier,
             "relevant_shards": len(relevant_shards),
+            "global_source_images": global_offset,
             "shard_cache_root": str(cache_root) if cache_root is not None else None,
             "seed": seed,
             "mask_provenance": (

@@ -52,6 +52,7 @@ def main() -> None:
             normal_class=args.normal_class,
             max_normal_assets=args.max_normal_assets,
             max_defect_assets_per_class=args.max_defect_assets_per_class,
+            candidate_multiplier=args.candidate_multiplier,
             mask_threshold=args.mask_threshold,
             padding=args.padding,
             seed=args.seed,

@@ -25,8 +25,8 @@ def run_sni_crop_preview(
     objects_max: int = 300,
     canvas_size: int = 1024,
     enriched_normal_fraction: float = 0.55,
-    max_normal_assets: int = 300,
-    max_defect_assets_per_class: int = 60,
+    max_normal_assets: int = 220,
+    max_defect_assets_per_class: int = 25,
     shard_cache_root: str | Path | None = None,
 ) -> dict:
     """Generate four visual-only SNI composition arms from sharded crop data."""
@@ -190,8 +190,8 @@ def main() -> None:
     parser.add_argument("--objects-max", type=int, default=300)
     parser.add_argument("--canvas-size", type=int, default=1024)
     parser.add_argument("--enriched-normal-fraction", type=float, default=0.55)
-    parser.add_argument("--max-normal-assets", type=int, default=300)
-    parser.add_argument("--max-defect-assets-per-class", type=int, default=60)
+    parser.add_argument("--max-normal-assets", type=int, default=220)
+    parser.add_argument("--max-defect-assets-per-class", type=int, default=25)
     parser.add_argument("--shard-cache-root")
     args = parser.parse_args()
     run_sni_crop_preview(
