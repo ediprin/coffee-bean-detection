@@ -231,6 +231,36 @@ def test_foreground_mask_and_matte_do_not_retain_white_rim() -> None:
     assert int(pixels[:, :, :3][positive_alpha].max()) < 160
 
 
+def test_spatial_background_model_removes_coloured_cast_halo() -> None:
+    width, height = 100, 80
+    pixels = np.empty((height, width, 3), dtype=np.uint8)
+    pixels[:, : width // 2] = (242, 240, 240)
+    pixels[:, width // 2 :] = (242, 155, 185)
+    image = Image.fromarray(pixels, mode="RGB")
+    ImageDraw.Draw(image).ellipse((28, 18, 76, 62), fill=(105, 70, 38))
+
+    median_mask = estimate_foreground_mask(
+        image,
+        threshold=40,
+        preferred_point=(width / 2, height / 2),
+    )
+    spatial_mask = estimate_foreground_mask(
+        image,
+        threshold=40,
+        preferred_point=(width / 2, height / 2),
+        background_model="spatial_prototypes",
+    )
+
+    median_box = mask_bbox(median_mask)
+    spatial_box = mask_bbox(spatial_mask)
+    assert median_box is not None
+    assert spatial_box is not None
+    assert median_box[2] > 60
+    assert spatial_box[2] < 55
+    assert spatial_box[3] < 55
+    assert spatial_mask.sum() < median_mask.sum() * 0.70
+
+
 def test_calibrated_rotation_matches_signed_bbox_ratio() -> None:
     mask = np.zeros((64, 96), dtype=bool)
     yy, xx = np.ogrid[:64, :96]

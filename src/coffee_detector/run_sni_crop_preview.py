@@ -53,6 +53,16 @@ def run_sni_crop_preview(
             seed=seed,
             shard_cache_root=shard_cache_root,
         )
+    library_payload = json.loads(library_manifest.read_text(encoding="utf-8"))
+    mask_config = library_payload.get("source", {}).get("mask_config", {})
+    if (
+        mask_config.get("background_model") != "spatial_prototypes"
+        or mask_config.get("distance_threshold") != 40.0
+    ):
+        raise RuntimeError(
+            "Object library memakai pipeline mask lama/tidak dikenal. "
+            "Gunakan output-root baru agar cutout dibuat ulang."
+        )
 
     print("[2/6] Membuat audit visual tepi cutout...", flush=True)
     cutout_audit = run_cutout_visual_audit(
@@ -131,7 +141,7 @@ def run_sni_crop_preview(
         }
 
     summary = {
-        "format": "coffee_detector.sni_crop_preview.v1",
+        "format": "coffee_detector.sni_crop_preview.v2",
         "training_executed": False,
         "crop_dataset_root": str(Path(crop_dataset_root).expanduser().resolve()),
         "object_library": str(library_root),
@@ -146,6 +156,7 @@ def run_sni_crop_preview(
             "prevalensi populasi 300 g. defect_enriched adalah augmentasi "
             "training terkontrol; val/test final harus nyata."
         ),
+        "mask_config": mask_config,
         "policies": policies,
         "compositions": compositions,
         "cutout_contact_sheet": cutout_audit["contact_sheet"],

@@ -7,6 +7,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 from coffee_detector.generate_vadcp_dataset import generate_vadcp_dataset
+from coffee_detector.run_sni_crop_preview import run_sni_crop_preview
 from coffee_detector.sni_crop_manifest import build_sni_crop_calibration
 from coffee_detector.vadcp.library import prepare_sni_crop_manifest_library
 
@@ -112,6 +113,16 @@ def test_sni_crop_library_is_train_only_and_parent_aware(tmp_path: Path) -> None
         item["mask_source"] == "estimated_foreground"
         for item in result["assets"]
     )
+    assert all(
+        item["mask_background_model"] == "spatial_prototypes"
+        for item in result["assets"]
+    )
+    assert result["source"]["mask_config"] == {
+        "background_model": "spatial_prototypes",
+        "distance_threshold": 40.0,
+        "border_trim_fraction": 0.03,
+        "matte": "inward_feathered_premultiplied",
+    }
     assert result["source"]["split_counts"] == {
         "test": 4,
         "train": 16,
@@ -265,3 +276,32 @@ def test_synthetic_preview_can_run_without_real_detection_dataset(
     assert manifest["real_images"] == {"train": 0, "val": 0, "test": 0}
     assert sum(manifest["instances_by_class"].values()) == 8
     assert (output / "train" / "images" / "naive_seed5_000000.jpg").is_file()
+
+
+def test_sni_crop_preview_records_locked_mask_pipeline(tmp_path: Path) -> None:
+    source = tmp_path / "crop-package"
+    output = tmp_path / "preview"
+    _write_crop_package(source)
+
+    summary = run_sni_crop_preview(
+        source,
+        output,
+        images=1,
+        seed=5,
+        objects_min=8,
+        objects_max=8,
+        canvas_size=256,
+        enriched_normal_fraction=0.60,
+        max_normal_assets=4,
+        max_defect_assets_per_class=4,
+    )
+
+    assert summary["format"] == "coffee_detector.sni_crop_preview.v2"
+    assert summary["mask_config"] == {
+        "background_model": "spatial_prototypes",
+        "distance_threshold": 40.0,
+        "border_trim_fraction": 0.03,
+        "matte": "inward_feathered_premultiplied",
+    }
+    assert summary["training_executed"] is False
+    assert Path(summary["cutout_contact_sheet"]).is_file()

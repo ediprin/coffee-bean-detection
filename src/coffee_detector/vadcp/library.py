@@ -183,6 +183,7 @@ def _write_asset(
     preferred_center: tuple[float, float] | None = None,
     explicit_mask: np.ndarray | None = None,
     border_trim_fraction: float = 0.0,
+    background_model: str = "median",
 ) -> tuple[dict | None, str | None]:
     try:
         mask = (
@@ -192,6 +193,7 @@ def _write_asset(
                 image,
                 threshold=mask_threshold,
                 preferred_point=preferred_center,
+                background_model=background_model,
             )
         )
         if mask.shape != (image.height, image.width):
@@ -266,6 +268,9 @@ def _write_asset(
                 "intrinsic_aspect_ratio": intrinsic_aspect_ratio,
                 "sha256_rgba": asset_digest,
                 "mask_source": "segmentation_polygon" if explicit_mask is not None else "estimated_foreground",
+                "mask_background_model": (
+                    None if explicit_mask is not None else background_model
+                ),
             },
             None,
         )
@@ -417,7 +422,7 @@ def prepare_sni_crop_manifest_library(
     max_normal_assets: int = 300,
     max_defect_assets_per_class: int = 60,
     candidate_multiplier: int = 1,
-    mask_threshold: float = 24.0,
+    mask_threshold: float = 40.0,
     padding: int = 2,
     minimum_fraction: float = 0.03,
     maximum_fraction: float = 0.96,
@@ -678,9 +683,10 @@ def prepare_sni_crop_manifest_library(
             padding,
             minimum_fraction,
             maximum_fraction,
-            (image.width / 2.0, image.height / 2.0),
-            None,
-            0.03,
+            preferred_center=(image.width / 2.0, image.height / 2.0),
+            explicit_mask=None,
+            border_trim_fraction=0.03,
+            background_model="spatial_prototypes",
         )
         if item:
             item["source_parent_id"] = str(row["source_identity"])
@@ -717,9 +723,16 @@ def prepare_sni_crop_manifest_library(
             "shard_cache_root": str(cache_root) if cache_root is not None else None,
             "seed": seed,
             "mask_provenance": (
-                "estimated from stored JPEG crop; original polygon/alpha is "
-                "not present in crop package"
+                "estimated from stored JPEG crop with spatial border "
+                f"prototypes and RGB distance threshold {mask_threshold:g}; "
+                "original polygon/alpha is not present in crop package"
             ),
+            "mask_config": {
+                "background_model": "spatial_prototypes",
+                "distance_threshold": float(mask_threshold),
+                "border_trim_fraction": 0.03,
+                "matte": "inward_feathered_premultiplied",
+            },
         },
     )
 

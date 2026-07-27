@@ -100,6 +100,7 @@ def estimate_foreground_mask(
     threshold: float = 24.0,
     border_fraction: float = 0.06,
     preferred_point: tuple[float, float] | None = None,
+    background_model: str = "median",
 ) -> np.ndarray:
     """Estimate a bean mask from a mostly uniform border background.
 
@@ -123,8 +124,39 @@ def estimate_foreground_mask(
             ],
             axis=0,
         )
-        background = np.median(pixels, axis=0)
-        distance = np.sqrt(np.sum((rgb - background) ** 2, axis=2))
+        if background_model == "median":
+            prototypes = np.median(pixels, axis=0, keepdims=True)
+        elif background_model == "spatial_prototypes":
+            # Crop backgrounds are often illuminated unevenly or carry a
+            # coloured cast shadow. A single global median then treats one
+            # side of the table as foreground and connects that halo to the
+            # bean. Robust medians from spatial border segments represent the
+            # smooth background variation without learning from the central
+            # object itself.
+            prototypes = []
+            horizontal_edges = (rgb[:border], rgb[-border:])
+            vertical_edges = (rgb[:, :border], rgb[:, -border:])
+            x_edges = np.linspace(0, width, 5, dtype=int)
+            y_edges = np.linspace(0, height, 5, dtype=int)
+            for strip in horizontal_edges:
+                for left, right in zip(x_edges[:-1], x_edges[1:]):
+                    segment = strip[:, left:right].reshape(-1, 3)
+                    if len(segment):
+                        prototypes.append(np.median(segment, axis=0))
+            for strip in vertical_edges:
+                for top, bottom in zip(y_edges[:-1], y_edges[1:]):
+                    segment = strip[top:bottom].reshape(-1, 3)
+                    if len(segment):
+                        prototypes.append(np.median(segment, axis=0))
+            prototypes = np.asarray(prototypes, dtype=np.float32)
+        else:
+            raise ValueError(f"Model background tidak dikenal: {background_model}")
+
+        squared_distance = np.full((height, width), np.inf, dtype=np.float32)
+        for prototype in prototypes:
+            candidate = np.sum((rgb - prototype) ** 2, axis=2)
+            np.minimum(squared_distance, candidate, out=squared_distance)
+        distance = np.sqrt(squared_distance)
         mask = distance >= float(threshold)
 
     # A neutral 3x3 close suppresses isolated dust without expanding the
