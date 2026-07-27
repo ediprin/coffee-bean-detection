@@ -42,7 +42,9 @@ def _write_crop_package(root: Path) -> None:
                     {
                         "dataset": "fixture",
                         "generated_split": split,
-                        "image_id": str(sample_id),
+                        # Production manifest IDs are zero-based, whereas
+                        # shard filenames use one-based ordinal ranges.
+                        "image_id": str(sample_id - 1),
                         "source_identity": f"{split}-{class_name}-{index}",
                         "canonical_class": class_name,
                         "bbox_width": "36",

@@ -516,17 +516,21 @@ def prepare_sni_crop_manifest_library(
             image_id = int(row["image_id"])
         except (TypeError, ValueError) as error:
             raise ValueError(f"image_id tidak valid untuk {crop_path}") from error
+        # Manifest uses zero-based image_id, while shard names encode the
+        # one-based ordinal range: image_id 0 belongs to shard 00001_00250.
+        shard_ordinal = image_id + 1
         matched_shard = next(
             (
                 shard_path
                 for first, last, shard_path in shard_ranges
-                if first <= image_id <= last
+                if first <= shard_ordinal <= last
             ),
             None,
         )
         if matched_shard is None:
             raise FileNotFoundError(
-                f"Shard untuk image_id={image_id} tidak ditemukan: {crop_path}"
+                f"Shard untuk image_id={image_id} "
+                f"(ordinal={shard_ordinal}) tidak ditemukan: {crop_path}"
             )
         wanted_by_shard[matched_shard].add(crop_path)
     cache_root = (
