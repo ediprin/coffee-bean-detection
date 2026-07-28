@@ -29,6 +29,8 @@ def test_pilot_notebook_locks_protocol_and_test() -> None:
     _, source = _load_notebook()
     assert "profile='pilot'" in source
     assert "RUN_TRAINING = False" in source
+    assert "if 'pilot' not in globals()" in source
+    assert "sni21-colab-pilot-summary.json" in source
     assert "seeds=(42,)" in source
     assert "evaluation_split='val'" in source
     assert "open_test=False" in source
