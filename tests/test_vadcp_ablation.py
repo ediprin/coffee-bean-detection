@@ -5,7 +5,10 @@ import pytest
 import yaml
 from PIL import Image
 
-from coffee_detector.run_vadcp_ablation import build_combined_training_view
+from coffee_detector.run_vadcp_ablation import (
+    build_combined_training_view,
+    run_vadcp_ablation,
+)
 
 
 def _write_arm(root: Path, *, synthetic: bool, names: dict[int, str] | None = None) -> None:
@@ -79,3 +82,13 @@ def test_combined_training_view_rejects_synthetic_with_real_train(tmp_path: Path
 
     with pytest.raises(RuntimeError, match="menduplikasi A0"):
         build_combined_training_view("A1", real, synthetic, tmp_path / "results")
+
+
+def test_vadcp_screening_locks_test_before_dataset_access(tmp_path: Path) -> None:
+    with pytest.raises(RuntimeError, match="Test terkunci"):
+        run_vadcp_ablation(
+            {"A0": tmp_path / "dataset-does-not-exist"},
+            tmp_path / "results",
+            evaluation_split="test",
+            open_test=False,
+        )

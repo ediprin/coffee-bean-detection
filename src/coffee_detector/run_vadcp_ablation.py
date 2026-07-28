@@ -152,7 +152,16 @@ def run_vadcp_ablation(
     hf_repo_id: str | None = None,
     hf_path_prefix: str = "vadcp-ablation-screen-v10",
     hf_private: bool = True,
+    evaluation_split: str = "val",
+    open_test: bool = False,
 ) -> dict:
+    if evaluation_split not in {"val", "test"}:
+        raise ValueError("evaluation_split harus val atau test")
+    if evaluation_split == "test" and not open_test:
+        raise RuntimeError(
+            "Test terkunci. Screening wajib memakai validation; "
+            "gunakan --open-test hanya setelah protokol membuka test."
+        )
     if "A0" not in arms:
         raise ValueError("Arm A0 real-only wajib sebagai baseline")
     if not seeds:
@@ -187,11 +196,11 @@ def run_vadcp_ablation(
             path = _audit_arm(code, data_root, reports)
         audit_paths[code] = str(path)
 
-    real_test_root = resolved_arms["A0"]
-    training_roots = {"A0": real_test_root}
+    real_evaluation_root = resolved_arms["A0"]
+    training_roots = {"A0": real_evaluation_root}
     for code in sorted(set(resolved_arms) - {"A0"}):
         training_roots[code] = build_combined_training_view(
-            code, real_test_root, resolved_arms[code], output_root
+            code, real_evaluation_root, resolved_arms[code], output_root
         )
     runs: dict[str, dict[str, dict]] = defaultdict(dict)
 
@@ -225,28 +234,32 @@ def run_vadcp_ablation(
             checkpoint = run_dir / "weights" / "best.pt"
             if not checkpoint.is_file():
                 raise FileNotFoundError(f"best.pt tidak ditemukan: {checkpoint}")
-            evaluation_path = reports / f"{code}_seed{seed}_test.json"
+            evaluation_path = (
+                reports / f"{code}_seed{seed}_{evaluation_split}.json"
+            )
             evaluation = evaluate(
                 checkpoint,
-                real_test_root,
+                real_evaluation_root,
                 evaluation_path,
-                split="test",
+                split=evaluation_split,
                 device=device,
             )
             count_payload = None
             if count_audit:
                 count_payload = run_visual_audit(
                     checkpoint,
-                    real_test_root,
+                    real_evaluation_root,
                     output_root / "count_audit" / f"{code}_seed{seed}",
                     samples=0,
                     seed=seed,
                     device=device,
                     confidence=count_confidence,
+                    split=evaluation_split,
                 )
             runs[code][str(seed)] = {
                 "data_root": str(data_root),
-                "evaluation_data_root": str(real_test_root),
+                "evaluation_data_root": str(real_evaluation_root),
+                "evaluation_split": evaluation_split,
                 "config": str(config_path),
                 "checkpoint": str(checkpoint),
                 "evaluation": str(evaluation_path),
@@ -327,6 +340,8 @@ def run_vadcp_ablation(
         },
         "audits": audit_paths,
         "seeds": list(seeds),
+        "evaluation_split": evaluation_split,
+        "test_opened": evaluation_split == "test" and open_test,
         "runs": dict(runs),
         "aggregate": aggregate,
         "comparisons": comparisons,
@@ -372,6 +387,17 @@ def main() -> None:
     parser.add_argument("--no-resume", action="store_true")
     parser.add_argument("--skip-count-audit", action="store_true")
     parser.add_argument("--count-confidence", type=float, default=0.25)
+    parser.add_argument(
+        "--evaluation-split",
+        choices=("val", "test"),
+        default="val",
+        help="Screening default memakai validation.",
+    )
+    parser.add_argument(
+        "--open-test",
+        action="store_true",
+        help="Buka test hanya setelah protokol final mengizinkan.",
+    )
     parser.add_argument("--hf-repo-id")
     parser.add_argument(
         "--hf-path-prefix", default="vadcp-ablation-screen-v10"
@@ -403,6 +429,8 @@ def main() -> None:
         hf_repo_id=args.hf_repo_id,
         hf_path_prefix=args.hf_path_prefix,
         hf_private=not args.hf_public,
+        evaluation_split=args.evaluation_split,
+        open_test=args.open_test,
     )
     print("\n=== VA-DCP ABLATION ===")
     for code, metrics in result["aggregate"].items():

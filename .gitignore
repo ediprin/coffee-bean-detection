@@ -7,3 +7,8 @@ __pycache__/
 .pytest_cache/
 .venv/
 *.egg-info/
+
+
+docs/*.pdf
+docs/*.xlsx
+/tmp/
