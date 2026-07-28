@@ -13,6 +13,7 @@ from .run_sni21_vadcp_setup import run_sni21_vadcp_setup
 
 PROFILES = {
     "smoke": {"synthetic_images": 2, "visual_samples": 2},
+    "pilot": {"synthetic_images": 200, "visual_samples": 12},
     "full": {"synthetic_images": 2000, "visual_samples": 12},
 }
 

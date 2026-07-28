@@ -138,3 +138,10 @@ def test_colab_smoke_orchestrator_never_trains_or_opens_test(
     assert result["training_ready"] is True
     assert result["training_executed"] is False
     assert result["test_accessed"] is False
+
+
+def test_pilot_profile_is_fixed_to_200_synthetic_scenes() -> None:
+    assert runner_module.PROFILES["pilot"] == {
+        "synthetic_images": 200,
+        "visual_samples": 12,
+    }

@@ -1,10 +1,24 @@
 # Frozen protocol: SNI-21 VA-DCP screening
 
-**Version:** 1.0
+**Version:** 1.1
 
 **Frozen:** 28 July 2026
 
-**Status:** validation-only; training has not started and test remains locked
+**Status:** validation-only pilot; training has not started and test remains
+locked
+
+## Pre-training computational amendment
+
+Version 1.1 replaces the planned 2,000 synthetic scenes per arm with a
+200-scene pilot per arm. This amendment was frozen before any detector was
+trained and before any validation or test prediction was inspected.
+
+The smoke run measured approximately 0.09 image/s for A1 and 0.27 image/s for
+A2. Generating 2,000 scenes per arm would therefore require roughly eight
+hours before training. At 220--300 objects per scene, 200 scenes still provide
+approximately 44,000--60,000 placed-object instances per arm, exceeding the
+20,959 boxes in real train. The 2,000-scene experiment is deferred unless the
+pilot passes the unchanged validation gate.
 
 ## Research question
 
@@ -57,7 +71,8 @@ to train.
 | A1 | identical real train + ordinary copy-paste | control for extra synthetic data |
 | A2 | identical real train + VA-DCP | isolate visibility-aware placement |
 
-A1 and A2 each contain exactly 2,000 synthetic train scenes. They use:
+A1 and A2 each contain exactly 200 synthetic train scenes in this pilot. They
+use:
 
 - the same selected crop identities;
 - the same class draws;
@@ -81,16 +96,17 @@ scene-count hypothesis until measured real 300 g photographs are available.
 
 ## Reproducible setup
 
-Use `notebooks/SNI21_VADCP_Setup_Colab.ipynb`, or the equivalent CLI:
+Use `notebooks/SNI21_VADCP_Pilot_Train_Colab.ipynb`, or the equivalent setup
+CLI:
 
 ```bash
 python -u -m coffee_detector.run_sni21_vadcp_setup \
   --real-data-root /path/to/sni21-fullscene-v1 \
   --crop-dataset-root /path/to/coffee-sni-instance-crop-v1 \
-  --output-root /path/to/sni21-vadcp-full \
+  --output-root /path/to/sni21-vadcp-pilot \
   --object-library-root /path/to/shared-sni21-object-library \
   --shard-cache-root /path/to/shard-cache \
-  --synthetic-images 2000 \
+  --synthetic-images 200 \
   --objects-min 220 \
   --objects-max 300 \
   --canvas-size 1024 \
