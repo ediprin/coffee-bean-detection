@@ -79,6 +79,28 @@ uses the frozen `sni_spread` VA-DCP policy:
 The term “300 g” is not used as a mass claim. The 220–300 range is a visual
 scene-count hypothesis until measured real 300 g photographs are available.
 
+## Reproducible setup
+
+Use `notebooks/SNI21_VADCP_Setup_Colab.ipynb`, or the equivalent CLI:
+
+```bash
+python -u -m coffee_detector.run_sni21_vadcp_setup \
+  --real-data-root /path/to/sni21-fullscene-v1 \
+  --crop-dataset-root /path/to/coffee-sni-instance-crop-v1 \
+  --output-root /path/to/sni21-vadcp-full \
+  --object-library-root /path/to/shared-sni21-object-library \
+  --shard-cache-root /path/to/shard-cache \
+  --synthetic-images 2000 \
+  --objects-min 220 \
+  --objects-max 300 \
+  --canvas-size 1024 \
+  --seed 42
+```
+
+The setup runner validates the real audit and locked test, builds or reuses a
+train-only object library, generates paired A1/A2 scenes, audits masks and
+geometry, renders contact sheets, and stops. It never starts training.
+
 ## Screening training
 
 Use:
