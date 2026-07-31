@@ -3,17 +3,57 @@ import io
 import json
 import tarfile
 from pathlib import Path
+from types import SimpleNamespace
 
+import pytest
 from PIL import Image, ImageDraw
 
 from coffee_detector.audit_vadcp import audit_vadcp_dataset
 from coffee_detector.generate_vadcp_dataset import generate_vadcp_dataset
 from coffee_detector.run_sni_crop_preview import run_sni_crop_preview
 from coffee_detector.run_sni21_density_benchmark_setup import (
+    _reuse_limits,
     audit_validation_library_provenance,
 )
 from coffee_detector.sni_crop_manifest import build_sni_crop_calibration
 from coffee_detector.vadcp.library import prepare_sni_crop_manifest_library
+
+
+def test_density_reuse_limit_reserves_rare_class_sampling_variance() -> None:
+    cutouts = [
+        SimpleNamespace(class_id=0, source_parent_id=f"common-{index}")
+        for index in range(99)
+    ]
+    cutouts.append(
+        SimpleNamespace(class_id=1, source_parent_id="rare-parent")
+    )
+    calibration = SimpleNamespace(
+        class_probabilities={0: 0.999, 1: 0.001}
+    )
+
+    asset_limit, parent_limit, plan = _reuse_limits(
+        cutouts,
+        calibration,
+        scenes=200,
+        density=(1, 5),
+        balanced=False,
+        requested_asset_limit=None,
+        requested_parent_limit=None,
+    )
+
+    assert plan["class_upper_instances"]["1"] > 2
+    assert asset_limit >= plan["class_lower_bounds"]["1"]
+    assert parent_limit >= plan["parent_class_lower_bounds"]["1"]
+    with pytest.raises(ValueError, match="lower bound"):
+        _reuse_limits(
+            cutouts,
+            calibration,
+            scenes=200,
+            density=(1, 5),
+            balanced=False,
+            requested_asset_limit=2,
+            requested_parent_limit=None,
+        )
 
 
 def _write_crop_package(root: Path) -> None:

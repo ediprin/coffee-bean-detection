@@ -4,6 +4,7 @@ import argparse
 import csv
 import json
 import math
+import shutil
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -165,6 +166,10 @@ def _reuse_limits(
 ) -> tuple[int, int, dict]:
     maximum_instances = scenes * density[1]
     by_class = Counter(item.class_id for item in cutouts)
+    parents_by_class: dict[int, set[str]] = defaultdict(set)
+    for item in cutouts:
+        if item.source_parent_id is not None:
+            parents_by_class[item.class_id].add(item.source_parent_id)
     parent_count = len(
         {
             item.source_parent_id
@@ -183,18 +188,47 @@ def _reuse_limits(
             / max(mass, 1e-12)
             for class_id in by_class
         }
+    class_expected = {
+        class_id: maximum_instances * probabilities.get(class_id, 0.0)
+        for class_id in by_class
+    }
+    # A mean-only capacity bound fails for rare classes: a valid empirical
+    # draw can exceed its expectation by several instances even in B0. Use a
+    # conservative binomial envelope before distributing capacity over source
+    # identities. The additional factor absorbs geometry-driven preference for
+    # particular cutouts without removing the explicit reuse ceiling.
+    class_upper_instances = {
+        class_id: math.ceil(
+            expected
+            + 8.0
+            * math.sqrt(
+                max(
+                    expected
+                    * (1.0 - probabilities.get(class_id, 0.0)),
+                    0.0,
+                )
+            )
+            + 2.0
+        )
+        for class_id, expected in class_expected.items()
+    }
     class_lower_bounds = {
         class_id: math.ceil(
-            maximum_instances
-            * probabilities.get(class_id, 0.0)
-            / max(asset_count, 1)
+            class_upper_instances[class_id] / max(asset_count, 1)
         )
         for class_id, asset_count in by_class.items()
     }
     automatic_asset = max(2, max(class_lower_bounds.values(), default=1) * 2)
+    parent_class_lower_bounds = {
+        class_id: math.ceil(
+            class_upper_instances[class_id] / max(len(parents), 1)
+        )
+        for class_id, parents in parents_by_class.items()
+    }
     automatic_parent = max(
         2,
         math.ceil(maximum_instances / max(parent_count, 1)) * 4,
+        max(parent_class_lower_bounds.values(), default=1) * 2,
     )
     asset_limit = (
         requested_asset_limit
@@ -220,6 +254,14 @@ def _reuse_limits(
         "parents": parent_count,
         "class_lower_bounds": {
             str(key): value for key, value in sorted(class_lower_bounds.items())
+        },
+        "class_upper_instances": {
+            str(key): value
+            for key, value in sorted(class_upper_instances.items())
+        },
+        "parent_class_lower_bounds": {
+            str(key): value
+            for key, value in sorted(parent_class_lower_bounds.items())
         },
         "automatic_asset_limit": automatic_asset,
         "automatic_parent_limit": automatic_parent,
@@ -457,9 +499,12 @@ def run_sni21_density_benchmark_setup(
                 )
             else:
                 if arm_root.exists() and any(arm_root.iterdir()):
-                    raise RuntimeError(
-                        f"Output parsial ditemukan: {arm_root}"
+                    print(
+                        f"[3/4] Hapus output parsial {arm_name}, lalu generate "
+                        "ulang.",
+                        flush=True,
                     )
+                    shutil.rmtree(arm_root)
                 print(
                     f"[3/4] Generate {arm_name} ({arm_index}/{total_arms}) | "
                     f"{density[0]}-{density[1]} objek",
