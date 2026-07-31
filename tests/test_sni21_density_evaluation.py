@@ -1,8 +1,11 @@
 import numpy as np
 import pytest
+import yaml
 
+from coffee_detector.dataset import discover_layout
 from coffee_detector.run_sni21_density_evaluation import (
     _pairwise_iou,
+    _write_runtime_dataset_yaml,
     diagnose_image,
 )
 
@@ -16,6 +19,37 @@ def test_pairwise_iou_handles_empty_and_overlap() -> None:
     assert values.shape == (2, 1)
     assert values[:, 0].tolist() == pytest.approx([1.0, 0.0])
     assert _pairwise_iou(np.empty((0, 4)), target).shape == (0, 1)
+
+
+def test_runtime_dataset_yaml_replaces_stale_absolute_root(tmp_path) -> None:
+    dataset = tmp_path / "moved-benchmark"
+    for split in ("train", "val", "test"):
+        (dataset / split / "images").mkdir(parents=True)
+        (dataset / split / "labels").mkdir(parents=True)
+    (dataset / "data.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "path": "/content/drive/MyDrive/obsolete/location",
+                "train": "train/images",
+                "val": "val/images",
+                "test": "test/images",
+                "names": {0: "bean"},
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    layout = discover_layout(dataset)
+    runtime_yaml = _write_runtime_dataset_yaml(
+        layout,
+        tmp_path / "output/runtime_data.yaml",
+    )
+    payload = yaml.safe_load(runtime_yaml.read_text(encoding="utf-8"))
+
+    assert payload["path"] == str(dataset.resolve())
+    assert payload["val"] == "val/images"
+    assert payload["names"] == {0: "bean"}
 
 
 def test_diagnose_image_separates_proposal_and_class_failures() -> None:

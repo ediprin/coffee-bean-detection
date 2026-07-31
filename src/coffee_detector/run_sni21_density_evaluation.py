@@ -8,6 +8,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 import numpy as np
+import yaml
 from PIL import Image
 
 from .dataset import IMAGE_SUFFIXES, discover_layout, parse_label
@@ -29,6 +30,31 @@ def _sha256(path: Path) -> str:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _write_runtime_dataset_yaml(layout, output_path: Path) -> Path:
+    """Write a relocatable Ultralytics dataset config for the current mount.
+
+    Generated benchmarks retain their original ``data.yaml`` as provenance,
+    but Google Drive shortcuts or later artifact organization can change the
+    absolute root. Validation must use the discovered root, not that stale
+    historical path.
+    """
+
+    payload = yaml.safe_load(layout.yaml_path.read_text(encoding="utf-8")) or {}
+    payload["path"] = str(layout.root)
+    payload["names"] = layout.names
+    for split, (images, _labels) in layout.splits.items():
+        try:
+            payload[split] = images.relative_to(layout.root).as_posix()
+        except ValueError:
+            payload[split] = str(images)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        yaml.safe_dump(payload, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+    return output_path
 
 
 def _pairwise_iou(left: np.ndarray, right: np.ndarray) -> np.ndarray:
@@ -550,8 +576,12 @@ def run_sni21_density_evaluation(
             flush=True,
         )
         layout = discover_layout(data_root)
+        runtime_yaml = _write_runtime_dataset_yaml(
+            layout,
+            condition_root / "runtime_data.yaml",
+        )
         validation_kwargs = {
-            "data": str(layout.yaml_path),
+            "data": str(runtime_yaml),
             "split": "val",
             "imgsz": imgsz,
             "batch": batch_size,
