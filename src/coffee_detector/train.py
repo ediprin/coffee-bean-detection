@@ -8,7 +8,23 @@ from typing import Callable
 import yaml
 
 from .dataset import discover_layout
+from .coffee_fg import make_coffee_fg_trainer
 from .models.local_hbp import make_local_hbp_trainer
+
+
+def _repository_root(start: Path) -> Path:
+    for candidate in (start, *start.parents):
+        if (candidate / "pyproject.toml").is_file():
+            return candidate
+    return start
+
+
+def _resolve_model_reference(value: str | Path, repo_root: Path) -> str:
+    path = Path(value).expanduser()
+    if path.is_absolute() and path.exists():
+        return str(path.resolve())
+    candidate = repo_root / path
+    return str(candidate.resolve()) if candidate.exists() else str(value)
 
 
 def load_experiment(path: str | Path) -> dict:
@@ -18,8 +34,10 @@ def load_experiment(path: str | Path) -> dict:
     missing = sorted(required - set(payload))
     if missing:
         raise ValueError(f"Config {path} belum memiliki: {', '.join(missing)}")
-    if payload["variant"] not in {"baseline", "local_hbp"}:
-        raise ValueError("variant harus baseline atau local_hbp")
+    if payload["variant"] not in {"baseline", "local_hbp", "coffee_fg"}:
+        raise ValueError("variant harus baseline, local_hbp, atau coffee_fg")
+    if payload["variant"] == "coffee_fg" and not isinstance(payload.get("coffee_fg"), dict):
+        raise ValueError("variant coffee_fg memerlukan mapping coffee_fg")
     return payload
 
 
@@ -39,6 +57,7 @@ def train_experiment(
 
     config_path = Path(config_path).resolve()
     config = load_experiment(config_path)
+    repo_root = _repository_root(config_path.parent)
     layout = discover_layout(data_root)
     output_root = Path(output_root).resolve()
     run_name = f"{config['code']}_seed{seed}"
@@ -64,7 +83,14 @@ def train_experiment(
         raise FileExistsError(
             f"Run sudah memiliki checkpoint: {last_checkpoint}. Gunakan --resume atau output baru."
         )
-    model = YOLO(str(last_checkpoint if resume and last_checkpoint.is_file() else config["model"]))
+    model_reference = _resolve_model_reference(config["model"], repo_root)
+    model = YOLO(str(last_checkpoint if resume and last_checkpoint.is_file() else model_reference))
+    if (
+        not (resume and last_checkpoint.is_file())
+        and config.get("weights")
+        and str(config["model"]).lower().endswith((".yaml", ".yml"))
+    ):
+        model.load(_resolve_model_reference(config["weights"], repo_root))
     if on_checkpoint is not None:
         def _persist_checkpoint(trainer) -> None:
             epoch = int(getattr(trainer, "epoch", -1)) + 1
@@ -79,6 +105,9 @@ def train_experiment(
         rank = int(config.get("local_hbp", {}).get("rank", 64))
         trainer = make_local_hbp_trainer(rank)
         model.train(trainer=trainer, **train_args)
+    elif config["variant"] == "coffee_fg":
+        trainer = make_coffee_fg_trainer(config["coffee_fg"])
+        model.train(trainer=trainer, **train_args)
     else:
         model.train(**train_args)
 
@@ -88,6 +117,8 @@ def train_experiment(
         "code": config["code"],
         "variant": config["variant"],
         "model": config["model"],
+        "weights": config.get("weights"),
+        "coffee_fg": config.get("coffee_fg"),
         "data": str(layout.root),
         "data_yaml": str(layout.yaml_path),
         "seed": seed,

@@ -4,6 +4,54 @@ Repo ini khusus untuk object detection biji kopi. Ia tidak mengimpor, mengubah,
 atau memakai checkpoint repo klasifikasi Coffee-17. Baseline pertama adalah
 YOLO26n; keluarga detector lain baru ditambahkan setelah baseline terkunci.
 
+## Eksperimen CoffeeFG-YOLO26 v2
+
+Fondasi arsitektur fine-grained detector tersedia sebagai studi terpisah dari
+VA-DCP:
+
+```text
+D0  YOLO26n P3-P5
+D1  YOLO26n P2-P5
+R0  P3-P5 + first-order P3/P4 ROI refiner
+R1  P3-P5 + capacity-matched bilinear P3/P4 ROI refiner
+R2  P2-P5 + first-order P2/P3 ROI refiner
+R3  P2-P5 + capacity-matched bilinear P2/P3 ROI refiner
+```
+
+Refiner hanya menambah klasifikasi objek; instance `cv2` box branches YOLO26
+tidak diganti. Training menambahkan auxiliary ROI classification loss,
+sedangkan inference memperbaiki logit kelas kandidat top-K sebelum postprocess
+end-to-end. Pasangan R0/R1 dan R2/R3 memiliki jumlah parameter refiner yang
+sama. P2 tidak lagi dicampur ke perbandingan utama.
+
+Refiner belum boleh dilatih sebelum audit validation membuktikan bahwa kandidat
+box sudah mengakses GT dan masih terdapat salah kelas pada box yang
+terlokalisasi benar. Audit juga membandingkan one-to-one dengan
+one-to-many+NMS serta memeriksa batas jumlah objek.
+
+Runner baru menggunakan validation secara default dan menolak test kecuali
+dibuka eksplisit setelah protokol membekukan kandidat:
+
+```bash
+python -u -m coffee_detector.experiments.run_coffee_fg_screening \
+  --data-root /path/to/grouped-detection-data \
+  --output-root /path/to/coffee-fg-v2 \
+  --models D0 D1 \
+  --seeds 42 \
+  --evaluation-split val \
+  --device 0
+```
+
+Setelah itu jalankan
+`coffee_detector.analysis.coffee_fg_diagnostics`; hasilnya menentukan apakah
+pasangan R0/R1 atau R2/R3 yang boleh diuji. Desain, kontrol, dan gate lengkap ada di
+[docs/COFFEE_FG_PROTOCOL.md](docs/COFFEE_FG_PROTOCOL.md).
+
+Notebook Colab validation-first yang memulihkan hanya split train/validation A0,
+menyimpan checkpoint langsung ke Drive, dan menghentikan refiner sebelum gate
+tersedia di
+[`notebooks/CoffeeFG_YOLO26_Colab.ipynb`](notebooks/CoffeeFG_YOLO26_Colab.ipynb).
+
 ## Eksperimen VA-DCP
 
 Pipeline offline `Visibility-Aware Dense Copy-Paste` sudah tersedia tanpa

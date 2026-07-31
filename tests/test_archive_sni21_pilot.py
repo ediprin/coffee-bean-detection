@@ -4,6 +4,7 @@ from pathlib import Path
 from coffee_detector.archive_sni21_pilot import (
     pack_real_a0,
     pack_sni21_pilot_bundle,
+    restore_real_a0_development,
     restore_real_a0_validation,
     restore_sni21_pilot_bundle,
 )
@@ -94,6 +95,27 @@ def test_restore_real_a0_validation_does_not_extract_test(
     assert not any((restored / "train/images").iterdir())
     payload = json.loads(
         (restored / "validation_restore.json").read_text(encoding="utf-8")
+    )
+    assert payload["test_files_extracted"] == 0
+    assert payload["test_images_accessed"] is False
+
+
+def test_restore_real_a0_development_extracts_train_val_not_test(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    _write_dataset(source, synthetic=False)
+    archive = pack_real_a0(source, tmp_path / "A0_real.tar")
+
+    restored = restore_real_a0_development(
+        archive, tmp_path / "development-only"
+    )
+
+    assert (restored / "train/images/one.jpg").is_file()
+    assert (restored / "val/images/one.jpg").is_file()
+    assert not (restored / "test").exists()
+    payload = json.loads(
+        (restored / "development_restore.json").read_text(encoding="utf-8")
     )
     assert payload["test_files_extracted"] == 0
     assert payload["test_images_accessed"] is False

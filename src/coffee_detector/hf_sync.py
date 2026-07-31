@@ -19,7 +19,9 @@ ARTIFACT_PATTERNS = [
     "**/experiment_manifest.json",
     "**/combined_view_manifest.json",
     "**/reports/*.json",
+    "**/val_reports/*.json",
     "**/confirmation.json",
+    "**/coffee_fg_decision.json",
 ]
 
 

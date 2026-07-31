@@ -246,6 +246,106 @@ def restore_real_a0_validation(
     return root
 
 
+def restore_real_a0_development(
+    archive: str | Path,
+    root: str | Path,
+    *,
+    progress_every: int = 500,
+) -> Path:
+    """Restore A0 train/validation while keeping the test split unextracted.
+
+    This is the safe restore path for validation-first architecture studies.
+    It deliberately differs from ``restore_sni21_pilot_bundle``, which restores
+    the complete archival copy for the older pilot workflow.
+    """
+
+    archive = Path(archive).expanduser().resolve()
+    root = Path(root).expanduser().resolve()
+    marker = root / "development_restore.json"
+    required = (
+        root / "data.yaml",
+        root / "train" / "images",
+        root / "train" / "labels",
+        root / "val" / "images",
+        root / "val" / "labels",
+        marker,
+    )
+    if all(path.exists() for path in required):
+        payload = json.loads(marker.read_text(encoding="utf-8"))
+        if payload.get("test_files_extracted") != 0:
+            raise RuntimeError(f"Restore development tidak aman: {marker}")
+        print(f"SKIP RESTORE A0 TRAIN+VAL: {root}", flush=True)
+        return root
+    if not archive.is_file():
+        raise FileNotFoundError(f"Archive A0 tidak ditemukan: {archive}")
+    if root.exists() and any(root.iterdir()):
+        raise RuntimeError(f"Folder restore A0 development tidak kosong: {root}")
+    root.mkdir(parents=True, exist_ok=True)
+    allowed_metadata = {
+        "data.yaml",
+        "audit.json",
+        "post_materialization_audit.json",
+    }
+    with tarfile.open(archive, "r") as bundle:
+        members = [
+            member
+            for member in bundle.getmembers()
+            if member.name in allowed_metadata
+            or member.name.startswith("train/")
+            or member.name.startswith("val/")
+        ]
+        print(
+            f"RESTORE A0 TRAIN+VAL: mulai 0/{len(members)} file; test tidak "
+            "diekstrak",
+            flush=True,
+        )
+        started = time.perf_counter()
+        for index, member in enumerate(members, 1):
+            target = (root / member.name).resolve()
+            if target != root and root not in target.parents:
+                raise RuntimeError(f"Path archive A0 tidak aman: {member.name}")
+            if not (member.isfile() or member.isdir()):
+                raise RuntimeError(
+                    f"Tipe anggota archive A0 tidak aman: {member.name}"
+                )
+            try:
+                bundle.extract(member, root, filter="data")
+            except TypeError:  # Python 3.10 compatibility
+                bundle.extract(member, root)
+            if index % max(1, progress_every) == 0 or index == len(members):
+                elapsed = time.perf_counter() - started
+                rate = index / max(elapsed, 1e-8)
+                eta = (len(members) - index) / max(rate, 1e-8)
+                print(
+                    f"  restore A0 dev {index}/{len(members)} | "
+                    f"ETA {eta / 60:.1f} menit",
+                    flush=True,
+                )
+    if not all(path.exists() for path in required[:-1]):
+        raise RuntimeError(f"Restore A0 development tidak lengkap: {root}")
+    payload = {
+        "format": "coffee_detector.sni21_a0_development_restore.v1",
+        "archive": str(archive),
+        "root": str(root),
+        "train_images": sum(
+            path.is_file() for path in (root / "train" / "images").rglob("*")
+        ),
+        "validation_images": sum(
+            path.is_file() for path in (root / "val" / "images").rglob("*")
+        ),
+        "test_files_extracted": 0,
+        "test_images_accessed": False,
+    }
+    marker.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    print(
+        "RESTORE A0 TRAIN+VAL SELESAI; test tetap terkunci.",
+        flush=True,
+    )
+    return root
+
+
 def pack_sni21_pilot_bundle(
     a0_root: str | Path,
     setup_root: str | Path,
