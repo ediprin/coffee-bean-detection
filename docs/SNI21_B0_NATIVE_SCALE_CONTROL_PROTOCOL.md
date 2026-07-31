@@ -1,7 +1,9 @@
 # SNI-21 B0 native-scale control
 
-**Version:** 1.0  
-**Frozen:** 31 July 2026  
+**Version:** 1.0
+
+**Frozen:** 31 July 2026
+
 **Status:** validation-derived diagnostic; no training and no test access
 
 ## Question
