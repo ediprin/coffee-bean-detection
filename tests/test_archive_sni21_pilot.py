@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import yaml
+
 from coffee_detector.archive_sni21_pilot import (
     pack_real_a0,
     pack_sni21_pilot_bundle,
@@ -98,6 +100,11 @@ def test_restore_real_a0_validation_does_not_extract_test(
     )
     assert payload["test_files_extracted"] == 0
     assert payload["test_images_accessed"] is False
+    data_yaml = yaml.safe_load((restored / "data.yaml").read_text(encoding="utf-8"))
+    assert data_yaml["path"] == str(restored)
+    assert data_yaml["train"] == "train/images"
+    assert data_yaml["val"] == "val/images"
+    assert "test" not in data_yaml
 
 
 def test_restore_real_a0_development_extracts_train_val_not_test(
@@ -119,3 +126,8 @@ def test_restore_real_a0_development_extracts_train_val_not_test(
     )
     assert payload["test_files_extracted"] == 0
     assert payload["test_images_accessed"] is False
+    data_yaml = yaml.safe_load((restored / "data.yaml").read_text(encoding="utf-8"))
+    assert data_yaml["path"] == str(restored)
+    assert data_yaml["train"] == "train/images"
+    assert data_yaml["val"] == "val/images"
+    assert "test" not in data_yaml

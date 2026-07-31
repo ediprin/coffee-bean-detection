@@ -6,10 +6,27 @@ import tarfile
 import time
 from pathlib import Path
 
+import yaml
+
 from .archive_vadcp import pack_training_arm, restore_training_arm
 
 
 BUNDLE_FORMAT = "coffee_detector.sni21_pilot_bundle.v1"
+
+
+def _rewrite_development_yaml(root: Path) -> None:
+    """Point an extracted A0 YAML at its runtime root without exposing test."""
+
+    yaml_path = root / "data.yaml"
+    payload = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
+    payload["path"] = str(root)
+    payload["train"] = "train/images"
+    payload["val"] = "val/images"
+    payload.pop("test", None)
+    yaml_path.write_text(
+        yaml.safe_dump(payload, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
 
 
 def _pack_files(
@@ -166,6 +183,7 @@ def restore_real_a0_validation(
         payload = json.loads(marker.read_text(encoding="utf-8"))
         if payload.get("test_files_extracted") != 0:
             raise RuntimeError(f"Restore validation tidak aman: {marker}")
+        _rewrite_development_yaml(root)
         print(f"SKIP RESTORE A0 VAL: {root}", flush=True)
         return root
     if not archive.is_file():
@@ -218,6 +236,7 @@ def restore_real_a0_validation(
         (root / "train" / kind).mkdir(parents=True, exist_ok=True)
     if not (root / "data.yaml").is_file():
         raise RuntimeError(f"Restore A0 val tidak lengkap: {root}")
+    _rewrite_development_yaml(root)
     validation_images = sum(
         path.is_file() for path in (root / "val" / "images").rglob("*")
     )
@@ -274,6 +293,7 @@ def restore_real_a0_development(
         payload = json.loads(marker.read_text(encoding="utf-8"))
         if payload.get("test_files_extracted") != 0:
             raise RuntimeError(f"Restore development tidak aman: {marker}")
+        _rewrite_development_yaml(root)
         print(f"SKIP RESTORE A0 TRAIN+VAL: {root}", flush=True)
         return root
     if not archive.is_file():
@@ -323,6 +343,7 @@ def restore_real_a0_development(
                 )
     if not all(path.exists() for path in required[:-1]):
         raise RuntimeError(f"Restore A0 development tidak lengkap: {root}")
+    _rewrite_development_yaml(root)
     payload = {
         "format": "coffee_detector.sni21_a0_development_restore.v1",
         "archive": str(archive),
