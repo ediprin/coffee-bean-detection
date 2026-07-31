@@ -105,3 +105,22 @@ def test_diagnose_image_counts_duplicate_candidates() -> None:
     assert result["proposal_accessible"] == 1
     assert result["duplicate_candidate_count"] == 1
     assert result["localized_correct"] == 1
+
+
+def test_diagnose_image_uses_highest_confidence_localized_class() -> None:
+    result = diagnose_image(
+        np.asarray([0]),
+        np.asarray([[0, 0, 10, 10]], dtype=float),
+        np.asarray([1, 0]),
+        np.asarray(
+            [[0, 0, 10, 10], [0.2, 0.2, 9.8, 9.8]], dtype=float
+        ),
+        prediction_confidences=np.asarray([0.2, 0.8]),
+        iou_threshold=0.5,
+        max_det=300,
+    )
+
+    assert result["localized_correct"] == 1
+    assert result["localized_wrong_class"] == 0
+    assert result["ground_truth_diagnosis"][0]["best_prediction_class"] == 0
+    assert result["ground_truth_diagnosis"][0]["selected_confidence"] == 0.8

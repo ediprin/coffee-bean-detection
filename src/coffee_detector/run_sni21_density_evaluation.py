@@ -87,6 +87,7 @@ def diagnose_image(
     prediction_classes: np.ndarray,
     prediction_xyxy: np.ndarray,
     *,
+    prediction_confidences: np.ndarray | None = None,
     iou_threshold: float,
     max_det: int,
 ) -> dict:
@@ -94,30 +95,38 @@ def diagnose_image(
 
     This diagnostic is deliberately simpler than AP matching. For each ground
     truth instance it asks whether any post-NMS candidate reaches the IoU
-    threshold, and if so whether the best-overlap candidate has the right
-    class. Official performance remains the Ultralytics validation metric.
+    threshold, and if so whether the highest-confidence localized candidate
+    has the right class. IoU determines proposal accessibility; confidence
+    determines the class decision. Official performance remains the
+    Ultralytics validation metric.
     """
 
     gt_classes = np.asarray(ground_truth_classes, dtype=np.int64).reshape(-1)
     gt_boxes = np.asarray(ground_truth_xyxy, dtype=np.float64).reshape(-1, 4)
     pred_classes = np.asarray(prediction_classes, dtype=np.int64).reshape(-1)
     pred_boxes = np.asarray(prediction_xyxy, dtype=np.float64).reshape(-1, 4)
+    pred_confidences = (
+        None
+        if prediction_confidences is None
+        else np.asarray(prediction_confidences, dtype=np.float64).reshape(-1)
+    )
     if len(gt_classes) != len(gt_boxes):
         raise ValueError("Jumlah kelas dan box ground truth berbeda")
     if len(pred_classes) != len(pred_boxes):
         raise ValueError("Jumlah kelas dan box prediksi berbeda")
+    if pred_confidences is not None and len(pred_confidences) != len(pred_boxes):
+        raise ValueError("Jumlah confidence dan box prediksi berbeda")
     if not 0.0 < iou_threshold <= 1.0:
         raise ValueError("iou_threshold harus pada (0, 1]")
     if max_det <= 0:
         raise ValueError("max_det harus positif")
 
     ious = _pairwise_iou(pred_boxes, gt_boxes)
-    if len(pred_boxes):
-        best_prediction = ious.argmax(axis=0) if len(gt_boxes) else np.empty(0, dtype=int)
-        best_iou = ious.max(axis=0) if len(gt_boxes) else np.empty(0)
-    else:
-        best_prediction = np.zeros(len(gt_boxes), dtype=int)
-        best_iou = np.zeros(len(gt_boxes), dtype=np.float64)
+    best_iou = (
+        ious.max(axis=0)
+        if len(pred_boxes) and len(gt_boxes)
+        else np.zeros(len(gt_boxes), dtype=np.float64)
+    )
 
     categories = []
     by_class: dict[int, Counter] = defaultdict(Counter)
@@ -125,8 +134,25 @@ def diagnose_image(
         if best_iou[index] < iou_threshold:
             category = "proposal_miss"
             predicted_class = None
+            selected_confidence = None
         else:
-            predicted_class = int(pred_classes[best_prediction[index]])
+            localized = np.flatnonzero(ious[:, index] >= iou_threshold)
+            if pred_confidences is None:
+                selected = int(localized[np.argmax(ious[localized, index])])
+                selected_confidence = None
+            else:
+                # Stable lexicographic choice: confidence first, IoU second.
+                selected = int(
+                    max(
+                        localized.tolist(),
+                        key=lambda row: (
+                            float(pred_confidences[row]),
+                            float(ious[row, index]),
+                        ),
+                    )
+                )
+                selected_confidence = float(pred_confidences[selected])
+            predicted_class = int(pred_classes[selected])
             category = (
                 "localized_correct"
                 if predicted_class == class_id
@@ -138,6 +164,7 @@ def diagnose_image(
                 "ground_truth_class": class_id,
                 "best_iou": float(best_iou[index]),
                 "best_prediction_class": predicted_class,
+                "selected_confidence": selected_confidence,
                 "category": category,
             }
         )
@@ -419,6 +446,7 @@ def _diagnose_dataset(
                     gt_xyxy,
                     pred_classes,
                     pred_xyxy,
+                    prediction_confidences=pred_confidence,
                     iou_threshold=diagnostic_iou,
                     max_det=max_det,
                 )
