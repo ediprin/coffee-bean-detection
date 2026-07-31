@@ -47,3 +47,5 @@ def test_coffee_fg_notebook_persists_and_resumes() -> None:
     assert "sys.path.insert(0, str(SRC))" in source
     assert "import coffee_detector" in source
     assert "run_live" in source
+    assert "os.chdir('/content')" in source
+    assert "capture_output=True" in source
