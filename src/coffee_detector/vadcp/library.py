@@ -610,7 +610,7 @@ def prepare_sni_crop_manifest_library(
     if cache_root is not None:
         cache_root.mkdir(parents=True, exist_ok=True)
     print(
-        f"INDEX SNI CROP: {len(wanted)} crop train dipilih dari "
+        f"INDEX SNI CROP: {len(wanted)} crop {source_split} dipilih dari "
         f"{len(wanted_by_shard)}/{len(shard_paths)} shard",
         flush=True,
     )
