@@ -218,7 +218,15 @@ def _reuse_limits(
         )
         for class_id, asset_count in by_class.items()
     }
-    automatic_asset = max(2, max(class_lower_bounds.values(), default=1) * 2)
+    # An asset is normally selected at most once per scene. Use the scene count
+    # as the automatic ceiling so concentrated rare classes cannot terminate
+    # generation midway. Actual reuse remains recorded and is handled as a
+    # grouped source-identity dependency during uncertainty estimation.
+    automatic_asset = max(
+        2,
+        scenes,
+        max(class_lower_bounds.values(), default=1) * 2,
+    )
     parent_class_lower_bounds = {
         class_id: math.ceil(
             class_upper_instances[class_id] / max(len(parents), 1)
@@ -227,6 +235,7 @@ def _reuse_limits(
     }
     automatic_parent = max(
         2,
+        maximum_instances,
         math.ceil(maximum_instances / max(parent_count, 1)) * 4,
         max(parent_class_lower_bounds.values(), default=1) * 2,
     )
@@ -265,6 +274,11 @@ def _reuse_limits(
         },
         "automatic_asset_limit": automatic_asset,
         "automatic_parent_limit": automatic_parent,
+        "reuse_policy": (
+            "Natural generation ceilings prevent rare concentrated source "
+            "identities from aborting synthesis. Report actual reuse and use "
+            "source-parent grouped uncertainty for model comparisons."
+        ),
         "selected_asset_limit": asset_limit,
         "selected_parent_limit": parent_limit,
     }

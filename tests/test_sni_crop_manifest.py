@@ -42,6 +42,8 @@ def test_density_reuse_limit_reserves_rare_class_sampling_variance() -> None:
     )
 
     assert plan["class_upper_instances"]["1"] > 2
+    assert asset_limit == 200
+    assert parent_limit == 1000
     assert asset_limit >= plan["class_lower_bounds"]["1"]
     assert parent_limit >= plan["parent_class_lower_bounds"]["1"]
     with pytest.raises(ValueError, match="lower bound"):
