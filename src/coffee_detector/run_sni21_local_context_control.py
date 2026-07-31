@@ -31,9 +31,9 @@ from .vadcp.profile import load_scene_calibration
 
 PROTOCOL = "docs/SNI21_LOCAL_CONTEXT_CONTROL_PROTOCOL.md"
 ARMS = (
-    "LC0_original_context",
-    "LC1_repaste_real_context",
-    "LC2_repaste_procedural_context",
+    "FC0_original_fullframe",
+    "FC1_repaste_real_fullframe",
+    "FC2_repaste_procedural_fullframe",
 )
 
 
@@ -44,44 +44,6 @@ def _read_json(path: Path, label: str) -> dict:
     if not isinstance(payload, dict):
         raise ValueError(f"{label} bukan JSON object: {path}")
     return payload
-
-
-def _intersection_area(left: list[float], right: list[float]) -> float:
-    x1 = max(float(left[0]), float(right[0]))
-    y1 = max(float(left[1]), float(right[1]))
-    x2 = min(float(left[2]), float(right[2]))
-    y2 = min(float(left[3]), float(right[3]))
-    return max(0.0, x2 - x1) * max(0.0, y2 - y1)
-
-
-def isolated_context_box(
-    target: list[float],
-    all_boxes: list[list[float]],
-    target_index: int,
-    image_size: tuple[int, int],
-    *,
-    context_multiplier: float,
-) -> list[int] | None:
-    if context_multiplier <= 1.0:
-        raise ValueError("context_multiplier harus > 1")
-    width, height = image_size
-    x1, y1, x2, y2 = (float(value) for value in target)
-    side = context_multiplier * max(x2 - x1, y2 - y1)
-    center_x = (x1 + x2) / 2.0
-    center_y = (y1 + y2) / 2.0
-    left = int(round(center_x - side / 2.0))
-    top = int(round(center_y - side / 2.0))
-    right = int(round(center_x + side / 2.0))
-    bottom = int(round(center_y + side / 2.0))
-    # Do not pad or shift edge objects: that would introduce a second context
-    # intervention and move the target away from the paired center.
-    if left < 0 or top < 0 or right > width or bottom > height:
-        return None
-    patch = [float(left), float(top), float(right), float(bottom)]
-    for index, other in enumerate(all_boxes):
-        if index != target_index and _intersection_area(patch, other) > 0:
-            return None
-    return [left, top, right, bottom]
 
 
 def _stable_score(seed: int, asset_id: str) -> str:
@@ -131,7 +93,6 @@ def prepare_local_context_dataset(
     *,
     seed: int = 42,
     max_per_class: int = 20,
-    context_multiplier: float = 3.0,
     minimum_samples: int = 150,
     minimum_classes: int = 15,
 ) -> dict:
@@ -180,28 +141,19 @@ def prepare_local_context_dataset(
         with Image.open(image_path) as source:
             image_size = source.size
         boxes = _pixel_boxes(label_path, *image_size)
+        if len(boxes) != 1:
+            continue
         dataset, parent_id = _dataset_and_parent(image_path)
         pairs = match_assets_to_boxes(
             boxes, assets_by_parent.get((dataset, parent_id), [])
         )
-        all_xyxy = [row["xyxy"] for row in boxes]
         for box, asset in pairs:
-            patch = isolated_context_box(
-                box["xyxy"],
-                all_xyxy,
-                int(box["index"]),
-                image_size,
-                context_multiplier=context_multiplier,
-            )
-            if patch is None:
-                continue
             candidates[int(box["class_id"])].append(
                 {
                     "image": image_path,
                     "relative": relative,
                     "box": box,
                     "asset": asset,
-                    "patch": patch,
                     "score": _stable_score(seed, str(asset["asset_id"])),
                 }
             )
@@ -223,15 +175,14 @@ def prepare_local_context_dataset(
     print(f"LOCAL-CONTEXT: mulai 0/{len(selected)} objek", flush=True)
     for sample_index, row in enumerate(selected, 1):
         image_path = Path(row["image"])
-        left, top, right, bottom = row["patch"]
         with Image.open(image_path) as source:
-            original = source.convert("RGB").crop((left, top, right, bottom))
+            original = source.convert("RGB")
         x1, y1, x2, y2 = row["box"]["xyxy"]
         local_box = [
-            max(0, int(round(x1 - left))),
-            max(0, int(round(y1 - top))),
-            min(original.width, int(round(x2 - left))),
-            min(original.height, int(round(y2 - top))),
+            max(0, int(round(x1))),
+            max(0, int(round(y1))),
+            min(original.width, int(round(x2))),
+            min(original.height, int(round(y2))),
         ]
         asset_path = library_root / str(row["asset"]["image"])
         real_repaste = _paste_cutout(original, asset_path, local_box)
@@ -240,14 +191,18 @@ def prepare_local_context_dataset(
             None, original.size, background_rng, calibration
         ).convert("RGB")
         procedural_repaste = _paste_cutout(procedural, asset_path, local_box)
-        stem = f"lc_{sample_index:04d}_{row['asset']['asset_id']}"
+        stem = f"fc_{sample_index:04d}_{row['asset']['asset_id']}"
         arms = {
             ARMS[0]: original,
             ARMS[1]: real_repaste,
             ARMS[2]: procedural_repaste,
         }
         for arm, image in arms.items():
-            image.save(output_root / arm / "val" / "images" / f"{stem}.png")
+            image.save(
+                output_root / arm / "val" / "images" / f"{stem}.jpg",
+                quality=95,
+                subsampling=0,
+            )
             patch_width, patch_height = image.size
             box_width = local_box[2] - local_box[0]
             box_height = local_box[3] - local_box[1]
@@ -268,8 +223,8 @@ def prepare_local_context_dataset(
                 "source_image": str(row["relative"]).replace("\\", "/"),
                 "source_asset_id": str(row["asset"]["asset_id"]),
                 "source_parent_id": row["asset"].get("source_parent_id"),
-                "patch_xyxy": row["patch"],
-                "object_xyxy_in_patch": local_box,
+                "canvas_size": list(original.size),
+                "object_xyxy": local_box,
             }
         )
         if sample_index % 50 == 0 or sample_index == len(selected):
@@ -279,7 +234,7 @@ def prepare_local_context_dataset(
     for row in manifest:
         class_counts[row["class_name"]] += 1
     payload = {
-        "format": "coffee_detector.sni21_local_context_setup.v1",
+        "format": "coffee_detector.sni21_fullframe_context_setup.v1",
         "protocol": PROTOCOL,
         "arms": {arm: str(output_root / arm) for arm in ARMS},
         "samples": len(manifest),
@@ -287,9 +242,8 @@ def prepare_local_context_dataset(
         "samples_by_class": dict(sorted(class_counts.items())),
         "seed": seed,
         "max_per_class": max_per_class,
-        "context_multiplier": context_multiplier,
-        "selection": "isolated matched validation objects; stable class-balanced cap",
-        "object_geometry": "identical cutout, bbox, and local position in LC1/LC2",
+        "selection": "single-object matched validation images; stable class-balanced cap",
+        "object_geometry": "full canvas and bbox preserved; identical cutout in FC1/FC2",
         "manifest": str(output_root / "local_context_manifest.json"),
         "training_executed": False,
         "test_images_accessed": False,
@@ -315,10 +269,14 @@ def classify_background_retention(map_retention: float, class_retention: float) 
     return "procedural_background_dominant_cause"
 
 
-def _retention(numerator: float, denominator: float, label: str) -> float:
+def _retention(numerator: float, denominator: float) -> float | None:
     if denominator <= 0:
-        raise RuntimeError(f"Retensi {label} tidak terdefinisi: baseline <= 0")
+        return None
     return numerator / denominator
+
+
+def _retention_pass(value: float | None, threshold: float) -> bool:
+    return value is not None and value >= threshold
 
 
 def _report_row(condition: str, report: dict) -> dict:
@@ -433,7 +391,7 @@ def run_sni21_local_context_control(
                 max_det=max_det, batch_size=batch_size,
             )
             report = {
-                "format": "coffee_detector.sni21_local_context_evaluation.v1",
+                "format": "coffee_detector.sni21_fullframe_context_evaluation.v1",
                 "condition": arm, "run_config": run_config,
                 "official_metrics": _metric_summary(metrics, layout.names),
                 "diagnosis": diagnosis, "complete": True,
@@ -450,30 +408,61 @@ def run_sni21_local_context_control(
     original = by_arm[ARMS[0]]
     real_repaste = by_arm[ARMS[1]]
     procedural = by_arm[ARMS[2]]
+    r0_rows = {
+        row["condition"]: row for row in density_summary.get("rows", [])
+    }
+    if "R0_real_val" not in r0_rows:
+        raise RuntimeError("Summary density tidak memuat R0_real_val")
+    r0 = r0_rows["R0_real_val"]
+    source_attribution = {
+        "map50_95_retention": _retention(
+            original["map50_95"], r0["map50_95"]
+        ),
+        "conditional_class_accuracy_retention": _retention(
+            original["conditional_class_accuracy"],
+            r0["conditional_class_accuracy"],
+        ),
+    }
     cutout_attribution = {
         "map50_95_retention": _retention(
-            real_repaste["map50_95"], original["map50_95"], "cutout mAP"
+            real_repaste["map50_95"], original["map50_95"]
         ),
         "conditional_class_accuracy_retention": _retention(
             real_repaste["conditional_class_accuracy"],
             original["conditional_class_accuracy"],
-            "cutout class accuracy",
         ),
     }
     background_map_retention = _retention(
-        procedural["map50_95"], real_repaste["map50_95"], "background mAP"
+        procedural["map50_95"], real_repaste["map50_95"]
     )
     background_class_retention = _retention(
         procedural["conditional_class_accuracy"],
         real_repaste["conditional_class_accuracy"],
-        "background class accuracy",
     )
+    source_valid = all(
+        _retention_pass(value, 0.50) for value in source_attribution.values()
+    )
+    cutout_valid = all(
+        _retention_pass(value, 0.80) for value in cutout_attribution.values()
+    )
+    control_valid = source_valid and cutout_valid
     background_attribution = {
         "map50_95_retention": background_map_retention,
         "conditional_class_accuracy_retention": background_class_retention,
-        "interpretation": classify_background_retention(
-            background_map_retention, background_class_retention
+        "interpretation": (
+            classify_background_retention(
+                background_map_retention, background_class_retention
+            )
+            if control_valid
+            and background_map_retention is not None
+            and background_class_retention is not None
+            else "inconclusive_control_invalid"
         ),
+    }
+    validity = {
+        "source_subset_retention_at_least_50_percent": source_valid,
+        "cutout_retention_at_least_80_percent": cutout_valid,
+        "control_valid": control_valid,
     }
     table_path = evaluation_root / "local_context_table.csv"
     with table_path.open("w", newline="", encoding="utf-8") as stream:
@@ -481,12 +470,14 @@ def run_sni21_local_context_control(
         writer.writeheader()
         writer.writerows(rows)
     summary = {
-        "format": "coffee_detector.sni21_local_context_summary.v1",
+        "format": "coffee_detector.sni21_fullframe_context_summary.v1",
         "protocol": PROTOCOL,
         "setup": str(benchmark_root / "local_context_setup.json"),
         "rows": rows,
+        "source_attribution": source_attribution,
         "cutout_attribution": cutout_attribution,
         "background_attribution": background_attribution,
+        "validity": validity,
         "training_executed": False,
         "test_images_accessed": False,
         "development_only": True,
@@ -495,10 +486,12 @@ def run_sni21_local_context_control(
     summary_path.write_text(
         json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8"
     )
-    print("\n=== LOCAL-CONTEXT CONTROL ===", flush=True)
+    print("\n=== FULL-FRAME CONTEXT CONTROL ===", flush=True)
     print(f"SAMPLES       : {setup['samples']} | CLASSES: {setup['classes']}", flush=True)
+    print("SOURCE RETAIN :", source_attribution, flush=True)
     print("CUTOUT RETAIN :", cutout_attribution, flush=True)
     print("BACKGROUND    :", background_attribution, flush=True)
+    print("VALIDITY      :", validity, flush=True)
     print("TRAINING      : False", flush=True)
     print("TEST ACCESS   : False", flush=True)
     print("SUMMARY       :", summary_path, flush=True)
@@ -506,7 +499,7 @@ def run_sni21_local_context_control(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Paired SNI-21 local-context control")
+    parser = argparse.ArgumentParser(description="Paired SNI-21 full-frame context control")
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--real-root", required=True)
     parser.add_argument("--source-benchmark-root", required=True)

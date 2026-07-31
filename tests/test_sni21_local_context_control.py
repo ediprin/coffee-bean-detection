@@ -6,18 +6,16 @@ import yaml
 from PIL import Image
 
 from coffee_detector.run_sni21_local_context_control import (
+    ARMS,
+    _retention,
     classify_background_retention,
-    isolated_context_box,
     prepare_local_context_dataset,
 )
 from coffee_detector.prepare_sni_fullscene import SNI21_CLASSES
 
 
-def test_context_rejects_edges_and_neighboring_objects() -> None:
-    target = [40, 40, 60, 60]
-    assert isolated_context_box(target, [target], 0, (100, 100), context_multiplier=3) == [20, 20, 80, 80]
-    assert isolated_context_box([0, 0, 20, 20], [[0, 0, 20, 20]], 0, (100, 100), context_multiplier=3) is None
-    assert isolated_context_box(target, [target, [70, 45, 80, 55]], 0, (100, 100), context_multiplier=3) is None
+def test_zero_denominator_is_inconclusive_instead_of_crashing() -> None:
+    assert _retention(1.0, 0.0) is None
 
 
 @pytest.mark.parametrize(
@@ -64,8 +62,13 @@ def test_prepare_local_context_creates_exact_paired_geometry(tmp_path) -> None:
     report = prepare_local_context_dataset(real, library, profile, output, max_per_class=1, minimum_samples=21, minimum_classes=21)
 
     assert report["samples"] == 21
-    for arm in report["arms"]:
-        assert len(list((output / arm / "val/images").glob("*.png"))) == 21
+    labels_by_arm = []
+    for arm in ARMS:
+        assert len(list((output / arm / "val/images").glob("*.jpg"))) == 21
         labels = [path.read_text() for path in (output / arm / "val/labels").glob("*.txt")]
         assert len(labels) == 21
+        labels_by_arm.append(sorted(labels))
+        with Image.open(next((output / arm / "val/images").glob("*.jpg"))) as image:
+            assert image.size == (100, 100)
+    assert labels_by_arm[0] == labels_by_arm[1] == labels_by_arm[2]
     assert not (output / "test").exists()
