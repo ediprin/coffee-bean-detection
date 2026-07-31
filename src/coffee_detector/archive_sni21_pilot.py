@@ -145,6 +145,107 @@ def _restore_archive(
     return root
 
 
+def restore_real_a0_validation(
+    archive: str | Path,
+    root: str | Path,
+    *,
+    progress_every: int = 500,
+) -> Path:
+    """Restore only A0 validation content while leaving test unextracted."""
+
+    archive = Path(archive).expanduser().resolve()
+    root = Path(root).expanduser().resolve()
+    marker = root / "validation_restore.json"
+    required = (
+        root / "data.yaml",
+        root / "val" / "images",
+        root / "val" / "labels",
+        marker,
+    )
+    if all(path.exists() for path in required):
+        payload = json.loads(marker.read_text(encoding="utf-8"))
+        if payload.get("test_files_extracted") != 0:
+            raise RuntimeError(f"Restore validation tidak aman: {marker}")
+        print(f"SKIP RESTORE A0 VAL: {root}", flush=True)
+        return root
+    if not archive.is_file():
+        raise FileNotFoundError(f"Archive A0 tidak ditemukan: {archive}")
+    if root.exists() and any(root.iterdir()):
+        raise RuntimeError(f"Folder restore A0 val tidak kosong: {root}")
+    root.mkdir(parents=True, exist_ok=True)
+    allowed_metadata = {
+        "data.yaml",
+        "audit.json",
+        "post_materialization_audit.json",
+    }
+    with tarfile.open(archive, "r") as bundle:
+        members = [
+            member
+            for member in bundle.getmembers()
+            if member.name in allowed_metadata
+            or member.name.startswith("val/")
+        ]
+        print(
+            f"RESTORE A0 VAL: mulai 0/{len(members)} file; test tidak "
+            "diekstrak",
+            flush=True,
+        )
+        started = time.perf_counter()
+        for index, member in enumerate(members, 1):
+            target = (root / member.name).resolve()
+            if target != root and root not in target.parents:
+                raise RuntimeError(f"Path archive A0 tidak aman: {member.name}")
+            if not (member.isfile() or member.isdir()):
+                raise RuntimeError(
+                    f"Tipe anggota archive A0 tidak aman: {member.name}"
+                )
+            try:
+                bundle.extract(member, root, filter="data")
+            except TypeError:  # Python 3.10 compatibility
+                bundle.extract(member, root)
+            if index % max(1, progress_every) == 0 or index == len(members):
+                elapsed = time.perf_counter() - started
+                rate = index / max(elapsed, 1e-8)
+                eta = (len(members) - index) / max(rate, 1e-8)
+                print(
+                    f"  restore A0 val {index}/{len(members)} | "
+                    f"ETA {eta / 60:.1f} menit",
+                    flush=True,
+                )
+    # Dataset discovery expects a train layout, but no train image is required
+    # for validation. Empty directories avoid extracting train identities.
+    for kind in ("images", "labels"):
+        (root / "train" / kind).mkdir(parents=True, exist_ok=True)
+    if not (root / "data.yaml").is_file():
+        raise RuntimeError(f"Restore A0 val tidak lengkap: {root}")
+    validation_images = sum(
+        path.is_file() for path in (root / "val" / "images").rglob("*")
+    )
+    validation_labels = sum(
+        path.is_file() for path in (root / "val" / "labels").rglob("*")
+    )
+    payload = {
+        "format": "coffee_detector.sni21_a0_validation_restore.v1",
+        "archive": str(archive),
+        "root": str(root),
+        "validation_images": validation_images,
+        "validation_labels": validation_labels,
+        "train_files_extracted": 0,
+        "test_files_extracted": 0,
+        "test_images_accessed": False,
+    }
+    marker.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    print(
+        f"RESTORE A0 VAL SELESAI: {validation_images} gambar; test tetap "
+        "terkunci.",
+        flush=True,
+    )
+    return root
+
+
 def pack_sni21_pilot_bundle(
     a0_root: str | Path,
     setup_root: str | Path,
