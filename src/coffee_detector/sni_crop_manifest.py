@@ -28,12 +28,13 @@ def build_sni_crop_calibration(
     dataset_root: str | Path,
     *,
     policy: str,
+    source_split: str = "train",
     normal_class: str = "biji_normal",
     enriched_normal_fraction: float = 0.55,
     objects_min: int = 220,
     objects_max: int = 300,
 ) -> tuple[dict[int, str], SceneCalibration, dict]:
-    """Build a preview calibration from the train portion of crop manifest.
+    """Build a calibration from one explicitly selected crop-manifest split.
 
     Crop manifests contain appearance, class, and bbox-aspect information, but
     no full-scene scale or 300 g mass calibration.  Consequently count and
@@ -42,6 +43,9 @@ def build_sni_crop_calibration(
     """
     if policy not in COMPOSITION_POLICIES:
         raise ValueError(f"Policy komposisi tidak dikenal: {policy}")
+    source_split = str(source_split).strip().lower()
+    if source_split not in {"train", "val"}:
+        raise ValueError("source_split kalibrasi hanya boleh train atau val")
     if objects_min <= 0 or objects_min > objects_max:
         raise ValueError("Rentang objek tidak valid")
     if not 0.5 < enriched_normal_fraction < 1.0:
@@ -69,7 +73,7 @@ def build_sni_crop_calibration(
         if missing:
             raise ValueError("Kolom manifest belum lengkap: " + ", ".join(missing))
         for row in reader:
-            if str(row["generated_split"]).strip().lower() != "train":
+            if str(row["generated_split"]).strip().lower() != source_split:
                 continue
             class_name = str(row["canonical_class"])
             class_counts[class_name] += 1
@@ -82,7 +86,7 @@ def build_sni_crop_calibration(
             if width > 0 and height > 0:
                 ratios_by_class[class_name].append(width / height)
     if not class_counts:
-        raise RuntimeError("Manifest tidak memiliki crop train")
+        raise RuntimeError(f"Manifest tidak memiliki crop {source_split}")
     if normal_class not in class_counts:
         raise ValueError(f"Kelas normal tidak ditemukan: {normal_class}")
 
@@ -135,16 +139,18 @@ def build_sni_crop_calibration(
         bbox_width_height_ratios_by_class=ratio_by_id,
         canvas_width_height_ratios=(0.75,),
         class_probabilities=probabilities,
-        split="train_crop_manifest",
+        split=f"{source_split}_crop_manifest",
     )
     report = {
         "policy": policy,
         "claim": (
-            "source_empirical adalah distribusi paket crop train, bukan estimasi "
+            f"source_empirical adalah distribusi paket crop {source_split}, bukan estimasi "
             "prevalensi populasi kopi 300 g"
         ),
+        "source_split": source_split,
         "normal_class": normal_class,
-        "source_train_crops": total,
+        "source_crops": total,
+        "source_train_crops": total if source_split == "train" else None,
         "source_parent_images": len(parent_ids),
         "source_class_counts": dict(sorted(class_counts.items())),
         "source_normal_fraction": normal_fraction_source,

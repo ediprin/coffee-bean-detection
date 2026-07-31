@@ -213,9 +213,40 @@ def generate_vadcp_dataset(
     scene_profile: str | Path | SceneCalibration | None = None,
     preset: str = "default",
     target_names: dict[int, str] | None = None,
+    artifact_role: str = "training_augmentation",
+    library_source_split: str = "train",
+    synthetic_split: str = "train",
+    class_balanced: bool | None = None,
+    target_visibility_bin: str | None = None,
+    max_asset_reuse: int | None = None,
+    max_parent_reuse: int | None = None,
 ) -> dict:
     if synthetic_images <= 0:
         raise ValueError("synthetic_images harus positif")
+    if artifact_role not in {"training_augmentation", "development_benchmark"}:
+        raise ValueError(f"artifact_role tidak dikenal: {artifact_role}")
+    library_source_split = str(library_source_split).strip().lower()
+    synthetic_split = str(synthetic_split).strip().lower()
+    if library_source_split not in {"train", "val"}:
+        raise ValueError("library_source_split hanya boleh train atau val")
+    if synthetic_split not in {"train", "val"}:
+        raise ValueError("synthetic_split hanya boleh train atau val")
+    if artifact_role == "development_benchmark" and (
+        library_source_split != "val"
+        or synthetic_split != "val"
+        or include_real_train
+        or materialize_real_splits
+    ):
+        raise ValueError(
+            "Development benchmark wajib memakai library val, output val, "
+            "synthetic-only, dan tidak mematerialisasi split nyata"
+        )
+    for name, value in (
+        ("max_asset_reuse", max_asset_reuse),
+        ("max_parent_reuse", max_parent_reuse),
+    ):
+        if value is not None and value <= 0:
+            raise ValueError(f"{name} harus positif")
     layout = discover_layout(real_data_root) if real_data_root is not None else None
     if layout is not None:
         missing_splits = sorted({"train", "val", "test"} - set(layout.splits))
@@ -236,14 +267,34 @@ def generate_vadcp_dataset(
         names = {int(index): str(name) for index, name in target_names.items()}
         if sorted(names) != list(range(len(names))):
             raise ValueError("target_names harus memakai ID kontigu mulai dari 0")
-    _, cutouts, library_info = load_object_library(object_library, train_only=True)
+    _, all_cutouts, library_info = load_object_library(
+        object_library, train_only=False
+    )
+    allowed_library_splits = (
+        {"train", "unspecified"}
+        if library_source_split == "train"
+        else {"val"}
+    )
+    cutouts = [
+        item for item in all_cutouts if item.source_split in allowed_library_splits
+    ]
+    if not cutouts:
+        raise RuntimeError(
+            f"Object library tidak memiliki aset {library_source_split}"
+        )
     cutouts = _remap_cutouts(cutouts, names)
     invalid_sources = sorted(
-        {item.source_split for item in cutouts if item.source_split not in {"train", "unspecified"}}
+        {
+            item.source_split
+            for item in cutouts
+            if item.source_split not in allowed_library_splits
+        }
     )
     if invalid_sources:
         raise RuntimeError(
-            "Synthetic train memuat aset non-train: " + ", ".join(invalid_sources)
+            f"Synthetic {synthetic_split} memuat aset di luar "
+            f"{library_source_split}: "
+            + ", ".join(invalid_sources)
         )
 
     if isinstance(scene_profile, SceneCalibration):
@@ -323,9 +374,28 @@ def generate_vadcp_dataset(
         minimum_visibility=minimum_visibility,
         use_shadows=use_shadows,
     )
+    if class_balanced is not None:
+        spec = replace(spec, class_balanced=bool(class_balanced))
+    if target_visibility_bin is not None:
+        known_bins = {item.name for item in spec.visibility_bins}
+        if target_visibility_bin not in known_bins:
+            raise ValueError(
+                f"target_visibility_bin tidak dikenal: {target_visibility_bin}"
+            )
+        if mode != "visibility":
+            raise ValueError(
+                "target_visibility_bin hanya berlaku untuk mode visibility"
+            )
+        spec = replace(
+            spec,
+            target_bin_weights={
+                name: float(name == target_visibility_bin)
+                for name in sorted(known_bins)
+            },
+        )
     backgrounds = _background_paths(background_root)
-    train_images = output_root / "train" / "images"
-    train_labels = output_root / "train" / "labels"
+    synthetic_images_root = output_root / synthetic_split / "images"
+    synthetic_labels_root = output_root / synthetic_split / "labels"
     metadata_dir = output_root / "metadata"
     metadata_dir.mkdir(parents=True, exist_ok=True)
     annotations = []
@@ -341,6 +411,8 @@ def generate_vadcp_dataset(
     geometry_targets = 0
     geometry_hits = 0
     geometry_fallbacks = 0
+    asset_usage = Counter()
+    parent_usage = Counter()
 
     generation_started = time.perf_counter()
     progress_every = max(1, min(25, synthetic_images // 20 or 1))
@@ -357,16 +429,68 @@ def generate_vadcp_dataset(
             "big",
         )
         scene_rng = random.Random(scene_seed)
+        available_cutouts = [
+            item
+            for item in cutouts
+            if (
+                max_asset_reuse is None
+                or asset_usage[item.asset_id] < max_asset_reuse
+            )
+            and (
+                max_parent_reuse is None
+                or item.source_parent_id is None
+                or parent_usage[item.source_parent_id] < max_parent_reuse
+            )
+        ]
+        available_classes = {item.class_id for item in available_cutouts}
+        missing_classes = sorted(set(names) - available_classes)
+        if missing_classes:
+            raise RuntimeError(
+                "Batas reuse menghabiskan kelas sebelum semua scene selesai: "
+                + ", ".join(names[class_id] for class_id in missing_classes)
+            )
         background_path = scene_rng.choice(backgrounds) if backgrounds else None
         background = load_background(
             background_path, spec.canvas_size, scene_rng, calibration
         )
         scene = compose_scene(
-            background, cutouts, spec, scene_rng, calibration=calibration
+            background,
+            available_cutouts,
+            spec,
+            scene_rng,
+            calibration=calibration,
         )
+        scene_asset_usage = Counter(
+            instance.cutout.asset_id for instance in scene.instances
+        )
+        scene_parent_usage = Counter(
+            instance.cutout.source_parent_id
+            for instance in scene.instances
+            if instance.cutout.source_parent_id is not None
+        )
+        exhausted_assets = [
+            asset_id
+            for asset_id, count in scene_asset_usage.items()
+            if max_asset_reuse is not None
+            and asset_usage[asset_id] + count > max_asset_reuse
+        ]
+        exhausted_parents = [
+            parent_id
+            for parent_id, count in scene_parent_usage.items()
+            if max_parent_reuse is not None
+            and parent_usage[parent_id] + count > max_parent_reuse
+        ]
+        if exhausted_assets or exhausted_parents:
+            raise RuntimeError(
+                "Batas reuse tidak cukup untuk rencana scene; naikkan batas "
+                "atau kurangi scene. "
+                f"asset={exhausted_assets[:3]}, parent={exhausted_parents[:3]}"
+            )
+        asset_usage.update(scene_asset_usage)
+        parent_usage.update(scene_parent_usage)
         stem = f"{mode}_seed{seed}_{scene_index:06d}"
-        image_path = train_images / f"{stem}.jpg"
-        label_path = train_labels / f"{stem}.txt"
+        image_path = synthetic_images_root / f"{stem}.jpg"
+        label_path = synthetic_labels_root / f"{stem}.txt"
         scene.image.save(image_path, quality=94, subsampling=0)
         label_lines = []
         image_id = scene_index + 1
@@ -410,6 +534,7 @@ def generate_vadcp_dataset(
                     "ignore": int(ignored),
                     "source_asset_id": instance.cutout.asset_id,
                     "source_id": instance.cutout.source_id,
+                    "source_parent_id": instance.cutout.source_parent_id,
                     "source_split": instance.cutout.source_split,
                     "z_order": instance.z_order,
                     "visibility_ratio": instance.visibility_ratio,
@@ -446,7 +571,7 @@ def generate_vadcp_dataset(
         images.append(
             {
                 "id": image_id,
-                "file_name": f"train/images/{image_path.name}",
+                "file_name": f"{synthetic_split}/images/{image_path.name}",
                 "width": spec.canvas_size[0],
                 "height": spec.canvas_size[1],
                 "background": str(background_path) if background_path else "procedural",
@@ -484,10 +609,18 @@ def generate_vadcp_dataset(
             "object_library": str(Path(object_library).expanduser().resolve()),
             "background_root": str(Path(background_root).expanduser().resolve()) if background_root else None,
             "claim_scope": (
-                "Synthetic augmentation; validation and test remain real."
-                if layout is not None
-                else "Synthetic preview only; no real validation or test."
+                "Development-only synthetic benchmark from held-out validation "
+                "identities; not a final test."
+                if artifact_role == "development_benchmark"
+                else (
+                    "Synthetic augmentation; validation and test remain real."
+                    if layout is not None
+                    else "Synthetic preview only; no real validation or test."
+                )
             ),
+            "artifact_role": artifact_role,
+            "library_source_split": library_source_split,
+            "synthetic_split": synthetic_split,
             "generation_model": "physics-informed 2.5D projected packing",
         },
         "images": images,
@@ -496,7 +629,9 @@ def generate_vadcp_dataset(
             {"id": index, "name": names[index]} for index in sorted(names)
         ],
     }
-    metadata_path = metadata_dir / "instances_synthetic_train.json"
+    metadata_path = (
+        metadata_dir / f"instances_synthetic_{synthetic_split}.json"
+    )
     metadata_path.write_text(
         json.dumps(metadata, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
     )
@@ -520,6 +655,9 @@ def generate_vadcp_dataset(
         "mode": mode,
         "preset": preset,
         "seed": seed,
+        "artifact_role": artifact_role,
+        "library_source_split": library_source_split,
+        "synthetic_split": synthetic_split,
         "synthetic_images": synthetic_images,
         "real_images": real_counts,
         "include_real_train": include_real_train,
@@ -544,6 +682,18 @@ def generate_vadcp_dataset(
         "instances_by_visibility": dict(sorted(visibility_counts.items())),
         "instances_by_class": dict(sorted(class_counts.items())),
         "ignored_instances": ignored_instances,
+        "asset_reuse": {
+            "limit": max_asset_reuse,
+            "unique_assets": len(asset_usage),
+            "maximum": max(asset_usage.values(), default=0),
+            "counts": dict(sorted(asset_usage.items())),
+        },
+        "parent_reuse": {
+            "limit": max_parent_reuse,
+            "unique_parents": len(parent_usage),
+            "maximum": max(parent_usage.values(), default=0),
+            "counts": dict(sorted(parent_usage.items())),
+        },
         "focus_targets": dict(sorted(focus_targets.items())),
         "focus_target_hit_rate": target_hit_rates,
         "metadata": str(metadata_path),

@@ -6,8 +6,12 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
+from coffee_detector.audit_vadcp import audit_vadcp_dataset
 from coffee_detector.generate_vadcp_dataset import generate_vadcp_dataset
 from coffee_detector.run_sni_crop_preview import run_sni_crop_preview
+from coffee_detector.run_sni21_density_benchmark_setup import (
+    audit_validation_library_provenance,
+)
 from coffee_detector.sni_crop_manifest import build_sni_crop_calibration
 from coffee_detector.vadcp.library import prepare_sni_crop_manifest_library
 
@@ -233,6 +237,44 @@ def test_sni_crop_composition_keeps_normal_dominant(tmp_path: Path) -> None:
     assert enriched_calibration.class_probabilities[normal_id] == 0.60
     assert enriched_report["requested_normal_fraction"] == 0.60
 
+    _, validation_calibration, validation_report = build_sni_crop_calibration(
+        source,
+        policy="source_empirical",
+        source_split="val",
+        objects_min=1,
+        objects_max=5,
+    )
+    assert validation_calibration.split == "val_crop_manifest"
+    assert validation_report["source_split"] == "val"
+    assert validation_report["source_crops"] == 4
+
+
+def test_validation_library_provenance_uses_only_val_metadata(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "crop-package"
+    library = tmp_path / "val-library"
+    _write_crop_package(source)
+    prepare_sni_crop_manifest_library(
+        source,
+        library,
+        source_split="val",
+        max_normal_assets=2,
+        max_defect_assets_per_class=2,
+        seed=7,
+    )
+
+    report = audit_validation_library_provenance(source, library)
+
+    assert report["selected_source_split"] == "val"
+    assert report["parent_identity_overlap"] == {"train": 0, "test": 0}
+    assert report["crop_identity_overlap"] == {"train": 0, "test": 0}
+    assert report["test_images_opened"] is False
+    # The tiny fixture has two classes rather than canonical SNI-21, so the
+    # complete production gate must remain closed.
+    assert not report["safe_for_development_benchmark"]
+    assert "canonical SNI-21" in report["errors"][-1]
+
 
 def test_synthetic_preview_can_run_without_real_detection_dataset(
     tmp_path: Path,
@@ -276,6 +318,63 @@ def test_synthetic_preview_can_run_without_real_detection_dataset(
     assert manifest["real_images"] == {"train": 0, "val": 0, "test": 0}
     assert sum(manifest["instances_by_class"].values()) == 8
     assert (output / "train" / "images" / "naive_seed5_000000.jpg").is_file()
+
+
+def test_development_benchmark_uses_val_assets_and_val_output(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "crop-package"
+    library = tmp_path / "val-library"
+    output = tmp_path / "benchmark"
+    _write_crop_package(source)
+    prepare_sni_crop_manifest_library(
+        source,
+        library,
+        source_split="val",
+        max_normal_assets=2,
+        max_defect_assets_per_class=2,
+        seed=5,
+    )
+    names, calibration, _ = build_sni_crop_calibration(
+        source,
+        policy="source_empirical",
+        source_split="val",
+        objects_min=2,
+        objects_max=2,
+    )
+
+    manifest = generate_vadcp_dataset(
+        None,
+        library,
+        output,
+        synthetic_images=1,
+        seed=5,
+        mode="visibility",
+        preset="sni_spread",
+        canvas_size=256,
+        object_range=(2, 2),
+        include_real_train=False,
+        materialize_real_splits=False,
+        use_shadows=False,
+        scene_profile=calibration,
+        target_names=names,
+        artifact_role="development_benchmark",
+        library_source_split="val",
+        synthetic_split="val",
+        target_visibility_bin="mild",
+        max_asset_reuse=2,
+        max_parent_reuse=2,
+    )
+    audit = audit_vadcp_dataset(output)
+
+    assert manifest["artifact_role"] == "development_benchmark"
+    assert manifest["library_source_split"] == "val"
+    assert manifest["synthetic_split"] == "val"
+    assert manifest["asset_reuse"]["maximum"] <= 2
+    assert audit["safe_for_training"], audit["errors"]
+    assert audit["library_source_split"] == "val"
+    assert (output / "val/images/visibility_seed5_000000.jpg").is_file()
+    assert (output / "metadata/instances_synthetic_val.json").is_file()
 
 
 def test_sni_crop_preview_records_locked_mask_pipeline(tmp_path: Path) -> None:

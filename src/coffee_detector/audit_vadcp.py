@@ -41,14 +41,26 @@ def audit_vadcp_dataset(
     tolerance: float = 1e-8,
 ) -> dict:
     data_root = Path(data_root).expanduser().resolve()
-    metadata_path = data_root / "metadata" / "instances_synthetic_train.json"
     manifest_path = data_root / "metadata" / "generation_manifest.json"
-    if not metadata_path.is_file() or not manifest_path.is_file():
+    if not manifest_path.is_file():
+        raise FileNotFoundError(
+            f"Metadata VA-DCP belum lengkap di {data_root / 'metadata'}"
+        )
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    synthetic_split = str(manifest.get("synthetic_split", "train"))
+    library_source_split = str(
+        manifest.get("library_source_split", "train")
+    )
+    metadata_path = (
+        data_root
+        / "metadata"
+        / f"instances_synthetic_{synthetic_split}.json"
+    )
+    if not metadata_path.is_file():
         raise FileNotFoundError(
             f"Metadata VA-DCP belum lengkap di {data_root / 'metadata'}"
         )
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     images = {int(row["id"]): row for row in metadata["images"]}
     by_image: dict[int, list[dict]] = defaultdict(list)
     errors: list[str] = []
@@ -91,9 +103,15 @@ def audit_vadcp_dataset(
         if not _same_bbox(row.get("full_bbox"), mask_bbox(full)):
             errors.append(f"annotation {annotation_id}: full bbox tidak konsisten")
         source_split = str(row.get("source_split", ""))
-        if source_split not in {"train", "unspecified"}:
+        allowed_sources = (
+            {"train", "unspecified"}
+            if library_source_split == "train"
+            else {library_source_split}
+        )
+        if source_split not in allowed_sources:
             errors.append(
-                f"annotation {annotation_id}: aset {source_split} masuk synthetic train"
+                f"annotation {annotation_id}: aset {source_split} masuk "
+                f"synthetic {synthetic_split}; expected={library_source_split}"
             )
         if not int(row.get("ignore", 0)):
             visibility[str(row["visibility_bin"])] += 1
@@ -124,7 +142,7 @@ def audit_vadcp_dataset(
             occlusion |= full
         label_path = (
             data_root
-            / "train"
+            / synthetic_split
             / "labels"
             / Path(image_row["file_name"]).with_suffix(".txt").name
         )
@@ -176,6 +194,11 @@ def audit_vadcp_dataset(
         "dataset_root": str(data_root),
         "metadata": str(metadata_path),
         "manifest": str(manifest_path),
+        "artifact_role": manifest.get(
+            "artifact_role", "training_augmentation"
+        ),
+        "synthetic_split": synthetic_split,
+        "library_source_split": library_source_split,
         "synthetic_images": len(images),
         "synthetic_annotations": len(metadata["annotations"]),
         "labeled_instances_by_visibility": dict(sorted(visibility.items())),
