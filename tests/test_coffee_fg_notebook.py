@@ -43,3 +43,5 @@ def test_coffee_fg_notebook_persists_and_resumes() -> None:
     assert "experiments/coffee-fg-v2" in source
     assert "A0_real.tar" in source
     assert "last.pt" in source
+    assert "sys.path.insert(0, str(SRC))" in source
+    assert "import coffee_detector" in source
