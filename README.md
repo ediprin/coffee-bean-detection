@@ -50,7 +50,7 @@ pasangan R0/R1 atau R2/R3 yang boleh diuji. Desain, kontrol, dan gate lengkap ad
 Notebook Colab validation-first yang memulihkan hanya split train/validation A0,
 menyimpan checkpoint langsung ke Drive, dan menghentikan refiner sebelum gate
 tersedia di
-[`notebooks/CoffeeFG_YOLO26_Colab.ipynb`](notebooks/CoffeeFG_YOLO26_Colab.ipynb).
+[`notebooks/CoffeeFG_YOLO26_A0_Colab.ipynb`](notebooks/CoffeeFG_YOLO26_A0_Colab.ipynb).
 
 ## Eksperimen VA-DCP
 

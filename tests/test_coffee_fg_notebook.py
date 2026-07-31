@@ -6,7 +6,7 @@ from pathlib import Path
 NOTEBOOK = (
     Path(__file__).parents[1]
     / "notebooks"
-    / "CoffeeFG_YOLO26_Colab.ipynb"
+    / "CoffeeFG_YOLO26_A0_Colab.ipynb"
 )
 
 
@@ -28,13 +28,14 @@ def test_coffee_fg_notebook_code_cells_are_valid_python() -> None:
 def test_coffee_fg_notebook_locks_test_and_gates_refiner() -> None:
     _, source = _load_notebook()
     assert "restore_real_a0_development" in source
-    assert "assert not (DATA_ROOT / 'test').exists()" in source
+    assert "assert 'test' not in payload" in source
+    assert "check_det_dataset" in source
     assert "--evaluation-split', 'val'" in source
     assert "--open-test" not in source
     assert "--models', 'D0', 'D1'" in source
-    assert "RUN_REFINER = False" in source
     assert "classification_refinement_rational" in source
     assert "recommended_refiners" in source
+    assert "Tahap 2 dikunci" in source
 
 
 def test_coffee_fg_notebook_persists_and_resumes() -> None:
@@ -45,3 +46,4 @@ def test_coffee_fg_notebook_persists_and_resumes() -> None:
     assert "last.pt" in source
     assert "sys.path.insert(0, str(SRC))" in source
     assert "import coffee_detector" in source
+    assert "run_live" in source
