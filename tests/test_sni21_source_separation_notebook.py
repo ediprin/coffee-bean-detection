@@ -16,6 +16,7 @@ def test_source_separation_notebook_is_valid_and_test_locked() -> None:
             ast.parse("".join(cell["source"]), filename=f"cell-{index}")
     assert "restore_real_a0_development" in source
     assert "os.chdir('/content')" in source
+    assert "sys.modules.pop(module_name, None)" in source
     assert "separate_sni21_sources" in source
     assert "test_images_accessed" in source
     assert "training_executed" in source

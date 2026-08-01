@@ -18,7 +18,9 @@ def test_source_domain_notebook_is_validation_only() -> None:
     assert "os.chdir('/content')" in source
     assert "separate_sni21_sources" in source
     assert "evaluate_sni21_source_domains" in source
-    assert "analyze_sni21_source_classes" in source
+    assert "class_audit_module.analyze_sni21_source_classes" in source
+    assert "importlib.reload(class_audit_module)" in source
+    assert "sys.modules.pop(module_name, None)" in source
     assert "shared_bottom5_classes" in source
     assert "largest_train_val_prevalence_shifts" in source
     assert "A0_seed42/weights/best.pt" in source
