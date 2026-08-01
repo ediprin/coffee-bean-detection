@@ -115,6 +115,8 @@ tanpa training tersedia di
 [`notebooks/Faruq_V3_Operational_Audit_Colab.ipynb`](notebooks/Faruq_V3_Operational_Audit_Colab.ipynb).
 Protokol auditnya dibekukan di
 [docs/FARUQ_V3_OPERATIONAL_AUDIT_PROTOCOL.md](docs/FARUQ_V3_OPERATIONAL_AUDIT_PROTOCOL.md).
+Hasil serta koreksi gate v1 dicatat di
+[docs/FARUQ_V3_OPERATIONAL_AUDIT_RESULT_2026-08-02.md](docs/FARUQ_V3_OPERATIONAL_AUDIT_RESULT_2026-08-02.md).
 
 Aturan permanen untuk satu folder Drive bersama, perpindahan akun Colab, dan
 bug shortcut DriveFS dicatat di

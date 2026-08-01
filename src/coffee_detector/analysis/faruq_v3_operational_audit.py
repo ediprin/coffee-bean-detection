@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -20,6 +19,68 @@ from coffee_detector.analysis.coffee_fg_diagnostics import (
 
 THRESHOLDS = (0.01, 0.05, 0.10, 0.20, 0.25, 0.30, 0.40, 0.50)
 POLICIES = ("native", "class_agnostic_nms")
+MIN_OPERATIONAL_F1_GAIN = 0.02
+MIN_PRECISION_DELTA = -0.01
+MIN_ACCESSIBILITY_DELTA = -0.01
+MIN_CLASSIFICATION_HEADROOM = 0.02
+
+
+def _enrich_operational_row(row: dict) -> dict:
+    enriched = dict(row)
+    correct = int(enriched["correct"])
+    predictions = max(int(enriched["predictions"]), 1)
+    targets = max(int(enriched["targets"]), 1)
+    precision = correct / predictions
+    recall = correct / targets
+    denominator = precision + recall
+    enriched["correct_decision_precision"] = float(precision)
+    enriched["correct_decision_recall"] = float(recall)
+    enriched["correct_decision_f1"] = float(
+        2 * precision * recall / denominator if denominator else 0.0
+    )
+    return enriched
+
+
+def _build_comparison(baseline: dict, selected: dict) -> dict:
+    f1_gain = selected["correct_decision_f1"] - baseline["correct_decision_f1"]
+    precision_delta = (
+        selected["correct_decision_precision"]
+        - baseline["correct_decision_precision"]
+    )
+    recall_gain = (
+        selected["correct_decision_recall"]
+        - baseline["correct_decision_recall"]
+    )
+    accessibility_delta = (
+        selected["proposal_accessibility"] - baseline["proposal_accessibility"]
+    )
+    postprocessing_gain = (
+        f1_gain >= MIN_OPERATIONAL_F1_GAIN
+        and precision_delta >= MIN_PRECISION_DELTA
+        and accessibility_delta >= MIN_ACCESSIBILITY_DELTA
+    )
+    classification_headroom = 1.0 - selected["conditional_top1_accuracy"]
+    classification_unresolved = (
+        classification_headroom >= MIN_CLASSIFICATION_HEADROOM
+    )
+    if postprocessing_gain and classification_unresolved:
+        decision = "PASS_POSTPROCESSING_CLASSIFICATION_UNRESOLVED"
+    elif postprocessing_gain:
+        decision = "PASS_POSTPROCESSING"
+    else:
+        decision = "FAIL_POSTPROCESSING"
+    return {
+        "correct_decision_precision_delta": float(precision_delta),
+        "correct_decision_recall_gain": float(recall_gain),
+        "correct_decision_f1_gain": float(f1_gain),
+        "proposal_accessibility_delta": float(accessibility_delta),
+        "classification_error_headroom": float(classification_headroom),
+        "postprocessing_improves_operating_point": bool(postprocessing_gain),
+        "classification_refinement_still_justified": bool(
+            classification_unresolved
+        ),
+        "decision": decision,
+    }
 
 
 def _new_totals(class_count: int) -> dict:
@@ -163,11 +224,70 @@ def _select_operating_point(rows: list[dict]) -> dict:
     return max(
         rows,
         key=lambda row: (
+            row["correct_decision_f1"],
+            row["correct_decision_precision"],
             row["correct_decision_recall"],
             row["conditional_top1_accuracy"],
+            -row["mean_predictions_per_image"],
             row["threshold"],
         ),
     )
+
+
+def correct_existing_operational_payload(payload: dict) -> dict:
+    """Correct a v1 report from stored counts without running inference again."""
+
+    if payload.get("evaluation_split") != "val":
+        raise RuntimeError("Operational correction dikunci pada validation")
+    if payload.get("test_images_accessed") is not False:
+        raise RuntimeError("Report tidak membuktikan test tetap terkunci")
+    rows = [_enrich_operational_row(row) for row in payload["rows"]]
+    baseline = next(
+        row
+        for row in rows
+        if row["policy"] == "native" and row["threshold"] == 0.25
+    )
+    selected = _select_operating_point(rows)
+    corrected = dict(payload)
+    corrected["protocol"] = "faruq-v3-operational-audit-v2"
+    corrected["rows"] = rows
+    corrected["baseline"] = baseline
+    corrected["selected"] = selected
+    corrected["comparison"] = _build_comparison(baseline, selected)
+    corrected["selection_rule"] = (
+        "maximize correct-decision F1; tie-break by precision, recall, "
+        "conditional accuracy, fewer predictions, then threshold"
+    )
+    previous_selection = payload.get("selected", {})
+    if (
+        previous_selection.get("policy") != selected["policy"]
+        or previous_selection.get("threshold") != selected["threshold"]
+    ):
+        previous_per_class = corrected.pop("selected_per_class", None)
+        if previous_per_class is not None:
+            corrected["legacy_selected_per_class"] = {
+                "policy": previous_selection.get("policy"),
+                "threshold": previous_selection.get("threshold"),
+                "values": previous_per_class,
+                "warning": "not the corrected selected operating point",
+            }
+        corrected["selected_per_class_available"] = False
+    return corrected
+
+
+def correct_existing_operational_report(
+    source: str | Path, destination: str | Path
+) -> dict:
+    source = Path(source).expanduser().resolve()
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    corrected = correct_existing_operational_payload(payload)
+    destination = Path(destination).expanduser().resolve()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(
+        json.dumps(corrected, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    corrected["summary"] = str(destination)
+    return corrected
 
 
 def audit_faruq_v3_operating_points(
@@ -231,24 +351,19 @@ def audit_faruq_v3_operating_points(
         finalized = _finalize(values, layout.names)
         finalized_by_key[(policy, threshold)] = finalized
         rows.append(
-            {
+            _enrich_operational_row({
                 "policy": policy,
                 "threshold": threshold,
                 **{key: value for key, value in finalized.items() if key != "per_class"},
-            }
+            })
         )
     baseline = next(
         row for row in rows if row["policy"] == "native" and row["threshold"] == 0.25
     )
     selected = _select_operating_point(rows)
-    gain = selected["correct_decision_recall"] - baseline["correct_decision_recall"]
-    accessibility_delta = (
-        selected["proposal_accessibility"] - baseline["proposal_accessibility"]
-    )
-    gate = gain >= 0.02 and accessibility_delta >= -0.01
     selected_details = finalized_by_key[(selected["policy"], selected["threshold"])]
     payload = {
-        "protocol": "faruq-v3-operational-audit-v1",
+        "protocol": "faruq-v3-operational-audit-v2",
         "training_executed": False,
         "evaluation_split": "val",
         "test_images_accessed": False,
@@ -261,12 +376,11 @@ def audit_faruq_v3_operating_points(
         "baseline": baseline,
         "selected": selected,
         "selected_per_class": selected_details["per_class"],
-        "comparison": {
-            "correct_decision_recall_gain": float(gain),
-            "proposal_accessibility_delta": float(accessibility_delta),
-            "postprocessing_sufficient": bool(gate),
-            "decision": "PASS" if gate else "FAIL",
-        },
+        "comparison": _build_comparison(baseline, selected),
+        "selection_rule": (
+            "maximize correct-decision F1; tie-break by precision, recall, "
+            "conditional accuracy, fewer predictions, then threshold"
+        ),
     }
     destination = Path(output).expanduser().resolve()
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -279,19 +393,27 @@ def audit_faruq_v3_operating_points(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Faruq-v3 threshold and suppression audit.")
-    parser.add_argument("--checkpoint", required=True)
-    parser.add_argument("--data-root", required=True)
+    parser.add_argument("--checkpoint")
+    parser.add_argument("--data-root")
+    parser.add_argument("--recompute-input")
     parser.add_argument("--output", required=True)
     parser.add_argument("--split", choices=("val",), default="val")
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
-    result = audit_faruq_v3_operating_points(
-        args.checkpoint,
-        args.data_root,
-        args.output,
-        split=args.split,
-        device=args.device,
-    )
+    if args.recompute_input:
+        result = correct_existing_operational_report(
+            args.recompute_input, args.output
+        )
+    else:
+        if not args.checkpoint or not args.data_root:
+            parser.error("--checkpoint dan --data-root wajib untuk inference")
+        result = audit_faruq_v3_operating_points(
+            args.checkpoint,
+            args.data_root,
+            args.output,
+            split=args.split,
+            device=args.device,
+        )
     print(json.dumps(result["comparison"], indent=2))
     print("SAVED:", result["summary"])
 

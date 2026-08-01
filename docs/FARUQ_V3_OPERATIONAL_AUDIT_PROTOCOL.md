@@ -23,22 +23,28 @@ objects, or is classification-head work still required?
 
 - proposal accessibility;
 - localization-conditioned top-one class accuracy;
+- correct-decision precision over retained detections;
 - correct-decision recall over all ground-truth objects;
+- correct-decision F1;
 - correct-class availability;
 - ranking-conflict rate;
 - no-correct-class-candidate rate;
 - multi-label spatial-conflict rate;
 - mean retained predictions per image.
 
-The selected operating point maximizes correct-decision recall. Ties prefer
-higher conditional class accuracy, then the higher confidence threshold.
+The selected operating point maximizes correct-decision F1. Ties prefer higher
+correct-decision precision, recall, conditional class accuracy, fewer retained
+predictions, then the higher confidence threshold.
 
 ## Gate
 
-Post-processing is considered sufficient for the next stage only if it improves
-correct-decision recall by at least 2 percentage points relative to native
-predictions at confidence 0.25 while preserving proposal accessibility within
-1 percentage point. Otherwise, post-processing is retained only as a diagnostic
-and classification-head modification remains justified.
+Post-processing passes its operational gate only if it improves
+correct-decision F1 by at least 2 percentage points relative to native
+predictions at confidence 0.25, preserves correct-decision precision within
+1 percentage point, and preserves proposal accessibility within 1 percentage
+point. Passing this gate means post-processing improves the operating point; it
+does not prove that fine-grained classification is solved. Classification
+refinement remains justified whenever localization-conditioned class-error
+headroom is at least 2 percentage points.
 
 Test stays locked regardless of the result.
