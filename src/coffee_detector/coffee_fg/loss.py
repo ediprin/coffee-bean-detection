@@ -26,7 +26,12 @@ class CoffeeFGLoss:
     def _target_rois(
         self, batch: dict[str, torch.Tensor]
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        boxes = batch["bboxes"].to(self.head.stride.device)
+        # Ultralytics keeps ``head.stride`` as a CPU metadata tensor even when
+        # the model and images have moved to CUDA. Targets must follow the
+        # actual compute tensor, otherwise the auxiliary CE receives CUDA
+        # logits and CPU labels.
+        compute_device = batch["img"].device
+        boxes = batch["bboxes"].to(compute_device)
         labels = batch["cls"].view(-1).long().to(boxes.device)
         batch_indices = batch["batch_idx"].view(-1).to(device=boxes.device, dtype=boxes.dtype)
         if not len(boxes):

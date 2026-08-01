@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 import torch
+from types import SimpleNamespace
 
 from coffee_detector.coffee_fg.model import (
     CoffeeFGConfig,
@@ -10,6 +11,7 @@ from coffee_detector.coffee_fg.model import (
     MultiLevelROIRefiner,
     inject_coffee_fg,
 )
+from coffee_detector.coffee_fg.loss import CoffeeFGLoss
 from coffee_detector.analysis.coffee_fg_diagnostics import (
     _count_summary,
     _greedy_match,
@@ -24,6 +26,26 @@ from coffee_detector.train import load_experiment
 
 ROOT = Path(__file__).resolve().parents[1]
 P2_MODEL = ROOT / "configs/coffee_fg/models/yolo26n-p2.yaml"
+
+
+def test_auxiliary_targets_follow_image_compute_device_not_stride_metadata() -> None:
+    loss = object.__new__(CoffeeFGLoss)
+    loss.head = SimpleNamespace(
+        stride=torch.tensor([8.0, 16.0, 32.0]),
+        config=SimpleNamespace(box_expand=1.1),
+    )
+    batch = {
+        "img": torch.empty((1, 3, 32, 32), device="meta"),
+        "batch_idx": torch.tensor([0.0]),
+        "cls": torch.tensor([[2.0]]),
+        "bboxes": torch.tensor([[0.5, 0.5, 0.25, 0.25]]),
+    }
+
+    rois, labels, matching = loss._target_rois(batch)
+
+    assert rois.device.type == "meta"
+    assert labels.device.type == "meta"
+    assert matching.device.type == "meta"
 
 
 def test_first_order_and_bilinear_controls_are_capacity_matched() -> None:
