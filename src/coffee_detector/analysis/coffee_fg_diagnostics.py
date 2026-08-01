@@ -152,6 +152,33 @@ def _greedy_match(
     return matches
 
 
+def _confidence_ordered_match(
+    predicted_boxes: torch.Tensor,
+    predicted_confidences: torch.Tensor,
+    target_boxes: torch.Tensor,
+    threshold: float,
+) -> list[tuple[int, int, float]]:
+    """Match final detections in confidence order, independent of class label."""
+
+    if not len(predicted_boxes) or not len(target_boxes):
+        return []
+    matrix = box_iou(predicted_boxes, target_boxes)
+    available_targets = torch.ones(
+        len(target_boxes), dtype=torch.bool, device=target_boxes.device
+    )
+    matches = []
+    for prediction in predicted_confidences.argsort(descending=True).tolist():
+        candidate_ious = matrix[prediction].clone()
+        candidate_ious[~available_targets] = -1
+        value, target = candidate_ious.max(dim=0)
+        if float(value) < threshold:
+            continue
+        target_index = int(target)
+        available_targets[target_index] = False
+        matches.append((int(prediction), target_index, float(value)))
+    return matches
+
+
 def _new_branch_totals(num_classes: int) -> dict[str, Any]:
     return {
         "targets": 0,
@@ -176,6 +203,7 @@ def _update_branch(
     target_boxes: torch.Tensor,
     target_labels: torch.Tensor,
     iou_threshold: float,
+    predicted_confidences: torch.Tensor | None = None,
 ) -> None:
     target_count = len(target_boxes)
     totals["targets"] += target_count
@@ -201,7 +229,16 @@ def _update_branch(
         totals["class_accessible"] += np.bincount(
             accessible_labels, minlength=len(totals["class_accessible"])
         )
-    matches = _greedy_match(predicted_boxes, target_boxes, iou_threshold)
+    matches = (
+        _confidence_ordered_match(
+            predicted_boxes,
+            predicted_confidences,
+            target_boxes,
+            iou_threshold,
+        )
+        if predicted_confidences is not None
+        else _greedy_match(predicted_boxes, target_boxes, iou_threshold)
+    )
     totals["accessible"] += accessible
     totals["matched"] += len(matches)
     totals["missed"] += target_count - len(matches)
@@ -348,6 +385,7 @@ def diagnose_checkpoint(
         }
         for branch in ("one2one", "one2many")
     }
+    final_totals = _new_branch_totals(len(layout.names))
     count_rows = {"one2one": [], "one2many_nms": []}
 
     with torch.inference_mode():
@@ -372,6 +410,15 @@ def diagnose_checkpoint(
                     )
 
             final_kept = final[final[:, 4] >= confidence_threshold]
+            _update_branch(
+                final_totals,
+                final_kept[:, :4],
+                final_kept[:, 5].long(),
+                target_boxes,
+                target_labels,
+                iou_threshold,
+                predicted_confidences=final_kept[:, 4],
+            )
             traditional = _nms_one2many(
                 head,
                 raw["one2many"],
@@ -408,6 +455,7 @@ def diagnose_checkpoint(
         "confidence_threshold": confidence_threshold,
         "candidate_counts": list(sorted(set(candidate_counts))),
         "branches": finalized,
+        "final_detections": _finalize_branch(final_totals, layout.names),
         "counting": {
             name: _count_summary(rows) for name, rows in count_rows.items()
         },

@@ -40,7 +40,7 @@ def run_faruq_v3_diagnostics(
         max_det=500,
         device=device,
     )
-    selected = diagnostic["branches"]["one2one"]["500"]
+    selected = diagnostic["final_detections"]
     class_rows = [
         {"class_name": name, **metrics}
         for name, metrics in selected["per_class"].items()
@@ -75,7 +75,7 @@ def run_faruq_v3_diagnostics(
             ),
         ),
         "top_directional_confusions": _top_confusions(selected["confusion"]),
-        "candidate_count_sensitivity": {
+        "raw_candidate_sensitivity": {
             count: {
                 key: diagnostic["branches"]["one2one"][count][key]
                 for key in (

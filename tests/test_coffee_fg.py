@@ -295,6 +295,24 @@ def test_diagnostic_matching_and_counting() -> None:
     assert summary["target_count_max"] == 340
 
 
+def test_final_detection_matching_prioritizes_confidence() -> None:
+    from coffee_detector.analysis.coffee_fg_diagnostics import (
+        _confidence_ordered_match,
+    )
+
+    predictions = torch.tensor(
+        [
+            [0.0, 0.0, 10.0, 10.0],
+            [0.5, 0.5, 9.5, 9.5],
+        ]
+    )
+    confidence = torch.tensor([0.2, 0.9])
+    targets = torch.tensor([[0.0, 0.0, 10.0, 10.0]])
+
+    matches = _confidence_ordered_match(predictions, confidence, targets, 0.5)
+    assert matches[0][0] == 1
+
+
 def test_diagnostic_selects_pyramid_before_refiner() -> None:
     template = {
         "candidate_counts": [50, 500],
