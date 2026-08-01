@@ -19,6 +19,8 @@ def test_faruq_v3_baseline_notebook_is_validation_only_and_resumable() -> None:
         if cell["cell_type"] == "code":
             ast.parse("".join(cell["source"]), filename=f"cell-{index}")
     assert "faruq-development-v3-grouped.tar" in source
+    assert "/content/drive/.shortcut-targets-by-id" in source
+    assert "PROJECT_ROOT = ARCHIVE.parent.parent" in source
     assert "run_faruq_v3_baseline" in source
     assert "D0_seed42/weights/last.pt" in source
     assert "--seed', '42'" in source
