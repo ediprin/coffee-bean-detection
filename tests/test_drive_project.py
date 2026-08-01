@@ -14,6 +14,7 @@ PERSISTENT_NOTEBOOKS = (
     "Faruq_Mask_Geometry_Repair_Colab.ipynb",
     "Faruq_Grouped_Development_Colab.ipynb",
     "Faruq_V3_YOLO26n_Baseline_Colab.ipynb",
+    "Faruq_V3_Operational_Audit_Colab.ipynb",
     "SNI21_Source_Separation_Colab.ipynb",
     "SNI21_Source_Domain_Evaluation_Colab.ipynb",
 )

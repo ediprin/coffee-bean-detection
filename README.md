@@ -110,6 +110,11 @@ membuka test.
 Baseline YOLO26n validation-only yang dibekukan untuk Faruq-v3 tersedia di
 [`notebooks/Faruq_V3_YOLO26n_Baseline_Colab.ipynb`](notebooks/Faruq_V3_YOLO26n_Baseline_Colab.ipynb).
 Protokolnya ada di [docs/FARUQ_V3_BASELINE_PROTOCOL.md](docs/FARUQ_V3_BASELINE_PROTOCOL.md).
+Setelah baseline selesai, audit confidence threshold dan class-agnostic NMS
+tanpa training tersedia di
+[`notebooks/Faruq_V3_Operational_Audit_Colab.ipynb`](notebooks/Faruq_V3_Operational_Audit_Colab.ipynb).
+Protokol auditnya dibekukan di
+[docs/FARUQ_V3_OPERATIONAL_AUDIT_PROTOCOL.md](docs/FARUQ_V3_OPERATIONAL_AUDIT_PROTOCOL.md).
 
 ## Eksperimen VA-DCP
 
