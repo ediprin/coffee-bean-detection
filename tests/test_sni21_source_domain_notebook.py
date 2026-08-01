@@ -15,6 +15,7 @@ def test_source_domain_notebook_is_validation_only() -> None:
         if cell["cell_type"] == "code":
             ast.parse("".join(cell["source"]), filename=f"cell-{index}")
     assert "restore_real_a0_development" in source
+    assert "os.chdir('/content')" in source
     assert "separate_sni21_sources" in source
     assert "evaluate_sni21_source_domains" in source
     assert "analyze_sni21_source_classes" in source
