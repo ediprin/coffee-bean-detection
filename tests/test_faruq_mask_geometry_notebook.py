@@ -24,6 +24,8 @@ def test_faruq_mask_geometry_notebook_is_audit_only() -> None:
     assert "userdata.get('roboflow')" in source
     assert "robusta_sni_dataset-hr9ci" in source
     assert "coco-segmentation" in source
+    assert "any(path.is_file() for path in (root / split).glob('*.json'))" in source
+    assert "any((root / split).glob('*.json')" not in source
     assert "audit_faruq_mask_geometry" in source
     assert "training_executed" in source
     assert "inference_executed" in source
