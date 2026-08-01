@@ -116,6 +116,10 @@ tanpa training tersedia di
 Protokol auditnya dibekukan di
 [docs/FARUQ_V3_OPERATIONAL_AUDIT_PROTOCOL.md](docs/FARUQ_V3_OPERATIONAL_AUDIT_PROTOCOL.md).
 
+Aturan permanen untuk satu folder Drive bersama, perpindahan akun Colab, dan
+bug shortcut DriveFS dicatat di
+[docs/COLAB_SHARED_DRIVE_RUNBOOK.md](docs/COLAB_SHARED_DRIVE_RUNBOOK.md).
+
 ## Eksperimen VA-DCP
 
 Pipeline offline `Visibility-Aware Dense Copy-Paste` sudah tersedia tanpa
