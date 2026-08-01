@@ -81,6 +81,10 @@ Notebook siap jalan:
 Tahap ini hanya memisahkan dan mengaudit data; tidak melakukan training dan
 tidak memulihkan split test.
 
+Setelah audit disetujui, checkpoint A0 beku dapat dievaluasi per sumber tanpa
+training melalui
+[`notebooks/SNI21_Source_Domain_Evaluation_Colab.ipynb`](notebooks/SNI21_Source_Domain_Evaluation_Colab.ipynb).
+
 ## Eksperimen VA-DCP
 
 Pipeline offline `Visibility-Aware Dense Copy-Paste` sudah tersedia tanpa
