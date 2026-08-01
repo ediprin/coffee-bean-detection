@@ -18,6 +18,8 @@ def test_source_domain_notebook_is_validation_only() -> None:
     assert "separate_sni21_sources" in source
     assert "evaluate_sni21_source_domains" in source
     assert "A0_seed42/weights/best.pt" in source
+    assert "torch.cuda.is_available()" in source
+    assert "device=DEVICE" in source
     assert "training_executed" in source
     assert "test_images_accessed" in source
     assert "model.train" not in source
