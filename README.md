@@ -107,6 +107,10 @@ Jika geometri lolos tetapi parent identity masih menyeberang split, gunakan
 untuk membuat split train/validation terkelompok dan terstratifikasi tanpa
 membuka test.
 
+Baseline YOLO26n validation-only yang dibekukan untuk Faruq-v3 tersedia di
+[`notebooks/Faruq_V3_YOLO26n_Baseline_Colab.ipynb`](notebooks/Faruq_V3_YOLO26n_Baseline_Colab.ipynb).
+Protokolnya ada di [docs/FARUQ_V3_BASELINE_PROTOCOL.md](docs/FARUQ_V3_BASELINE_PROTOCOL.md).
+
 ## Eksperimen VA-DCP
 
 Pipeline offline `Visibility-Aware Dense Copy-Paste` sudah tersedia tanpa
