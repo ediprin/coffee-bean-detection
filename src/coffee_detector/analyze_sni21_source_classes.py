@@ -12,11 +12,13 @@ from .dataset import IMAGE_SUFFIXES, discover_layout, parse_label
 from .separate_sni21_sources import SOURCES
 
 
-def _validation_counts(data_root: Path) -> tuple[Counter[int], Counter[int]]:
+def _split_counts(
+    data_root: Path, split: str
+) -> tuple[Counter[int], Counter[int]]:
     layout = discover_layout(data_root)
     if "test" in layout.splits or (data_root / "test").exists():
         raise RuntimeError(f"Test tidak boleh tersedia: {data_root}")
-    image_root, label_root = layout.splits["val"]
+    image_root, label_root = layout.splits[split]
     instance_counts: Counter[int] = Counter()
     image_counts: Counter[int] = Counter()
     for image_path in sorted(
@@ -68,7 +70,10 @@ def analyze_sni21_source_classes(
     for source in SOURCES:
         data_root = separated_root / source
         layout = discover_layout(data_root)
-        instances, images = _validation_counts(data_root)
+        train_instances, train_images = _split_counts(data_root, "train")
+        val_instances, val_images = _split_counts(data_root, "val")
+        total_train_instances = sum(train_instances.values())
+        total_val_instances = sum(val_instances.values())
         report_path = Path(evaluation["reports"][source]).expanduser().resolve()
         report = json.loads(report_path.read_text(encoding="utf-8"))
         if report.get("split") != "val":
@@ -82,14 +87,32 @@ def analyze_sni21_source_classes(
                 "source_dataset": source,
                 "class_id": class_id,
                 "class_name": class_name,
-                "val_images_with_class": int(images[class_id]),
-                "val_instances": int(instances[class_id]),
+                "train_images_with_class": int(train_images[class_id]),
+                "train_instances": int(train_instances[class_id]),
+                "val_images_with_class": int(val_images[class_id]),
+                "val_instances": int(val_instances[class_id]),
+                "val_to_train_instance_ratio": (
+                    float(val_instances[class_id] / train_instances[class_id])
+                    if train_instances[class_id] > 0
+                    else None
+                ),
+                "val_to_train_prevalence_ratio": (
+                    float(
+                        (val_instances[class_id] / total_val_instances)
+                        / (train_instances[class_id] / total_train_instances)
+                    )
+                    if train_instances[class_id] > 0
+                    and total_train_instances > 0
+                    and total_val_instances > 0
+                    else None
+                ),
                 "map50_95": (
                     float(ap_by_class[class_name])
                     if class_name in ap_by_class
                     else None
                 ),
-                "has_ground_truth": instances[class_id] > 0,
+                "has_train_ground_truth": train_instances[class_id] > 0,
+                "has_ground_truth": val_instances[class_id] > 0,
             }
             rows.append(row)
             source_rows.append(row)
@@ -98,11 +121,26 @@ def analyze_sni21_source_classes(
             key=lambda row: (row["map50_95"], row["val_instances"], row["class_id"]),
         )
         hard = observed[: min(5, len(observed))]
+        shifted = sorted(
+            (
+                row
+                for row in source_rows
+                if row["val_to_train_prevalence_ratio"] is not None
+                and row["val_to_train_prevalence_ratio"] > 0
+            ),
+            key=lambda row: abs(np.log2(row["val_to_train_prevalence_ratio"])),
+            reverse=True,
+        )[:5]
         hard_sets[source] = {row["class_name"] for row in hard}
         source_summaries[source] = {
             "classes_with_ground_truth": sum(
                 row["has_ground_truth"] for row in source_rows
             ),
+            "classes_without_train_ground_truth": [
+                row["class_name"]
+                for row in source_rows
+                if not row["has_train_ground_truth"]
+            ],
             "classes_without_ground_truth": [
                 row["class_name"] for row in source_rows if not row["has_ground_truth"]
             ],
@@ -112,6 +150,7 @@ def analyze_sni21_source_classes(
                 if row["map50_95"] is not None and row["map50_95"] <= 0
             ],
             "bottom5": hard,
+            "largest_train_val_prevalence_shifts": shifted,
             "log_support_ap_correlation": _support_ap_correlation(source_rows),
         }
 
@@ -134,7 +173,8 @@ def analyze_sni21_source_classes(
         "development_only": True,
         "interpretation_rule": (
             "AP tanpa GT tidak diisi nol; kelas tanpa GT dilaporkan sebagai coverage gap. "
-            "Korelasi support-AP bersifat deskriptif, bukan bukti kausal."
+            "Prevalence ratio membandingkan proporsi instance kelas pada val versus train. "
+            "Korelasi dan pergeseran bersifat deskriptif, bukan bukti kausal."
         ),
     }
     summary_path = output_root / "source_class_audit_summary.json"
@@ -162,8 +202,10 @@ def main() -> None:
         for row in summary["bottom5"]:
             print(
                 f"  {row['class_name']}: AP={row['map50_95']:.2%} | "
-                f"n={row['val_instances']} | images={row['val_images_with_class']}"
+                f"train={row['train_instances']} | val={row['val_instances']} | "
+                f"val_images={row['val_images_with_class']}"
             )
+        print("  Missing train GT:", summary["classes_without_train_ground_truth"])
         print("  Missing GT:", summary["classes_without_ground_truth"])
         print("  Corr log-support/AP:", summary["log_support_ap_correlation"])
     print("\nSHARED BOTTOM-5:", result["shared_bottom5_classes"])

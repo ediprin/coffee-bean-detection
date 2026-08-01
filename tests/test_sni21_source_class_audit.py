@@ -12,18 +12,19 @@ from coffee_detector.prepare_sni_fullscene import SNI21_CLASSES
 
 def _write_source(root: Path, source: str, present: tuple[int, ...]) -> None:
     source_root = root / source
-    (source_root / "val/images").mkdir(parents=True)
-    (source_root / "val/labels").mkdir(parents=True)
-    for index, class_id in enumerate(present):
-        name = f"{source}_{index}.jpg"
-        Image.new("RGB", (8, 8), (80, 40, 20)).save(
-            source_root / "val/images" / name
-        )
-        (source_root / "val/labels" / Path(name).with_suffix(".txt")).write_text(
-            f"{class_id} 0.5 0.5 0.5 0.5\n", encoding="utf-8"
-        )
-    (source_root / "train/images").mkdir(parents=True)
-    (source_root / "train/labels").mkdir(parents=True)
+    for split, repeat in (("train", 2), ("val", 1)):
+        (source_root / f"{split}/images").mkdir(parents=True)
+        (source_root / f"{split}/labels").mkdir(parents=True)
+        for index, class_id in enumerate(present * repeat):
+            name = f"{source}_{split}_{index}.jpg"
+            Image.new("RGB", (8, 8), (80, 40, 20)).save(
+                source_root / split / "images" / name
+            )
+            (
+                source_root / split / "labels" / Path(name).with_suffix(".txt")
+            ).write_text(
+                f"{class_id} 0.5 0.5 0.5 0.5\n", encoding="utf-8"
+            )
     (source_root / "data.yaml").write_text(
         yaml.safe_dump(
             {
@@ -94,3 +95,12 @@ def test_class_audit_preserves_missing_gt_and_never_reads_test(tmp_path: Path) -
     )
     assert missing_row["map50_95"] is None
     assert missing_row["val_instances"] == 0
+    present_row = next(
+        row
+        for row in summary["rows"]
+        if row["source_dataset"] == "adrian_detection" and row["class_id"] == 0
+    )
+    assert present_row["train_instances"] == 2
+    assert present_row["val_instances"] == 1
+    assert present_row["val_to_train_instance_ratio"] == 0.5
+    assert present_row["val_to_train_prevalence_ratio"] == 1.0

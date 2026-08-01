@@ -19,6 +19,7 @@ def test_source_domain_notebook_is_validation_only() -> None:
     assert "evaluate_sni21_source_domains" in source
     assert "analyze_sni21_source_classes" in source
     assert "shared_bottom5_classes" in source
+    assert "largest_train_val_prevalence_shifts" in source
     assert "A0_seed42/weights/best.pt" in source
     assert "torch.cuda.is_available()" in source
     assert "device=DEVICE" in source
