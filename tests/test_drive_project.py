@@ -43,10 +43,38 @@ def test_resolver_prefers_canonical_research_tree(tmp_path: Path) -> None:
     assert resolve_drive_project_root([tmp_path]) == canonical
 
 
+def test_resolver_accepts_marked_shortcut_with_a_different_alias(
+    tmp_path: Path,
+) -> None:
+    aliased = _marked_project(tmp_path / "shortcut-target-id")
+
+    assert resolve_drive_project_root([tmp_path]) == aliased
+
+
 def test_resolver_can_use_multiple_exact_artifacts_when_markers_are_stale(
     tmp_path: Path,
 ) -> None:
     project = tmp_path / "shortcut-target" / "Coffee_Bean_Detection"
+    archive = project / "bundles" / "dataset.tar"
+    checkpoint = project / "experiments" / "run" / "weights" / "best.pt"
+    archive.parent.mkdir(parents=True)
+    checkpoint.parent.mkdir(parents=True)
+    archive.write_bytes(b"archive")
+    checkpoint.write_bytes(b"checkpoint")
+
+    assert resolve_drive_project_root(
+        [tmp_path],
+        required_relative_paths=(
+            "bundles/dataset.tar",
+            "experiments/run/weights/best.pt",
+        ),
+    ) == project
+
+
+def test_resolver_can_use_artifacts_when_shortcut_target_is_an_id(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "150ljaOEY25tOMecAmrctJX3VG2vSujso"
     archive = project / "bundles" / "dataset.tar"
     checkpoint = project / "experiments" / "run" / "weights" / "best.pt"
     archive.parent.mkdir(parents=True)

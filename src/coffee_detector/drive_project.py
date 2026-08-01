@@ -51,10 +51,7 @@ def resolve_drive_project_root(
             continue
         for marker in root.rglob(PROJECT_MARKERS[0]):
             candidate = marker.parent
-            if (
-                candidate.name == PROJECT_DIRECTORY
-                and all((candidate / name).is_file() for name in PROJECT_MARKERS)
-            ):
+            if all((candidate / name).is_file() for name in PROJECT_MARKERS):
                 candidates[candidate.as_posix()] = candidate
 
     # Google Drive FUSE can retain a cached shortcut view after files are moved
@@ -63,21 +60,20 @@ def resolve_drive_project_root(
     # artifacts provide a safe fallback without accepting an empty same-named
     # folder or creating a replacement project root.
     if not candidates and required:
-        anchor = required[0]
-        for root in roots:
-            if not root.is_dir():
-                continue
-            for match in root.rglob(anchor.name):
-                if not match.is_file():
+        for anchor in required:
+            for root in roots:
+                if not root.is_dir():
                     continue
-                candidate = match
-                for _ in anchor.parts:
-                    candidate = candidate.parent
-                if (
-                    candidate.name == PROJECT_DIRECTORY
-                    and all((candidate / relative).is_file() for relative in required)
-                ):
-                    candidates[candidate.as_posix()] = candidate
+                for match in root.rglob(anchor.name):
+                    if not match.is_file():
+                        continue
+                    candidate = match
+                    for _ in anchor.parts:
+                        candidate = candidate.parent
+                    if all(
+                        (candidate / relative).is_file() for relative in required
+                    ):
+                        candidates[candidate.as_posix()] = candidate
 
     if not candidates:
         raise FileNotFoundError(
@@ -94,8 +90,6 @@ def require_project_artifact(project_root: str | Path, relative_path: str | Path
     """Resolve one exact artifact inside the marked project, or fail clearly."""
 
     root = Path(project_root).expanduser()
-    if not all((root / marker).is_file() for marker in PROJECT_MARKERS):
-        raise FileNotFoundError(f"Bukan root proyek Drive yang valid: {root}")
     artifact = root / relative_path
     if not artifact.is_file():
         raise FileNotFoundError(f"Artefak proyek tidak ditemukan: {artifact}")
