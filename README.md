@@ -6,6 +6,12 @@ YOLO26n; keluarga detector lain baru ditambahkan setelah baseline terkunci.
 
 ## Eksperimen CoffeeFG-YOLO26 v2
 
+**Status: STOP pada quick-10 validation (2026-08-01).** P2 tidak meningkatkan
+akses proposal; first-order ROI refiner menurunkan Macro AP50-95 sebesar 8,77
+poin dan bilinear ROI refiner menurunkannya 10,86 poin terhadap D0Q. Test tidak
+dibuka dan eksperimen tidak diperluas ke seed lain. Lihat
+[hasil quick-10](docs/COFFEE_FG_QUICK10_RESULT_2026-08-01.md).
+
 Fondasi arsitektur fine-grained detector tersedia sebagai studi terpisah dari
 VA-DCP:
 

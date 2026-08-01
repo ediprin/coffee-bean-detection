@@ -1,5 +1,17 @@
 # CoffeeFG-YOLO26 v2
 
+## Screening outcome — 2026-08-01
+
+The quick-10 validation screen is complete and the study is **stopped**.
+P2 did not improve proposal accessibility, while both authorized P3 ROI
+refiners substantially degraded macro and lower-tail AP. R0Q fell 8.77
+percentage points and R1Q fell 10.86 points in macro AP50-95 relative to D0Q;
+R1Q also lost 2.09 points against its capacity-matched first-order control.
+Test remained locked. Do not run the full schedule or additional seeds.
+
+The frozen result and artifact provenance are recorded in
+[`COFFEE_FG_QUICK10_RESULT_2026-08-01.md`](COFFEE_FG_QUICK10_RESULT_2026-08-01.md).
+
 ## Research question
 
 Can candidate-level cross-scale second-order classification improve
