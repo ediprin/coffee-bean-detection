@@ -98,6 +98,10 @@ jalankan audit mask-geometry train/validation berikut:
 Notebook membandingkan transformasi orientasi yang mungkin terhadap polygon
 mask dan menghasilkan overlay `current` versus `best`. Hasilnya hanya bukti
 diagnostik; tidak otomatis menulis ulang gambar/anotasi dan tidak membaca test.
+Setelah overlay disetujui, materialisasi development-v2 dan audit ulang tersedia
+di [`notebooks/Faruq_Mask_Geometry_Repair_Colab.ipynb`](notebooks/Faruq_Mask_Geometry_Repair_Colab.ipynb).
+Dataset hasil repair tetap berstatus belum siap training sampai audit leakage
+dan contact sheet pascarepair dinilai.
 
 ## Eksperimen VA-DCP
 
