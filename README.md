@@ -84,6 +84,8 @@ tidak memulihkan split test.
 Setelah audit disetujui, checkpoint A0 beku dapat dievaluasi per sumber tanpa
 training melalui
 [`notebooks/SNI21_Source_Domain_Evaluation_Colab.ipynb`](notebooks/SNI21_Source_Domain_Evaluation_Colab.ipynb).
+Notebook yang sama juga mencocokkan AP validation dengan jumlah GT per kelas
+tanpa menjalankan inference kedua kali.
 
 ## Eksperimen VA-DCP
 
