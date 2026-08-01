@@ -1,0 +1,22 @@
+code: HF
+variant: hong_transfer
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+weights: yolo26n.pt
+hong_transfer:
+  dsconv_bits: 4
+  dsconv_block_size: 128
+  dsconv_layer_indices: [1, 3, 17]
+  sppf_layer_index: 9
+  attention_reduction: 16
+  pconv_ratio: 0.25
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500

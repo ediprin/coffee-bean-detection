@@ -391,6 +391,81 @@ def audit_faruq_v3_operating_points(
     return payload
 
 
+def audit_faruq_v3_fixed_operating_point(
+    checkpoint: str | Path,
+    data_root: str | Path,
+    output: str | Path,
+    *,
+    split: str = "val",
+    device: str = "cpu",
+    threshold: float = 0.05,
+    policy: str = "class_agnostic_nms",
+) -> dict:
+    """Evaluate one frozen operating point without selecting on the candidate."""
+
+    if split != "val":
+        raise RuntimeError("Operational fixed-point audit dikunci pada validation")
+    if policy not in POLICIES:
+        raise ValueError(f"Policy tidak dikenal: {policy}")
+    from ultralytics import YOLO
+
+    checkpoint = Path(checkpoint).expanduser().resolve()
+    if not checkpoint.is_file():
+        raise FileNotFoundError(f"Checkpoint tidak ditemukan: {checkpoint}")
+    layout, samples = _split_samples(data_root, "val")
+    torch_device = torch.device(f"cuda:{device}" if str(device).isdigit() else device)
+    if torch_device.type == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError(f"CUDA diminta tetapi tidak tersedia: {torch_device}")
+    network = YOLO(str(checkpoint)).model.to(torch_device).eval()
+    if _unwrap_head(network).nc != len(layout.names):
+        raise ValueError("Jumlah kelas checkpoint dan dataset berbeda")
+
+    totals = _new_totals(len(layout.names))
+    with torch.inference_mode():
+        for index, (image_path, annotations) in enumerate(samples, 1):
+            image, target_boxes, target_labels, _ = _letterbox_sample(
+                image_path, annotations, 640, torch_device
+            )
+            final, _, _ = _raw_branches(network, image, max_det=500)
+            predictions = _select(final, float(threshold), policy)
+            _update_totals(
+                totals,
+                predictions,
+                target_boxes,
+                target_labels,
+                0.50,
+            )
+            if index % 100 == 0 or index == len(samples):
+                print(f"FIXED OPERATIONAL {index}/{len(samples)}", flush=True)
+
+    result = _enrich_operational_row(
+        {
+            "policy": policy,
+            "threshold": float(threshold),
+            **_finalize(totals, layout.names),
+        }
+    )
+    payload = {
+        "protocol": "faruq-v3-fixed-operating-point-v1",
+        "training_executed": False,
+        "evaluation_split": "val",
+        "test_images_accessed": False,
+        "checkpoint": str(checkpoint),
+        "image_size": 640,
+        "matching_iou": 0.50,
+        "class_agnostic_nms_iou": 0.50,
+        "frozen_before_candidate_evaluation": True,
+        "result": result,
+    }
+    destination = Path(output).expanduser().resolve()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    payload["summary"] = str(destination)
+    return payload
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Faruq-v3 threshold and suppression audit.")
     parser.add_argument("--checkpoint")

@@ -10,6 +10,7 @@ import yaml
 
 from .dataset import discover_layout
 from .coffee_fg import make_coffee_fg_trainer
+from .hong_transfer import make_hong_transfer_trainer
 from .models.local_hbp import make_local_hbp_trainer
 
 
@@ -35,10 +36,21 @@ def load_experiment(path: str | Path) -> dict:
     missing = sorted(required - set(payload))
     if missing:
         raise ValueError(f"Config {path} belum memiliki: {', '.join(missing)}")
-    if payload["variant"] not in {"baseline", "local_hbp", "coffee_fg"}:
-        raise ValueError("variant harus baseline, local_hbp, atau coffee_fg")
+    if payload["variant"] not in {
+        "baseline",
+        "local_hbp",
+        "coffee_fg",
+        "hong_transfer",
+    }:
+        raise ValueError(
+            "variant harus baseline, local_hbp, coffee_fg, atau hong_transfer"
+        )
     if payload["variant"] == "coffee_fg" and not isinstance(payload.get("coffee_fg"), dict):
         raise ValueError("variant coffee_fg memerlukan mapping coffee_fg")
+    if payload["variant"] == "hong_transfer" and not isinstance(
+        payload.get("hong_transfer"), dict
+    ):
+        raise ValueError("variant hong_transfer memerlukan mapping hong_transfer")
     return payload
 
 
@@ -83,6 +95,7 @@ def recover_completed_training_manifest(
         "model": config["model"],
         "weights": config.get("weights"),
         "coffee_fg": config.get("coffee_fg"),
+        "hong_transfer": config.get("hong_transfer"),
         "data": str(layout.root),
         "data_yaml": str(layout.yaml_path),
         "seed": int(seed),
@@ -164,6 +177,9 @@ def train_experiment(
     elif config["variant"] == "coffee_fg":
         trainer = make_coffee_fg_trainer(config["coffee_fg"])
         model.train(trainer=trainer, **train_args)
+    elif config["variant"] == "hong_transfer":
+        trainer = make_hong_transfer_trainer(config["hong_transfer"])
+        model.train(trainer=trainer, **train_args)
     else:
         model.train(**train_args)
 
@@ -175,6 +191,7 @@ def train_experiment(
         "model": config["model"],
         "weights": config.get("weights"),
         "coffee_fg": config.get("coffee_fg"),
+        "hong_transfer": config.get("hong_transfer"),
         "data": str(layout.root),
         "data_yaml": str(layout.yaml_path),
         "seed": seed,
