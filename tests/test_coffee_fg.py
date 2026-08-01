@@ -134,6 +134,16 @@ def test_coffee_fg_configs_are_loadable() -> None:
         assert first["train"]["max_det"] == bilinear["train"]["max_det"] == 500
 
 
+def test_quick_p3_p2_controls_share_ten_epoch_schedule() -> None:
+    p3 = load_experiment(ROOT / "configs/coffee_fg/D0Q_yolo26n_p3_quick10.yaml")
+    p2 = load_experiment(ROOT / "configs/coffee_fg/D1Q_yolo26n_p2_quick10.yaml")
+    assert p3["code"] == "D0Q"
+    assert p2["code"] == "D1Q"
+    assert p3["train"] == p2["train"]
+    assert p3["train"]["epochs"] == 10
+    assert p3["model"] != p2["model"]
+
+
 def test_coffee_fg_test_split_is_locked_before_dataset_access(tmp_path: Path) -> None:
     with pytest.raises(RuntimeError, match="Test terkunci"):
         run_coffee_fg_screening(

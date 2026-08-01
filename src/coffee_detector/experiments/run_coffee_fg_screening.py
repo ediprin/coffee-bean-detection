@@ -16,6 +16,8 @@ from coffee_detector.train import load_experiment, train_experiment
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CONFIGS = {
+    "D0Q": REPO_ROOT / "configs/coffee_fg/D0Q_yolo26n_p3_quick10.yaml",
+    "D1Q": REPO_ROOT / "configs/coffee_fg/D1Q_yolo26n_p2_quick10.yaml",
     "D0": REPO_ROOT / "configs/coffee_fg/D0_yolo26n_p3.yaml",
     "D1": REPO_ROOT / "configs/coffee_fg/D1_yolo26n_p2.yaml",
     "R0": REPO_ROOT / "configs/coffee_fg/R0_yolo26n_p3_first_order.yaml",
@@ -25,6 +27,7 @@ DEFAULT_CONFIGS = {
 }
 
 COMPARISONS = (
+    ("D0Q", "D1Q", "quick-10 efek P2 tanpa refiner"),
     ("D0", "D1", "efek P2 tanpa refiner"),
     ("D0", "R0", "efek first-order ROI pada P3-P5"),
     ("D0", "R1", "efek bilinear ROI pada P3-P5"),

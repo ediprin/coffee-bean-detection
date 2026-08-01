@@ -18,6 +18,10 @@ R2  P2-P5 + first-order P2/P3 ROI refiner
 R3  P2-P5 + capacity-matched bilinear P2/P3 ROI refiner
 ```
 
+Notebook Colab memulai dengan kontrol `D0Q/D1Q` 10 epoch untuk fail-fast
+hemat-kuota. Hasil quick-10 hanya menentukan apakah eksperimen 50 epoch layak
+dilanjutkan dan tidak diperlakukan sebagai bukti final.
+
 Refiner hanya menambah klasifikasi objek; instance `cv2` box branches YOLO26
 tidak diganti. Training menambahkan auxiliary ROI classification loss,
 sedangkan inference memperbaiki logit kelas kandidat top-K sebelum postprocess

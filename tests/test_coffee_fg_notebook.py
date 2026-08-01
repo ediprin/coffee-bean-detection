@@ -32,7 +32,8 @@ def test_coffee_fg_notebook_locks_test_and_gates_refiner() -> None:
     assert "check_det_dataset" in source
     assert "--evaluation-split', 'val'" in source
     assert "--open-test" not in source
-    assert "--models', 'D0', 'D1'" in source
+    assert "--models', 'D0Q', 'D1Q'" in source
+    assert "coffee-fg-quick10-v1" in source
     assert "classification_refinement_rational" in source
     assert "recommended_refiners" in source
     assert "Tahap 2 dikunci" in source

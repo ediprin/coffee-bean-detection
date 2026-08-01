@@ -48,6 +48,14 @@ resolved from a moving upstream branch.
 
 ## Mandatory diagnostic gate
 
+### Quota-aware fail-fast screen
+
+Before the full 50-epoch D0/D1 comparison, `D0Q` and `D1Q` may be trained for
+10 epochs with an otherwise identical schedule. This quick comparison is a
+screening device only: failure stops P2, while a pass authorizes the original
+full schedule but is not itself final evidence. Quick and full checkpoints use
+different run codes and output roots and must never be aggregated together.
+
 Train only D0 and D1 on validation first. Then run:
 
 ```bash
