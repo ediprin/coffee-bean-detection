@@ -18,6 +18,8 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_CONFIGS = {
     "D0Q": REPO_ROOT / "configs/coffee_fg/D0Q_yolo26n_p3_quick10.yaml",
     "D1Q": REPO_ROOT / "configs/coffee_fg/D1Q_yolo26n_p2_quick10.yaml",
+    "R0Q": REPO_ROOT / "configs/coffee_fg/R0Q_yolo26n_p3_first_order_quick10.yaml",
+    "R1Q": REPO_ROOT / "configs/coffee_fg/R1Q_yolo26n_p3_bilinear_quick10.yaml",
     "D0": REPO_ROOT / "configs/coffee_fg/D0_yolo26n_p3.yaml",
     "D1": REPO_ROOT / "configs/coffee_fg/D1_yolo26n_p2.yaml",
     "R0": REPO_ROOT / "configs/coffee_fg/R0_yolo26n_p3_first_order.yaml",
@@ -28,6 +30,9 @@ DEFAULT_CONFIGS = {
 
 COMPARISONS = (
     ("D0Q", "D1Q", "quick-10 efek P2 tanpa refiner"),
+    ("D0Q", "R0Q", "quick-10 efek first-order ROI pada P3-P5"),
+    ("D0Q", "R1Q", "quick-10 efek bilinear ROI pada P3-P5"),
+    ("R0Q", "R1Q", "quick-10 bilinear vs capacity-matched first-order"),
     ("D0", "D1", "efek P2 tanpa refiner"),
     ("D0", "R0", "efek first-order ROI pada P3-P5"),
     ("D0", "R1", "efek bilinear ROI pada P3-P5"),
@@ -103,7 +108,9 @@ def run_coffee_fg_screening(
         raise RuntimeError(
             "Test terkunci. Gunakan validation untuk screening; --open-test hanya setelah protokol membuka test."
         )
-    refinement_models = sorted(set(models) & {"R0", "R1", "R2", "R3"})
+    refinement_models = sorted(
+        set(models) & {"R0Q", "R1Q", "R0", "R1", "R2", "R3"}
+    )
     diagnostic = None
     if refinement_models:
         if diagnostic_report is None:
@@ -117,7 +124,17 @@ def run_coffee_fg_screening(
         if not decision.get("classification_refinement_rational", False):
             raise RuntimeError("Diagnostic menyatakan classification refiner tidak rasional")
         allowed = set(decision.get("recommended_refiners", []))
-        outside = sorted(set(refinement_models) - allowed)
+        refiner_family = {
+            "R0Q": "R0",
+            "R1Q": "R1",
+            "R0": "R0",
+            "R1": "R1",
+            "R2": "R2",
+            "R3": "R3",
+        }
+        outside = sorted(
+            code for code in refinement_models if refiner_family[code] not in allowed
+        )
         if outside:
             raise RuntimeError(
                 "Model refiner tidak sesuai foundation hasil diagnostic: "
@@ -209,7 +226,7 @@ def run_coffee_fg_screening(
 
     mechanism_decisions = {
         name: comparisons[name]["decision"]
-        for name in ("R0_vs_R1", "R2_vs_R3")
+        for name in ("R0Q_vs_R1Q", "R0_vs_R1", "R2_vs_R3")
         if name in comparisons
     }
     final_decision = (

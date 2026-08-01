@@ -36,7 +36,9 @@ def test_coffee_fg_notebook_locks_test_and_gates_refiner() -> None:
     assert "coffee-fg-quick10-v1" in source
     assert "classification_refinement_rational" in source
     assert "recommended_refiners" in source
-    assert "Tahap 2 dikunci" in source
+    assert "--models', 'D0Q', 'R0Q', 'R1Q'" in source
+    assert "D0Q_vs_R0Q" in source
+    assert "R0Q_vs_R1Q" in source
 
 
 def test_coffee_fg_notebook_persists_and_resumes() -> None:

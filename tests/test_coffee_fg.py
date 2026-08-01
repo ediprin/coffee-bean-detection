@@ -144,6 +144,22 @@ def test_quick_p3_p2_controls_share_ten_epoch_schedule() -> None:
     assert p3["model"] != p2["model"]
 
 
+def test_quick_refiners_are_capacity_matched_and_use_scaled_curriculum() -> None:
+    first = load_experiment(
+        ROOT / "configs/coffee_fg/R0Q_yolo26n_p3_first_order_quick10.yaml"
+    )
+    bilinear = load_experiment(
+        ROOT / "configs/coffee_fg/R1Q_yolo26n_p3_bilinear_quick10.yaml"
+    )
+    assert first["code"] == "R0Q"
+    assert bilinear["code"] == "R1Q"
+    assert first["train"] == bilinear["train"]
+    assert first["train"]["epochs"] == 10
+    assert first["coffee_fg"]["predicted_start_epoch"] == 2
+    assert first["coffee_fg"]["predicted_full_epoch"] == 5
+    assert first["coffee_fg"] | {"mode": "bilinear"} == bilinear["coffee_fg"]
+
+
 def test_coffee_fg_test_split_is_locked_before_dataset_access(tmp_path: Path) -> None:
     with pytest.raises(RuntimeError, match="Test terkunci"):
         run_coffee_fg_screening(

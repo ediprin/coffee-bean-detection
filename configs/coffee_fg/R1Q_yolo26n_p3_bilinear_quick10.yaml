@@ -1,0 +1,29 @@
+code: R1Q
+variant: coffee_fg
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+weights: yolo26n.pt
+coffee_fg:
+  mode: bilinear
+  rank: 64
+  roi_size: 7
+  topk: 500
+  training_topk: 500
+  feature_levels: [0, 1]
+  auxiliary_weight: 0.5
+  inference_weight: 0.5
+  box_expand: 1.10
+  candidate_source: one2one
+  positive_iou: 0.50
+  predicted_start_epoch: 2
+  predicted_full_epoch: 5
+train:
+  epochs: 10
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 10
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 2
+  max_det: 500
