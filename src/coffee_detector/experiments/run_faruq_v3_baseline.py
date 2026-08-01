@@ -7,7 +7,7 @@ from pathlib import Path
 from coffee_detector.audit_dataset import audit_dataset
 from coffee_detector.evaluate import evaluate
 from coffee_detector.run_baseline import is_training_complete
-from coffee_detector.train import train_experiment
+from coffee_detector.train import recover_completed_training_manifest, train_experiment
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -60,6 +60,11 @@ def run_faruq_v3_baseline(
         raise RuntimeError(f"Audit dataset gagal: {audit_path}")
 
     run_dir = output_root / f"D0_seed{seed}"
+    if recover_completed_training_manifest(CONFIG, data_root, run_dir, seed):
+        print(
+            f"CHECKPOINT LENGKAP: metadata D0 seed {seed} tersedia/dipulihkan",
+            flush=True,
+        )
     training_was_run = not is_training_complete(run_dir)
     if training_was_run:
         action = "RESUME" if (run_dir / "weights/last.pt").is_file() else "START"

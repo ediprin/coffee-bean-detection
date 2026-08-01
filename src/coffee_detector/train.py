@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 from pathlib import Path
 from typing import Callable
@@ -39,6 +40,61 @@ def load_experiment(path: str | Path) -> dict:
     if payload["variant"] == "coffee_fg" and not isinstance(payload.get("coffee_fg"), dict):
         raise ValueError("variant coffee_fg memerlukan mapping coffee_fg")
     return payload
+
+
+def recover_completed_training_manifest(
+    config_path: str | Path,
+    data_root: str | Path,
+    run_dir: str | Path,
+    seed: int,
+) -> bool:
+    """Finalize a run whose last epoch survived but post-train metadata did not.
+
+    Colab can disconnect after Ultralytics saves its final checkpoints and CSV
+    but before this package writes ``experiment_manifest.json``.  Recovery is
+    intentionally strict: both checkpoints must exist and the CSV must contain
+    at least the configured number of epoch rows.  Partial runs still resume.
+    """
+
+    config_path = Path(config_path).resolve()
+    config = load_experiment(config_path)
+    run_dir = Path(run_dir).expanduser().resolve()
+    manifest_path = run_dir / "experiment_manifest.json"
+    if manifest_path.is_file():
+        return True
+
+    best = run_dir / "weights" / "best.pt"
+    last = run_dir / "weights" / "last.pt"
+    results = run_dir / "results.csv"
+    if not (best.is_file() and last.is_file() and results.is_file()):
+        return False
+
+    with results.open("r", encoding="utf-8-sig", newline="") as handle:
+        completed_epochs = sum(1 for _ in csv.DictReader(handle))
+    expected_epochs = int(config["train"].get("epochs", 0))
+    if expected_epochs <= 0 or completed_epochs < expected_epochs:
+        return False
+
+    layout = discover_layout(data_root)
+    manifest = {
+        "config": str(config_path),
+        "code": config["code"],
+        "variant": config["variant"],
+        "model": config["model"],
+        "weights": config.get("weights"),
+        "coffee_fg": config.get("coffee_fg"),
+        "data": str(layout.root),
+        "data_yaml": str(layout.yaml_path),
+        "seed": int(seed),
+        "train": dict(config["train"]),
+        "completed_epochs": completed_epochs,
+        "recovered_after_runtime_disconnect": True,
+    }
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False, default=str),
+        encoding="utf-8",
+    )
+    return True
 
 
 def train_experiment(
