@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,7 @@ from coffee_detector.analysis.coffee_fg_diagnostics import (
 )
 from coffee_detector.evaluate import _classwise_summary
 from coffee_detector.experiments.run_coffee_fg_screening import (
+    _cached_evaluation,
     run_coffee_fg_screening,
 )
 from coffee_detector.train import load_experiment
@@ -26,6 +28,32 @@ from coffee_detector.train import load_experiment
 
 ROOT = Path(__file__).resolve().parents[1]
 P2_MODEL = ROOT / "configs/coffee_fg/models/yolo26n-p2.yaml"
+
+
+def test_cached_evaluation_requires_matching_complete_provenance(tmp_path: Path) -> None:
+    checkpoint = tmp_path / "best.pt"
+    checkpoint.write_bytes(b"checkpoint")
+    data_root = tmp_path / "data"
+    data_root.mkdir()
+    report = tmp_path / "report.json"
+    payload = {
+        "checkpoint": str(checkpoint),
+        "data": str(data_root),
+        "split": "val",
+        "metrics": {
+            "macro_map50_95": 0.4,
+            "bottom3_class_map50_95": 0.1,
+            "worst_class_map50_95": 0.0,
+            "classes_without_ground_truth": [],
+        },
+    }
+    report.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert _cached_evaluation(report, checkpoint, data_root, "val") == payload
+    assert _cached_evaluation(report, checkpoint, data_root, "test") is None
+    payload["metrics"]["classes_without_ground_truth"] = ["rare"]
+    report.write_text(json.dumps(payload), encoding="utf-8")
+    assert _cached_evaluation(report, checkpoint, data_root, "val") is None
 
 
 def test_coffee_fg_loss_forwards_resumed_e2e_schedule_update() -> None:

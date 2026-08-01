@@ -45,6 +45,45 @@ COMPARISONS = (
 )
 
 
+def _cached_evaluation(
+    report_path: Path,
+    checkpoint: Path,
+    data_root: Path,
+    split: str,
+) -> dict | None:
+    """Reuse a complete report only when its provenance matches this run."""
+
+    if not report_path.is_file():
+        return None
+    try:
+        payload = json.loads(report_path.read_text(encoding="utf-8"))
+        metrics = payload["metrics"]
+        checkpoint_matches = (
+            Path(payload["checkpoint"]).expanduser().resolve()
+            == checkpoint.expanduser().resolve()
+        )
+        data_matches = (
+            Path(payload["data"]).expanduser().resolve()
+            == data_root.expanduser().resolve()
+        )
+        required = {
+            "macro_map50_95",
+            "bottom3_class_map50_95",
+            "worst_class_map50_95",
+        }
+        if (
+            checkpoint_matches
+            and data_matches
+            and payload.get("split") == split
+            and required.issubset(metrics)
+            and not metrics.get("classes_without_ground_truth")
+        ):
+            return payload
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError, OSError):
+        return None
+    return None
+
+
 def _aggregate(
     reports: dict[str, dict[int, dict]],
     baseline: str,
@@ -197,13 +236,22 @@ def run_coffee_fg_screening(
             if not checkpoint.is_file():
                 raise FileNotFoundError(f"Checkpoint tidak ditemukan: {checkpoint}")
             report_path = reports_root / f"{code}_seed{seed}_{evaluation_split}.json"
-            payload = evaluate(
+            payload = _cached_evaluation(
+                report_path,
                 checkpoint,
                 data_root,
-                report_path,
-                split=evaluation_split,
-                device=device,
+                evaluation_split,
             )
+            if payload is None:
+                payload = evaluate(
+                    checkpoint,
+                    data_root,
+                    report_path,
+                    split=evaluation_split,
+                    device=device,
+                )
+            else:
+                print(f"SKIP EVALUATION: {code} seed {seed} lengkap", flush=True)
             missing_classes = payload["metrics"].get(
                 "classes_without_ground_truth", []
             )
