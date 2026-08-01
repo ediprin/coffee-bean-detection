@@ -102,6 +102,10 @@ Setelah overlay disetujui, materialisasi development-v2 dan audit ulang tersedia
 di [`notebooks/Faruq_Mask_Geometry_Repair_Colab.ipynb`](notebooks/Faruq_Mask_Geometry_Repair_Colab.ipynb).
 Dataset hasil repair tetap berstatus belum siap training sampai audit leakage
 dan contact sheet pascarepair dinilai.
+Jika geometri lolos tetapi parent identity masih menyeberang split, gunakan
+[`notebooks/Faruq_Grouped_Development_Colab.ipynb`](notebooks/Faruq_Grouped_Development_Colab.ipynb)
+untuk membuat split train/validation terkelompok dan terstratifikasi tanpa
+membuka test.
 
 ## Eksperimen VA-DCP
 
