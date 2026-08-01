@@ -89,6 +89,16 @@ tanpa menjalankan inference kedua kali.
 Kelas dengan support memadai tetapi AP rendah kemudian dirender sebagai contact
 sheet crop train/validation; audit visual ini juga tidak menjalankan model.
 
+Audit tersebut menemukan indikasi polygon Faruq tidak selalu sejajar setelah
+aturan rotasi tetap. Sebelum anotasi diperbaiki atau model dilatih ulang,
+jalankan audit mask-geometry train/validation berikut:
+
+[`notebooks/Faruq_Mask_Geometry_Audit_Colab.ipynb`](notebooks/Faruq_Mask_Geometry_Audit_Colab.ipynb).
+
+Notebook membandingkan transformasi orientasi yang mungkin terhadap polygon
+mask dan menghasilkan overlay `current` versus `best`. Hasilnya hanya bukti
+diagnostik; tidak otomatis menulis ulang gambar/anotasi dan tidak membaca test.
+
 ## Eksperimen VA-DCP
 
 Pipeline offline `Visibility-Aware Dense Copy-Paste` sudah tersedia tanpa
