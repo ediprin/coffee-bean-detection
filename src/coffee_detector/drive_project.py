@@ -34,6 +34,8 @@ def _candidate_rank(path: Path) -> tuple[int, int, str]:
 
 def resolve_drive_project_root(
     search_roots: Iterable[str | Path] = DEFAULT_DRIVE_SEARCH_ROOTS,
+    *,
+    required_relative_paths: Iterable[str | Path] = (),
 ) -> Path:
     """Return the marked project root exposed to the current Colab account.
 
@@ -41,9 +43,10 @@ def resolve_drive_project_root(
     same-named directory is ignored.  No directory is created by this function.
     """
 
+    roots = [Path(raw_root).expanduser() for raw_root in search_roots]
+    required = tuple(Path(item) for item in required_relative_paths)
     candidates: dict[str, Path] = {}
-    for raw_root in search_roots:
-        root = Path(raw_root).expanduser()
+    for root in roots:
         if not root.is_dir():
             continue
         for marker in root.rglob(PROJECT_MARKERS[0]):
@@ -54,11 +57,34 @@ def resolve_drive_project_root(
             ):
                 candidates[candidate.as_posix()] = candidate
 
+    # Google Drive FUSE can retain a cached shortcut view after files are moved
+    # into the shared folder.  In that case marker files may lag behind larger
+    # artifacts that were already visible to the runtime.  Exact, caller-supplied
+    # artifacts provide a safe fallback without accepting an empty same-named
+    # folder or creating a replacement project root.
+    if not candidates and required:
+        anchor = required[0]
+        for root in roots:
+            if not root.is_dir():
+                continue
+            for match in root.rglob(anchor.name):
+                if not match.is_file():
+                    continue
+                candidate = match
+                for _ in anchor.parts:
+                    candidate = candidate.parent
+                if (
+                    candidate.name == PROJECT_DIRECTORY
+                    and all((candidate / relative).is_file() for relative in required)
+                ):
+                    candidates[candidate.as_posix()] = candidate
+
     if not candidates:
         raise FileNotFoundError(
             "Folder proyek Drive yang valid tidak ditemukan. Tambahkan shortcut "
             "folder Coffee_Bean_Detection yang berisi artifact_index.json dan "
-            "PROJECT_INDEX.md ke My Drive; notebook tidak akan membuat root baru."
+            "PROJECT_INDEX.md ke My Drive. Jika shortcut baru dipindahkan, force-remount "
+            "Drive; notebook tidak akan membuat root baru."
         )
 
     return sorted(candidates.values(), key=_candidate_rank)[0]
