@@ -162,6 +162,10 @@ def _new_branch_totals(num_classes: int) -> dict[str, Any]:
         "missed": 0,
         "duplicates": 0,
         "confusion": np.zeros((num_classes, num_classes), dtype=np.int64),
+        "class_targets": np.zeros(num_classes, dtype=np.int64),
+        "class_accessible": np.zeros(num_classes, dtype=np.int64),
+        "class_matched": np.zeros(num_classes, dtype=np.int64),
+        "class_correct": np.zeros(num_classes, dtype=np.int64),
     }
 
 
@@ -177,14 +181,26 @@ def _update_branch(
     totals["targets"] += target_count
     if not target_count:
         return
+    target_label_values = target_labels.detach().cpu().numpy()
+    totals["class_targets"] += np.bincount(
+        target_label_values, minlength=len(totals["class_targets"])
+    )
     matrix = (
         box_iou(predicted_boxes, target_boxes)
         if len(predicted_boxes)
         else target_boxes.new_zeros((0, target_count))
     )
-    accessible = (
-        int((matrix.max(dim=0).values >= iou_threshold).sum()) if len(matrix) else 0
+    accessible_mask = (
+        matrix.max(dim=0).values >= iou_threshold
+        if len(matrix)
+        else target_boxes.new_zeros(target_count, dtype=torch.bool)
     )
+    accessible = int(accessible_mask.sum())
+    if accessible:
+        accessible_labels = target_labels[accessible_mask].detach().cpu().numpy()
+        totals["class_accessible"] += np.bincount(
+            accessible_labels, minlength=len(totals["class_accessible"])
+        )
     matches = _greedy_match(predicted_boxes, target_boxes, iou_threshold)
     totals["accessible"] += accessible
     totals["matched"] += len(matches)
@@ -196,9 +212,11 @@ def _update_branch(
     for prediction, target, _ in matches:
         expected = int(target_labels[target])
         actual = int(predicted_labels[prediction])
+        totals["class_matched"][expected] += 1
         totals["confusion"][expected, actual] += 1
         if actual == expected:
             totals["correct_class"] += 1
+            totals["class_correct"][expected] += 1
         else:
             totals["wrong_class"] += 1
 
@@ -207,6 +225,10 @@ def _finalize_branch(totals: dict[str, Any], names: dict[int, str]) -> dict:
     targets = max(int(totals["targets"]), 1)
     matched = max(int(totals["matched"]), 1)
     confusion = totals.pop("confusion")
+    class_targets = totals.pop("class_targets")
+    class_accessible = totals.pop("class_accessible")
+    class_matched = totals.pop("class_matched")
+    class_correct = totals.pop("class_correct")
     return {
         **{key: int(value) for key, value in totals.items()},
         "proposal_accessibility": float(totals["accessible"] / targets),
@@ -223,6 +245,24 @@ def _finalize_branch(totals: dict[str, Any], names: dict[int, str]) -> dict:
             }
             for row in range(len(names))
             if confusion[row].sum()
+        },
+        "per_class": {
+            names[index]: {
+                "targets": int(class_targets[index]),
+                "accessible": int(class_accessible[index]),
+                "matched": int(class_matched[index]),
+                "correct_class": int(class_correct[index]),
+                "proposal_accessibility": float(
+                    class_accessible[index] / max(class_targets[index], 1)
+                ),
+                "matched_recall": float(
+                    class_matched[index] / max(class_targets[index], 1)
+                ),
+                "localization_conditioned_class_accuracy": float(
+                    class_correct[index] / max(class_matched[index], 1)
+                ),
+            }
+            for index in range(len(names))
         },
     }
 
