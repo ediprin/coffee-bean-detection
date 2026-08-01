@@ -21,7 +21,7 @@ def test_faruq_mask_geometry_notebook_is_audit_only() -> None:
 
     assert "os.chdir('/content')" in source
     assert "sys.modules.pop(module_name, None)" in source
-    assert "userdata.get('roboflow')" in source
+    assert "userdata.get('ROBOFLOW_API_KEY')" in source
     assert "robusta_sni_dataset-hr9ci" in source
     assert "coco-segmentation" in source
     assert "any(path.is_file() for path in (root / split).glob('*.json'))" in source
