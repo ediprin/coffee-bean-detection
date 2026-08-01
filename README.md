@@ -62,6 +62,25 @@ menyimpan checkpoint langsung ke Drive, dan menghentikan refiner sebelum gate
 tersedia di
 [`notebooks/CoffeeFG_YOLO26_A0_Colab.ipynb`](notebooks/CoffeeFG_YOLO26_A0_Colab.ipynb).
 
+## Kontrol sumber SNI-21: Adrian vs Faruq
+
+A0 gabungan tidak lagi dipakai sebagai satu-satunya kontrol arsitektur. Adrian
+(bounding-box detection) dan Faruq (instance segmentation yang dikonversi ke
+box) dapat dipisahkan menjadi dua development dataset independen tanpa membuka
+test:
+
+```bash
+python -u -m coffee_detector.separate_sni21_sources \
+  --combined-root /content/sni21-a0-development \
+  --output-root /content/sni21-source-separated-v1 \
+  --link-mode auto
+```
+
+Notebook siap jalan:
+[`notebooks/SNI21_Source_Separation_Colab.ipynb`](notebooks/SNI21_Source_Separation_Colab.ipynb).
+Tahap ini hanya memisahkan dan mengaudit data; tidak melakukan training dan
+tidak memulihkan split test.
+
 ## Eksperimen VA-DCP
 
 Pipeline offline `Visibility-Aware Dense Copy-Paste` sudah tersedia tanpa
