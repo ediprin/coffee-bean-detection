@@ -51,6 +51,18 @@ def test_resolver_accepts_marked_shortcut_with_a_different_alias(
     assert resolve_drive_project_root([tmp_path]) == aliased
 
 
+def test_resolver_probes_direct_shortcut_without_recursive_discovery(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    direct = _marked_project(tmp_path / "Coffee_Bean_Detection")
+
+    def no_recursive_discovery(self: Path, pattern: str):
+        return iter(())
+
+    monkeypatch.setattr(Path, "rglob", no_recursive_discovery)
+    assert resolve_drive_project_root([tmp_path]) == direct
+
+
 def test_resolver_can_use_multiple_exact_artifacts_when_markers_are_stale(
     tmp_path: Path,
 ) -> None:

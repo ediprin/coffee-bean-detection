@@ -49,6 +49,15 @@ def resolve_drive_project_root(
     for root in roots:
         if not root.is_dir():
             continue
+        # DriveFS may expose a shortcut for direct access but refuse to descend
+        # into it during rglob().  Probe the canonical shortcut path explicitly
+        # before relying on recursive discovery.
+        direct = root / PROJECT_DIRECTORY
+        if direct.is_dir() and (
+            all((direct / name).is_file() for name in PROJECT_MARKERS)
+            or (required and all((direct / item).is_file() for item in required))
+        ):
+            candidates[direct.as_posix()] = direct
         for marker in root.rglob(PROJECT_MARKERS[0]):
             candidate = marker.parent
             if all((candidate / name).is_file() for name in PROJECT_MARKERS):
