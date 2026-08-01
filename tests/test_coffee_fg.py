@@ -28,6 +28,23 @@ ROOT = Path(__file__).resolve().parents[1]
 P2_MODEL = ROOT / "configs/coffee_fg/models/yolo26n-p2.yaml"
 
 
+def test_coffee_fg_loss_forwards_resumed_e2e_schedule_update() -> None:
+    class BaseLoss:
+        updates = 0
+
+        def update(self) -> None:
+            self.updates += 1
+
+    loss = object.__new__(CoffeeFGLoss)
+    loss.base = BaseLoss()
+    loss.updates = 7
+
+    loss.update()
+
+    assert loss.base.updates == 8
+    assert loss.updates == 8
+
+
 def test_auxiliary_targets_follow_image_compute_device_not_stride_metadata() -> None:
     loss = object.__new__(CoffeeFGLoss)
     loss.head = SimpleNamespace(

@@ -18,6 +18,19 @@ class CoffeeFGLoss:
         if not isinstance(self.head, CoffeeFGDetectHead):
             raise TypeError("CoffeeFGLoss memerlukan CoffeeFGDetectHead")
         self.base = E2ELoss(model) if getattr(model, "end2end", False) else v8DetectionLoss(model)
+        self.updates = int(getattr(self.base, "updates", 0))
+
+    def update(self) -> None:
+        """Forward YOLO26's resumed end-to-end loss schedule to the base loss."""
+
+        update = getattr(self.base, "update", None)
+        if update is None:
+            return
+        # BaseTrainer restores ``criterion.updates`` on the outer wrapper.
+        # Keep E2ELoss on that same schedule before advancing it once.
+        self.base.updates = int(self.updates)
+        update()
+        self.updates = int(self.base.updates)
 
     @staticmethod
     def _parse(predictions):
