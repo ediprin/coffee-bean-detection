@@ -42,7 +42,7 @@ def test_coffee_fg_notebook_locks_test_and_gates_refiner() -> None:
 def test_coffee_fg_notebook_persists_and_resumes() -> None:
     _, source = _load_notebook()
     assert "Coffee_Bean_Detection" in source
-    assert "experiments/coffee-fg-v2" in source
+    assert "experiments/coffee-fg-quick10-v1" in source
     assert "A0_real.tar" in source
     assert "last.pt" in source
     assert "sys.path.insert(0, str(SRC))" in source
