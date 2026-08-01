@@ -86,6 +86,8 @@ training melalui
 [`notebooks/SNI21_Source_Domain_Evaluation_Colab.ipynb`](notebooks/SNI21_Source_Domain_Evaluation_Colab.ipynb).
 Notebook yang sama juga mencocokkan AP validation dengan jumlah GT per kelas
 tanpa menjalankan inference kedua kali.
+Kelas dengan support memadai tetapi AP rendah kemudian dirender sebagai contact
+sheet crop train/validation; audit visual ini juga tidak menjalankan model.
 
 ## Eksperimen VA-DCP
 

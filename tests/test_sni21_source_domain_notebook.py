@@ -23,6 +23,8 @@ def test_source_domain_notebook_is_validation_only() -> None:
     assert "sys.modules.pop(module_name, None)" in source
     assert "shared_bottom5_classes" in source
     assert "largest_train_val_prevalence_shifts" in source
+    assert "run_sni21_hard_class_visual_audit" in source
+    assert "inference_executed" in source
     assert "A0_seed42/weights/best.pt" in source
     assert "torch.cuda.is_available()" in source
     assert "device=DEVICE" in source
