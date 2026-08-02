@@ -74,6 +74,7 @@ def run_faruq_v3_diagnostics(
                 row["class_name"],
             ),
         ),
+        "directional_confusions": selected["confusion"],
         "top_directional_confusions": _top_confusions(selected["confusion"]),
         "raw_candidate_sensitivity": {
             count: {
