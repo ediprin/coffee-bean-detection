@@ -11,6 +11,7 @@ import yaml
 
 from .dataset import discover_layout
 from .coffee_fg import make_coffee_fg_trainer
+from .ambiguity_multilevel import make_ambiguity_multilevel_trainer
 from .hong_transfer import make_hong_transfer_trainer
 from .frozen_residual import make_frozen_residual_trainer
 from .models.local_hbp import make_local_hbp_trainer
@@ -61,10 +62,11 @@ def load_experiment(path: str | Path) -> dict:
         "ontology_marginal",
         "multilevel_head",
         "frozen_residual",
+        "ambiguity_multilevel",
     }:
         raise ValueError(
             "variant harus baseline, local_hbp, coffee_fg, hong_transfer, "
-            "ontology_marginal, multilevel_head, atau frozen_residual"
+            "ontology_marginal, multilevel_head, frozen_residual, atau ambiguity_multilevel"
         )
     if payload["variant"] == "coffee_fg" and not isinstance(payload.get("coffee_fg"), dict):
         raise ValueError("variant coffee_fg memerlukan mapping coffee_fg")
@@ -84,6 +86,10 @@ def load_experiment(path: str | Path) -> dict:
         payload.get("frozen_residual"), dict
     ):
         raise ValueError("variant frozen_residual memerlukan mapping frozen_residual")
+    if payload["variant"] == "ambiguity_multilevel" and not isinstance(
+        payload.get("ambiguity_multilevel"), dict
+    ):
+        raise ValueError("variant ambiguity_multilevel memerlukan mapping ambiguity_multilevel")
     return payload
 
 
@@ -133,6 +139,7 @@ def recover_completed_training_manifest(
         "ontology_marginal": config.get("ontology_marginal"),
         "multilevel_head": config.get("multilevel_head"),
         "frozen_residual": config.get("frozen_residual"),
+        "ambiguity_multilevel": config.get("ambiguity_multilevel"),
         "data": str(layout.root),
         "data_yaml": str(layout.yaml_path),
         "seed": int(seed),
@@ -243,6 +250,9 @@ def train_experiment(
             config["frozen_residual"], d0_checkpoint=weights_override
         )
         model.train(trainer=trainer, **train_args)
+    elif config["variant"] == "ambiguity_multilevel":
+        trainer = make_ambiguity_multilevel_trainer(config["ambiguity_multilevel"])
+        model.train(trainer=trainer, **train_args)
     else:
         model.train(**train_args)
 
@@ -258,6 +268,7 @@ def train_experiment(
         "ontology_marginal": config.get("ontology_marginal"),
         "multilevel_head": config.get("multilevel_head"),
         "frozen_residual": config.get("frozen_residual"),
+        "ambiguity_multilevel": config.get("ambiguity_multilevel"),
         "data": str(layout.root),
         "data_yaml": str(layout.yaml_path),
         "seed": seed,
