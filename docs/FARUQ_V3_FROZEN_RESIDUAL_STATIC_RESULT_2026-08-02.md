@@ -41,5 +41,14 @@ All ten mandatory gates passed. This establishes only implementation safety
 and exact D0 initialization. It does not predict whether FRM1 will improve
 validation performance.
 
+## Runtime binding correction
+
+The first no-epoch training invocation exposed a separate Ultralytics handoff
+issue: its custom-trainer path supplied an 80-class pretrained object rather
+than the bound D0 object. Strict loading rejected that mismatch before any
+optimization step. FRM1 now loads the bound D0 checkpoint file directly during
+initial custom-trainer construction; resume continues only from a serialized
+FRM1 `last.pt`. The checkpoint hash gate remains mandatory.
+
 Raw artifact:
 `experiments/faruq-v3-frozen-residual-v1/static_audit.json`

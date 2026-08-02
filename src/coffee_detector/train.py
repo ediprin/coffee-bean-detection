@@ -237,7 +237,11 @@ def train_experiment(
         trainer = make_multilevel_head_trainer(config["multilevel_head"])
         model.train(trainer=trainer, **train_args)
     elif config["variant"] == "frozen_residual":
-        trainer = make_frozen_residual_trainer(config["frozen_residual"])
+        if weights_override is None:
+            raise ValueError("frozen_residual memerlukan weights_override checkpoint D0")
+        trainer = make_frozen_residual_trainer(
+            config["frozen_residual"], d0_checkpoint=weights_override
+        )
         model.train(trainer=trainer, **train_args)
     else:
         model.train(**train_args)

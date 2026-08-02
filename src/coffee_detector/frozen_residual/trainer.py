@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from ultralytics.utils.torch_utils import unwrap_model
@@ -14,10 +15,17 @@ from .model import (
 
 def make_frozen_residual_trainer(
     config: FrozenResidualConfig | dict[str, Any],
+    *,
+    d0_checkpoint: str | Path | None = None,
 ):
     from ultralytics.models.yolo.detect import DetectionTrainer
 
     frozen = FrozenResidualConfig.from_mapping(config)
+    bound_checkpoint = (
+        Path(d0_checkpoint).expanduser().resolve()
+        if d0_checkpoint is not None
+        else None
+    )
 
     class FrozenResidualTrainer(DetectionTrainer):
         def get_model(self, cfg=None, weights=None, verbose=True):
@@ -30,8 +38,21 @@ def make_frozen_residual_trainer(
                     frozen_residual=frozen,
                 )
             )
-            if weights:
+            # ``Model.train`` can forward the original 80-class pretrained
+            # object even after an outer model was partially loaded. FRM1 is
+            # defined against the audited 21-class D0 file, so initial runs
+            # load that file directly. Resume restores its serialized
+            # FrozenResidual model from ``last.pt`` instead.
+            if bound_checkpoint is not None and not getattr(self.args, "resume", False):
+                from ultralytics import YOLO
+
+                source = YOLO(str(bound_checkpoint)).model
+                transfer = load_frozen_d0_weights(model, source)
+            elif weights:
                 transfer = load_frozen_d0_weights(model, weights)
+            else:
+                transfer = None
+            if transfer is not None:
                 print(
                     f"FRM1 native D0 transfer: {transfer['native_head_items']} head items | "
                     f"resume={bool(transfer['resume'])}",
