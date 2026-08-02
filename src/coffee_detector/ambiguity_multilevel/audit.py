@@ -123,28 +123,43 @@ def static_ambiguity_multilevel_audit(
         zero_output = candidate(image)
     zero_difference = float((d0_output[0] - zero_output[0]).abs().max())
 
-    candidate.train()
-    train_output = candidate(image)
+    # Use a disposable training clone.  BatchNorm updates from this gradient
+    # smoke test must never contaminate the zero/active inference comparison.
+    gradient_probe = copy.deepcopy(candidate).train()
+    probe_head = gradient_probe.model[-1]
+    train_output = gradient_probe(image)
     direct_loss = train_output["one2many"]["scores"].square().mean()
     direct_loss.backward()
     correction_gradients = [
         parameter.grad
-        for parameter in head.correction.parameters()
+        for parameter in probe_head.correction.parameters()
         if parameter.requires_grad and parameter.grad is not None
     ]
     finite_gradients = bool(correction_gradients) and all(
         bool(torch.isfinite(value).all()) for value in correction_gradients
     )
-    candidate.zero_grad(set_to_none=True)
-
     active = copy.deepcopy(candidate).eval()
     active_head = active.model[-1]
     torch.manual_seed(7)
     for layer in active_head.correction.class_corrections:
         torch.nn.init.normal_(layer.weight, std=0.02)
+        # A non-zero bias makes the wiring probe independent of a chance-zero
+        # projected feature response on its synthetic smoke image.  It is
+        # applied only to this disposable audit clone, never to ACMC1.
+        torch.nn.init.constant_(layer.bias, 0.1)
     with torch.inference_mode():
         active_output = active(image)
-    active_difference = float((active_output[0] - d0_output[0]).abs().max())
+    # The deployed post-process can retain identical top detections for a
+    # small score perturbation.  Audit the native class-score tensor itself:
+    # this is the exact tensor changed by ACMC before YOLO's post-process.
+    active_difference = float(
+        (
+            active_output[1]["one2one"]["scores"]
+            - d0_output[1]["one2one"]["scores"]
+        )
+        .abs()
+        .max()
+    )
     source_code = inspect.getsource(type(head)) + inspect.getsource(type(head.correction))
     gates = {
         "native_d0_head_bitwise_preserved": native_hash == wrapped_hash,

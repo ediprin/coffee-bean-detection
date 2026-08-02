@@ -3,7 +3,10 @@ from pathlib import Path
 
 import torch
 
-from coffee_detector.ambiguity_multilevel.audit import audit_ambiguity_multilevel_static
+from coffee_detector.ambiguity_multilevel.audit import (
+    audit_ambiguity_multilevel_static,
+    static_ambiguity_multilevel_audit,
+)
 from coffee_detector.ambiguity_multilevel.model import (
     AmbiguityMultilevelConfig,
     AmbiguityMultilevelDetectionModel,
@@ -68,3 +71,22 @@ def test_static_audit_rejects_roi_style_execution() -> None:
     assert not result["has_roi_align"]
     assert not result["has_topk"]
     assert not result["has_box_decode"]
+
+
+def test_checkpoint_static_audit_proves_score_only_active_correction(tmp_path: Path) -> None:
+    from ultralytics.nn.tasks import DetectionModel
+
+    source = DetectionModel(str(MODEL_YAML), nc=5, verbose=False)
+    checkpoint = tmp_path / "d0.pt"
+    torch.save({"model": source}, checkpoint)
+    result = static_ambiguity_multilevel_audit(
+        MODEL_YAML,
+        checkpoint,
+        tmp_path / "audit.json",
+        nc=5,
+        image_size=128,
+        config={"hidden_dim": 16},
+    )
+    assert result["decision"] == "PASS"
+    assert result["gates"]["active_correction_changes_scores"]
+    assert result["gates"]["active_correction_preserves_boxes"]
