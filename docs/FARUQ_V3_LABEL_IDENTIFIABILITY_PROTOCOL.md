@@ -51,3 +51,14 @@ before a model change.
 Bounding-box geometry remains a proxy, not a physical millimetre measurement.
 This audit cannot establish final generalization and does not authorize test
 access.
+
+## Recorded outcome — 2026-08-02
+
+The audit returned `DATA_OR_SCALE_LIMITED`. `Kulit_kopi` and
+`tanah_batu_ranting` showed strong and split-consistent order signals, but
+`kulit_tanduk` was weak in train (0.577 macro order AUROC) and validation
+(0.572). Its large median normalized area was smaller than its medium median in
+both splits. The confusion taxonomy contained 45 local-defect, 25
+within-family-size, and 16 cross-family/material errors among the reported top
+pairs. No training or test access occurred. See
+`docs/FARUQ_V3_LABEL_IDENTIFIABILITY_RESULT_2026-08-02.md`.
