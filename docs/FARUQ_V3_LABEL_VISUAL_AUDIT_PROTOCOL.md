@@ -1,7 +1,9 @@
 # Faruq-v3 Label Visual Audit Protocol
 
-Version: 1.0.0  
-Status: frozen before execution  
+Version: 1.0.0
+
+Status: frozen before execution
+
 Scope: development train and validation only
 
 ## Purpose
