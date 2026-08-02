@@ -73,3 +73,22 @@ def test_predicted_roi_gate_stops_low_coverage_first() -> None:
         results, {"train": 0.89, "val": 0.99}, gt_fusion_macro_f1=0.79
     )
     assert decision["next_action"] == "STOP_PREDICTED_ROI_COVERAGE"
+
+
+def test_predicted_roi_gate_attributes_absolute_signal_without_denying_gain() -> None:
+    results = {
+        "P5_RAW": _result(0.73, 0.56),
+        "P3+P4+P5_RAW": _result(0.79, 0.67),
+        "P5_CM128": _result(0.67, 0.48),
+        "P3+P4+P5_CM128": _result(0.71, 0.53),
+    }
+    decision = decide_predicted_roi_transfer(
+        results, {"train": 0.998, "val": 0.998}, gt_fusion_macro_f1=0.79
+    )
+    assert decision["decision"] == "FAIL"
+    assert (
+        decision["next_action"]
+        == "STOP_CAPACITY_MATCHED_ABSOLUTE_MACRO_BELOW_GATE"
+    )
+    assert decision["raw_fusion_macro_gain"] == pytest.approx(0.06)
+    assert decision["capacity_matched_fusion_macro_gain"] == pytest.approx(0.04)

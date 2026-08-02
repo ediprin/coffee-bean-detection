@@ -264,6 +264,10 @@ def decide_predicted_roi_transfer(
         action = "STOP_FUSION_GAIN_EXPLAINED_BY_CAPACITY"
     elif not criteria["ground_truth_macro_retention_at_least_90_percent"]:
         action = "STOP_PREDICTED_ROI_TRANSFER"
+    elif not criteria["capacity_matched_macro_at_least_75_percent"]:
+        action = "STOP_CAPACITY_MATCHED_ABSOLUTE_MACRO_BELOW_GATE"
+    elif not criteria["capacity_matched_bottom3_at_least_50_percent"]:
+        action = "STOP_CAPACITY_MATCHED_ABSOLUTE_BOTTOM3_BELOW_GATE"
     else:
         action = "STOP_FUSION_ADVANTAGE_NOT_ROBUST"
     return {

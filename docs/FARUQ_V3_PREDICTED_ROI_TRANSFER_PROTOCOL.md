@@ -66,4 +66,7 @@ Failure attribution:
 - raw fusion passes but PCA-128 fusion fails:
   `STOP_FUSION_GAIN_EXPLAINED_BY_CAPACITY`;
 - ground-truth signal does not transfer: `STOP_PREDICTED_ROI_TRANSFER`;
+- relative fusion gains pass but absolute PCA-128 Macro-F1 or bottom-3 fails:
+  `STOP_CAPACITY_MATCHED_ABSOLUTE_MACRO_BELOW_GATE` or
+  `STOP_CAPACITY_MATCHED_ABSOLUTE_BOTTOM3_BELOW_GATE`;
 - otherwise: `STOP_FUSION_ADVANTAGE_NOT_ROBUST`.
