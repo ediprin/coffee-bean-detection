@@ -2,7 +2,7 @@
 
 Version: 1.0.0
 
-Status: frozen before execution
+Status: executed; AI-assisted visual review complete, domain-expert confirmation pending
 
 Scope: development train and validation only
 
@@ -38,3 +38,13 @@ Reviewers must answer:
 The script intentionally returns `PENDING_HUMAN_VISUAL_REVIEW`. It does not
 automatically relabel or merge classes. A model change remains blocked until
 the contact sheets are reviewed and the resulting label decision is recorded.
+
+## Recorded outcome — 2026-08-02
+
+All six size-family sheets and twelve local-pair sheets were generated without
+training, inference, or test access. The review found mixed label
+observability: `kulit_tanduk` size labels overlap strongly without a stable
+physical scale reference, while several local defects retain subtle but small
+visual cues. Architecture search remains blocked pending an ontology and label
+observability review by an SNI domain expert. See
+`docs/FARUQ_V3_LABEL_VISUAL_AUDIT_RESULT_2026-08-02.md`.

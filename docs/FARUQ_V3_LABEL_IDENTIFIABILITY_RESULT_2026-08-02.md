@@ -66,3 +66,8 @@ normalized-area-quantile contact sheets for all size families and the six
 highest-count local-defect confusion directions. It performs no training or
 inference and refuses a dataset that exposes a test split. Its output remains
 `PENDING_HUMAN_VISUAL_REVIEW`; it does not automatically change labels.
+
+The generated sheets were subsequently reviewed and recorded in
+`docs/FARUQ_V3_LABEL_VISUAL_AUDIT_RESULT_2026-08-02.md`. They confirmed mixed
+label observability and kept architecture search blocked pending domain-expert
+ontology review.
