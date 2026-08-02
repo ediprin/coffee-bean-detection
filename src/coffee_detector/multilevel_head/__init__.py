@@ -4,6 +4,7 @@ from .model import (
     MultilevelHeadDetectionModel,
     MultilevelResidualDetectHead,
     inject_multilevel_head,
+    load_multilevel_detector_weights,
 )
 from .trainer import make_multilevel_head_trainer
 
@@ -13,5 +14,6 @@ __all__ = [
     "MultilevelHeadDetectionModel",
     "MultilevelResidualDetectHead",
     "inject_multilevel_head",
+    "load_multilevel_detector_weights",
     "make_multilevel_head_trainer",
 ]

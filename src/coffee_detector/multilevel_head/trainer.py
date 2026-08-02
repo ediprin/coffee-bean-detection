@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from .model import MultilevelHeadConfig, MultilevelHeadDetectionModel
+from .model import (
+    MultilevelHeadConfig,
+    MultilevelHeadDetectionModel,
+    load_multilevel_detector_weights,
+)
 
 
 def make_multilevel_head_trainer(
@@ -24,7 +28,8 @@ def make_multilevel_head_trainer(
                 )
             )
             if weights:
-                model.load(weights)
+                transfer = load_multilevel_detector_weights(model, weights)
+                print(f"MULTILEVEL NATIVE HEAD TRANSFER: {transfer}", flush=True)
             return model
 
         def get_validator(self):

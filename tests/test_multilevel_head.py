@@ -5,8 +5,10 @@ import torch
 from coffee_detector.multilevel_head.model import (
     CapacityMatchedROIClassifier,
     MultilevelHeadConfig,
+    MultilevelHeadDetectionModel,
     MultilevelResidualDetectHead,
     inject_multilevel_head,
+    load_multilevel_detector_weights,
 )
 
 
@@ -87,3 +89,24 @@ def test_injection_preserves_native_head_and_yolo_output_contract() -> None:
     assert final.ndim == 3
     assert set(raw) == {"one2many", "one2one"}
     assert set(raw["one2one"]) == {"boxes", "scores", "feats"}
+
+
+def test_native_checkpoint_head_is_explicitly_remapped_into_wrapper() -> None:
+    from ultralytics.nn.tasks import DetectionModel
+
+    torch.manual_seed(7)
+    source = DetectionModel(str(MODEL_YAML), nc=5, verbose=False)
+    target = MultilevelHeadDetectionModel(
+        str(MODEL_YAML),
+        nc=5,
+        verbose=False,
+        multilevel_head=MultilevelHeadConfig(
+            mode="pyramid_fusion", topk=4, inference_weight=0.0
+        ),
+    )
+    transfer = load_multilevel_detector_weights(target, source)
+    assert transfer["resume"] == 0
+    source_state = source.model[-1].state_dict()
+    target_state = target.model[-1].base_head.state_dict()
+    assert source_state.keys() == target_state.keys()
+    assert all(torch.equal(source_state[key], target_state[key]) for key in source_state)

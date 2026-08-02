@@ -279,6 +279,43 @@ def config_dict(head: MultilevelResidualDetectHead) -> dict[str, Any]:
     return asdict(head.config)
 
 
+def load_multilevel_detector_weights(model: nn.Module, weights: Any) -> dict[str, int]:
+    """Load a native YOLO checkpoint into a wrapped multilevel detector exactly.
+
+    Ultralytics' generic partial loader cannot map ``model.N.cv*`` from a
+    native Detect head to ``model.N.base_head.cv*`` after the wrapper changes
+    the state-dict namespace.  Explicitly remapping the native head prevents a
+    silently reinitialized detector head in future multilevel runs.
+    """
+
+    model.load(weights)
+    source_model = getattr(weights, "model", None)
+    target = getattr(model, "model", model)
+    if not isinstance(source_model, (nn.Sequential, nn.ModuleList)):
+        raise TypeError("Checkpoint tidak mengekspos daftar layer model")
+    if not isinstance(target, (nn.Sequential, nn.ModuleList)) or not len(target):
+        raise TypeError("Target tidak mengekspos daftar layer model")
+    source_head = source_model[-1]
+    target_head = target[-1]
+    if not isinstance(target_head, MultilevelResidualDetectHead):
+        raise TypeError("Target bukan MultilevelResidualDetectHead")
+    if isinstance(source_head, MultilevelResidualDetectHead):
+        return {"native_head_items": len(target_head.base_head.state_dict()), "resume": 1}
+    if type(source_head).__name__ != "Detect":
+        raise TypeError(f"Source head bukan native Detect: {type(source_head).__name__}")
+    result = target_head.base_head.load_state_dict(source_head.state_dict(), strict=True)
+    if result.missing_keys or result.unexpected_keys:
+        raise RuntimeError("Transfer native Detect tidak lengkap")
+    target_head.stride = source_head.stride.detach().clone()
+    target_head.base_head.stride = target_head.stride
+    for name in ("max_det", "export", "format", "dynamic", "agnostic_nms"):
+        if hasattr(source_head, name):
+            value = getattr(source_head, name)
+            setattr(target_head, name, value)
+            setattr(target_head.base_head, name, value)
+    return {"native_head_items": len(source_head.state_dict()), "resume": 0}
+
+
 try:
     from ultralytics.nn.tasks import DetectionModel
 except ImportError:  # pragma: no cover

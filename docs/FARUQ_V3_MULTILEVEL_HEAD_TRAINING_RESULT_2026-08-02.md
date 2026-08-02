@@ -50,3 +50,21 @@ training protocol is authorized.
 
 Raw artifact:
 `experiments/faruq-v3-multilevel-head-v1/val_reports/multilevel_head_seed42_decision.json`
+
+## Post-result initialization audit
+
+After this result was frozen, the FRM1 preservation audit exposed a loader
+namespace issue in the original multilevel trainer. Wrapping native `Detect`
+changes state keys such as `model.N.cv*` to `model.N.base_head.cv*`.
+Ultralytics' generic partial loader did not explicitly remap those native head
+keys when constructing MHC0/MHF1. Therefore the reported D0-versus-MHC0/MHF1
+deltas are **not a strict identical-initialization causal comparison** and
+must not be cited as one.
+
+The MHF1-versus-MHC0 capacity-controlled comparison remains informative:
+both candidates used the same wrapper, loading path, schedule, and parameter
+schema, and fusion improved all three metrics relative to P5 control. The
+formal FAIL against D0 is unchanged; confidence in attributing that gap solely
+to multilevel fusion is reduced. The loader is now fixed for future runs by a
+strict native-head transfer and a regression test. Historical artifacts are
+not rewritten or silently rerun.

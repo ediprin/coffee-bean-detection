@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 from pathlib import Path
 from typing import Callable
@@ -11,9 +12,23 @@ import yaml
 from .dataset import discover_layout
 from .coffee_fg import make_coffee_fg_trainer
 from .hong_transfer import make_hong_transfer_trainer
+from .frozen_residual import make_frozen_residual_trainer
 from .models.local_hbp import make_local_hbp_trainer
 from .multilevel_head import make_multilevel_head_trainer
 from .ontology_marginal import make_ontology_marginal_trainer
+
+
+def _sha256_file(path: str | Path | None) -> str | None:
+    if path is None:
+        return None
+    source = Path(path).expanduser().resolve()
+    if not source.is_file():
+        raise FileNotFoundError(source)
+    digest = hashlib.sha256()
+    with source.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def _repository_root(start: Path) -> Path:
@@ -45,10 +60,11 @@ def load_experiment(path: str | Path) -> dict:
         "hong_transfer",
         "ontology_marginal",
         "multilevel_head",
+        "frozen_residual",
     }:
         raise ValueError(
             "variant harus baseline, local_hbp, coffee_fg, hong_transfer, "
-            "ontology_marginal, atau multilevel_head"
+            "ontology_marginal, multilevel_head, atau frozen_residual"
         )
     if payload["variant"] == "coffee_fg" and not isinstance(payload.get("coffee_fg"), dict):
         raise ValueError("variant coffee_fg memerlukan mapping coffee_fg")
@@ -64,6 +80,10 @@ def load_experiment(path: str | Path) -> dict:
         payload.get("multilevel_head"), dict
     ):
         raise ValueError("variant multilevel_head memerlukan mapping multilevel_head")
+    if payload["variant"] == "frozen_residual" and not isinstance(
+        payload.get("frozen_residual"), dict
+    ):
+        raise ValueError("variant frozen_residual memerlukan mapping frozen_residual")
     return payload
 
 
@@ -72,6 +92,7 @@ def recover_completed_training_manifest(
     data_root: str | Path,
     run_dir: str | Path,
     seed: int,
+    weights_override: str | Path | None = None,
 ) -> bool:
     """Finalize a run whose last epoch survived but post-train metadata did not.
 
@@ -111,10 +132,17 @@ def recover_completed_training_manifest(
         "hong_transfer": config.get("hong_transfer"),
         "ontology_marginal": config.get("ontology_marginal"),
         "multilevel_head": config.get("multilevel_head"),
+        "frozen_residual": config.get("frozen_residual"),
         "data": str(layout.root),
         "data_yaml": str(layout.yaml_path),
         "seed": int(seed),
         "train": dict(config["train"]),
+        "weights_override": (
+            str(Path(weights_override).expanduser().resolve())
+            if weights_override is not None
+            else None
+        ),
+        "weights_override_sha256": _sha256_file(weights_override),
         "completed_epochs": completed_epochs,
         "recovered_after_runtime_disconnect": True,
     }
@@ -133,6 +161,7 @@ def train_experiment(
     device: str | None = None,
     resume: bool = False,
     on_checkpoint: Callable[[Path, int], None] | None = None,
+    weights_override: str | Path | None = None,
 ) -> Path:
     try:
         from ultralytics import YOLO
@@ -169,12 +198,18 @@ def train_experiment(
         )
     model_reference = _resolve_model_reference(config["model"], repo_root)
     model = YOLO(str(last_checkpoint if resume and last_checkpoint.is_file() else model_reference))
+    effective_weights = weights_override if weights_override is not None else config.get("weights")
     if (
         not (resume and last_checkpoint.is_file())
-        and config.get("weights")
+        and effective_weights
         and str(config["model"]).lower().endswith((".yaml", ".yml"))
     ):
-        model.load(_resolve_model_reference(config["weights"], repo_root))
+        model.load(_resolve_model_reference(effective_weights, repo_root))
+        # Ultralytics only forwards the already-loaded model to a custom
+        # trainer when ``pretrained`` is not False.  Without this override a
+        # YAML config containing ``pretrained: false`` silently rebuilds the
+        # custom model from random weights and discards the explicit load.
+        train_args["pretrained"] = True
     if on_checkpoint is not None:
         def _persist_checkpoint(trainer) -> None:
             epoch = int(getattr(trainer, "epoch", -1)) + 1
@@ -201,6 +236,9 @@ def train_experiment(
     elif config["variant"] == "multilevel_head":
         trainer = make_multilevel_head_trainer(config["multilevel_head"])
         model.train(trainer=trainer, **train_args)
+    elif config["variant"] == "frozen_residual":
+        trainer = make_frozen_residual_trainer(config["frozen_residual"])
+        model.train(trainer=trainer, **train_args)
     else:
         model.train(**train_args)
 
@@ -215,10 +253,17 @@ def train_experiment(
         "hong_transfer": config.get("hong_transfer"),
         "ontology_marginal": config.get("ontology_marginal"),
         "multilevel_head": config.get("multilevel_head"),
+        "frozen_residual": config.get("frozen_residual"),
         "data": str(layout.root),
         "data_yaml": str(layout.yaml_path),
         "seed": seed,
         "train": train_args,
+        "weights_override": (
+            str(Path(weights_override).expanduser().resolve())
+            if weights_override is not None
+            else None
+        ),
+        "weights_override_sha256": _sha256_file(weights_override),
     }
     (run_dir / "experiment_manifest.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False, default=str), encoding="utf-8"
