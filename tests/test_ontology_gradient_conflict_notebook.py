@@ -15,6 +15,6 @@ def test_gradient_audit_notebook_is_train_only_and_does_not_train() -> None:
     assert "D0_seed42/weights/best.pt" in source
     assert "assert not (DATA_ROOT / 'test').exists()" in source
     assert "model.train(" not in source
+    assert "sys.modules.pop(module_name, None)" in source
     assert "--max-batches" not in source
     assert "24" in source and "batch_size=8" in source
-
