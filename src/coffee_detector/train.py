@@ -251,7 +251,11 @@ def train_experiment(
         )
         model.train(trainer=trainer, **train_args)
     elif config["variant"] == "ambiguity_multilevel":
-        trainer = make_ambiguity_multilevel_trainer(config["ambiguity_multilevel"])
+        if weights_override is None:
+            raise ValueError("ambiguity_multilevel memerlukan weights_override checkpoint D0")
+        trainer = make_ambiguity_multilevel_trainer(
+            config["ambiguity_multilevel"], d0_checkpoint=weights_override
+        )
         model.train(trainer=trainer, **train_args)
     else:
         model.train(**train_args)
