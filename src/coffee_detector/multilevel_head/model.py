@@ -16,6 +16,12 @@ class MultilevelHeadConfig:
     topk: int = 500
     inference_weight: float = 0.0
     box_expand: float = 1.0
+    training_topk: int = 500
+    auxiliary_weight: float = 0.5
+    candidate_source: str = "one2one"
+    positive_iou: float = 0.5
+    predicted_start_epoch: int = 10
+    predicted_full_epoch: int = 25
 
     @classmethod
     def from_mapping(
@@ -28,12 +34,23 @@ class MultilevelHeadConfig:
             raise ValueError("mode harus p5_control atau pyramid_fusion")
         if result.descriptor_dim != 512:
             raise ValueError("Protokol CM512 mengunci descriptor_dim=512")
-        if result.roi_size <= 0 or result.topk <= 0:
-            raise ValueError("roi_size dan topk harus positif")
-        if result.inference_weight < 0:
-            raise ValueError("inference_weight tidak boleh negatif")
+        if result.roi_size <= 0 or result.topk <= 0 or result.training_topk <= 0:
+            raise ValueError("roi_size, topk, dan training_topk harus positif")
+        if result.inference_weight < 0 or result.auxiliary_weight < 0:
+            raise ValueError("Bobot multilevel head tidak boleh negatif")
         if result.box_expand < 1.0:
             raise ValueError("box_expand minimal 1.0")
+        if result.candidate_source not in {"one2one", "one2many"}:
+            raise ValueError("candidate_source harus one2one atau one2many")
+        if not 0.0 < result.positive_iou <= 1.0:
+            raise ValueError("positive_iou harus berada pada (0,1]")
+        if (
+            result.predicted_start_epoch < 0
+            or result.predicted_full_epoch <= result.predicted_start_epoch
+        ):
+            raise ValueError(
+                "predicted_full_epoch harus lebih besar dari predicted_start_epoch"
+            )
         return result
 
 
@@ -155,6 +172,7 @@ class MultilevelResidualDetectHead(nn.Module):
         self.refiner = CapacityMatchedROIClassifier(
             channels, int(base_head.nc), config
         )
+        self.proposal_mix = 0.0
         for name in ("i", "f", "type", "np"):
             if hasattr(base_head, name):
                 setattr(self, name, getattr(base_head, name))
@@ -259,3 +277,32 @@ def inject_multilevel_head(
 
 def config_dict(head: MultilevelResidualDetectHead) -> dict[str, Any]:
     return asdict(head.config)
+
+
+try:
+    from ultralytics.nn.tasks import DetectionModel
+except ImportError:  # pragma: no cover
+    DetectionModel = nn.Module  # type: ignore[assignment,misc]
+
+
+class MultilevelHeadDetectionModel(DetectionModel):
+    """YOLO26 DetectionModel with the serializable capacity-matched refiner."""
+
+    def __init__(
+        self,
+        cfg: str | dict = "yolo26.yaml",
+        ch: int = 3,
+        nc: int | None = None,
+        verbose: bool = True,
+        multilevel_head: MultilevelHeadConfig | dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(cfg=cfg, ch=ch, nc=nc, verbose=verbose)
+        self.multilevel_head_config = MultilevelHeadConfig.from_mapping(
+            multilevel_head
+        )
+        inject_multilevel_head(self, self.multilevel_head_config)
+
+    def init_criterion(self):
+        from .loss import MultilevelHeadLoss
+
+        return MultilevelHeadLoss(self)

@@ -12,6 +12,7 @@ from .dataset import discover_layout
 from .coffee_fg import make_coffee_fg_trainer
 from .hong_transfer import make_hong_transfer_trainer
 from .models.local_hbp import make_local_hbp_trainer
+from .multilevel_head import make_multilevel_head_trainer
 from .ontology_marginal import make_ontology_marginal_trainer
 
 
@@ -43,9 +44,11 @@ def load_experiment(path: str | Path) -> dict:
         "coffee_fg",
         "hong_transfer",
         "ontology_marginal",
+        "multilevel_head",
     }:
         raise ValueError(
-            "variant harus baseline, local_hbp, coffee_fg, hong_transfer, atau ontology_marginal"
+            "variant harus baseline, local_hbp, coffee_fg, hong_transfer, "
+            "ontology_marginal, atau multilevel_head"
         )
     if payload["variant"] == "coffee_fg" and not isinstance(payload.get("coffee_fg"), dict):
         raise ValueError("variant coffee_fg memerlukan mapping coffee_fg")
@@ -57,6 +60,10 @@ def load_experiment(path: str | Path) -> dict:
         payload.get("ontology_marginal"), dict
     ):
         raise ValueError("variant ontology_marginal memerlukan mapping ontology_marginal")
+    if payload["variant"] == "multilevel_head" and not isinstance(
+        payload.get("multilevel_head"), dict
+    ):
+        raise ValueError("variant multilevel_head memerlukan mapping multilevel_head")
     return payload
 
 
@@ -103,6 +110,7 @@ def recover_completed_training_manifest(
         "coffee_fg": config.get("coffee_fg"),
         "hong_transfer": config.get("hong_transfer"),
         "ontology_marginal": config.get("ontology_marginal"),
+        "multilevel_head": config.get("multilevel_head"),
         "data": str(layout.root),
         "data_yaml": str(layout.yaml_path),
         "seed": int(seed),
@@ -190,6 +198,9 @@ def train_experiment(
     elif config["variant"] == "ontology_marginal":
         trainer = make_ontology_marginal_trainer(config["ontology_marginal"])
         model.train(trainer=trainer, **train_args)
+    elif config["variant"] == "multilevel_head":
+        trainer = make_multilevel_head_trainer(config["multilevel_head"])
+        model.train(trainer=trainer, **train_args)
     else:
         model.train(**train_args)
 
@@ -203,6 +214,7 @@ def train_experiment(
         "coffee_fg": config.get("coffee_fg"),
         "hong_transfer": config.get("hong_transfer"),
         "ontology_marginal": config.get("ontology_marginal"),
+        "multilevel_head": config.get("multilevel_head"),
         "data": str(layout.root),
         "data_yaml": str(layout.yaml_path),
         "seed": seed,
