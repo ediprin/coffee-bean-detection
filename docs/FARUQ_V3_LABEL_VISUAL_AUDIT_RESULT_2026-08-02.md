@@ -26,23 +26,28 @@ for an SNI domain expert.
 
 ## Size-family findings
 
-- `kulit_kopi` shows a broadly ordered apparent-size signal in train and
+- `kulit_kopi` shows a broadly ordered apparent-area signal in train and
   validation, consistent with its strong numerical order AUROC. Distribution
-  tails still overlap.
+  tails still overlap. SNI defines these labels by the fraction of an intact
+  pericarp, not by absolute image-space area.
 - `tanah_batu_ranting` also shows a useful ordered signal, although the class
   combines heterogeneous materials (soil, stone, and twig) whose shapes differ
   substantially.
 - `kulit_tanduk` small, medium, and large overlap strongly in both splits.
   Several large examples appear smaller in full-frame context than medium
   examples, matching the non-monotonic medians and approximately 0.57 order
-  AUROC. The images do not provide a stable physical scale reference. The
-  classes also differ in fragmentation and shape, not only apparent size.
+  AUROC. This does not by itself contradict SNI: the standard defines these
+  labels by the fraction of an intact parchment (`<1/2`, `1/2-3/4`, `>3/4`),
+  so fragmentation and shape are the relevant evidence rather than absolute
+  box area. The contact sheets still show that this relative completeness is
+  not applied with an obvious, stable visual boundary.
 
-Consequently, a single RGB geometry head for every size family is not
-justified. If the SNI label is defined by physical dimensions, the defensible
-options are camera calibration/reference geometry or predicting the material
-type first and computing physical size after detection. Merging size labels is
-only permissible after confirming the operational SNI reporting requirement.
+Consequently, a single RGB box-geometry head for every size family is not
+justified. Coffee-husk and parchment classes need a relative-completeness or
+fragmentation target. Only foreign matter uses physical millimetre thresholds
+and therefore requires camera calibration/reference geometry. Merging size
+labels is only permissible after confirming the operational SNI reporting
+requirement.
 
 ## Local-defect findings
 
@@ -74,6 +79,10 @@ next scientific step is a domain-reviewed ontology specification that separates:
 2. physical size, when supported by calibrated geometry;
 3. severity or affected-area extent;
 4. count attributes such as one versus multiple holes.
+
+The corrected formal mapping is frozen in
+`configs/sni21/structured_ontology_v1.yaml` and documented in
+`docs/SNI21_STRUCTURED_TARGET_PROTOCOL.md`.
 
 The original 21 labels and SNI scoring must remain recoverable from these
 outputs. This is not authorization to silently merge or relabel classes. After
