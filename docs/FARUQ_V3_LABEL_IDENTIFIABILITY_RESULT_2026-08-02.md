@@ -57,3 +57,12 @@ Before another model experiment:
 
 Only after these checks may a classification refinement protocol be frozen.
 
+## Visual review implementation
+
+The follow-up is implemented as
+`notebooks/Faruq_V3_Label_Visual_Audit_Colab.ipynb` under the frozen
+`faruq-v3-label-visual-audit-v1` protocol. It creates deterministic
+normalized-area-quantile contact sheets for all size families and the six
+highest-count local-defect confusion directions. It performs no training or
+inference and refuses a dataset that exposes a test split. Its output remains
+`PENDING_HUMAN_VISUAL_REVIEW`; it does not automatically change labels.
