@@ -357,3 +357,14 @@ For every attempted arm preserve:
 
 The verified result must be documented in Git before another candidate is
 authorized.
+
+## Recorded outcome — 2026-08-02
+
+`HF_seed42` failed the frozen validation gate. Proposal accessibility improved
+by 11.79 points, but Macro mAP50-95 fell 4.92 points, conditional top-1 fell
+16.89 points, bottom-3 mAP50-95 fell 23.58 points, worst-class mAP50-95 fell
+33.01 points, operational correct-decision F1 fell 11.05 points, and latency
+rose to 1.4287x the D0 baseline. Test access remained false. Per the stopping
+rule, the Hong transfer study stops without additional seeds or component
+controls. The full record is in
+`docs/HONG_YOLO26_TRANSFER_RESULT_2026-08-02.md`.

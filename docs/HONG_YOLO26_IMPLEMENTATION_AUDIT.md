@@ -84,7 +84,13 @@ reset resumes from the `last.pt` stored directly under the shared project Drive.
 
 Implementation gate: **PASS**.
 
-Research result: **not available yet**. No statement about accuracy, superiority,
-or transferability is permitted until `HF_seed42` is trained and all frozen
-validation, conditional-classification, lower-tail, operational, and latency
-criteria are evaluated.
+Research result: **FAIL** at the frozen seed-42 validation gate. Relative to
+`D0`, `HF` changed Macro mAP50-95 by -4.92 points, conditional top-1 by -16.89
+points, bottom-3 mAP50-95 by -23.58 points, worst-class mAP50-95 by -33.01
+points, proposal accessibility by +11.79 points, and operational
+correct-decision F1 by -11.05 points. Its paired latency ratio was 1.4287x.
+
+The architecture was implemented and resumed correctly, but the complete
+package is not a qualified improvement under this protocol. The test remains
+locked and no component controls or additional seeds are authorized. See
+`docs/HONG_YOLO26_TRANSFER_RESULT_2026-08-02.md`.
