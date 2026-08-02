@@ -1,5 +1,8 @@
+import torch
+
 from coffee_detector.analysis.ontology_gradient_conflict import (
     conflict_gate,
+    enable_model_gradients,
     route_conflict_decision,
     summarize_cosines,
 )
@@ -27,3 +30,10 @@ def test_route_conflict_decision_is_frozen_before_runtime() -> None:
     assert neither["decision"] == "FAIL"
     assert neither["training_authorized"] is False
 
+
+def test_runtime_reenables_checkpoint_gradients_before_forward() -> None:
+    model = torch.nn.Linear(3, 2)
+    model.requires_grad_(False)
+    assert not any(parameter.requires_grad for parameter in model.parameters())
+    assert enable_model_gradients(model) == 8
+    assert all(parameter.requires_grad for parameter in model.parameters())

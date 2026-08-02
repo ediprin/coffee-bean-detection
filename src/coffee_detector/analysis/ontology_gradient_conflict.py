@@ -79,6 +79,15 @@ def route_conflict_decision(
     }
 
 
+def enable_model_gradients(model: torch.nn.Module) -> int:
+    """Re-enable checkpoint autograd without performing an optimizer step."""
+    model.requires_grad_(True)
+    enabled = sum(parameter.numel() for parameter in model.parameters() if parameter.requires_grad)
+    if enabled == 0:
+        raise RuntimeError("Autograd checkpoint tidak berhasil diaktifkan")
+    return enabled
+
+
 def _make_audit_loss(model: torch.nn.Module, config: OntologyMarginalConfig):
     from ultralytics.utils.loss import v8DetectionLoss
 
@@ -296,6 +305,10 @@ def run_ontology_gradient_conflict_audit(
     model = YOLO(str(checkpoint)).model.to(torch_device)
     if int(model.model[-1].nc) != len(SNI21_CLASSES):
         raise ValueError("Checkpoint bukan detector SNI-21")
+    # Ultralytics freezes parameters when a serialized checkpoint is loaded for
+    # inference. This audit needs gradients but never steps an optimizer, so
+    # explicitly re-enable autograd without changing the checkpoint weights.
+    enabled_gradient_parameters = enable_model_gradients(model)
     model.args = get_cfg(
         overrides={"epochs": 50, "box": 7.5, "cls": 0.5, "dfl": 1.5}
     )
@@ -404,6 +417,7 @@ def run_ontology_gradient_conflict_audit(
         "runtime_augmentation": False,
         "branch_weights": schedule_weights,
         "ontology_config": DEFAULT_ONTOLOGY_CONFIG.to_dict(),
+        "gradient_enabled_parameters": enabled_gradient_parameters,
         "summaries": summaries,
         "decision": decision,
         "batches": rows,
