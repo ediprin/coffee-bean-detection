@@ -34,9 +34,33 @@ def _sha256_file(path: str | Path) -> str:
     return digest.hexdigest()
 
 
-def _metrics(payload: dict) -> dict[str, float]:
-    source = payload.get("metrics", payload)
-    return {name: float(source[name]) for name in METRICS}
+def _metrics(payload: dict, result_key: str | None = None) -> dict[str, float]:
+    """Read evaluation metrics from either a raw report or a screening summary.
+
+    ``evaluate`` writes its values under ``metrics``.  The ACMC screening
+    runner instead stores the two arms under ``results``.  The optimization
+    control deliberately accepts both formats, while requiring the intended
+    arm explicitly for a multi-arm summary.
+    """
+    candidates: list[dict] = []
+    metrics = payload.get("metrics")
+    if isinstance(metrics, dict):
+        candidates.append(metrics)
+    if all(name in payload for name in METRICS):
+        candidates.append(payload)
+    results = payload.get("results")
+    if isinstance(results, dict):
+        if result_key is None:
+            raise KeyError("Summary multi-arm memerlukan result_key")
+        result = results.get(result_key)
+        if isinstance(result, dict):
+            candidates.append(result)
+
+    for source in candidates:
+        if all(name in source for name in METRICS):
+            return {name: float(source[name]) for name in METRICS}
+    label = result_key or "metrics"
+    raise KeyError(f"Metrik {METRICS} tidak ditemukan untuk arm {label}")
 
 
 def run_faruq_v3_acmc_finetune_control(
@@ -108,7 +132,9 @@ def run_faruq_v3_acmc_finetune_control(
     if report["metrics"].get("classes_without_ground_truth", []):
         raise RuntimeError("Validation kehilangan kelas")
 
-    d0, d0ft, acmc1 = _metrics(d0_payload), _metrics(report), _metrics(acmc_payload)
+    d0 = _metrics(d0_payload, "D0")
+    d0ft = _metrics(report)
+    acmc1 = _metrics(acmc_payload, "ACMC1")
     control_deltas = {name: d0ft[name] - d0[name] for name in METRICS}
     head_deltas = {name: acmc1[name] - d0ft[name] for name in METRICS}
     criteria = {
