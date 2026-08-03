@@ -60,6 +60,19 @@ def test_acmc_trains_correction_through_native_detection_scores() -> None:
     assert head.base_head.cv3[0][-1].weight.grad is not None
 
 
+def test_acmc_fused_inference_uses_only_one_to_one_branch() -> None:
+    _, candidate = _models()
+    head = candidate.model[-1]
+    assert isinstance(head, AmbiguityMultilevelDetectHead)
+    head.fuse()
+    candidate.eval()
+    with torch.inference_mode():
+        detections, predictions = candidate(torch.randn(1, 3, 128, 128))
+    assert detections.shape[0] == 1
+    assert set(predictions) == {"one2one"}
+    assert predictions["one2one"]["boxes"].shape[0] == 1
+
+
 def test_static_audit_rejects_roi_style_execution() -> None:
     result = audit_ambiguity_multilevel_static(MODEL_YAML, num_classes=5, image_size=128, config={"hidden_dim": 16})
     assert result["training_executed"] is False

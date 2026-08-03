@@ -170,11 +170,15 @@ class AmbiguityMultilevelDetectHead(nn.Module):
 
     def forward(self, features: list[torch.Tensor]):
         self._sync_runtime_attributes()
-        one2many = self._forward_branch(features, self.one2many)
-        one2one = self._forward_branch([value.detach() for value in features], self.one2one)
-        predictions = {"one2many": one2many, "one2one": one2one}
         if self.training:
-            return predictions
+            one2many = self._forward_branch(features, self.one2many)
+            one2one = self._forward_branch([value.detach() for value in features], self.one2one)
+            return {"one2many": one2many, "one2one": one2one}
+        # Detect.fuse() intentionally removes its one-to-many cv2/cv3 heads.
+        # Inference only consumes one-to-one predictions, so do not touch the
+        # removed branch when evaluating a stripped checkpoint.
+        one2one = self._forward_branch([value.detach() for value in features], self.one2one)
+        predictions = {"one2one": one2one}
         inference = self.base_head._inference(one2one)
         output = self.base_head.postprocess(inference.permute(0, 2, 1))
         return output if self.export else (output, predictions)
