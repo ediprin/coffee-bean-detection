@@ -54,9 +54,10 @@ def run_faruq_v3_acmc(
     seed: int = 42,
     device: str | None = None,
     authorize_training: bool = False,
+    confirmation_seed: bool = False,
 ) -> dict:
     """Run one pre-registered seed only after the D0-preservation audit passes."""
-    if seed != 42:
+    if seed != 42 and not confirmation_seed:
         raise ValueError("ACMC1 screening dikunci untuk seed 42")
     if not authorize_training:
         raise RuntimeError("ACMC1 training belum diotorisasi")
@@ -136,6 +137,7 @@ def run_faruq_v3_acmc(
     decision = "PASS" if all(criteria.values()) else "FAIL"
     payload = {
         "protocol": "faruq-v3-acmc-one-stage-v1",
+        "stage": "confirmation" if confirmation_seed else "screening",
         "seed": seed,
         "evaluation_split": "val",
         "test_images_accessed": False,
