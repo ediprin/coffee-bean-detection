@@ -123,7 +123,13 @@ def run_faruq_v3_acmc(
     checkpoint = run_dir / "weights/best.pt"
     if not checkpoint.is_file():
         raise FileNotFoundError(f"ACMC1 best.pt tidak ditemukan: {checkpoint}")
-    report = evaluate(checkpoint, data_root, reports_root / "ACMC1_seed42_val.json", split="val", device=device)
+    report = evaluate(
+        checkpoint,
+        data_root,
+        reports_root / f"ACMC1_seed{seed}_val.json",
+        split="val",
+        device=device,
+    )
     if report["metrics"].get("classes_without_ground_truth", []):
         raise RuntimeError("Validation kehilangan kelas")
 
@@ -155,7 +161,7 @@ def run_faruq_v3_acmc(
         ),
         "training_executed_this_call": training_was_run,
     }
-    summary = reports_root / "acmc1_seed42_decision.json"
+    summary = reports_root / f"acmc1_seed{seed}_decision.json"
     summary.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     payload["summary"] = str(summary)
     return payload

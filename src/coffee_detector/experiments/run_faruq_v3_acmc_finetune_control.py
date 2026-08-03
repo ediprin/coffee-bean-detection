@@ -63,6 +63,62 @@ def _metrics(payload: dict, result_key: str | None = None) -> dict[str, float]:
     raise KeyError(f"Metrik {METRICS} tidak ditemukan untuk arm {label}")
 
 
+def run_d0ft_continuation(
+    data_root: str | Path,
+    output_root: str | Path,
+    d0_checkpoint: str | Path,
+    *,
+    seed: int,
+    device: str | None = None,
+) -> tuple[dict, bool]:
+    """Continue a pinned D0 checkpoint with the native head and evaluate it.
+
+    This is intentionally reusable by the paired confirmation protocol.  It
+    never trains from an arbitrary checkpoint: the local manifest must retain
+    the hash of the D0 checkpoint used as the continuation source.
+    """
+    data_root = Path(data_root).expanduser().resolve()
+    output_root = Path(output_root).expanduser().resolve()
+    d0_checkpoint = Path(d0_checkpoint).expanduser().resolve()
+    reports_root = output_root / "val_reports"
+    reports_root.mkdir(parents=True, exist_ok=True)
+    checkpoint_hash = _sha256_file(d0_checkpoint)
+    run_dir = output_root / f"D0FT_seed{seed}"
+    recover_completed_training_manifest(CONFIG, data_root, run_dir, seed, weights_override=d0_checkpoint)
+    manifest = run_dir / "experiment_manifest.json"
+    if manifest.is_file():
+        provenance = _load_json(manifest, "D0FT manifest")
+        if provenance.get("weights_override_sha256") != checkpoint_hash:
+            raise RuntimeError("D0FT tidak berasal dari checkpoint D0 yang dipin")
+    training_was_run = not is_training_complete(run_dir)
+    if training_was_run:
+        action = "RESUME" if (run_dir / "weights/last.pt").is_file() else "START"
+        print(f"{action} D0FT | native D0 continuation | seed={seed}", flush=True)
+        train_experiment(
+            CONFIG,
+            data_root,
+            output_root,
+            seed,
+            device=device,
+            resume=True,
+            weights_override=d0_checkpoint,
+        )
+
+    checkpoint = run_dir / "weights/best.pt"
+    if not checkpoint.is_file():
+        raise FileNotFoundError(f"D0FT best.pt tidak ditemukan: {checkpoint}")
+    report = evaluate(
+        checkpoint,
+        data_root,
+        reports_root / f"D0FT_seed{seed}_val.json",
+        split="val",
+        device=device,
+    )
+    if report["metrics"].get("classes_without_ground_truth", []):
+        raise RuntimeError("Validation kehilangan kelas")
+    return report, training_was_run
+
+
 def run_faruq_v3_acmc_finetune_control(
     data_root: str | Path,
     grouped_summary: str | Path,
@@ -102,35 +158,9 @@ def run_faruq_v3_acmc_finetune_control(
     if not dataset_audit["safe_for_training"]:
         raise RuntimeError("Audit dataset gagal")
 
-    run_dir = output_root / "D0FT_seed42"
-    recover_completed_training_manifest(CONFIG, data_root, run_dir, seed, weights_override=d0_checkpoint)
-    manifest = run_dir / "experiment_manifest.json"
-    if manifest.is_file():
-        provenance = _load_json(manifest, "D0FT manifest")
-        if provenance.get("weights_override_sha256") != checkpoint_hash:
-            raise RuntimeError("D0FT tidak berasal dari checkpoint D0 yang dipin")
-    training_was_run = not is_training_complete(run_dir)
-    if training_was_run:
-        action = "RESUME" if (run_dir / "weights/last.pt").is_file() else "START"
-        print(f"{action} D0FT | native D0 continuation | seed={seed}", flush=True)
-        train_experiment(
-            CONFIG,
-            data_root,
-            output_root,
-            seed,
-            device=device,
-            resume=True,
-            weights_override=d0_checkpoint,
-        )
-    else:
-        print("SKIP TRAINING: D0FT seed 42 lengkap", flush=True)
-
-    checkpoint = run_dir / "weights/best.pt"
-    if not checkpoint.is_file():
-        raise FileNotFoundError(f"D0FT best.pt tidak ditemukan: {checkpoint}")
-    report = evaluate(checkpoint, data_root, reports_root / "D0FT_seed42_val.json", split="val", device=device)
-    if report["metrics"].get("classes_without_ground_truth", []):
-        raise RuntimeError("Validation kehilangan kelas")
+    report, training_was_run = run_d0ft_continuation(
+        data_root, output_root, d0_checkpoint, seed=seed, device=device
+    )
 
     d0 = _metrics(d0_payload, "D0")
     d0ft = _metrics(report)
