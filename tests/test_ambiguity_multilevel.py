@@ -39,6 +39,9 @@ def test_acmc_is_field_level_and_preserves_d0_before_learning() -> None:
     head = candidate.model[-1]
     assert isinstance(head, AmbiguityMultilevelDetectHead)
     assert torch.allclose(candidate_output[0], source_output[0], rtol=0.0, atol=1e-7)
+    # Ultralytics validation runs loss computation while the model is in eval
+    # mode, so an unfused ACMC head must retain both native branches here.
+    assert set(candidate_output[1]) == {"one2many", "one2one"}
     assert torch.equal(candidate_output[1]["one2one"]["boxes"], source_output[1]["one2one"]["boxes"])
     assert torch.equal(candidate_output[1]["one2one"]["scores"], source_output[1]["one2one"]["scores"])
     source_code = inspect.getsource(type(head)) + inspect.getsource(type(head.correction))

@@ -168,17 +168,30 @@ class AmbiguityMultilevelDetectHead(nn.Module):
             "feats": features,
         }
 
+    @staticmethod
+    def _has_heads(branch: dict[str, nn.Module]) -> bool:
+        """Whether an unfused Detect branch is available for loss validation."""
+        return bool(branch.get("box_head")) and bool(branch.get("cls_head"))
+
     def forward(self, features: list[torch.Tensor]):
         self._sync_runtime_attributes()
         if self.training:
             one2many = self._forward_branch(features, self.one2many)
             one2one = self._forward_branch([value.detach() for value in features], self.one2one)
             return {"one2many": one2many, "one2one": one2one}
-        # Detect.fuse() intentionally removes its one-to-many cv2/cv3 heads.
-        # Inference only consumes one-to-one predictions, so do not touch the
-        # removed branch when evaluating a stripped checkpoint.
+        # During validation inside training, Ultralytics keeps the model in
+        # eval mode but still computes its detection loss.  Native Detect
+        # therefore returns both branches in eval mode.  A fused checkpoint
+        # removes the one-to-many branch; only that case may omit it.
+        one2many = (
+            self._forward_branch(features, self.one2many)
+            if self._has_heads(self.one2many)
+            else None
+        )
         one2one = self._forward_branch([value.detach() for value in features], self.one2one)
         predictions = {"one2one": one2one}
+        if one2many is not None:
+            predictions["one2many"] = one2many
         inference = self.base_head._inference(one2one)
         output = self.base_head.postprocess(inference.permute(0, 2, 1))
         return output if self.export else (output, predictions)
