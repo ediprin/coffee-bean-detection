@@ -1,0 +1,23 @@
+code: ACMC2
+variant: ambiguity_multilevel
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+weights: yolo26n.pt
+ambiguity_multilevel:
+  hidden_dim: 64
+  context_kernel: 3
+  correction_scale: 1.0
+  ambiguity_floor: 0.0
+  ambiguity_mode: entropy_margin
+  gate_hidden_dim: 8
+  gate_delta_scale: 0.5
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500
