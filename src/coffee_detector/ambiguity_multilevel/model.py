@@ -17,6 +17,9 @@ class AmbiguityMultilevelConfig:
     context_kernel: int = 3
     correction_scale: float = 1.0
     ambiguity_floor: float = 0.0
+    ambiguity_mode: str = "entropy"
+    gate_hidden_dim: int = 8
+    gate_delta_scale: float = 0.5
 
     @classmethod
     def from_mapping(
@@ -31,6 +34,12 @@ class AmbiguityMultilevelConfig:
             raise ValueError("correction_scale harus positif")
         if not 0.0 <= result.ambiguity_floor < 1.0:
             raise ValueError("ambiguity_floor harus berada pada [0,1)")
+        if result.ambiguity_mode not in {"entropy", "entropy_margin"}:
+            raise ValueError("ambiguity_mode harus 'entropy' atau 'entropy_margin'")
+        if result.gate_hidden_dim <= 0:
+            raise ValueError("gate_hidden_dim harus positif")
+        if not 0.0 < result.gate_delta_scale <= 1.0:
+            raise ValueError("gate_delta_scale harus berada pada (0,1]")
         return result
 
 
@@ -55,6 +64,31 @@ class _DepthwiseContext(nn.Module):
         return self.pointwise(self.activation(self.norm(self.depthwise(value))))
 
 
+class _EntropyMarginGate(nn.Module):
+    """Learn a bounded correction to entropy from top-1/top-2 class margin.
+
+    The final projection is zero-initialized, so ACMC2 begins exactly from the
+    ACMC1 entropy gate rather than from a new random gating policy.
+    """
+
+    def __init__(self, hidden_dim: int, delta_scale: float) -> None:
+        super().__init__()
+        self.delta_scale = float(delta_scale)
+        self.network = nn.Sequential(
+            nn.Conv2d(2, hidden_dim, 1),
+            nn.SiLU(inplace=True),
+            nn.Conv2d(hidden_dim, 1, 1),
+        )
+        nn.init.zeros_(self.network[-1].weight)
+        nn.init.zeros_(self.network[-1].bias)
+
+    def forward(self, entropy: torch.Tensor, margin_uncertainty: torch.Tensor) -> torch.Tensor:
+        gate_delta = self.delta_scale * torch.tanh(
+            self.network(torch.cat((entropy, margin_uncertainty), dim=1))
+        )
+        return (entropy + gate_delta).clamp(0.0, 1.0)
+
+
 class AmbiguityConditionedFusion(nn.Module):
     """Select P3/P4/P5 evidence separately for every classification grid cell."""
 
@@ -70,7 +104,7 @@ class AmbiguityConditionedFusion(nn.Module):
         self.projections = nn.ModuleList(
             [nn.Conv2d(channel, config.hidden_dim, 1, bias=False) for channel in channels]
         )
-        # Concatenated P3/P4/P5 descriptors plus detached normalized leaf entropy.
+        # Concatenated P3/P4/P5 descriptors plus one detached ambiguity gate.
         self.level_selectors = nn.ModuleList(
             [nn.Conv2d(3 * config.hidden_dim + 1, 3, 1) for _ in channels]
         )
@@ -80,19 +114,44 @@ class AmbiguityConditionedFusion(nn.Module):
         self.class_corrections = nn.ModuleList(
             [nn.Conv2d(config.hidden_dim, self.num_classes, 1) for _ in channels]
         )
+        self.entropy_margin_gates = (
+            nn.ModuleList(
+                [
+                    _EntropyMarginGate(config.gate_hidden_dim, config.gate_delta_scale)
+                    for _ in channels
+                ]
+            )
+            if config.ambiguity_mode == "entropy_margin"
+            else None
+        )
         # Zero correction makes the injected model exactly D0 before learning.
         for layer in self.class_corrections:
             nn.init.zeros_(layer.weight)
             nn.init.zeros_(layer.bias)
 
-    def _ambiguity(self, logits: torch.Tensor) -> torch.Tensor:
-        probability = logits.detach().softmax(dim=1)
+    def _entropy(self, probability: torch.Tensor) -> torch.Tensor:
         entropy = -(probability * probability.clamp_min(1e-8).log()).sum(dim=1, keepdim=True)
         entropy = entropy / math.log(max(self.num_classes, 2))
         if self.config.ambiguity_floor:
             entropy = (entropy - self.config.ambiguity_floor).clamp_min(0.0)
             entropy = entropy / (1.0 - self.config.ambiguity_floor)
         return entropy
+
+    @staticmethod
+    def _margin_uncertainty(probability: torch.Tensor) -> torch.Tensor:
+        # Full class sorting is intentionally used instead of proposal top-k:
+        # this is a per-cell class-margin statistic, not candidate selection.
+        ordered = probability.sort(dim=1, descending=True).values
+        margin = ordered[:, 0:1] - ordered[:, 1:2]
+        return 1.0 - margin
+
+    def _ambiguity(self, logits: torch.Tensor, level: int) -> torch.Tensor:
+        probability = logits.detach().softmax(dim=1)
+        entropy = self._entropy(probability)
+        if self.entropy_margin_gates is None:
+            return entropy
+        margin_uncertainty = self._margin_uncertainty(probability)
+        return self.entropy_margin_gates[level](entropy, margin_uncertainty)
 
     def forward(
         self, features: list[torch.Tensor], level_logits: list[torch.Tensor]
@@ -107,7 +166,7 @@ class AmbiguityConditionedFusion(nn.Module):
                 value if value.shape[-2:] == size else F.interpolate(value, size=size, mode="nearest")
                 for value in projected
             ]
-            ambiguity = self._ambiguity(logits)
+            ambiguity = self._ambiguity(logits, target)
             weights = self.level_selectors[target](torch.cat((*aligned, ambiguity), dim=1)).softmax(dim=1)
             fused = sum(weights[:, index : index + 1] * value for index, value in enumerate(aligned))
             correction = self.class_corrections[target](self.contexts[target](fused))
@@ -180,8 +239,8 @@ class AmbiguityMultilevelDetectHead(nn.Module):
             one2one = self._forward_branch([value.detach() for value in features], self.one2one)
             return {"one2many": one2many, "one2one": one2one}
         # During validation inside training, Ultralytics keeps the model in
-        # eval mode but still computes its detection loss.  Native Detect
-        # therefore returns both branches in eval mode.  A fused checkpoint
+        # eval mode but still computes its detection loss. Native Detect
+        # therefore returns both branches in eval mode. A fused checkpoint
         # removes the one-to-many branch; only that case may omit it.
         one2many = (
             self._forward_branch(features, self.one2many)
