@@ -108,8 +108,6 @@ def _train_or_resume(
     else:
         print(f"START ACMC1-HCR | seed={seed}", flush=True)
         model = YOLO(str(MODEL_YAML))
-        # Keep the outer Ultralytics object aligned with the audited D0 source;
-        # the custom trainer also strictly binds the same D0 file.
         model.load(str(d0_checkpoint))
         train_args["pretrained"] = True
         model.train(trainer=trainer, **train_args)
@@ -157,6 +155,9 @@ def run_faruq_v3_acmc1h_screening(
     output_root = Path(output_root).expanduser().resolve()
     d0_checkpoint = Path(d0_checkpoint).expanduser().resolve()
     grouped = load_faruq_grouped_summary(grouped_summary, data_root)
+    data_yaml = data_root / "data.yaml"
+    if not data_yaml.is_file():
+        raise FileNotFoundError(f"data.yaml tidak ditemukan: {data_yaml}")
     if (data_root / "test").exists():
         raise RuntimeError("Faruq-v3 development tidak boleh memiliki split test")
 
@@ -210,7 +211,7 @@ def run_faruq_v3_acmc1h_screening(
 
     run_dir, training_was_run = _train_or_resume(
         config,
-        Path(grouped["data_yaml"]),
+        data_yaml,
         d0_checkpoint,
         output_root,
         seed=seed,
