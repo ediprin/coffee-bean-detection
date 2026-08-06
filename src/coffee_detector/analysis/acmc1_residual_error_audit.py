@@ -10,7 +10,7 @@ from statistics import mean, pstdev
 
 import numpy as np
 
-from coffee_detector.analysis.coffee_fg_diagnostics import diagnose_checkpoint
+from coffee_detector.analysis import coffee_fg_diagnostics as diagnostics
 from coffee_detector.dataset import discover_layout
 
 IOU_THRESHOLDS = tuple(round(float(x), 2) for x in np.linspace(0.50, 0.95, 10))
@@ -91,6 +91,12 @@ def _validate_only_layout(data_root):
     return layout
 
 
+def _unwrap_diagnostic_head(model):
+    """Decode raw ACMC branches with the wrapped native Detect geometry head."""
+    head = model.model[-1]
+    return getattr(head, "base_head", head)
+
+
 def _top_confusions(confusion, limit=20):
     rows = []
     for expected, predicted_counts in confusion.items():
@@ -133,18 +139,23 @@ def _run_seed(checkpoint, data_root, *, seed, device):
         missing = sorted(set(layout.names.values()) - set(classwise))
         raise RuntimeError(f"Validation kehilangan kelas: {missing}")
 
-    diagnostic = diagnose_checkpoint(
-        checkpoint,
-        data_root,
-        split="val",
-        image_size=640,
-        candidate_counts=(500,),
-        iou_threshold=0.50,
-        confidence_threshold=0.25,
-        nms_iou=0.70,
-        max_det=500,
-        device=device,
-    )
+    original_unwrap = diagnostics._unwrap_head
+    diagnostics._unwrap_head = _unwrap_diagnostic_head
+    try:
+        diagnostic = diagnostics.diagnose_checkpoint(
+            checkpoint,
+            data_root,
+            split="val",
+            image_size=640,
+            candidate_counts=(500,),
+            iou_threshold=0.50,
+            confidence_threshold=0.25,
+            nms_iou=0.70,
+            max_det=500,
+            device=device,
+        )
+    finally:
+        diagnostics._unwrap_head = original_unwrap
     final = diagnostic["final_detections"]
 
     rows = {}
