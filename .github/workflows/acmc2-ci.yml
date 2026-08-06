@@ -7,24 +7,30 @@ on:
     paths:
       - "src/coffee_detector/ambiguity_multilevel/**"
       - "src/coffee_detector/experiments/run_faruq_v3_acmc2_screening.py"
+      - "src/coffee_detector/experiments/run_faruq_v3_acmc2_paired_confirmation.py"
       - "tests/test_acmc2_entropy_margin.py"
       - "tests/test_acmc2_screening.py"
+      - "tests/test_acmc2_paired_confirmation.py"
       - "tests/test_ambiguity_multilevel.py"
       - "configs/ambiguity_multilevel/**"
       - "configs/coffee_fg/models/yolo26n-p3.yaml"
       - "notebooks/Faruq_V3_ACMC2_Entropy_Margin_Screening_Colab.ipynb"
+      - "notebooks/Faruq_V3_ACMC2_Paired_Confirmation_Colab.ipynb"
       - "pyproject.toml"
       - ".github/workflows/acmc2-ci.yml"
   pull_request:
     paths:
       - "src/coffee_detector/ambiguity_multilevel/**"
       - "src/coffee_detector/experiments/run_faruq_v3_acmc2_screening.py"
+      - "src/coffee_detector/experiments/run_faruq_v3_acmc2_paired_confirmation.py"
       - "tests/test_acmc2_entropy_margin.py"
       - "tests/test_acmc2_screening.py"
+      - "tests/test_acmc2_paired_confirmation.py"
       - "tests/test_ambiguity_multilevel.py"
       - "configs/ambiguity_multilevel/**"
       - "configs/coffee_fg/models/yolo26n-p3.yaml"
       - "notebooks/Faruq_V3_ACMC2_Entropy_Margin_Screening_Colab.ipynb"
+      - "notebooks/Faruq_V3_ACMC2_Paired_Confirmation_Colab.ipynb"
       - "pyproject.toml"
       - ".github/workflows/acmc2-ci.yml"
   workflow_dispatch:
@@ -75,6 +81,10 @@ jobs:
         run: |
           python -m pytest -q tests/test_acmc2_screening.py
 
+      - name: ACMC2 paired confirmation protocol tests
+        run: |
+          python -m pytest -q tests/test_acmc2_paired_confirmation.py
+
       - name: ACMC1 regression and static safety audit
         run: |
           python -m pytest -q tests/test_ambiguity_multilevel.py
@@ -95,22 +105,35 @@ jobs:
           print("ACMC2 config:", config)
           PY
 
-      - name: Colab notebook smoke check
+      - name: Colab notebook smoke checks
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
 
-          path = Path("notebooks/Faruq_V3_ACMC2_Entropy_Margin_Screening_Colab.ipynb")
-          notebook = json.loads(path.read_text(encoding="utf-8"))
-          source = "\n".join(
-              line
-              for cell in notebook["cells"]
-              for line in cell.get("source", [])
+          screening = Path("notebooks/Faruq_V3_ACMC2_Entropy_Margin_Screening_Colab.ipynb")
+          screening_nb = json.loads(screening.read_text(encoding="utf-8"))
+          screening_source = "\n".join(
+              line for cell in screening_nb["cells"] for line in cell.get("source", [])
           )
-          assert "agent/acmc2-margin-gate" in source
-          assert "run_faruq_v3_acmc2_screening" in source
-          assert "assert not (DATA_ROOT / 'test').exists()" in source
-          assert "acmc1_optimization_control_seed42.json" in source
-          print("Notebook smoke check: PASS")
+          assert "agent/acmc2-margin-gate" in screening_source
+          assert "run_faruq_v3_acmc2_screening" in screening_source
+          assert "assert not (DATA_ROOT / 'test').exists()" in screening_source
+          assert "acmc1_optimization_control_seed42.json" in screening_source
+
+          paired = Path("notebooks/Faruq_V3_ACMC2_Paired_Confirmation_Colab.ipynb")
+          paired_nb = json.loads(paired.read_text(encoding="utf-8"))
+          paired_source = "\n".join(
+              line for cell in paired_nb["cells"] for line in cell.get("source", [])
+          )
+          assert "agent/acmc2-margin-gate" in paired_source
+          assert "run_faruq_v3_acmc2_paired_confirmation" in paired_source
+          assert "assert not (DATA_ROOT / 'test').exists()" in paired_source
+          assert "acmc1_paired_optimization_confirmation.json" in paired_source
+          assert "acmc2_seed42_screening.json" in paired_source
+          assert "D0_seed123/weights/best.pt" in paired_source
+          assert "D0_seed2026/weights/best.pt" in paired_source
+          assert "tests/test_acmc2_screening.py" in paired_source
+          assert "tests/test_acmc2_paired_confirmation.py" in paired_source
+          print("Notebook smoke checks: PASS")
           PY
