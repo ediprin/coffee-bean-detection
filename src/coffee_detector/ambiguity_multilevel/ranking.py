@@ -19,6 +19,9 @@ class HardCompetitorRankingConfig:
     """Training-only ranking term for the one-to-one classification branch."""
 
     weight: float = 0.25
+    branch: str = "one2one_only"
+    competitor: str = "strongest_wrong_class"
+    loss: str = "softplus_pairwise"
 
     @classmethod
     def from_mapping(
@@ -27,6 +30,12 @@ class HardCompetitorRankingConfig:
         result = payload if isinstance(payload, cls) else cls(**dict(payload or {}))
         if not 0.0 < result.weight <= 1.0:
             raise ValueError("hard_competitor_ranking.weight harus berada pada (0,1]")
+        if result.branch != "one2one_only":
+            raise ValueError("HCR dikunci hanya pada one2one_only")
+        if result.competitor != "strongest_wrong_class":
+            raise ValueError("HCR dikunci ke strongest_wrong_class")
+        if result.loss != "softplus_pairwise":
+            raise ValueError("HCR dikunci ke softplus_pairwise")
         return result
 
 
@@ -37,7 +46,7 @@ def hard_competitor_softplus_loss(
     """Push the assigned class above the strongest competing wrong class.
 
     This loss is class-generic: no validation-derived confusion pairs are
-    encoded.  The competitor is selected dynamically from the current logits.
+    encoded. The competitor is selected dynamically from the current logits.
     """
 
     if logits.ndim != 2:
@@ -59,10 +68,16 @@ def hard_competitor_softplus_loss(
 
 
 class HardCompetitorDetectionLoss:
-    """Mixin-style factory wrapper around the pinned Ultralytics v8DetectionLoss."""
+    """Factory around pinned Ultralytics v8DetectionLoss with one extra cls term."""
 
     @staticmethod
-    def build(model: torch.nn.Module, *, weight: float, tal_topk: int, tal_topk2: int | None = None):
+    def build(
+        model: torch.nn.Module,
+        *,
+        weight: float,
+        tal_topk: int,
+        tal_topk2: int | None = None,
+    ):
         from ultralytics.utils.loss import v8DetectionLoss
 
         frozen_weight = float(weight)
@@ -91,7 +106,9 @@ class HardCompetitorDetectionLoss:
                     scale_tensor=imgsz[[1, 0, 1, 0]],
                 )
                 gt_labels = targets[..., 0].long()
-                batch_index = torch.arange(batch_size, device=self.device)[:, None].expand_as(target_gt_idx)
+                batch_index = torch.arange(batch_size, device=self.device)[:, None].expand_as(
+                    target_gt_idx
+                )
                 assigned_labels = gt_labels[
                     batch_index,
                     target_gt_idx.clamp(min=0, max=max(gt_labels.shape[1] - 1, 0)),
@@ -100,9 +117,8 @@ class HardCompetitorDetectionLoss:
                 positive_labels = assigned_labels[fg_mask]
                 rank_loss = hard_competitor_softplus_loss(positive_logits, positive_labels)
 
-                # Native loss has already applied hyp.cls to its classification component.
-                # Apply the same gain to the auxiliary ranking term, then fold it into
-                # classification so Ultralytics logging remains box/cls/dfl compatible.
+                # Native loss already applies hyp.cls to its classification component.
+                # Apply the same gain and fold HCR into cls so logging remains box/cls/dfl.
                 loss = native_loss.clone()
                 loss[1] = loss[1] + frozen_weight * self.hyp.cls * rank_loss
                 return assignments, loss, loss.detach()
@@ -114,7 +130,7 @@ class HardCompetitorE2ELoss:
     """Native YOLO26 E2E loss with HCR only on the final one-to-one branch."""
 
     def __init__(self, model: torch.nn.Module, *, weight: float):
-        from ultralytics.utils.loss import E2ELoss, v8DetectionLoss
+        from ultralytics.utils.loss import E2ELoss
 
         base = E2ELoss(model)
         self.one2many = base.one2many
@@ -130,8 +146,6 @@ class HardCompetitorE2ELoss:
         self.o2o = base.o2o
         self.o2m_copy = base.o2m_copy
         self.final_o2m = base.final_o2m
-        # Keep a direct reference only for explicit protocol assertions.
-        self.native_loss_type = v8DetectionLoss
         self.hard_competitor_weight = float(weight)
 
     def __call__(self, preds, batch):
