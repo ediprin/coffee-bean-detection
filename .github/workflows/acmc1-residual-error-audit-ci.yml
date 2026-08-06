@@ -1,0 +1,68 @@
+name: ACMC1 Residual Error Audit CI
+
+on:
+  push:
+    branches:
+      - agent/acmc1-residual-error-audit
+    paths:
+      - "src/coffee_detector/analysis/acmc1_residual_error_audit.py"
+      - "tests/test_acmc1_residual_error_audit.py"
+      - "notebooks/Faruq_V3_ACMC1_Residual_Error_Audit_Colab.ipynb"
+      - ".github/workflows/acmc1-residual-error-audit-ci.yml"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-unit-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install project and dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Verify pinned Ultralytics
+        run: |
+          python - <<'PY'
+          import ultralytics
+          assert ultralytics.__version__ == "8.4.96"
+          print("ultralytics:", ultralytics.__version__)
+          PY
+
+      - name: Residual error attribution unit tests
+        run: python -m pytest -q tests/test_acmc1_residual_error_audit.py
+
+      - name: Notebook safety smoke check
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("notebooks/Faruq_V3_ACMC1_Residual_Error_Audit_Colab.ipynb")
+          nb = json.loads(path.read_text(encoding="utf-8"))
+          source = "\n".join(
+              line for cell in nb["cells"] for line in cell.get("source", [])
+          )
+          assert "agent/acmc1-residual-error-audit" in source
+          assert "acmc1_residual_error_audit" in source
+          assert "assert not (DATA_ROOT / 'test').exists()" in source
+          assert "ACMC1_seed42/weights/best.pt" in source
+          assert "ACMC1_seed123/weights/best.pt" in source
+          assert "ACMC1_seed2026/weights/best.pt" in source
+          assert "training" not in source.lower() or "Tidak ada training" in source
+          print("Notebook smoke check: PASS")
+          PY
