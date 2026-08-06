@@ -1,0 +1,93 @@
+{
+  "protocol": "faruq-v3-acmc2-paired-optimization-confirmation-v1",
+  "date": "2026-08-07",
+  "seeds": [42, 123, 2026],
+  "evaluation_split": "val",
+  "test_images_accessed": false,
+  "test_opened": false,
+  "selected_model": "ACMC1",
+  "decision": "FAIL",
+  "next_action": "KEEP_ACMC1_AS_SELECTED_MODEL",
+  "aggregate": {
+    "macro_map50_95": {
+      "d0_mean": 0.8011915045202723,
+      "d0ft_mean": 0.8661642234394589,
+      "acmc1_mean": 0.8761687900266013,
+      "acmc2_mean": 0.8755858811259601,
+      "acmc2_vs_d0ft_mean": 0.00942165768650117,
+      "acmc2_vs_d0ft_min": 0.0073918777628908,
+      "acmc2_vs_d0ft_improved_seeds": 3,
+      "acmc2_vs_acmc1_mean": -0.0005829089006411909,
+      "acmc2_vs_acmc1_min": -0.005667444960435954,
+      "acmc2_vs_acmc1_improved_seeds": 2
+    },
+    "bottom3_class_map50_95": {
+      "d0_mean": 0.6658380540180543,
+      "d0ft_mean": 0.7657515699691704,
+      "acmc1_mean": 0.7913021184651363,
+      "acmc2_mean": 0.7937320126975769,
+      "acmc2_vs_d0ft_mean": 0.027980442728406465,
+      "acmc2_vs_d0ft_min": -0.01180302358645802,
+      "acmc2_vs_d0ft_improved_seeds": 2,
+      "acmc2_vs_acmc1_mean": 0.0024298942324406615,
+      "acmc2_vs_acmc1_min": -0.008714772537993007,
+      "acmc2_vs_acmc1_improved_seeds": 2
+    },
+    "worst_class_map50_95": {
+      "d0_mean": 0.6017614182337486,
+      "d0ft_mean": 0.7305424379308602,
+      "acmc1_mean": 0.7629866254223853,
+      "acmc2_mean": 0.7722858964581422,
+      "acmc2_vs_d0ft_mean": 0.041743458527281935,
+      "acmc2_vs_d0ft_min": -0.029789767742734187,
+      "acmc2_vs_d0ft_improved_seeds": 2,
+      "acmc2_vs_acmc1_mean": 0.009299271035756868,
+      "acmc2_vs_acmc1_min": -0.0015562948657602549,
+      "acmc2_vs_acmc1_improved_seeds": 2
+    }
+  },
+  "per_seed": {
+    "42": {
+      "D0": {"macro_map50_95": 0.7996778854533524, "bottom3_class_map50_95": 0.6872368471526356, "worst_class_map50_95": 0.6508797864934437},
+      "D0FT": {"macro_map50_95": 0.8668870418312263, "bottom3_class_map50_95": 0.7498085237045921, "worst_class_map50_95": 0.7202242739437643},
+      "ACMC1": {"macro_map50_95": 0.8762447324569823, "bottom3_class_map50_95": 0.8040474227915105, "worst_class_map50_95": 0.7948984561738659},
+      "ACMC2": {"macro_map50_95": 0.8780988867868497, "bottom3_class_map50_95": 0.819416104287959, "worst_class_map50_95": 0.7933421613081056}
+    },
+    "123": {
+      "D0": {"macro_map50_95": 0.7950281687256374, "bottom3_class_map50_95": 0.6117659800560019, "worst_class_map50_95": 0.47794614875332486},
+      "D0FT": {"macro_map50_95": 0.863509436662014, "bottom3_class_map50_95": 0.7475135787938432, "worst_class_map50_95": 0.6782955438486477},
+      "ACMC1": {"macro_map50_95": 0.8788381319634395, "bottom3_class_map50_95": 0.7730145762432873, "worst_class_map50_95": 0.7354829763291891},
+      "ACMC2": {"macro_map50_95": 0.8731706870030035, "bottom3_class_map50_95": 0.7736503499821538, "worst_class_map50_95": 0.7601977998088867}
+    },
+    "2026": {
+      "D0": {"macro_map50_95": 0.8088684593818269, "bottom3_class_map50_95": 0.6985113348455254, "worst_class_map50_95": 0.6764583194544771},
+      "D0FT": {"macro_map50_95": 0.8680961918251362, "bottom3_class_map50_95": 0.799932607409076, "worst_class_map50_95": 0.7931074960001684},
+      "ACMC1": {"macro_map50_95": 0.8734235056593823, "bottom3_class_map50_95": 0.796844356360611, "worst_class_map50_95": 0.7585784437641008},
+      "ACMC2": {"macro_map50_95": 0.875488069588027, "bottom3_class_map50_95": 0.788129583822618, "worst_class_map50_95": 0.7633177282574342}
+    }
+  },
+  "criteria": {
+    "macro_gain_over_d0ft_mean_at_least_0_5_point": true,
+    "macro_improved_over_d0ft_at_least_2_of_3": true,
+    "bottom3_mean_not_lower_than_d0ft": true,
+    "bottom3_improved_over_d0ft_at_least_2_of_3": true,
+    "worst_mean_drop_vs_d0ft_no_more_than_1_point": true,
+    "macro_mean_not_lower_than_acmc1": false,
+    "macro_improved_over_acmc1_at_least_2_of_3": true,
+    "at_least_one_tail_mean_improves_over_acmc1": true,
+    "at_least_one_tail_improves_over_acmc1_at_least_2_of_3": true,
+    "neither_tail_mean_drops_more_than_1_point_vs_acmc1": true
+  },
+  "interpretation": {
+    "primary": "ACMC2 remains effective versus D0FT but does not replace ACMC1 under the frozen selection rule because mean Macro mAP50-95 is 0.06 percentage points lower than ACMC1.",
+    "tail_tradeoff": "Relative to ACMC1, ACMC2 improves Bottom-3 mean by 0.24 percentage points and Worst-class mean by 0.93 percentage points, suggesting margin conditioning shifts the trade-off toward difficult tail classes.",
+    "selection_boundary": "Keep ACMC1 as the selected model; preserve ACMC2 as an ablation result and do not open the locked test split or validation-retune ACMC2 solely to recover the Macro deficit."
+  },
+  "drive_artifacts": {
+    "acmc2_final_summary": "experiments/faruq-v3-acmc2-paired-confirmation-v1/val_reports/acmc2_paired_optimization_confirmation.json",
+    "acmc2_seed42": "experiments/faruq-v3-acmc2-entropy-margin-v1/val_reports/acmc2_seed42_screening.json",
+    "acmc2_seed123": "experiments/faruq-v3-acmc2-paired-confirmation-v1/val_reports/ACMC2_seed123_val.json",
+    "acmc2_seed2026": "experiments/faruq-v3-acmc2-paired-confirmation-v1/val_reports/ACMC2_seed2026_val.json",
+    "acmc1_reference": "experiments/faruq-v3-acmc-paired-confirmation-v1/val_reports/acmc1_paired_optimization_confirmation.json"
+  }
+}
