@@ -1,0 +1,86 @@
+name: ACMC2 CI
+
+on:
+  push:
+    branches:
+      - agent/acmc2-margin-gate
+    paths:
+      - "src/coffee_detector/ambiguity_multilevel/**"
+      - "tests/test_acmc2_entropy_margin.py"
+      - "tests/test_ambiguity_multilevel.py"
+      - "configs/ambiguity_multilevel/**"
+      - "configs/coffee_fg/models/yolo26n-p3.yaml"
+      - "pyproject.toml"
+      - ".github/workflows/acmc2-ci.yml"
+  pull_request:
+    paths:
+      - "src/coffee_detector/ambiguity_multilevel/**"
+      - "tests/test_acmc2_entropy_margin.py"
+      - "tests/test_ambiguity_multilevel.py"
+      - "configs/ambiguity_multilevel/**"
+      - "configs/coffee_fg/models/yolo26n-p3.yaml"
+      - "pyproject.toml"
+      - ".github/workflows/acmc2-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: acmc2-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-and-static-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install project and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Show pinned runtime versions
+        run: |
+          python - <<'PY'
+          import torch
+          import ultralytics
+          print("torch:", torch.__version__)
+          print("ultralytics:", ultralytics.__version__)
+          assert ultralytics.__version__ == "8.4.96"
+          PY
+
+      - name: ACMC2 entropy-margin unit tests
+        run: |
+          python -m pytest -q tests/test_acmc2_entropy_margin.py
+
+      - name: ACMC1 regression and static safety audit
+        run: |
+          python -m pytest -q tests/test_ambiguity_multilevel.py
+
+      - name: Config smoke check
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          from coffee_detector.ambiguity_multilevel.model import AmbiguityMultilevelConfig
+
+          path = Path("configs/ambiguity_multilevel/ACMC2_yolo26n_entropy_margin.yaml")
+          payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+          config = AmbiguityMultilevelConfig.from_mapping(payload["ambiguity_multilevel"])
+          assert config.ambiguity_mode == "entropy_margin"
+          assert config.gate_hidden_dim > 0
+          assert 0.0 < config.gate_delta_scale <= 1.0
+          print("ACMC2 config:", config)
+          PY
