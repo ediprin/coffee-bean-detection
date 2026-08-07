@@ -7,6 +7,7 @@ on:
     paths:
       - "configs/breadth_screening/**"
       - "tools/run_faruq_v3_breadth_batch.py"
+      - "tools/preflight_faruq_v3_breadth_batch.py"
       - "tests/test_breadth_screening_batch.py"
       - "notebooks/Faruq_V3_Breadth_Screening_Batch_V1_Colab.ipynb"
       - "docs/FARUQ_V3_BREADTH_SCREENING_BATCH_V1.md"
@@ -16,6 +17,7 @@ on:
     paths:
       - "configs/breadth_screening/**"
       - "tools/run_faruq_v3_breadth_batch.py"
+      - "tools/preflight_faruq_v3_breadth_batch.py"
       - "tests/test_breadth_screening_batch.py"
       - "notebooks/Faruq_V3_Breadth_Screening_Batch_V1_Colab.ipynb"
       - "docs/FARUQ_V3_BREADTH_SCREENING_BATCH_V1.md"
@@ -37,6 +39,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -60,8 +64,17 @@ jobs:
       - name: Controller CLI smoke check
         run: |
           python tools/run_faruq_v3_breadth_batch.py --help
+      - name: Preflight all 22 frozen candidate runners
+        run: |
+          cp tools/run_faruq_v3_breadth_batch.py /tmp/run_faruq_v3_breadth_batch.py
+          cp tools/preflight_faruq_v3_breadth_batch.py /tmp/preflight_faruq_v3_breadth_batch.py
+          cp configs/breadth_screening/faruq_v3_batch_v1.json /tmp/faruq_v3_batch_v1.json
+          python /tmp/preflight_faruq_v3_breadth_batch.py \
+            --repo "$GITHUB_WORKSPACE" \
+            --manifest /tmp/faruq_v3_batch_v1.json
       - name: Frozen manifest summary
         run: |
+          git checkout --detach "$GITHUB_SHA"
           python - <<'PY'
           import json
           from pathlib import Path
