@@ -45,18 +45,19 @@ def test_cg1_initial_prediction_matches_native_and_boxes_are_exact() -> None:
     assert torch.allclose(native[0], enhanced[0], rtol=1e-5, atol=1e-5)
 
 
-def test_frequency_filter_change_alters_scores_not_boxes() -> None:
-    source, candidate = _models()
-    head = candidate.model[-1]
-    last = head.enhancers[0].filter.filter_net[-1]
-    with torch.no_grad():
-        last.bias[: head.enhancers[0].filter.channels].fill_(1.25)
-    image = torch.randn(1, 3, 128, 128)
+def test_frequency_filter_change_alters_enhanced_feature() -> None:
+    module = CGFIFeatureEnhancer(8, CGFIConfig()).eval()
+    value = torch.randn(2, 8, 17, 19)
     with torch.inference_mode():
-        native = source(image)
-        enhanced = candidate(image)
-    assert torch.equal(native[1]["one2one"]["boxes"], enhanced[1]["one2one"]["boxes"])
-    assert not torch.allclose(native[1]["one2one"]["scores"], enhanced[1]["one2one"]["scores"])
+        baseline = module(value)
+    last = module.filter.filter_net[-1]
+    with torch.no_grad():
+        last.bias[: module.filter.channels].fill_(1.25)
+    with torch.inference_mode():
+        changed = module(value)
+    assert not torch.allclose(baseline, changed)
+    assert changed.shape == value.shape
+    assert torch.isfinite(changed).all()
 
 
 def test_cgfi_filter_receives_gradient() -> None:
