@@ -9,6 +9,8 @@ on:
       - "src/coffee_detector/experiments/run_faruq_v3_fsce_cpe_screening.py"
       - "configs/fsce_cpe/**"
       - "tests/test_fsce_cpe.py"
+      - "notebooks/Faruq_V3_FSCE_CPE_Screening_Colab.ipynb"
+      - "docs/FARUQ_V3_FSCE_CPE_PROTOCOL.md"
       - ".github/workflows/fsce-cpe-ci.yml"
       - "pyproject.toml"
   pull_request:
@@ -17,6 +19,8 @@ on:
       - "src/coffee_detector/experiments/run_faruq_v3_fsce_cpe_screening.py"
       - "configs/fsce_cpe/**"
       - "tests/test_fsce_cpe.py"
+      - "notebooks/Faruq_V3_FSCE_CPE_Screening_Colab.ipynb"
+      - "docs/FARUQ_V3_FSCE_CPE_PROTOCOL.md"
       - ".github/workflows/fsce-cpe-ci.yml"
       - "pyproject.toml"
   workflow_dispatch:
@@ -55,6 +59,7 @@ jobs:
       - name: Training loss smoke check
         run: |
           python - <<'PY'
+          import json
           import torch
           from pathlib import Path
           from coffee_detector.fsce_cpe import FSCECPEConfig, FSCECPEDetectionModel
@@ -68,5 +73,8 @@ jobs:
           output = model(torch.randn(2,3,128,128))
           assert 'cpe_embeddings' in output['one2many']
           assert 'cpe_embeddings' not in output['one2one']
+          nb = json.loads((root/'notebooks/Faruq_V3_FSCE_CPE_Screening_Colab.ipynb').read_text())
+          assert nb['nbformat'] == 4
+          assert (root/'docs/FARUQ_V3_FSCE_CPE_PROTOCOL.md').is_file()
           print('FSCE-CPE smoke check passed')
           PY
