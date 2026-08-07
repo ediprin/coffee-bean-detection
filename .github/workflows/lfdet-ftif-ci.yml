@@ -1,0 +1,85 @@
+name: LFDet FTIF CI
+
+on:
+  push:
+    branches:
+      - agent/lfdet-ftif-text-image-screening
+    paths:
+      - "src/coffee_detector/ftif/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_ftif_screening.py"
+      - "configs/ftif/**"
+      - "tests/test_ftif.py"
+      - "notebooks/Faruq_V3_LFDet_FTIF_Screening_Colab.ipynb"
+      - "docs/FARUQ_V3_LFDET_FTIF_PROTOCOL.md"
+      - ".github/workflows/lfdet-ftif-ci.yml"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - "src/coffee_detector/ftif/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_ftif_screening.py"
+      - "configs/ftif/**"
+      - "tests/test_ftif.py"
+      - "notebooks/Faruq_V3_LFDet_FTIF_Screening_Colab.ipynb"
+      - "docs/FARUQ_V3_LFDET_FTIF_PROTOCOL.md"
+      - ".github/workflows/lfdet-ftif-ci.yml"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lfdet-ftif-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-and-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install project and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Show pinned runtime versions
+        run: |
+          python - <<'PY'
+          import torch, torchvision, ultralytics
+          print("torch:", torch.__version__)
+          print("torchvision:", torchvision.__version__)
+          print("ultralytics:", ultralytics.__version__)
+          assert ultralytics.__version__ == "8.4.96"
+          PY
+      - name: FTIF unit and protocol tests
+        run: |
+          python -m pytest -q tests/test_ftif.py
+      - name: FTIF import and compile smoke check
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import torch
+          from coffee_detector.ftif import FTIFConfig, FTIFDetectionModel
+          root = Path('.')
+          model = FTIFDetectionModel(
+              str(root / 'configs/coffee_fg/models/yolo26n-p3.yaml'),
+              nc=3,
+              verbose=False,
+              ftif=FTIFConfig(prompt_mode='base_specific', bidirectional_alignment=True),
+              text_embeddings=torch.randn(3, 16),
+          ).train()
+          out = model(torch.randn(1, 3, 128, 128))
+          assert 'ftif_similarity' in out['one2many']
+          assert out['one2many']['ftif_similarity'].shape[-1] == 3
+          nb = json.loads((root / 'notebooks/Faruq_V3_LFDet_FTIF_Screening_Colab.ipynb').read_text())
+          assert nb['nbformat'] == 4
+          print('FTIF smoke check passed')
+          PY
