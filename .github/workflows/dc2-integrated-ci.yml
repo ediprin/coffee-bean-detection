@@ -79,11 +79,12 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          from coffee_detector.dc2_crop.integrated import GroundTruthRecord, IntegratedPredictionRecord, detection_map_summary
+          from coffee_detector.dc2_crop.evaluation import detection_map_summary
+          from coffee_detector.dc2_crop.integrated import GroundTruthRecord, IntegratedPredictionRecord
           image = Path('/tmp/a.jpg')
           prediction = IntegratedPredictionRecord(image, (0.0, 0.0, 10.0, 10.0), 0, 0.9)
           target = GroundTruthRecord(image, 0, (0.0, 0.0, 10.0, 10.0))
           result = detection_map_summary([prediction], [target], 1)
           assert abs(result['map50_95'] - 1.0) < 1e-9
-          print('paired AP evaluator smoke check passed')
+          print('paired AP101 evaluator smoke check passed')
           PY
