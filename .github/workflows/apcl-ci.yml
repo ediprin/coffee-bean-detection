@@ -1,0 +1,85 @@
+name: APCL CI
+
+on:
+  push:
+    branches:
+      - agent/apcl-prototype-screening
+    paths:
+      - "src/coffee_detector/apcl/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_apcl_screening.py"
+      - "tests/test_apcl.py"
+      - "configs/apcl/**"
+      - "configs/coffee_fg/models/yolo26n-p3.yaml"
+      - ".github/workflows/apcl-ci.yml"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - "src/coffee_detector/apcl/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_apcl_screening.py"
+      - "tests/test_apcl.py"
+      - "configs/apcl/**"
+      - "configs/coffee_fg/models/yolo26n-p3.yaml"
+      - ".github/workflows/apcl-ci.yml"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apcl-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-and-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install project and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Show pinned runtime versions
+        run: |
+          python - <<'PY'
+          import torch
+          import ultralytics
+          print("torch:", torch.__version__)
+          print("ultralytics:", ultralytics.__version__)
+          assert ultralytics.__version__ == "8.4.96"
+          PY
+
+      - name: APCL unit and inference-contract tests
+        run: |
+          python -m pytest -q tests/test_apcl.py
+
+      - name: Config and screening import smoke check
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          from coffee_detector.apcl import APCLConfig
+          from coffee_detector.experiments.run_faruq_v3_apcl_screening import CONFIG
+
+          path = Path("configs/apcl/APCL1_yolo26n_training_only.yaml")
+          payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+          assert payload["variant"] == "apcl"
+          config = APCLConfig.from_mapping(payload["apcl"])
+          assert config.embedding_dim == 128
+          assert config.ema_eta == 0.4
+          assert config.loss_weight == 1.0
+          assert CONFIG.resolve() == path.resolve()
+          print("APCL1 config:", config)
+          PY
