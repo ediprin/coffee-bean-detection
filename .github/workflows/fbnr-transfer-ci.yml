@@ -9,6 +9,7 @@ on:
       - "src/coffee_detector/experiments/run_faruq_v3_fbnr_screening.py"
       - "tests/test_fbnr_transfer.py"
       - "configs/fbnr/**"
+      - "notebooks/Faruq_V3_DSRDet_FBNR_Screening_Colab.ipynb"
       - ".github/workflows/fbnr-transfer-ci.yml"
   pull_request:
     paths:
@@ -16,6 +17,7 @@ on:
       - "src/coffee_detector/experiments/run_faruq_v3_fbnr_screening.py"
       - "tests/test_fbnr_transfer.py"
       - "configs/fbnr/**"
+      - "notebooks/Faruq_V3_DSRDet_FBNR_Screening_Colab.ipynb"
       - ".github/workflows/fbnr-transfer-ci.yml"
   workflow_dispatch:
 
@@ -47,18 +49,54 @@ jobs:
           print('ultralytics:', ultralytics.__version__)
           assert ultralytics.__version__ == '8.4.96'
           PY
-      - name: FBNR transfer tests
+      - name: FBNR operator tests
         run: python -m pytest -q tests/test_fbnr_transfer.py
-      - name: Config and runner smoke check
+      - name: Four-arm config and runner contract
         run: |
           python - <<'PY'
           from pathlib import Path
           import yaml
           from coffee_detector.fbnr import FBNRConfig
           from coffee_detector.experiments.run_faruq_v3_fbnr_screening import CONFIGS
+
+          expected = {
+              'BGL1': 'background_linear',
+              'BGG1': 'background_gradient',
+              'FGC1': 'foreground_only',
+              'FBR1': 'stochastic_decoupled',
+          }
+          assert set(CONFIGS) == set(expected), CONFIGS
           for code, path in CONFIGS.items():
               payload = yaml.safe_load(Path(path).read_text())
               config = FBNRConfig.from_mapping(payload['fbnr'])
               assert payload['code'] == code
+              assert config.mode == expected[code]
+              assert config.conceal_radius_min == 0.5
+              assert config.conceal_radius_max == 0.8
+              assert int(payload['train']['epochs']) == 50
+              assert int(payload['train']['imgsz']) == 640
               print(code, config)
           PY
+      - name: Notebook JSON and Python syntax smoke
+        run: |
+          python - <<'PY'
+          import ast, json
+          from pathlib import Path
+
+          path = Path('notebooks/Faruq_V3_DSRDet_FBNR_Screening_Colab.ipynb')
+          notebook = json.loads(path.read_text(encoding='utf-8'))
+          assert notebook['nbformat'] == 4
+          source = '\n'.join(
+              ''.join(cell.get('source', []))
+              for cell in notebook['cells']
+              if cell.get('cell_type') == 'code'
+          )
+          ast.parse(source)
+          text = path.read_text(encoding='utf-8')
+          for token in ('BGL1', 'BGG1', 'FGC1', 'FBR1', "assert not (DATA_ROOT / 'test').exists()"):
+              assert token in text, token
+          print('Notebook contract PASS')
+          PY
+      - name: Compile modified modules
+        run: |
+          python -m compileall -q src/coffee_detector/fbnr src/coffee_detector/experiments/run_faruq_v3_fbnr_screening.py
