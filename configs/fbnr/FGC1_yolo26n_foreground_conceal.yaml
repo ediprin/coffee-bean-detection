@@ -1,0 +1,21 @@
+code: FGC1
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+fbnr:
+  mode: foreground_only
+  sigma_ratio: 3.0
+  conceal_radius_min: 0.15
+  conceal_radius_max: 0.35
+  original_probability: 0.0
+  foreground_probability: 1.0
+  background_probability: 0.0
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500
