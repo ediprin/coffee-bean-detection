@@ -6,6 +6,7 @@ bhcl:
   loss_weight: 0.60
   epsilon: 0.10
   anchor_chunk_size: 256
+  variant: bhcl
 hierarchy:
   source: configs/sni21/structured_ontology_v1.yaml
   coarse_field: entity_family
