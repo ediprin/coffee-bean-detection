@@ -1,0 +1,20 @@
+code: MRL1
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+mrl:
+  roi_size: 7
+  feature_level: 0
+  training_topk: 256
+  foreground_iou: 0.50
+  loss_weight: 1.0
+  box_expand: 1.0
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500
