@@ -16,6 +16,7 @@ class BHCLConfig:
     loss_weight: float = 0.6
     epsilon: float = 0.1
     anchor_chunk_size: int = 256
+    variant: str = "bhcl"  # hcl | bhcl
 
     @classmethod
     def from_mapping(cls, payload: "BHCLConfig | dict[str, Any] | None") -> "BHCLConfig":
@@ -28,6 +29,8 @@ class BHCLConfig:
             raise ValueError("epsilon harus di (0,1]")
         if result.anchor_chunk_size <= 0:
             raise ValueError("anchor_chunk_size harus positif")
+        if result.variant not in {"hcl", "bhcl"}:
+            raise ValueError("variant harus hcl atau bhcl")
         return result
 
     def to_dict(self) -> dict[str, Any]:
@@ -42,12 +45,12 @@ def _first_conv_channels(module: nn.Module) -> int:
 
 
 class BHCLProjectionHead(nn.Module):
-    """APCL-capacity-matched P3/P4/P5 projection for BHCL."""
+    """APCL-capacity-matched P3/P4/P5 projection for HCL/BHCL."""
 
     def __init__(self, channels: tuple[int, int, int], config: BHCLConfig) -> None:
         super().__init__()
         if len(channels) != 3:
-            raise ValueError("BHCL memerlukan tepat P3/P4/P5")
+            raise ValueError("HCL/BHCL memerlukan tepat P3/P4/P5")
         self.config = config
         self.projections = nn.ModuleList(
             [
@@ -62,7 +65,7 @@ class BHCLProjectionHead(nn.Module):
 
     def forward(self, features: list[torch.Tensor]) -> torch.Tensor:
         if len(features) != 3:
-            raise ValueError("BHCL memerlukan tepat P3/P4/P5")
+            raise ValueError("HCL/BHCL memerlukan tepat P3/P4/P5")
         rows = []
         for projection, feature in zip(self.projections, features):
             value = projection(feature)
@@ -73,25 +76,23 @@ class BHCLProjectionHead(nn.Module):
 
 
 class BHCLDetectHead(nn.Module):
-    """Native YOLO26 Detect with training-only BHCL embeddings and EMA state."""
+    """Native YOLO26 Detect with training-only HCL/BHCL embeddings and EMA state."""
 
     def __init__(self, base_head: nn.Module, config: BHCLConfig) -> None:
         super().__init__()
         if type(base_head).__name__ != "Detect" or not getattr(base_head, "end2end", False):
-            raise TypeError("BHCL dikunci untuk native YOLO26 end-to-end Detect")
+            raise TypeError("HCL/BHCL dikunci untuk native YOLO26 end-to-end Detect")
         channels = tuple(_first_conv_channels(branch) for branch in base_head.cv2)
         if len(channels) != 3:
-            raise ValueError("BHCL memerlukan tiga level P3/P4/P5")
+            raise ValueError("HCL/BHCL memerlukan tiga level P3/P4/P5")
         hierarchy = build_sni21_entity_family_hierarchy()
         if int(base_head.nc) != hierarchy.leaf_count:
             raise ValueError(
-                f"BHCL SNI21 memerlukan {hierarchy.leaf_count} kelas, diterima {base_head.nc}"
+                f"SNI21 hierarchy memerlukan {hierarchy.leaf_count} kelas, diterima {base_head.nc}"
             )
         self.base_head = base_head
         self.config = config
         self.bhcl_projection = BHCLProjectionHead(channels, config)
-        # Import here avoids a model<->state runtime import cycle while keeping
-        # prototype buffers inside the checkpointed model state.
         from .state import BalancedHierarchyPrototypeBank
         self.bhcl_prototypes = BalancedHierarchyPrototypeBank(config, hierarchy)
         for name in ("i", "f", "type", "np", "nc", "nl", "reg_max", "stride", "end2end", "max_det", "export", "format", "dynamic", "agnostic_nms"):
