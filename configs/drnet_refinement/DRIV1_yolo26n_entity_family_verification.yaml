@@ -1,0 +1,18 @@
+code: DRIV1
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+ontology: configs/sni21/structured_ontology_v1.yaml
+drnet_interaction:
+  correction_scale: 1.0
+  coarse_loss_weight: 1.0
+  verification_floor: -80.0
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500
