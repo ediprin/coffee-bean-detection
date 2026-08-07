@@ -6,6 +6,7 @@ on:
       - agent/breadth-screening-batch-v1
     paths:
       - "configs/breadth_screening/**"
+      - "src/coffee_detector/drive_project.py"
       - "tools/run_faruq_v3_breadth_batch.py"
       - "tools/preflight_faruq_v3_breadth_batch.py"
       - "tests/test_breadth_screening_batch.py"
@@ -16,6 +17,7 @@ on:
   pull_request:
     paths:
       - "configs/breadth_screening/**"
+      - "src/coffee_detector/drive_project.py"
       - "tools/run_faruq_v3_breadth_batch.py"
       - "tools/preflight_faruq_v3_breadth_batch.py"
       - "tests/test_breadth_screening_batch.py"
@@ -57,6 +59,14 @@ jobs:
           import ultralytics
           print('ultralytics:', ultralytics.__version__)
           assert ultralytics.__version__ == '8.4.96'
+          PY
+      - name: Drive resolver import smoke check
+        run: |
+          python - <<'PY'
+          from coffee_detector.drive_project import require_project_artifact, resolve_drive_project_root
+          assert callable(require_project_artifact)
+          assert callable(resolve_drive_project_root)
+          print('drive_project import passed')
           PY
       - name: Batch manifest and controller tests
         run: |
