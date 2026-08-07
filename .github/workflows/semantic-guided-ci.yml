@@ -1,0 +1,71 @@
+name: Semantic Guided CI
+
+on:
+  push:
+    branches:
+      - agent/semantic-guided-leaf-screening
+    paths:
+      - "src/coffee_detector/semantic_guided/**"
+      - "src/coffee_detector/semantic_aux/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_semantic_guided_screening.py"
+      - "configs/semantic_guided/**"
+      - "tests/test_semantic_guided.py"
+      - "notebooks/Faruq_V3_Semantic_Guided_Leaf_Screening_Colab.ipynb"
+      - ".github/workflows/semantic-guided-ci.yml"
+  pull_request:
+    paths:
+      - "src/coffee_detector/semantic_guided/**"
+      - "src/coffee_detector/semantic_aux/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_semantic_guided_screening.py"
+      - "configs/semantic_guided/**"
+      - "tests/test_semantic_guided.py"
+      - "notebooks/Faruq_V3_Semantic_Guided_Leaf_Screening_Colab.ipynb"
+      - ".github/workflows/semantic-guided-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-and-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Runtime versions
+        run: |
+          python - <<'PY'
+          import ultralytics, torch
+          print('torch:', torch.__version__)
+          print('ultralytics:', ultralytics.__version__)
+          assert ultralytics.__version__ == '8.4.96'
+          PY
+      - name: Semantic-guided tests
+        run: python -m pytest -q tests/test_semantic_guided.py tests/test_semantic_aux.py
+      - name: Config contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          from coffee_detector.semantic_guided import SemanticGuidedConfig
+          p=Path('configs/semantic_guided/SG1_yolo26n_semantic_guided_leaf.yaml')
+          x=yaml.safe_load(p.read_text())
+          c=SemanticGuidedConfig.from_mapping(x['semantic_guided'])
+          assert x['code']=='SG1'
+          assert len(c.tasks)==5
+          assert c.auxiliary_weight==0.20
+          assert int(x['train']['epochs'])==50
+          assert int(x['train']['imgsz'])==640
+          print(c)
+          PY
+      - name: Compile
+        run: python -m compileall -q src/coffee_detector/semantic_guided src/coffee_detector/experiments/run_faruq_v3_semantic_guided_screening.py
