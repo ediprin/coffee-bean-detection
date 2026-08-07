@@ -75,11 +75,66 @@ def _gate(candidate: dict[str, float], drf1: dict[str, float], d0ft: dict[str, f
     }
 
 
+def _looks_like_drnet_summary(path: Path) -> bool:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+    candidates = payload.get("candidates", {})
+    return (
+        payload.get("test_images_accessed") is False
+        and payload.get("test_opened") is False
+        and isinstance(candidates, dict)
+        and "DRF1" in candidates
+    )
+
+
+def _resolve_drnet_summary(
+    drnet_summary: str | Path | None,
+    output_root: str | Path,
+) -> Path:
+    """Resolve DRF1 predecessor evidence without coupling the master controller.
+
+    Explicit `--drnet-summary` remains supported. When omitted, DRIV assumes the
+    common breadth-batch layout where sibling candidate directories are
+    `<batch-root>/candidates/DRNET` and `<batch-root>/candidates/DRIV`.
+    It then selects the newest JSON that proves test lock and contains DRF1.
+    """
+    if drnet_summary is not None:
+        source = Path(drnet_summary).expanduser().resolve()
+        if not source.is_file():
+            raise FileNotFoundError(source)
+        if not _looks_like_drnet_summary(source):
+            raise RuntimeError(f"File bukan DRF1 predecessor summary yang valid: {source}")
+        return source
+
+    current = Path(output_root).expanduser().resolve()
+    candidates_root = current.parent
+    predecessor_root = candidates_root / "DRNET"
+    if not predecessor_root.is_dir():
+        raise FileNotFoundError(
+            "--drnet-summary tidak diberikan dan sibling DRNET output belum ada: "
+            f"{predecessor_root}. Jalankan DRNET sebelum DRIV."
+        )
+    json_files = sorted(
+        predecessor_root.rglob("*.json"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    matches = [path for path in json_files if _looks_like_drnet_summary(path)]
+    if not matches:
+        raise FileNotFoundError(
+            "Tidak menemukan DRF1 predecessor summary valid di sibling DRNET output: "
+            f"{predecessor_root}"
+        )
+    return matches[0]
+
+
 def run_screening(
     data_root: str | Path,
     grouped_summary: str | Path,
     control_summary: str | Path,
-    drnet_summary: str | Path,
+    drnet_summary: str | Path | None,
     d0_checkpoint: str | Path,
     output_root: str | Path,
     *,
@@ -95,6 +150,7 @@ def run_screening(
     data_root = Path(data_root).expanduser().resolve()
     output_root = Path(output_root).expanduser().resolve()
     d0_checkpoint = Path(d0_checkpoint).expanduser().resolve()
+    resolved_drnet_summary = _resolve_drnet_summary(drnet_summary, output_root)
     load_faruq_grouped_summary(grouped_summary, data_root)
     if (data_root / "test").exists():
         raise RuntimeError("Development root tidak boleh memiliki split test")
@@ -102,7 +158,7 @@ def run_screening(
         raise FileNotFoundError(d0_checkpoint)
 
     control = _load_json(control_summary, "D0FT/ACMC1 control summary")
-    previous = _load_json(drnet_summary, "DRF1/DRC1 summary")
+    previous = _load_json(resolved_drnet_summary, "DRF1/DRC1 summary")
     for payload, label in ((control, "control"), (previous, "DRNet")):
         if payload.get("test_images_accessed") is not False or payload.get("test_opened") is not False:
             raise RuntimeError(f"{label} summary tidak membuktikan test lock")
@@ -186,6 +242,7 @@ def run_screening(
         "test_images_accessed": False,
         "test_opened": False,
         "d0_checkpoint_sha256": checkpoint_hash,
+        "drnet_predecessor_summary": str(resolved_drnet_summary),
         "official_code_operator": (
             "coarse argmax selects an allowed fine-class subset; fine scores outside that subset "
             "are suppressed before detector post-processing"
@@ -222,7 +279,10 @@ def main() -> None:
     parser.add_argument("--data-root", required=True)
     parser.add_argument("--grouped-summary", required=True)
     parser.add_argument("--control-summary", required=True)
-    parser.add_argument("--drnet-summary", required=True)
+    parser.add_argument(
+        "--drnet-summary",
+        help="Optional DRF1/DRC1 summary; auto-discovers sibling DRNET output when omitted",
+    )
     parser.add_argument("--d0-checkpoint", required=True)
     parser.add_argument("--output-root", required=True)
     parser.add_argument("--seed", type=int, default=42)
