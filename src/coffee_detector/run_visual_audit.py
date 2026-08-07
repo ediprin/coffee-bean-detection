@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import statistics
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -114,6 +115,7 @@ def run_visual_audit(
     device: str | None = None,
     confidence: float = 0.25,
     batch_size: int = 16,
+    split: str = "test",
 ) -> dict:
     try:
         from ultralytics import YOLO
@@ -124,9 +126,11 @@ def run_visual_audit(
     if not checkpoint.is_file():
         raise FileNotFoundError(f"Checkpoint tidak ditemukan: {checkpoint}")
     layout = discover_layout(data_root)
-    if "test" not in layout.splits:
-        raise FileNotFoundError("Split test tidak tersedia pada dataset")
-    image_root, label_root = layout.splits["test"]
+    if split not in {"val", "test"}:
+        raise ValueError("Audit prediksi hanya mendukung split val atau test")
+    if split not in layout.splits:
+        raise FileNotFoundError(f"Split {split} tidak tersedia pada dataset")
+    image_root, label_root = layout.splits[split]
     image_paths = sorted(path for path in image_root.rglob("*") if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp", ".webp"})
     output_root = Path(output_root).expanduser().resolve()
     pairs_root = output_root / "pairs"
@@ -139,7 +143,7 @@ def run_visual_audit(
     print("CHECKPOINT SIAP", flush=True)
     rows = []
     valid_ids = set(layout.names)
-    print(f"PREDICT TEST: {len(image_paths)} gambar", flush=True)
+    print(f"PREDICT {split.upper()}: {len(image_paths)} gambar", flush=True)
     for start in range(0, len(image_paths), batch_size):
         batch_paths = image_paths[start : start + batch_size]
         kwargs = {
@@ -165,6 +169,7 @@ def run_visual_audit(
                 "ground_truth_count": len(ground_truth),
                 "prediction_count": prediction_count,
                 "absolute_count_error": abs(prediction_count - len(ground_truth)),
+                "signed_count_error": prediction_count - len(ground_truth),
                 "minimum_confidence": min(confidences, default=0.0),
                 "mean_confidence": sum(confidences) / len(confidences) if confidences else 0.0,
             }
@@ -193,10 +198,14 @@ def run_visual_audit(
     _make_contact_sheet(comparison_images, contact_sheet)
 
     exact_count_matches = sum(row["absolute_count_error"] == 0 for row in rows)
+    over_count = sum(row["signed_count_error"] > 0 for row in rows)
+    under_count = sum(row["signed_count_error"] < 0 for row in rows)
+    signed_errors = [row["signed_count_error"] for row in rows]
     payload = {
         "checkpoint": str(checkpoint),
         "data_root": str(layout.root),
-        "test_images": len(rows),
+        "split": split,
+        "images": len(rows),
         "ground_truth_boxes": sum(row["ground_truth_count"] for row in rows),
         "predicted_boxes": sum(row["prediction_count"] for row in rows),
         "exact_count_match_images": exact_count_matches,
@@ -205,11 +214,19 @@ def run_visual_audit(
         "mean_absolute_count_error": (
             sum(row["absolute_count_error"] for row in rows) / len(rows) if rows else 0.0
         ),
+        "mean_count_bias": sum(signed_errors) / len(rows) if rows else 0.0,
+        "median_count_error": statistics.median(signed_errors) if rows else 0.0,
+        "over_count_images": over_count,
+        "under_count_images": under_count,
+        "over_count_rate": over_count / len(rows) if rows else 0.0,
+        "under_count_rate": under_count / len(rows) if rows else 0.0,
         "confidence_threshold": confidence,
         "selected": selected,
         "rows": rows,
         "contact_sheet": str(contact_sheet),
     }
+    if split == "test":
+        payload["test_images"] = len(rows)
     summary_path = output_root / "visual_audit.json"
     summary_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"SAVED: {summary_path}", flush=True)
@@ -217,7 +234,9 @@ def run_visual_audit(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Audit visual GT vs prediksi pada test detector.")
+    parser = argparse.ArgumentParser(
+        description="Audit visual GT vs prediksi pada validation atau test detector."
+    )
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--data-root", required=True)
     parser.add_argument("--output-root", required=True)
@@ -226,6 +245,7 @@ def main() -> None:
     parser.add_argument("--device")
     parser.add_argument("--confidence", type=float, default=0.25)
     parser.add_argument("--batch-size", type=int, default=16)
+    parser.add_argument("--split", choices=("val", "test"), default="test")
     args = parser.parse_args()
     payload = run_visual_audit(
         args.checkpoint,
@@ -236,9 +256,11 @@ def main() -> None:
         device=args.device,
         confidence=args.confidence,
         batch_size=args.batch_size,
+        split=args.split,
     )
     print("\n=== VISUAL AUDIT ===")
-    print(f"Test images            : {payload['test_images']}")
+    print(f"Split                  : {payload['split']}")
+    print(f"Images                 : {payload['images']}")
     print(f"Ground-truth boxes     : {payload['ground_truth_boxes']}")
     print(f"Predicted boxes        : {payload['predicted_boxes']}")
     print(f"Exact count match      : {payload['exact_count_match_rate'] * 100:.2f}%")

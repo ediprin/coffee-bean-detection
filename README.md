@@ -4,6 +4,166 @@ Repo ini khusus untuk object detection biji kopi. Ia tidak mengimpor, mengubah,
 atau memakai checkpoint repo klasifikasi Coffee-17. Baseline pertama adalah
 YOLO26n; keluarga detector lain baru ditambahkan setelah baseline terkunci.
 
+## Eksperimen CoffeeFG-YOLO26 v2
+
+**Status: STOP pada quick-10 validation (2026-08-01).** P2 tidak meningkatkan
+akses proposal; first-order ROI refiner menurunkan Macro AP50-95 sebesar 8,77
+poin dan bilinear ROI refiner menurunkannya 10,86 poin terhadap D0Q. Test tidak
+dibuka dan eksperimen tidak diperluas ke seed lain. Lihat
+[hasil quick-10](docs/COFFEE_FG_QUICK10_RESULT_2026-08-01.md).
+
+Fondasi arsitektur fine-grained detector tersedia sebagai studi terpisah dari
+VA-DCP:
+
+```text
+D0  YOLO26n P3-P5
+D1  YOLO26n P2-P5
+R0  P3-P5 + first-order P3/P4 ROI refiner
+R1  P3-P5 + capacity-matched bilinear P3/P4 ROI refiner
+R2  P2-P5 + first-order P2/P3 ROI refiner
+R3  P2-P5 + capacity-matched bilinear P2/P3 ROI refiner
+```
+
+Notebook Colab memulai dengan kontrol `D0Q/D1Q` 10 epoch untuk fail-fast
+hemat-kuota. Hasil quick-10 hanya menentukan apakah eksperimen 50 epoch layak
+dilanjutkan dan tidak diperlakukan sebagai bukti final.
+
+Refiner hanya menambah klasifikasi objek; instance `cv2` box branches YOLO26
+tidak diganti. Training menambahkan auxiliary ROI classification loss,
+sedangkan inference memperbaiki logit kelas kandidat top-K sebelum postprocess
+end-to-end. Pasangan R0/R1 dan R2/R3 memiliki jumlah parameter refiner yang
+sama. P2 tidak lagi dicampur ke perbandingan utama.
+
+Refiner belum boleh dilatih sebelum audit validation membuktikan bahwa kandidat
+box sudah mengakses GT dan masih terdapat salah kelas pada box yang
+terlokalisasi benar. Audit juga membandingkan one-to-one dengan
+one-to-many+NMS serta memeriksa batas jumlah objek.
+
+Runner baru menggunakan validation secara default dan menolak test kecuali
+dibuka eksplisit setelah protokol membekukan kandidat:
+
+```bash
+python -u -m coffee_detector.experiments.run_coffee_fg_screening \
+  --data-root /path/to/grouped-detection-data \
+  --output-root /path/to/coffee-fg-v2 \
+  --models D0 D1 \
+  --seeds 42 \
+  --evaluation-split val \
+  --device 0
+```
+
+Setelah itu jalankan
+`coffee_detector.analysis.coffee_fg_diagnostics`; hasilnya menentukan apakah
+pasangan R0/R1 atau R2/R3 yang boleh diuji. Desain, kontrol, dan gate lengkap ada di
+[docs/COFFEE_FG_PROTOCOL.md](docs/COFFEE_FG_PROTOCOL.md).
+
+Notebook Colab validation-first yang memulihkan hanya split train/validation A0,
+menyimpan checkpoint langsung ke Drive, dan menghentikan refiner sebelum gate
+tersedia di
+[`notebooks/CoffeeFG_YOLO26_A0_Colab.ipynb`](notebooks/CoffeeFG_YOLO26_A0_Colab.ipynb).
+
+## Kontrol sumber SNI-21: Adrian vs Faruq
+
+A0 gabungan tidak lagi dipakai sebagai satu-satunya kontrol arsitektur. Adrian
+(bounding-box detection) dan Faruq (instance segmentation yang dikonversi ke
+box) dapat dipisahkan menjadi dua development dataset independen tanpa membuka
+test:
+
+```bash
+python -u -m coffee_detector.separate_sni21_sources \
+  --combined-root /content/sni21-a0-development \
+  --output-root /content/sni21-source-separated-v1 \
+  --link-mode auto
+```
+
+Notebook siap jalan:
+[`notebooks/SNI21_Source_Separation_Colab.ipynb`](notebooks/SNI21_Source_Separation_Colab.ipynb).
+Tahap ini hanya memisahkan dan mengaudit data; tidak melakukan training dan
+tidak memulihkan split test.
+
+Setelah audit disetujui, checkpoint A0 beku dapat dievaluasi per sumber tanpa
+training melalui
+[`notebooks/SNI21_Source_Domain_Evaluation_Colab.ipynb`](notebooks/SNI21_Source_Domain_Evaluation_Colab.ipynb).
+Notebook yang sama juga mencocokkan AP validation dengan jumlah GT per kelas
+tanpa menjalankan inference kedua kali.
+Kelas dengan support memadai tetapi AP rendah kemudian dirender sebagai contact
+sheet crop train/validation; audit visual ini juga tidak menjalankan model.
+
+Audit tersebut menemukan indikasi polygon Faruq tidak selalu sejajar setelah
+aturan rotasi tetap. Sebelum anotasi diperbaiki atau model dilatih ulang,
+jalankan audit mask-geometry train/validation berikut:
+
+[`notebooks/Faruq_Mask_Geometry_Audit_Colab.ipynb`](notebooks/Faruq_Mask_Geometry_Audit_Colab.ipynb).
+
+Notebook membandingkan transformasi orientasi yang mungkin terhadap polygon
+mask dan menghasilkan overlay `current` versus `best`. Hasilnya hanya bukti
+diagnostik; tidak otomatis menulis ulang gambar/anotasi dan tidak membaca test.
+Setelah overlay disetujui, materialisasi development-v2 dan audit ulang tersedia
+di [`notebooks/Faruq_Mask_Geometry_Repair_Colab.ipynb`](notebooks/Faruq_Mask_Geometry_Repair_Colab.ipynb).
+Dataset hasil repair tetap berstatus belum siap training sampai audit leakage
+dan contact sheet pascarepair dinilai.
+Jika geometri lolos tetapi parent identity masih menyeberang split, gunakan
+[`notebooks/Faruq_Grouped_Development_Colab.ipynb`](notebooks/Faruq_Grouped_Development_Colab.ipynb)
+untuk membuat split train/validation terkelompok dan terstratifikasi tanpa
+membuka test.
+
+Baseline YOLO26n validation-only yang dibekukan untuk Faruq-v3 tersedia di
+[`notebooks/Faruq_V3_YOLO26n_Baseline_Colab.ipynb`](notebooks/Faruq_V3_YOLO26n_Baseline_Colab.ipynb).
+Protokolnya ada di [docs/FARUQ_V3_BASELINE_PROTOCOL.md](docs/FARUQ_V3_BASELINE_PROTOCOL.md).
+Setelah baseline selesai, audit confidence threshold dan class-agnostic NMS
+tanpa training tersedia di
+[`notebooks/Faruq_V3_Operational_Audit_Colab.ipynb`](notebooks/Faruq_V3_Operational_Audit_Colab.ipynb).
+Protokol auditnya dibekukan di
+[docs/FARUQ_V3_OPERATIONAL_AUDIT_PROTOCOL.md](docs/FARUQ_V3_OPERATIONAL_AUDIT_PROTOCOL.md).
+Hasil serta koreksi gate v1 dicatat di
+[docs/FARUQ_V3_OPERATIONAL_AUDIT_RESULT_2026-08-02.md](docs/FARUQ_V3_OPERATIONAL_AUDIT_RESULT_2026-08-02.md).
+
+Aturan permanen untuk satu folder Drive bersama, perpindahan akun Colab, dan
+bug shortcut DriveFS dicatat di
+[docs/COLAB_SHARED_DRIVE_RUNBOOK.md](docs/COLAB_SHARED_DRIVE_RUNBOOK.md).
+
+## Eksperimen VA-DCP
+
+Pipeline offline `Visibility-Aware Dense Copy-Paste` sudah tersedia tanpa
+mengubah internal YOLO:
+
+```text
+prepare_object_library
+        -> profile_vadcp_source (prior empiris train nyata)
+        -> generate_vadcp_dataset (empirical A1 atau visibility-aware A2)
+        -> audit_vadcp
+        -> audit_vadcp_realism + visual/cutout audit
+        -> run_vadcp_ablation (A0/A1/A2)
+```
+
+Val dan test selalu berasal dari data nyata; generator hanya menambah train.
+Metadata penuh menyimpan visible/full mask, z-order, visibility ratio, dan ID
+aset sumber, sedangkan label YOLO menggunakan visible bounding box. Protokol dan
+perintah lengkap ada di [docs/VA_DCP_IMPLEMENTATION.md](docs/VA_DCP_IMPLEMENTATION.md).
+Generator memakai physics-informed 2.5D projected packing: skala dan jumlah
+objek dikalibrasi dari train nyata dalam koordinat piksel isotropik, penempatan
+contact-constrained, aspect ratio canvas mengikuti kamera sumber, z-order
+eksplisit, rotasi mengikuti distribusi aspect ratio kotak nyata, matte di-feather
+ke dalam, serta target bentuk per kelas dipasangkan dengan cutout yang mampu
+mencapainya tanpa meregangkan piksel. Cahaya/bayangan tetap koheren per scene.
+Ini bukan klaim simulasi fisika 3D penuh.
+
+Notebook Colab yang hanya menyiapkan data sampai status `TRAINING_READY`, tanpa
+menjalankan training, tersedia di
+[notebooks/VA_DCP_Setup_Colab.ipynb](notebooks/VA_DCP_Setup_Colab.ipynb).
+
+Preview scene high-count bergaya sampel 300 g dapat dibuka langsung di Colab:
+
+[![Open SNI 300g Preview in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ediprin/coffee-bean-detection/blob/agent/add-vadcp-pipeline/notebooks/SNI_300g_CopyPaste_Preview_Colab.ipynb)
+
+Notebook preview tersebut tidak menjalankan training.
+
+Untuk paket sharded `coffee-sni-instance-crop-v1` dengan 21 kelas, gunakan
+notebook berikut. Ia mempertahankan kelas normal sebagai mayoritas dan
+membandingkan komposisi sumber-empiris dengan defect-enriched:
+
+[![Open SNI Crop 300g Preview in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/ediprin/coffee-bean-detection/blob/agent/add-vadcp-pipeline/notebooks/SNI_Crop_300g_Preview_Colab.ipynb)
+
 ## Baseline aktif
 
 - `D0`: YOLO26n standar, tanpa HBP, attention, loss tambahan, atau modifikasi

@@ -120,7 +120,11 @@ def prepare_dataset(
     if abs(sum(ratios) - 1.0) > 1e-9 or any(value <= 0 for value in ratios):
         raise ValueError("Rasio train/val/test harus positif dan berjumlah 1")
     layout = discover_layout(data_root)
-    records, errors = collect_records(layout)
+    records, errors = collect_records(
+        layout,
+        compute_visual_features=near_threshold >= 0,
+        progress=True,
+    )
     if errors:
         raise RuntimeError("Dataset mengandung label/gambar tidak valid:\n- " + "\n- ".join(errors[:20]))
     exact_signatures: dict[str, set[tuple]] = {}

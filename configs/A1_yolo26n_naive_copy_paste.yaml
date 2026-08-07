@@ -1,0 +1,14 @@
+code: A1
+variant: baseline
+model: yolo26n.pt
+data_method: naive_copy_paste
+train:
+  epochs: 100
+  imgsz: 640
+  batch: 16
+  workers: 4
+  patience: 20
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
