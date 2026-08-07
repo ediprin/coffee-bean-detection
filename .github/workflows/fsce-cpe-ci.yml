@@ -1,0 +1,72 @@
+name: FSCE CPE CI
+
+on:
+  push:
+    branches:
+      - agent/fsce-cpe-screening
+    paths:
+      - "src/coffee_detector/fsce_cpe/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_fsce_cpe_screening.py"
+      - "configs/fsce_cpe/**"
+      - "tests/test_fsce_cpe.py"
+      - ".github/workflows/fsce-cpe-ci.yml"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - "src/coffee_detector/fsce_cpe/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_fsce_cpe_screening.py"
+      - "configs/fsce_cpe/**"
+      - "tests/test_fsce_cpe.py"
+      - ".github/workflows/fsce-cpe-ci.yml"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fsce-cpe-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-and-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Runtime versions
+        run: |
+          python - <<'PY'
+          import ultralytics
+          print('ultralytics:', ultralytics.__version__)
+          assert ultralytics.__version__ == '8.4.96'
+          PY
+      - name: FSCE CPE tests
+        run: python -m pytest -q tests/test_fsce_cpe.py
+      - name: Training loss smoke check
+        run: |
+          python - <<'PY'
+          import torch
+          from pathlib import Path
+          from coffee_detector.fsce_cpe import FSCECPEConfig, FSCECPEDetectionModel
+          root = Path('.')
+          model = FSCECPEDetectionModel(
+              str(root/'configs/coffee_fg/models/yolo26n-p3.yaml'),
+              nc=3,
+              verbose=False,
+              cpe=FSCECPEConfig(embedding_dim=16, temperature=0.2, iou_threshold=0.7, loss_weight=0.5),
+          ).train()
+          output = model(torch.randn(2,3,128,128))
+          assert 'cpe_embeddings' in output['one2many']
+          assert 'cpe_embeddings' not in output['one2one']
+          print('FSCE-CPE smoke check passed')
+          PY
