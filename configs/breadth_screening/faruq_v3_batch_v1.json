@@ -1,0 +1,55 @@
+{
+  "protocol": "faruq-v3-breadth-screening-batch-v1",
+  "frozen_at": "2026-08-08",
+  "seed": 42,
+  "evaluation_split": "val",
+  "test_policy": "locked_do_not_extract_do_not_open",
+  "primary_control": "D0FT",
+  "context_model": "ACMC1",
+  "canonical_gate": {
+    "macro_vs_d0ft_min": -0.01,
+    "bottom3_vs_d0ft_min": -0.02,
+    "worst_vs_d0ft_min": -0.02,
+    "discovery_signal_any": {
+      "macro_vs_d0ft_min": 0.002,
+      "bottom3_vs_d0ft_min": 0.005,
+      "worst_vs_d0ft_min": 0.005
+    }
+  },
+  "notes": [
+    "The master orchestrator recomputes every decision with this canonical gate, regardless of older branch-local gate wording.",
+    "Each candidate is checked out by exact commit SHA to prevent adaptive code changes during the batch.",
+    "ACMC2 and HCR are already screened/failed and are not rerun.",
+    "GDSC1 is recorded but disabled because it is a transfer hypothesis rather than a faithful GDS reproduction for YOLO26 TAL.",
+    "DC2 stages are diagnostics with distinct protocols and are recorded separately from the common detector gate."
+  ],
+  "candidates": [
+    {"id":"SAF1","family":"SAFPN","branch":"agent/safpn-classification-alignment","sha":"e36f89fd92e32c2cbd82e47a2d8147c9b2943b58","runner_token":"safpn","group":"detector","enabled":true},
+    {"id":"APCL1","family":"APCL","branch":"agent/apcl-prototype-screening","sha":"ada2b0d4d4459e8cfe613c157ae485d46ce89d40","runner_token":"apcl","group":"detector","enabled":true},
+    {"id":"PCL1","family":"PCLDet","branch":"agent/pcldet-prototype-baseline-screening","sha":"0f86c0eff79079d7adb563c2cda5c8bdbe8e0ab1","runner_token":"pcl","group":"detector","enabled":true},
+    {"id":"DRNET","family":"DRNet","branch":"agent/drnet-dual-refinement-screening","sha":"e754b9dfe451823fc4df85a0cf319e3bc84bcb96","runner_token":"drnet","group":"detector","enabled":true},
+    {"id":"DRIV","family":"DRNet-IV","branch":"agent/drnet-interaction-verification-screening","sha":"ce25176e2c897799c148ea0e2b7ea4615e299232","runner_token":"interaction","group":"detector","enabled":true},
+    {"id":"FBNR","family":"DSRDet-FBNR","branch":"agent/dsr-fbnr-screening","sha":"86f5ccc5ca58d88353d2ed7c339783762cac1110","runner_token":"fbnr","group":"detector","enabled":true},
+    {"id":"SSCB","family":"DSRDet-SSCB-MSDA","branch":"agent/dsr-sscb-msda-screening","sha":"09dbe7b96c9b4f313a247ec7389ffef7b450005d","runner_token":"sscb","group":"detector","enabled":true},
+    {"id":"SEMAUX","family":"Semantic-Aux","branch":"agent/leaf-preserving-semantic-screening","sha":"cf3c9e77e2ccadf7185a064dbbd09fbbc54f616a","runner_token":"semantic","group":"detector","enabled":true},
+    {"id":"SG1","family":"Semantic-Guided-Leaf","branch":"agent/semantic-guided-leaf-screening","sha":"f1cdea577ccfaf51f8e559fac1950b33feb495d7","runner_token":"semantic","group":"detector","enabled":true},
+    {"id":"CG1","family":"LFDet-CGFI","branch":"agent/lfdet-cgfi-frequency-screening","sha":"9e29ec9c30afa51d7b84558a731688a14f485a13","runner_token":"cgfi","group":"detector","enabled":true},
+    {"id":"AFAB","family":"LFDet-AFAB","branch":"agent/lfdet-afab-frequency-input-screening","sha":"0dbeacf9c2eb83d46b2627bce1d2931d491dc400","runner_token":"afab","group":"detector","enabled":true},
+    {"id":"FTIF","family":"LFDet-FTIF","branch":"agent/lfdet-ftif-text-image-screening","sha":"9b607d9af8946ee7691a7d7b5bdb5fd9164f79f9","runner_token":"ftif","group":"detector","enabled":true,"pre_hook":"ftif_text"},
+    {"id":"SF1","family":"SFRNet-S-Former","branch":"agent/sfrnet-spatial-former-screening","sha":"40f1102debb3b2132e457f8dce7bf2fd4cf50fdf","runner_token":"sfr_spatial","group":"detector","enabled":true},
+    {"id":"CF1","family":"SFRNet-C-Former","branch":"agent/sfrnet-channel-former-screening","sha":"d78630deb1dc33a545f87e6d4b73aa520ea9bcb4","runner_token":"channel","group":"detector","enabled":true},
+    {"id":"SC1","family":"SFRNet-SC-Former","branch":"agent/sfrnet-sc-former-screening","sha":"f00be34e209d4e9dbb1d91e916e52d2d38596568","runner_token":"sc_former","group":"detector","enabled":true},
+    {"id":"MRL","family":"SFRNet-MRL","branch":"agent/sfrnet-mrl-metric-screening","sha":"77b984684dd68b84edfe686eebf391859b9ae623","runner_token":"mrl","group":"detector","enabled":true},
+    {"id":"STB1","family":"STB","branch":"agent/gds-stb-classification-screening","sha":"0ff760b8e15f2879f5a0e1a044a840271e8a5400","runner_token":"stb","group":"detector","enabled":true},
+    {"id":"IGEM","family":"PCA-DB-IGEM","branch":"agent/igem-classification-guidance-screening","sha":"b4ec1f688c45123e0f5f076c5766453a70aedf37","runner_token":"igem","group":"detector","enabled":true},
+    {"id":"BHCL","family":"BHCL","branch":"agent/bhcl-hierarchical-contrastive-screening","sha":"b42f0d9d86034fca699aea9abf5715afb9cfa7db","runner_token":"bhcl","group":"detector","enabled":true},
+    {"id":"HIERVIP","family":"Expert-HierVIP","branch":"agent/expert-hiervip-screening","sha":"35b87ed3331d7d62703d125d2702350deb085fb0","runner_token":"hier","group":"detector","enabled":true},
+    {"id":"CPE","family":"FSCE-CPE","branch":"agent/fsce-cpe-screening","sha":"61cef52ea0ab5f1ca19b95bcfd19d6fb6f09d67f","runner_token":"fsce_cpe","group":"detector","enabled":true},
+    {"id":"PWCA","family":"DCAL-PWCA","branch":"agent/dcal-pwca-screening","sha":"f9bfecdf85a4eb375bf5846f1cec06c9e4518e0e","runner_token":"dcal_pwca","group":"detector","enabled":true},
+    {"id":"GDSC1","family":"GDS-transfer","branch":"agent/gds-classification-aux-screening","sha":"08af2fdaf68c106c2419eb7483c59afd1f8737b7","runner_token":"gds","group":"parked","enabled":false},
+    {"id":"DC2A","family":"DC2-raw-crop-resolution","branch":"agent/dc2-raw-crop-screening","sha":"9b4c07d0fec8efcab59cb1869c16c7e279507cb9","runner_token":"dc2_crop_resolution","group":"diagnostic","enabled":false},
+    {"id":"DC2B","family":"DC2-predicted-raw-crop","branch":"agent/dc2-predicted-raw-crop-screening","sha":"d1aa709b9c048c4249fa4645c1cfc48b04e41afc","runner_token":"dc2","group":"diagnostic","enabled":false},
+    {"id":"DC2C","family":"DC2-global-local-MSFA","branch":"agent/dc2-msfa-global-local-screening","sha":"dbbe1bcefec496cc7a9fc6f1473919a7e95436c4","runner_token":"msfa","group":"diagnostic","enabled":false},
+    {"id":"DC2D","family":"DC2-integrated-inference","branch":"agent/dc2-integrated-inference-screening","sha":"6aea67fdf30ae663346567d01dccb9d2e9dad38c","runner_token":"integrated","group":"diagnostic","enabled":false}
+  ]
+}
