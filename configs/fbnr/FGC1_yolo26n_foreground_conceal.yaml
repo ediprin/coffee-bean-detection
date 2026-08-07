@@ -3,8 +3,8 @@ model: configs/coffee_fg/models/yolo26n-p3.yaml
 fbnr:
   mode: foreground_only
   sigma_ratio: 3.0
-  conceal_radius_min: 0.15
-  conceal_radius_max: 0.35
+  conceal_radius_min: 0.5
+  conceal_radius_max: 0.8
   original_probability: 0.0
   foreground_probability: 1.0
   background_probability: 0.0
