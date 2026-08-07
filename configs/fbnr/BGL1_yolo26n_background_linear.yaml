@@ -1,0 +1,21 @@
+code: BGL1
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+fbnr:
+  mode: background_linear
+  sigma_ratio: 3.0
+  conceal_radius_min: 0.5
+  conceal_radius_max: 0.8
+  original_probability: 0.0
+  foreground_probability: 0.0
+  background_probability: 1.0
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500
