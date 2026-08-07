@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -10,7 +12,9 @@ from .hierarchy import (
     hierarchy_level_weights,
     prototype_ema_factor,
 )
-from .model import BHCLConfig
+
+if TYPE_CHECKING:
+    from .model import BHCLConfig
 
 
 class BalancedHierarchyPrototypeBank(nn.Module):
@@ -22,7 +26,7 @@ class BalancedHierarchyPrototypeBank(nn.Module):
     literally, including epsilon^0=1 for leaf prototypes.
     """
 
-    def __init__(self, config: BHCLConfig, hierarchy: TwoLevelHierarchy | None = None) -> None:
+    def __init__(self, config: "BHCLConfig", hierarchy: TwoLevelHierarchy | None = None) -> None:
         super().__init__()
         self.config = config
         self.hierarchy = hierarchy or build_sni21_entity_family_hierarchy()
