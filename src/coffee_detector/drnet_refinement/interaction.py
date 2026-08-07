@@ -8,7 +8,7 @@ import torch
 import yaml
 from torch import nn
 
-from .model import DRNetFineGrainedBranch, _first_conv_channels
+from .model import DRNetFineGrainedBranch, DRNetRefinementConfig, _first_conv_channels
 
 
 @dataclass(frozen=True)
@@ -17,8 +17,8 @@ class DRNetInteractionConfig:
 
     The official DRNet implementation predicts a coarse class first and then
     removes fine-class scores outside that coarse class' subclass set before
-    NMS.  Here the same verification rule is applied to dense YOLO26 one-to-one
-    classification logits.  Coarse classes come only from the frozen SNI
+    NMS. Here the same verification rule is applied to dense YOLO26 one-to-one
+    classification logits. Coarse classes come only from the frozen SNI
     ontology; no validation confusion information is used.
     """
 
@@ -121,16 +121,7 @@ def verify_fine_logits(
     *,
     floor: float = -80.0,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """DRNet official-code rule: coarse argmax restricts valid fine subclasses.
-
-    Args:
-        fine_logits: [B,C,N] fine class logits.
-        coarse_logits: [B,G,N] coarse logits.
-        class_to_group: [C] coarse-group id for each fine class.
-
-    Returns:
-        verified fine logits and predicted coarse ids [B,N].
-    """
+    """DRNet official-code rule: coarse argmax restricts valid fine subclasses."""
 
     if fine_logits.ndim != 3 or coarse_logits.ndim != 3:
         raise ValueError("fine/coarse logits harus [B,C,N] dan [B,G,N]")
@@ -141,7 +132,7 @@ def verify_fine_logits(
         raise ValueError("class_to_group tidak cocok dengan jumlah fine class")
     if int(class_to_group.min()) < 0 or int(class_to_group.max()) >= coarse_logits.shape[1]:
         raise ValueError("class_to_group di luar rentang coarse class")
-    coarse_prediction = coarse_logits.argmax(dim=1)  # [B,N]
+    coarse_prediction = coarse_logits.argmax(dim=1)
     allowed = class_to_group.view(1, -1, 1) == coarse_prediction.unsqueeze(1)
     verified = fine_logits.masked_fill(~allowed, float(floor))
     return verified, coarse_prediction
@@ -180,9 +171,10 @@ class DRNetInteractionDetectHead(nn.Module):
         self.fine_grained = DRNetFineGrainedBranch(
             channels,
             int(base_head.nc),
-            # Only correction_scale is consumed by the fine branch container.
-            # CML remains disabled in this isolated Interaction Verification arm.
-            type("_FineCfg", (), {"correction_scale": config.correction_scale})(),
+            DRNetRefinementConfig(
+                correction_scale=config.correction_scale,
+                use_cml=False,
+            ),
         )
         self.coarse = DRNetCoarseBranch(channels, len(self.group_names))
 
@@ -266,8 +258,6 @@ class DRNetInteractionDetectHead(nn.Module):
     def forward(self, features: list[torch.Tensor]):
         self._sync_runtime_attributes()
         if self.training:
-            # Verification is an inference-time operator in official DRNet.
-            # Training uses native+FGB fine logits and a supervised coarse head.
             one2many = self._forward_branch(
                 features,
                 self.one2many,
