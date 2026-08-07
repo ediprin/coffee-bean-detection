@@ -1,0 +1,20 @@
+code: PCL1
+variant: pcl
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+weights: yolo26n.pt
+pcl:
+  embedding_dim: 128
+  temperature: 0.03125
+  loss_weight: 1.0
+  prototype_init_std: 1.0
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500
