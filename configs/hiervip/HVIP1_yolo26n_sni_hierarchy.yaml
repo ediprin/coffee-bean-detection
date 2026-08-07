@@ -1,0 +1,22 @@
+code: HVIP1
+variant: hiervip
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+ontology: configs/sni21/structured_ontology_v1.yaml
+hiervip:
+  embedding_dim: 128
+  temperature: 0.2
+  loss_weight: 0.001
+  momentum_low: 0.5
+  momentum_base: 0.8
+  drift_alpha: 0.2
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500
