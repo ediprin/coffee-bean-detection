@@ -75,18 +75,29 @@ class ContentAwareFrequencyFilter(nn.Module):
             last.bias[:channels].fill_(1.0)
 
     def forward(self, value: torch.Tensor) -> torch.Tensor:
-        frequency = torch.fft.rfft2(value, dim=(-2, -1), norm="ortho")
-        packed = torch.cat((frequency.real, frequency.imag), dim=1)
-        parameters = self.filter_net(packed)
-        real_filter, imag_filter = parameters.split(self.channels, dim=1)
-        dynamic_filter = torch.complex(real_filter, imag_filter)
-        enhanced_frequency = frequency * dynamic_filter
-        return torch.fft.irfft2(
-            enhanced_frequency,
-            s=value.shape[-2:],
-            dim=(-2, -1),
-            norm="ortho",
-        )
+        # CUDA cuFFT has restricted half-precision support for non-power-of-two
+        # sizes (e.g. YOLO P3 at 640 input is commonly 80x80). Disable AMP for
+        # the spectral section and compute the FFT in float32, then return the
+        # original activation dtype. This keeps Colab AMP runs valid without
+        # changing the mathematical operator.
+        original_dtype = value.dtype
+        device_type = value.device.type
+        with torch.autocast(device_type=device_type, enabled=False):
+            work = value.float()
+            frequency = torch.fft.rfft2(work, dim=(-2, -1), norm="ortho")
+            packed = torch.cat((frequency.real, frequency.imag), dim=1)
+            parameter_dtype = self.filter_net[0].weight.dtype
+            parameters = self.filter_net(packed.to(dtype=parameter_dtype)).float()
+            real_filter, imag_filter = parameters.split(self.channels, dim=1)
+            dynamic_filter = torch.complex(real_filter, imag_filter)
+            enhanced_frequency = frequency * dynamic_filter
+            recovered = torch.fft.irfft2(
+                enhanced_frequency,
+                s=value.shape[-2:],
+                dim=(-2, -1),
+                norm="ortho",
+            )
+        return recovered.to(dtype=original_dtype)
 
 
 class CGFIFeatureEnhancer(nn.Module):
