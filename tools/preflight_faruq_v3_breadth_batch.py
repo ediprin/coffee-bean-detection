@@ -16,6 +16,7 @@ KNOWN_OPTIONS = {
     "--d0-checkpoint",
     "--d0ft-report",
     "--acmc1-report",
+    "--drnet-summary",
     "--output-root",
     "--seed",
     "--device",
