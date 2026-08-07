@@ -7,12 +7,12 @@ import json
 from pathlib import Path
 
 from coffee_detector.audit_dataset import audit_dataset
+from coffee_detector.dc2_crop.evaluation import detection_map_summary
 from coffee_detector.dc2_crop.integrated import (
     classify_integrated_predictions,
     collect_all_detector_predictions,
     collect_ground_truth_records,
     decide_dc2_integrated,
-    detection_map_summary,
     extract_integrated_global_descriptors,
 )
 from coffee_detector.experiments.run_faruq_v3_baseline import load_faruq_grouped_summary
