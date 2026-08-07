@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import torch
@@ -112,3 +113,19 @@ def test_predeclared_configs_match_fsce_paper_defaults():
         assert payload["cpe"]["iou_threshold"] == threshold
         assert payload["train"]["epochs"] == 50
         assert payload["train"]["imgsz"] == 640
+
+
+def test_notebook_and_protocol_are_branch_correct_and_val_only():
+    notebook = ROOT / "notebooks/Faruq_V3_FSCE_CPE_Screening_Colab.ipynb"
+    protocol = ROOT / "docs/FARUQ_V3_FSCE_CPE_PROTOCOL.md"
+    assert notebook.is_file() and protocol.is_file()
+    payload = json.loads(notebook.read_text(encoding="utf-8"))
+    source = "\n".join("".join(cell.get("source", [])) for cell in payload.get("cells", []))
+    assert "agent/fsce-cpe-screening" in source
+    assert "run_faruq_v3_fsce_cpe_screening" in source
+    assert "--authorize-training" in source
+    assert "split=test" not in source.lower()
+    assert "test').exists" in source or 'test").exists' in source
+    protocol_text = protocol.read_text(encoding="utf-8")
+    assert "CPE0" in protocol_text and "CPE7" in protocol_text
+    assert "0.7" in protocol_text and "0.2" in protocol_text and "128" in protocol_text
