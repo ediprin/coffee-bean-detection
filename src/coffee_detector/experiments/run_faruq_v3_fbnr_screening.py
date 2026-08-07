@@ -15,14 +15,12 @@ from coffee_detector.fbnr import FBNRConfig, make_fbnr_trainer
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 CONFIGS = {
+    "BGL1": REPO_ROOT / "configs/fbnr/BGL1_yolo26n_background_linear.yaml",
+    "BGG1": REPO_ROOT / "configs/fbnr/BGG1_yolo26n_background_gradient.yaml",
     "FGC1": REPO_ROOT / "configs/fbnr/FGC1_yolo26n_foreground_conceal.yaml",
     "FBR1": REPO_ROOT / "configs/fbnr/FBR1_yolo26n_decoupled_regularization.yaml",
 }
-METRICS = (
-    "macro_map50_95",
-    "bottom3_class_map50_95",
-    "worst_class_map50_95",
-)
+METRICS = ("macro_map50_95", "bottom3_class_map50_95", "worst_class_map50_95")
 
 
 def _sha256(path: str | Path) -> str:
@@ -54,57 +52,42 @@ def _load_config(path: Path) -> dict:
     return payload
 
 
-def _run_candidate(
-    code: str,
-    config_path: Path,
-    data_root: Path,
-    d0_checkpoint: Path,
-    output_root: Path,
-    *,
-    seed: int,
-    device: str | None,
-) -> dict:
+def _run_candidate(code: str, config_path: Path, data_root: Path, d0_checkpoint: Path,
+                   output_root: Path, *, seed: int, device: str | None) -> dict:
     from ultralytics import YOLO
 
     config = _load_config(config_path)
     if config["code"] != code:
         raise RuntimeError(f"Code config mismatch: {config['code']} != {code}")
     run_dir = output_root / f"{code}_seed{seed}"
-    best = run_dir / "weights/best.pt"
-    last = run_dir / "weights/last.pt"
+    best, last = run_dir / "weights/best.pt", run_dir / "weights/last.pt"
     training_executed = False
     trainer = make_fbnr_trainer(config["fbnr"])
-
     if not best.is_file():
         if last.is_file():
-            print(f"RESUME {code} seed={seed}", flush=True)
             model = YOLO(str(last))
             args = {"resume": True}
             if device is not None:
                 args["device"] = device
             model.train(trainer=trainer, **args)
         else:
-            print(f"START {code} seed={seed}", flush=True)
             model = YOLO(str(d0_checkpoint))
             train_args = dict(config["train"])
-            train_args.update(
-                {
-                    "data": str(data_root / "data.yaml"),
-                    "project": str(output_root),
-                    "name": f"{code}_seed{seed}",
-                    "exist_ok": True,
-                    "seed": int(seed),
-                    "deterministic": True,
-                    "plots": True,
-                    "verbose": True,
-                    "pretrained": True,
-                }
-            )
+            train_args.update({
+                "data": str(data_root / "data.yaml"),
+                "project": str(output_root),
+                "name": f"{code}_seed{seed}",
+                "exist_ok": True,
+                "seed": int(seed),
+                "deterministic": True,
+                "plots": True,
+                "verbose": True,
+                "pretrained": True,
+            })
             if device is not None:
                 train_args["device"] = device
             model.train(trainer=trainer, **train_args)
         training_executed = True
-
     if not best.is_file():
         raise FileNotFoundError(f"{code} best.pt tidak ditemukan: {best}")
     report_path = output_root / "val_reports" / f"{code}_seed{seed}_val.json"
@@ -117,6 +100,7 @@ def _run_candidate(
         "checkpoint": str(best),
         "report": str(report_path),
         "training_executed_this_call": training_executed,
+        "fbnr": config["fbnr"],
     }
 
 
@@ -132,24 +116,18 @@ def _gate(candidate: dict[str, float], d0ft: dict[str, float]) -> dict:
             or delta["worst_class_map50_95"] >= 0.005
         ),
     }
-    return {
-        "delta_vs_D0FT": delta,
-        "criteria": criteria,
-        "decision": "RETAIN" if all(criteria.values()) else "REJECT",
-    }
+    return {"delta_vs_D0FT": delta, "criteria": criteria,
+            "decision": "RETAIN" if all(criteria.values()) else "REJECT"}
 
 
-def run_screening(
-    data_root: str | Path,
-    grouped_summary: str | Path,
-    control_summary: str | Path,
-    d0_checkpoint: str | Path,
-    output_root: str | Path,
-    *,
-    seed: int = 42,
-    device: str | None = None,
-    authorize_training: bool = False,
-) -> dict:
+def _delta(left: dict[str, float], right: dict[str, float]) -> dict[str, float]:
+    return {name: left[name] - right[name] for name in METRICS}
+
+
+def run_screening(data_root: str | Path, grouped_summary: str | Path,
+                  control_summary: str | Path, d0_checkpoint: str | Path,
+                  output_root: str | Path, *, seed: int = 42,
+                  device: str | None = None, authorize_training: bool = False) -> dict:
     if seed != 42:
         raise ValueError("FBNR discovery screening dikunci untuk seed 42")
     if not authorize_training:
@@ -176,33 +154,18 @@ def run_screening(
         raise RuntimeError("Audit dataset gagal")
 
     candidates = {
-        code: _run_candidate(
-            code,
-            config,
-            data_root,
-            d0_checkpoint,
-            output_root,
-            seed=seed,
-            device=device,
-        )
+        code: _run_candidate(code, config, data_root, d0_checkpoint, output_root,
+                             seed=seed, device=device)
         for code, config in CONFIGS.items()
     }
     controls = {name: _metrics(control["results"][name]) for name in ("D0", "D0FT", "ACMC1")}
-    decisions = {
-        code: _gate(payload["metrics"], controls["D0FT"])
-        for code, payload in candidates.items()
-    }
+    decisions = {code: _gate(payload["metrics"], controls["D0FT"])
+                 for code, payload in candidates.items()}
     for code, payload in candidates.items():
-        decisions[code]["delta_vs_ACMC1"] = {
-            name: payload["metrics"][name] - controls["ACMC1"][name] for name in METRICS
-        }
-    decisions["FBR1"]["delta_vs_FGC1"] = {
-        name: candidates["FBR1"]["metrics"][name] - candidates["FGC1"]["metrics"][name]
-        for name in METRICS
-    }
+        decisions[code]["delta_vs_ACMC1"] = _delta(payload["metrics"], controls["ACMC1"])
 
     result = {
-        "protocol": "faruq-v3-fbnr-transfer-discovery-v1",
+        "protocol": "faruq-v3-dsrdet-fbnr-discovery-v2",
         "stage": "breadth_discovery",
         "seed": seed,
         "evaluation_split": "val",
@@ -210,15 +173,22 @@ def run_screening(
         "test_opened": False,
         "d0_checkpoint_sha256": _sha256(d0_checkpoint),
         "paper_transfer_boundary": (
-            "Gaussian foreground/background decoupling follows DSRDet Eqs. (1)-(3). "
-            "Aircraft cross-shape concealment and gradient-domain Poisson blending are "
-            "not transferred. Concealment is bbox-structure-agnostic and background "
-            "regularization uses soft donor-background substitution. FBR1 is stochastic "
-            "at fixed batch size rather than the paper's three-parallel-input training."
+            "BGL1 is the spatial linear-blending control; BGG1 implements the DSRDet "
+            "Sobel stronger-gradient selection plus FFT Poisson reconstruction (Eqs. 4-8); "
+            "FGC1 preserves Gaussian concealment and the paper's [0.5,0.8] dynamic radius "
+            "but replaces the aircraft-specific oriented cross prior with horizontal/vertical "
+            "box axes and omits aircraft-specific instance rotation; FBR1 combines gradient "
+            "background regularization and coffee-adapted foreground concealment using a "
+            "fixed-update stochastic mixture rather than tripling every batch."
         ),
         "controls": controls,
         "candidates": candidates,
         "decisions": decisions,
+        "mechanistic_comparisons": {
+            "gradient_vs_linear_background": _delta(candidates["BGG1"]["metrics"], candidates["BGL1"]["metrics"]),
+            "decoupled_vs_gradient_only": _delta(candidates["FBR1"]["metrics"], candidates["BGG1"]["metrics"]),
+            "decoupled_vs_foreground_only": _delta(candidates["FBR1"]["metrics"], candidates["FGC1"]["metrics"]),
+        },
     }
     summary = reports_root / "fbnr_seed42_screening.json"
     summary.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -227,7 +197,7 @@ def run_screening(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Faruq-v3 FBNR transfer breadth screening")
+    parser = argparse.ArgumentParser(description="Faruq-v3 DSRDet/FBNR breadth screening")
     parser.add_argument("--data-root", required=True)
     parser.add_argument("--grouped-summary", required=True)
     parser.add_argument("--control-summary", required=True)
@@ -237,16 +207,9 @@ def main() -> None:
     parser.add_argument("--device")
     parser.add_argument("--authorize-training", action="store_true")
     args = parser.parse_args()
-    result = run_screening(
-        args.data_root,
-        args.grouped_summary,
-        args.control_summary,
-        args.d0_checkpoint,
-        args.output_root,
-        seed=args.seed,
-        device=args.device,
-        authorize_training=args.authorize_training,
-    )
+    result = run_screening(args.data_root, args.grouped_summary, args.control_summary,
+                           args.d0_checkpoint, args.output_root, seed=args.seed,
+                           device=args.device, authorize_training=args.authorize_training)
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
