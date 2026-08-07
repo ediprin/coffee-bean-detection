@@ -1,0 +1,70 @@
+name: MRL CI
+
+on:
+  push:
+    branches:
+      - agent/sfrnet-mrl-metric-screening
+    paths:
+      - "src/coffee_detector/mrl/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_mrl_screening.py"
+      - "configs/mrl/**"
+      - "tests/test_mrl.py"
+      - "notebooks/Faruq_V3_SFRNet_MRL_Screening_Colab.ipynb"
+      - ".github/workflows/mrl-ci.yml"
+  pull_request:
+    paths:
+      - "src/coffee_detector/mrl/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_mrl_screening.py"
+      - "configs/mrl/**"
+      - "tests/test_mrl.py"
+      - "notebooks/Faruq_V3_SFRNet_MRL_Screening_Colab.ipynb"
+      - ".github/workflows/mrl-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-and-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Runtime versions
+        run: |
+          python - <<'PY'
+          import torch, ultralytics
+          print('torch:', torch.__version__)
+          print('ultralytics:', ultralytics.__version__)
+          assert ultralytics.__version__ == '8.4.96'
+          PY
+      - name: MRL equation and wrapper tests
+        run: python -m pytest -q tests/test_mrl.py
+      - name: MRL config contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          from coffee_detector.mrl import MRLConfig, square_ring_masks
+          p=Path('configs/mrl/MRL1_yolo26n_multi_roi_metric.yaml')
+          x=yaml.safe_load(p.read_text())
+          c=MRLConfig.from_mapping(x['mrl'])
+          assert x['code']=='MRL1'
+          assert c.roi_size==7 and c.groups==4
+          assert [int(m.sum()) for m in square_ring_masks(7)] == [1,8,16,24]
+          assert c.foreground_iou==0.5
+          assert c.loss_weight==1.0
+          assert int(x['train']['epochs'])==50 and int(x['train']['imgsz'])==640
+          print(c)
+          PY
+      - name: Compile
+        run: python -m compileall -q src/coffee_detector/mrl src/coffee_detector/experiments/run_faruq_v3_mrl_screening.py
