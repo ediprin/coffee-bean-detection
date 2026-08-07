@@ -1,0 +1,24 @@
+code: HCL1
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+bhcl:
+  embedding_dim: 128
+  temperature: 0.10
+  loss_weight: 0.60
+  epsilon: 0.10
+  anchor_chunk_size: 256
+  variant: hcl
+hierarchy:
+  source: configs/sni21/structured_ontology_v1.yaml
+  coarse_field: entity_family
+  levels_excluding_root: 2
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500
