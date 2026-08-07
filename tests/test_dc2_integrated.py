@@ -4,13 +4,13 @@ from pathlib import Path
 
 from PIL import Image
 
+from coffee_detector.dc2_crop.evaluation import detection_map_summary
 from coffee_detector.dc2_crop.integrated import (
     GroundTruthRecord,
     IntegratedPredictedCropDataset,
     IntegratedPredictionRecord,
     collect_all_detector_predictions,
     decide_dc2_integrated,
-    detection_map_summary,
 )
 
 
