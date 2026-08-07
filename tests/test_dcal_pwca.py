@@ -102,7 +102,8 @@ def test_pwca_target_features_depend_on_paired_image_but_sa_does_not():
     pw.load_state_dict(sa.state_dict(), strict=True)
     first = torch.randn(1, 8, 4, 4)
     second_a = torch.randn(1, 8, 4, 4)
-    second_b = second_a + 5.0
+    second_b = second_a.clone()
+    second_b[:, 0] = second_b[:, 0] + 5.0  # survives per-token LayerNorm
     batch_a = torch.cat((first, second_a), dim=0)
     batch_b = torch.cat((first, second_b), dim=0)
 
