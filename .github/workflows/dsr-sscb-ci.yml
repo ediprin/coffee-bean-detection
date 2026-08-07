@@ -6,15 +6,19 @@ on:
       - agent/dsr-sscb-msda-screening
     paths:
       - "src/coffee_detector/dsr_sscb/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_dsr_sscb_screening.py"
       - "configs/dsr_sscb/**"
       - "tests/test_dsr_sscb.py"
+      - "docs/FARUQ_V3_DSR_SSCB_MSDA_PROTOCOL.md"
       - ".github/workflows/dsr-sscb-ci.yml"
       - "pyproject.toml"
   pull_request:
     paths:
       - "src/coffee_detector/dsr_sscb/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_dsr_sscb_screening.py"
       - "configs/dsr_sscb/**"
       - "tests/test_dsr_sscb.py"
+      - "docs/FARUQ_V3_DSR_SSCB_MSDA_PROTOCOL.md"
       - ".github/workflows/dsr-sscb-ci.yml"
       - "pyproject.toml"
   workflow_dispatch:
@@ -53,20 +57,34 @@ jobs:
       - name: Training criterion smoke check
         run: |
           python - <<'PY'
+          import traceback
           import torch
           from pathlib import Path
           from coffee_detector.dsr_sscb import SSCBConfig, SSCBDetectionModel
-          root = Path('.')
-          model = SSCBDetectionModel(
-              str(root/'configs/coffee_fg/models/yolo26n-p3.yaml'),
-              nc=3,
-              verbose=False,
-              sscb=SSCBConfig(mode='calibrated', hidden_dim=16, sampling_points=2),
-          ).train()
-          output = model(torch.randn(2,3,128,128))
-          assert 'sscb_semantic_logits' in output['one2many']
-          assert 'sscb_semantic_logits' not in output['one2one']
-          criterion = model.init_criterion()
-          print(type(criterion).__name__)
-          print('DSR SSCB smoke check passed')
+          try:
+              root = Path('.')
+              model = SSCBDetectionModel(
+                  str(root/'configs/coffee_fg/models/yolo26n-p3.yaml'),
+                  nc=3,
+                  verbose=False,
+                  sscb=SSCBConfig(mode='calibrated', hidden_dim=16, sampling_points=2),
+              ).train()
+              output = model(torch.randn(2,3,128,128))
+              assert 'sscb_semantic_logits' in output['one2many']
+              assert 'sscb_semantic_logits' not in output['one2one']
+              criterion = model.init_criterion()
+              print(type(criterion).__name__)
+              print('DSR SSCB smoke check passed')
+          except Exception:
+              text = traceback.format_exc()
+              Path('sscb_criterion_traceback.txt').write_text(text, encoding='utf-8')
+              print(text)
+              raise
           PY
+      - name: Upload criterion traceback
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sscb-criterion-traceback
+          path: sscb_criterion_traceback.txt
+          if-no-files-found: ignore
