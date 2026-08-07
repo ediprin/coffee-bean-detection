@@ -1,0 +1,80 @@
+name: SFR Channel SC CI
+
+on:
+  push:
+    branches:
+      - agent/sfrnet-channel-former-screening
+    paths:
+      - "src/coffee_detector/sfr_channel/**"
+      - "src/coffee_detector/sfr_spatial/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_sfr_channel_screening.py"
+      - "configs/sfr_channel/**"
+      - "tests/test_sfr_channel.py"
+      - "tests/test_sfr_spatial.py"
+      - "notebooks/Faruq_V3_SFR_Channel_SC_Screening_Colab.ipynb"
+      - "docs/FARUQ_V3_SFR_CHANNEL_SC_PROTOCOL.md"
+      - ".github/workflows/sfr-channel-ci.yml"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - "src/coffee_detector/sfr_channel/**"
+      - "src/coffee_detector/sfr_spatial/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_sfr_channel_screening.py"
+      - "configs/sfr_channel/**"
+      - "tests/test_sfr_channel.py"
+      - "tests/test_sfr_spatial.py"
+      - "notebooks/Faruq_V3_SFR_Channel_SC_Screening_Colab.ipynb"
+      - "docs/FARUQ_V3_SFR_CHANNEL_SC_PROTOCOL.md"
+      - ".github/workflows/sfr-channel-ci.yml"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sfr-channel-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-and-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install project and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Show pinned runtime versions
+        run: |
+          python - <<'PY'
+          import torch, torchvision, ultralytics
+          print("torch:", torch.__version__)
+          print("torchvision:", torchvision.__version__)
+          print("ultralytics:", ultralytics.__version__)
+          assert ultralytics.__version__ == "8.4.96"
+          PY
+      - name: SFR channel and SC unit and protocol tests
+        run: |
+          python -m pytest -q tests/test_sfr_spatial.py tests/test_sfr_channel.py
+      - name: LSH bucket smoke check
+        run: |
+          python - <<'PY'
+          import torch
+          from coffee_detector.sfr_channel import LSHChannelFormer, SFRChannelConfig
+          block = LSHChannelFormer(8, SFRChannelConfig(hidden_dim=32, bucket_count=4)).eval()
+          x = torch.randn(1, 8, 13, 17)
+          with torch.inference_mode():
+              y = block(x)
+          assert y.shape == (1, 32, 13, 17)
+          assert torch.isfinite(y).all()
+          print("C-Former LSH smoke check passed")
+          PY
