@@ -1,0 +1,14 @@
+arm: S0
+hypothesis: bbox_supervised_shared_foreground_plus_msda_without_calibration
+sscb:
+  mode: semantic_aux
+  hidden_dim: 64
+  sampling_points: 4
+  max_offset_pixels: 2.0
+  semantic_aux_weight: 0.2
+  correction_scale: 1.0
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  seed: 42
