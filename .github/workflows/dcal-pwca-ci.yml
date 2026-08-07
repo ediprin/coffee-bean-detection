@@ -1,0 +1,81 @@
+name: DCAL PWCA CI
+
+on:
+  push:
+    branches:
+      - agent/dcal-pwca-screening
+    paths:
+      - "src/coffee_detector/dcal_pwca/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_dcal_pwca_screening.py"
+      - "configs/dcal_pwca/**"
+      - "tests/test_dcal_pwca.py"
+      - "notebooks/Faruq_V3_DCAL_PWCA_Screening_Colab.ipynb"
+      - "docs/FARUQ_V3_DCAL_PWCA_PROTOCOL.md"
+      - ".github/workflows/dcal-pwca-ci.yml"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - "src/coffee_detector/dcal_pwca/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_dcal_pwca_screening.py"
+      - "configs/dcal_pwca/**"
+      - "tests/test_dcal_pwca.py"
+      - "notebooks/Faruq_V3_DCAL_PWCA_Screening_Colab.ipynb"
+      - "docs/FARUQ_V3_DCAL_PWCA_PROTOCOL.md"
+      - ".github/workflows/dcal-pwca-ci.yml"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dcal-pwca-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-and-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Runtime versions
+        run: |
+          python - <<'PY'
+          import ultralytics
+          print('ultralytics:', ultralytics.__version__)
+          assert ultralytics.__version__ == '8.4.96'
+          PY
+      - name: DCAL PWCA tests
+        run: python -m pytest -q tests/test_dcal_pwca.py
+      - name: P5 token and notebook smoke check
+        run: |
+          python - <<'PY'
+          import json
+          import torch
+          from pathlib import Path
+          from coffee_detector.dcal_pwca import DCALPWCAConfig, DCALPWCADetectionModel
+          root=Path('.')
+          model=DCALPWCADetectionModel(
+              str(root/'configs/coffee_fg/models/yolo26n-p3.yaml'),
+              nc=3,
+              verbose=False,
+              dcal_pwca=DCALPWCAConfig(mode='pwca',hidden_dim=16,num_heads=4),
+          ).train()
+          out=model(torch.randn(2,3,128,128))
+          head=model.model[-1]
+          assert head.regularizer.last_kv_tokens == 2 * head.regularizer.last_query_tokens
+          assert out['one2many']['scores'].shape[-1] == out['one2one']['scores'].shape[-1]
+          nb=json.loads((root/'notebooks/Faruq_V3_DCAL_PWCA_Screening_Colab.ipynb').read_text())
+          assert nb['nbformat']==4
+          assert (root/'docs/FARUQ_V3_DCAL_PWCA_PROTOCOL.md').is_file()
+          print('DCAL-PWCA smoke check passed')
+          PY
