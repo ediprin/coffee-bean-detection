@@ -221,7 +221,7 @@ def extract_global_descriptors(
         "test_images_accessed": False,
     }
     cache_path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(cache_path, global=matrix)
+    np.savez_compressed(cache_path, **{"global": matrix})
     metadata_path.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
     return matrix, metadata
 
