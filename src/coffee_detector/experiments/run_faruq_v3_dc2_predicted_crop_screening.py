@@ -1,4 +1,4 @@
-"""Validation-only predicted raw-RGB crop local-stream screen inspired by DC2."""
+"""Development-val predicted raw-RGB crop local-stream screen inspired by DC2."""
 
 from __future__ import annotations
 
@@ -21,6 +21,14 @@ from coffee_detector.dc2_crop.predicted import (
     collect_predicted_crop_records,
 )
 from coffee_detector.experiments.run_faruq_v3_baseline import load_faruq_grouped_summary
+
+
+# DC2b must not inherit a validation-selected coffee resolution from DC2a and
+# then re-evaluate that choice on the same validation split. Zheng et al. use
+# 128x128 for the subsequent DC2 experiments after their own crop-size ablation,
+# so 128 is frozen here before any DC2b result is observed.
+PAPER_FROZEN_RESOLUTION = 128
+PROTOCOL = "faruq-v3-dc2-predicted-raw-crop-screening-v2"
 
 
 def _seed_everything(seed: int) -> None:
@@ -80,13 +88,17 @@ def _train_local_arm(
     workers: int,
     learning_rate: float,
     weight_decay: float,
+    experiment_signature: str,
 ) -> dict:
     run_dir = output_root / f"{source}_crop{resolution}_seed{seed}"
     run_dir.mkdir(parents=True, exist_ok=True)
     best_path = run_dir / "best.pt"
     summary_path = run_dir / "summary.json"
     if summary_path.is_file() and best_path.is_file():
-        return json.loads(summary_path.read_text(encoding="utf-8"))
+        cached = json.loads(summary_path.read_text(encoding="utf-8"))
+        if cached.get("experiment_signature") == experiment_signature:
+            return cached
+        print(f"DC2b {source}: stale local summary detected; retraining.", flush=True)
 
     _seed_everything(seed)
     train_dataset = MatchedRawObjectCropDataset(
@@ -156,11 +168,14 @@ def _train_local_arm(
                     "seed": seed,
                     "num_classes": len(names),
                     "class_names": names,
+                    "experiment_signature": experiment_signature,
                 },
                 best_path,
             )
 
     checkpoint = torch.load(best_path, map_location=device, weights_only=False)
+    if checkpoint.get("experiment_signature") != experiment_signature:
+        raise RuntimeError("Local checkpoint signature tidak cocok dengan predicted-crop cache")
     model.load_state_dict(checkpoint["model"])
     logits, labels = predict_logits(model, val_loader, device)
     metrics = classification_summary(logits, labels, len(names))
@@ -176,6 +191,7 @@ def _train_local_arm(
         "train_instances": len(train_records),
         "val_instances": len(val_records),
         "trainable_parameters": trainable_parameter_count(model),
+        "experiment_signature": experiment_signature,
         "metrics": metrics,
         "history": history,
         "checkpoint": str(best_path),
@@ -270,13 +286,16 @@ def run_dc2_predicted_crop_screening(
 
     raw = _load_json(raw_crop_summary, "DC2a raw-crop summary")
     if (
-        raw.get("decision") != "RETAIN_DC2_LOCAL_STREAM"
+        raw.get("protocol") != "faruq-v3-dc2-raw-crop-resolution-search-v1"
+        or raw.get("decision") != "RETAIN_DC2_LOCAL_STREAM"
+        or raw.get("next_action") != "AUTHORIZE_PREDICTED_RAW_CROP_LOCAL_STREAM_INTEGRATION"
         or raw.get("test_images_accessed") is not False
     ):
         raise RuntimeError("DC2a belum mengotorisasi predicted raw-crop integration")
-    resolution = int(raw["best_resolution"])
-    if resolution not in {32, 64, 128, 224}:
-        raise RuntimeError("Resolusi DC2a tidak termasuk arm predeclared")
+
+    # Crucial anti-leakage guard: do not reuse raw['best_resolution'], because
+    # that value was selected on this same development validation split.
+    resolution = PAPER_FROZEN_RESOLUTION
 
     train_records, names, train_meta = collect_predicted_crop_records(
         detector_checkpoint,
@@ -296,10 +315,27 @@ def run_dc2_predicted_crop_screening(
         raise RuntimeError("Nama/jumlah kelas predicted crop tidak konsisten dengan SNI-21")
     if {record.class_id for record in val_records} != set(names):
         raise RuntimeError("Validation matched predicted crops kehilangan setidaknya satu kelas")
+    if train_meta["checkpoint_sha256"] != val_meta["checkpoint_sha256"]:
+        raise RuntimeError("Train/val predicted-crop cache memakai checkpoint detector berbeda")
 
     if not torch.cuda.is_available() and str(device) != "cpu":
         raise RuntimeError("GPU tidak tersedia")
     torch_device = torch.device("cpu" if str(device) == "cpu" else f"cuda:{device}")
+
+    experiment_signature = ":".join(
+        [
+            PROTOCOL,
+            str(val_meta["checkpoint_sha256"]),
+            str(resolution),
+            str(val_meta["image_size"]),
+            str(val_meta["confidence_threshold"]),
+            str(val_meta["nms_iou"]),
+            str(val_meta["match_iou"]),
+            str(val_meta["max_det"]),
+            str(len(train_records)),
+            str(len(val_records)),
+        ]
+    )
 
     detector_metrics = _native_detector_summary(val_records, len(names))
     detector_metrics["per_class"] = {
@@ -320,6 +356,7 @@ def run_dc2_predicted_crop_screening(
         workers=workers,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
+        experiment_signature=experiment_signature,
     )
     predicted = _train_local_arm(
         train_records,
@@ -335,6 +372,7 @@ def run_dc2_predicted_crop_screening(
         workers=workers,
         learning_rate=learning_rate,
         weight_decay=weight_decay,
+        experiment_signature=experiment_signature,
     )
 
     decision = decide_dc2_predicted(
@@ -345,17 +383,20 @@ def run_dc2_predicted_crop_screening(
         gt_matched_metrics=gt_matched["metrics"],
     )
     payload = {
-        "protocol": "faruq-v3-dc2-predicted-raw-crop-screening-v1",
+        "protocol": PROTOCOL,
         "stage": "broad_search_predicted_crop_screen",
         "seed": seed,
-        "evaluation_split": "val_detector_matched_targets",
+        "evaluation_split": "development_val_detector_matched_targets",
         "test_images_accessed": False,
         "test_opened": False,
         "detector_checkpoint": str(detector_checkpoint),
         "detector_checkpoint_sha256": val_meta["checkpoint_sha256"],
-        "resolution_from_dc2a": resolution,
+        "resolution": resolution,
+        "resolution_source": "paper_frozen_dc2_followup_128_not_coffee_val_selected",
+        "dc2a_best_resolution_observed_but_not_reused": int(raw["best_resolution"]),
         "crop_context_factor": 1.0,
         "match_iou": float(val_meta["match_iou"]),
+        "experiment_signature": experiment_signature,
         "coverage": {
             "train": float(train_meta["matched_coverage"]),
             "val": float(val_meta["matched_coverage"]),

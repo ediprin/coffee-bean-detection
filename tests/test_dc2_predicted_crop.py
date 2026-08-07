@@ -12,6 +12,8 @@ from coffee_detector.dc2_crop.predicted import (
     xyxy_iou,
 )
 from coffee_detector.experiments.run_faruq_v3_dc2_predicted_crop_screening import (
+    PAPER_FROZEN_RESOLUTION,
+    PROTOCOL,
     decide_dc2_predicted,
 )
 
@@ -85,7 +87,18 @@ def test_dc2_predicted_gate_requires_coverage_gain_and_retention() -> None:
     assert not failed["criteria"]["predicted_local_macro_gain_vs_native_at_least_1_point"]
 
 
-def test_dc2_predicted_notebook_is_val_only_and_points_to_branch() -> None:
+def test_dc2b_resolution_is_frozen_independently_of_dc2a_validation_choice() -> None:
+    assert PAPER_FROZEN_RESOLUTION == 128
+    assert PROTOCOL == "faruq-v3-dc2-predicted-raw-crop-screening-v2"
+    runner = Path(
+        "src/coffee_detector/experiments/run_faruq_v3_dc2_predicted_crop_screening.py"
+    ).read_text(encoding="utf-8")
+    assert "resolution = PAPER_FROZEN_RESOLUTION" in runner
+    assert 'resolution = int(raw["best_resolution"])' not in runner
+    assert "dc2a_best_resolution_observed_but_not_reused" in runner
+
+
+def test_dc2_predicted_notebook_is_development_val_only_and_points_to_branch() -> None:
     notebook = Path("notebooks/Faruq_V3_DC2_Predicted_Raw_Crop_Screening_Colab.ipynb")
     assert notebook.is_file()
     payload = json.loads(notebook.read_text(encoding="utf-8"))
@@ -95,5 +108,7 @@ def test_dc2_predicted_notebook_is_val_only_and_points_to_branch() -> None:
     assert "agent/dc2-predicted-raw-crop-screening" in source
     assert "run_faruq_v3_dc2_predicted_crop_screening" in source
     assert "--authorize-training" in source
+    assert "faruq-v3-dc2-predicted-raw-crop-screening-v2" in source
+    assert "128" in source
     assert "test/" not in source
     assert "split=test" not in source.lower()
