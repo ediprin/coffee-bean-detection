@@ -1,0 +1,14 @@
+arm: M0
+hypothesis: vanilla_multiscale_deformable_classification
+sscb:
+  mode: msda
+  hidden_dim: 64
+  sampling_points: 4
+  max_offset_pixels: 2.0
+  semantic_aux_weight: 0.2
+  correction_scale: 1.0
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  seed: 42
