@@ -1,0 +1,72 @@
+name: DSR SSCB CI
+
+on:
+  push:
+    branches:
+      - agent/dsr-sscb-msda-screening
+    paths:
+      - "src/coffee_detector/dsr_sscb/**"
+      - "configs/dsr_sscb/**"
+      - "tests/test_dsr_sscb.py"
+      - ".github/workflows/dsr-sscb-ci.yml"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - "src/coffee_detector/dsr_sscb/**"
+      - "configs/dsr_sscb/**"
+      - "tests/test_dsr_sscb.py"
+      - ".github/workflows/dsr-sscb-ci.yml"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dsr-sscb-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Runtime versions
+        run: |
+          python - <<'PY'
+          import ultralytics
+          print('ultralytics:', ultralytics.__version__)
+          assert ultralytics.__version__ == '8.4.96'
+          PY
+      - name: SSCB tests
+        run: python -m pytest -q tests/test_dsr_sscb.py
+      - name: Training criterion smoke check
+        run: |
+          python - <<'PY'
+          import torch
+          from pathlib import Path
+          from coffee_detector.dsr_sscb import SSCBConfig, SSCBDetectionModel
+          root = Path('.')
+          model = SSCBDetectionModel(
+              str(root/'configs/coffee_fg/models/yolo26n-p3.yaml'),
+              nc=3,
+              verbose=False,
+              sscb=SSCBConfig(mode='calibrated', hidden_dim=16, sampling_points=2),
+          ).train()
+          output = model(torch.randn(2,3,128,128))
+          assert 'sscb_semantic_logits' in output['one2many']
+          assert 'sscb_semantic_logits' not in output['one2one']
+          criterion = model.init_criterion()
+          print(type(criterion).__name__)
+          print('DSR SSCB smoke check passed')
+          PY
