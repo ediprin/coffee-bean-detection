@@ -42,12 +42,7 @@ def _first_conv_channels(module: nn.Module) -> int:
 
 
 class BHCLProjectionHead(nn.Module):
-    """APCL-capacity-matched P3/P4/P5 projection for BHCL.
-
-    The projection architecture deliberately matches the existing APCL arm:
-    1x1 Conv -> BN -> SiLU to 128D by default, then concatenate dense levels in
-    the same order as YOLO26 predictions. It is executed only during training.
-    """
+    """APCL-capacity-matched P3/P4/P5 projection for BHCL."""
 
     def __init__(self, channels: tuple[int, int, int], config: BHCLConfig) -> None:
         super().__init__()
@@ -78,7 +73,7 @@ class BHCLProjectionHead(nn.Module):
 
 
 class BHCLDetectHead(nn.Module):
-    """Native YOLO26 Detect with training-only BHCL embeddings."""
+    """Native YOLO26 Detect with training-only BHCL embeddings and EMA state."""
 
     def __init__(self, base_head: nn.Module, config: BHCLConfig) -> None:
         super().__init__()
@@ -95,6 +90,10 @@ class BHCLDetectHead(nn.Module):
         self.base_head = base_head
         self.config = config
         self.bhcl_projection = BHCLProjectionHead(channels, config)
+        # Import here avoids a model<->state runtime import cycle while keeping
+        # prototype buffers inside the checkpointed model state.
+        from .state import BalancedHierarchyPrototypeBank
+        self.bhcl_prototypes = BalancedHierarchyPrototypeBank(config, hierarchy)
         for name in ("i", "f", "type", "np", "nc", "nl", "reg_max", "stride", "end2end", "max_det", "export", "format", "dynamic", "agnostic_nms"):
             if hasattr(base_head, name):
                 setattr(self, name, getattr(base_head, name))
@@ -136,7 +135,6 @@ class BHCLDetectHead(nn.Module):
                     [value.detach() for value in features], self.one2one, include_bhcl=False
                 ),
             }
-        # Zero BHCL inference overhead: the projection head is not executed.
         return self.base_head(features)
 
     def fuse(self) -> None:
