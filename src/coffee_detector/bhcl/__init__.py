@@ -4,7 +4,11 @@ from .hierarchy import (
     hierarchy_level_weights,
     prototype_ema_factor,
 )
-from .loss import balanced_hierarchical_contrastive_loss, balanced_level_loss
+from .loss import (
+    balanced_hierarchical_contrastive_loss,
+    balanced_level_loss,
+    hierarchical_contrastive_loss,
+)
 from .model import (
     BHCLConfig,
     BHCLDetectHead,
@@ -24,6 +28,7 @@ __all__ = [
     "TwoLevelHierarchy",
     "balanced_hierarchical_contrastive_loss",
     "balanced_level_loss",
+    "hierarchical_contrastive_loss",
     "build_sni21_entity_family_hierarchy",
     "hierarchy_level_weights",
     "load_bhcl_detector_weights",
