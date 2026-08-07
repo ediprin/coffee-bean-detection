@@ -1,0 +1,54 @@
+version: 1.0.0
+standard: SNI_01-2907-2008
+source: configs/sni21/structured_ontology_v1.yaml
+language: en
+base_prompt: >-
+  a close-up inspection image of one item from a green coffee quality-control sample,
+  centered and clearly visible against its surrounding scene
+notes:
+  - Prompts are derived only from the frozen SNI-21 ontology and domain definitions; validation confusions are forbidden.
+  - Physical-size wording is a semantic prior only. Exact millimeter size is not reliably observable without calibrated scale.
+  - The shared base prompt is a transfer choice because SNI-21 includes beans, husk, parchment, dried cherry, and foreign matter rather than one meta-category.
+classes:
+  biji_berkulit_tanduk: >-
+    a coffee bean still covered by parchment or horn skin, with most of the bean enclosed by the pale dry parchment layer
+  biji_berlubang_lebih_satu: >-
+    a green coffee bean with multiple visible insect holes or entry holes on its surface
+  biji_berlubang_satu: >-
+    a green coffee bean with one visible insect hole or entry hole on its surface
+  biji_bertutul_tutul: >-
+    a green coffee bean with conspicuous spotted or mottled discoloration covering a substantial part of its surface
+  biji_coklat: >-
+    a green coffee bean showing brown discoloration over a substantial part of its surface
+  biji_hitam: >-
+    a green coffee bean showing strong black discoloration over at least a substantial part of its surface
+  biji_hitam_pecah: >-
+    a broken or incomplete coffee bean fragment that also shows black discoloration
+  biji_hitam_sebagian: >-
+    a green coffee bean with localized partial black discoloration affecting less of the surface than a fully black bean
+  biji_muda: >-
+    an immature green coffee bean with a globally wrinkled or underdeveloped surface appearance
+  biji_normal: >-
+    an intact normal green coffee bean without visible black, brown, broken, immature, insect-hole, parchment-covered, or spotted defect cues
+  biji_pecah: >-
+    a broken or incomplete green coffee bean whose remaining portion is at most about three quarters of a whole bean
+  kopi_gelondong: >-
+    a dried whole coffee cherry or dried coffee fruit remaining as a largely complete cherry rather than a hulled bean
+  kulit_kopi_ukuran_besar: >-
+    a relatively large coffee husk fragment representing more than about three quarters of a complete husk unit
+  kulit_kopi_ukuran_kecil: >-
+    a relatively small coffee husk fragment representing less than about half of a complete husk unit
+  kulit_kopi_ukuran_sedang: >-
+    a medium coffee husk fragment representing roughly one half to three quarters of a complete husk unit
+  kulit_tanduk_ukuran_besar: >-
+    a relatively large parchment or horn-skin fragment representing more than about three quarters of a complete parchment unit
+  kulit_tanduk_ukuran_kecil: >-
+    a relatively small detached parchment or horn-skin fragment representing less than about half of a complete parchment unit
+  kulit_tanduk_ukuran_sedang: >-
+    a medium parchment or horn-skin fragment representing roughly one half to three quarters of a complete parchment unit
+  tanah_batu_ranting_besar: >-
+    a relatively large piece of foreign matter such as soil clod, stone, or twig, belonging to the SNI size category above ten millimeters
+  tanah_batu_ranting_kecil: >-
+    a relatively small piece of foreign matter such as soil clod, stone, or twig, belonging to the SNI size category below five millimeters
+  tanah_batu_ranting_sedang: >-
+    a medium piece of foreign matter such as soil clod, stone, or twig, belonging to the SNI size category from five to ten millimeters
