@@ -10,5 +10,5 @@ sscb:
 train:
   epochs: 50
   imgsz: 640
-  batch: 16
+  batch: 8
   seed: 42
