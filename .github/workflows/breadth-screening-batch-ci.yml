@@ -8,6 +8,7 @@ on:
       - "configs/breadth_screening/**"
       - "src/coffee_detector/drive_project.py"
       - "tools/run_faruq_v3_breadth_batch.py"
+      - "tools/run_faruq_v3_breadth_batch_logged.py"
       - "tools/preflight_faruq_v3_breadth_batch.py"
       - "tests/test_breadth_screening_batch.py"
       - "notebooks/Faruq_V3_Breadth_Screening_Batch_V1_Colab.ipynb"
@@ -19,6 +20,7 @@ on:
       - "configs/breadth_screening/**"
       - "src/coffee_detector/drive_project.py"
       - "tools/run_faruq_v3_breadth_batch.py"
+      - "tools/run_faruq_v3_breadth_batch_logged.py"
       - "tools/preflight_faruq_v3_breadth_batch.py"
       - "tests/test_breadth_screening_batch.py"
       - "notebooks/Faruq_V3_Breadth_Screening_Batch_V1_Colab.ipynb"
@@ -74,6 +76,33 @@ jobs:
       - name: Controller CLI smoke check
         run: |
           python tools/run_faruq_v3_breadth_batch.py --help
+          python tools/run_faruq_v3_breadth_batch_logged.py --help
+      - name: Logged runner tee smoke check
+        run: |
+          python - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          import tempfile
+
+          path = Path('tools/run_faruq_v3_breadth_batch_logged.py').resolve()
+          spec = importlib.util.spec_from_file_location('breadth_logged', path)
+          module = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(module)
+          with tempfile.TemporaryDirectory() as tmp:
+              out = Path(tmp) / 'candidate'
+              result = module.run_with_tee(
+                  [
+                      'python', '-c', "print('TEE_OK')",
+                      '--output-root', str(out), '--authorize-training',
+                  ],
+                  cwd=Path.cwd(),
+              )
+              assert result.returncode == 0
+              log = out / 'runner.log'
+              assert log.is_file() and 'TEE_OK' in log.read_text(encoding='utf-8')
+          print('logged runner tee passed')
+          PY
       - name: Preflight all 22 frozen candidate runners
         run: |
           cp tools/run_faruq_v3_breadth_batch.py /tmp/run_faruq_v3_breadth_batch.py
