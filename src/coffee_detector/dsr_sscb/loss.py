@@ -82,10 +82,11 @@ class SSCBDetectionLoss:
                 if not isinstance(head, SSCBDetectHead):
                     raise TypeError("SSCB loss memerlukan SSCBDetectHead")
                 self.sscb_config = SSCBConfig.from_mapping(head.config)
-                # Ultralytics E2ELoss instantiates this loss twice: top-k 10 for
-                # one-to-many and top-k 1 for the native one-to-one branch. The
-                # SSCB semantic auxiliary exists only on one-to-many by design.
-                self.sscb_semantic_required = int(tal_topk) != 1
+                # Ultralytics 8.4.96 E2ELoss uses loss_fn(model, tal_topk=10)
+                # for one-to-many and loss_fn(model, tal_topk=7, tal_topk2=1)
+                # for one-to-one. SSCB semantic supervision exists only on the
+                # one-to-many path, so tal_topk2=1 is the frozen path marker.
+                self.sscb_semantic_required = tal_topk2 != 1
 
             def get_assigned_targets_and_loss(self, preds, batch):
                 assignments, loss, _ = super().get_assigned_targets_and_loss(preds, batch)
