@@ -22,7 +22,8 @@
     "ACMC2 and HCR are already screened/failed and are not rerun.",
     "GDSC1 is recorded but disabled because it is a transfer hypothesis rather than a faithful GDS reproduction for YOLO26 TAL.",
     "DC2 stages are diagnostics with distinct protocols and are recorded separately from the common detector gate.",
-    "DRIV automatically resolves the sibling DRNET predecessor summary when --drnet-summary is omitted; therefore DRNET must run before DRIV."
+    "DRIV automatically resolves the sibling DRNET predecessor summary when --drnet-summary is omitted; therefore DRNET must run before DRIV.",
+    "SSCB was re-frozen after a technical repair that keeps the YOLO26 one-to-one branch native and applies SSCB only to the one-to-many classification path."
   ],
   "candidates": [
     {"id":"SAF1","family":"SAFPN","branch":"agent/safpn-classification-alignment","sha":"e36f89fd92e32c2cbd82e47a2d8147c9b2943b58","runner_token":"safpn","group":"detector","enabled":true},
@@ -31,7 +32,7 @@
     {"id":"DRNET","family":"DRNet","branch":"agent/drnet-dual-refinement-screening","sha":"e754b9dfe451823fc4df85a0cf319e3bc84bcb96","runner_token":"drnet","group":"detector","enabled":true},
     {"id":"DRIV","family":"DRNet-IV","branch":"agent/drnet-interaction-verification-screening","sha":"de8adfc1c071ae94c5201452e6e822c5ce7155b5","runner_token":"interaction","group":"detector","enabled":true},
     {"id":"FBNR","family":"DSRDet-FBNR","branch":"agent/dsr-fbnr-screening","sha":"86f5ccc5ca58d88353d2ed7c339783762cac1110","runner_token":"fbnr","group":"detector","enabled":true},
-    {"id":"SSCB","family":"DSRDet-SSCB-MSDA","branch":"agent/dsr-sscb-msda-screening","sha":"09dbe7b96c9b4f313a247ec7389ffef7b450005d","runner_token":"sscb","group":"detector","enabled":true},
+    {"id":"SSCB","family":"DSRDet-SSCB-MSDA","branch":"agent/dsr-sscb-msda-screening","sha":"3e21951e6fdf45c6e5cb33ef93b9fc2d01f5374e","runner_token":"sscb","group":"detector","enabled":true},
     {"id":"SEMAUX","family":"Semantic-Aux","branch":"agent/leaf-preserving-semantic-screening","sha":"cf3c9e77e2ccadf7185a064dbbd09fbbc54f616a","runner_token":"semantic","group":"detector","enabled":true},
     {"id":"SG1","family":"Semantic-Guided-Leaf","branch":"agent/semantic-guided-leaf-screening","sha":"f1cdea577ccfaf51f8e559fac1950b33feb495d7","runner_token":"semantic","group":"detector","enabled":true},
     {"id":"CG1","family":"LFDet-CGFI","branch":"agent/lfdet-cgfi-frequency-screening","sha":"9e29ec9c30afa51d7b84558a731688a14f485a13","runner_token":"cgfi","group":"detector","enabled":true},
