@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "configs/breadth_screening/faruq_v3_batch_v1.json"
 CONTROLLER = ROOT / "tools/run_faruq_v3_breadth_batch.py"
+LOGGED_CONTROLLER = ROOT / "tools/run_faruq_v3_breadth_batch_logged.py"
 NOTEBOOK = ROOT / "notebooks/Faruq_V3_Breadth_Screening_Batch_V1_Colab.ipynb"
 
 
@@ -134,7 +135,9 @@ def test_master_notebook_has_three_complete_chunks_and_never_requests_test_split
     payload = json.loads(NOTEBOOK.read_text(encoding="utf-8"))
     source = "\n".join("".join(cell.get("source", [])) for cell in payload.get("cells", []))
     assert "agent/breadth-screening-batch-v1" in source
-    assert "run_faruq_v3_breadth_batch.py" in source
+    assert CONTROLLER.is_file()
+    assert LOGGED_CONTROLLER.is_file()
+    assert "run_faruq_v3_breadth_batch_logged.py" in source
     assert "--continue-on-error" in source
     assert "CHUNK_ID = 1" in source
     for candidate_id in (
