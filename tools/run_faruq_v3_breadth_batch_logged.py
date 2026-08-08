@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import importlib.util
 import shlex
 import subprocess
 import sys
 from pathlib import Path
 
-import run_faruq_v3_breadth_batch as base
 
+_BASE_PATH = Path(__file__).resolve().with_name("run_faruq_v3_breadth_batch.py")
+_SPEC = importlib.util.spec_from_file_location("faruq_v3_breadth_batch_base", _BASE_PATH)
+if _SPEC is None or _SPEC.loader is None:
+    raise RuntimeError(f"Tidak dapat memuat controller dasar: {_BASE_PATH}")
+base = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(base)
 
 _ORIGINAL_RUN = base.run
 
