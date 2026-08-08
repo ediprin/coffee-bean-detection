@@ -74,21 +74,30 @@ jobs:
                   sscb=SSCBConfig(mode='calibrated', hidden_dim=16, sampling_points=2),
               ).train()
               # Ultralytics DetectionTrainer attaches resolved training args before
-              # criterion construction. Mirror that runtime contract explicitly
-              # instead of calling init_criterion() on a bare model.
+              # criterion construction. Mirror that runtime contract explicitly.
               model.args = get_cfg()
               output = model(torch.randn(2,3,128,128))
               assert 'sscb_semantic_logits' in output['one2many']
               assert 'sscb_semantic_logits' not in output['one2one']
               criterion = model.init_criterion()
-              assert criterion is not None
+              assert criterion.one2many.sscb_semantic_required is True
+              assert criterion.one2one.sscb_semantic_required is False
+              batch = {
+                  'batch_idx': torch.tensor([0.0, 1.0]),
+                  'cls': torch.tensor([[0.0], [1.0]]),
+                  'bboxes': torch.tensor([[0.5,0.5,0.3,0.3], [0.5,0.5,0.25,0.25]]),
+              }
+              total, detached = criterion(output, batch)
+              assert torch.isfinite(total).all()
+              assert torch.isfinite(detached).all()
+              total.sum().backward()
               notebook = root/'notebooks/Faruq_V3_DSR_SSCB_MSDA_Screening_Colab.ipynb'
               if notebook.is_file():
                   payload = json.loads(notebook.read_text(encoding='utf-8'))
                   assert payload['nbformat'] == 4
               assert (root/'docs/FARUQ_V3_DSR_SSCB_MSDA_PROTOCOL.md').is_file()
               print(type(criterion).__name__)
-              print('DSR SSCB smoke check passed')
+              print('DSR SSCB end-to-end criterion smoke check passed')
           except Exception:
               text = traceback.format_exc()
               Path('sscb_criterion_traceback.txt').write_text(text, encoding='utf-8')
