@@ -23,7 +23,8 @@
     "GDSC1 is recorded but disabled because it is a transfer hypothesis rather than a faithful GDS reproduction for YOLO26 TAL.",
     "DC2 stages are diagnostics with distinct protocols and are recorded separately from the common detector gate.",
     "DRIV automatically resolves the sibling DRNET predecessor summary when --drnet-summary is omitted; therefore DRNET must run before DRIV.",
-    "SSCB was re-frozen after a technical repair that keeps the YOLO26 one-to-one branch native and applies SSCB only to the one-to-many classification path."
+    "SSCB was re-frozen after an end-to-end YOLO26 repair: semantic auxiliary is one-to-many only while the one-to-one path remains native; synthetic forward/loss/backward CI passed.",
+    "BHCL was re-frozen after wrapping its custom loss with Ultralytics E2ELoss for YOLO26 end-to-end one-to-many/one-to-one training; synthetic forward/loss/backward CI passed."
   ],
   "candidates": [
     {"id":"SAF1","family":"SAFPN","branch":"agent/safpn-classification-alignment","sha":"e36f89fd92e32c2cbd82e47a2d8147c9b2943b58","runner_token":"safpn","group":"detector","enabled":true},
@@ -32,7 +33,7 @@
     {"id":"DRNET","family":"DRNet","branch":"agent/drnet-dual-refinement-screening","sha":"e754b9dfe451823fc4df85a0cf319e3bc84bcb96","runner_token":"drnet","group":"detector","enabled":true},
     {"id":"DRIV","family":"DRNet-IV","branch":"agent/drnet-interaction-verification-screening","sha":"de8adfc1c071ae94c5201452e6e822c5ce7155b5","runner_token":"interaction","group":"detector","enabled":true},
     {"id":"FBNR","family":"DSRDet-FBNR","branch":"agent/dsr-fbnr-screening","sha":"86f5ccc5ca58d88353d2ed7c339783762cac1110","runner_token":"fbnr","group":"detector","enabled":true},
-    {"id":"SSCB","family":"DSRDet-SSCB-MSDA","branch":"agent/dsr-sscb-msda-screening","sha":"3e21951e6fdf45c6e5cb33ef93b9fc2d01f5374e","runner_token":"sscb","group":"detector","enabled":true},
+    {"id":"SSCB","family":"DSRDet-SSCB-MSDA","branch":"agent/dsr-sscb-msda-screening","sha":"364d68c842c947f2278229e90429573cea2da659","runner_token":"sscb","group":"detector","enabled":true},
     {"id":"SEMAUX","family":"Semantic-Aux","branch":"agent/leaf-preserving-semantic-screening","sha":"cf3c9e77e2ccadf7185a064dbbd09fbbc54f616a","runner_token":"semantic","group":"detector","enabled":true},
     {"id":"SG1","family":"Semantic-Guided-Leaf","branch":"agent/semantic-guided-leaf-screening","sha":"f1cdea577ccfaf51f8e559fac1950b33feb495d7","runner_token":"semantic","group":"detector","enabled":true},
     {"id":"CG1","family":"LFDet-CGFI","branch":"agent/lfdet-cgfi-frequency-screening","sha":"9e29ec9c30afa51d7b84558a731688a14f485a13","runner_token":"cgfi","group":"detector","enabled":true},
@@ -44,7 +45,7 @@
     {"id":"MRL","family":"SFRNet-MRL","branch":"agent/sfrnet-mrl-metric-screening","sha":"77b984684dd68b84edfe686eebf391859b9ae623","runner_token":"mrl","group":"detector","enabled":true},
     {"id":"STB1","family":"STB","branch":"agent/gds-stb-classification-screening","sha":"0ff760b8e15f2879f5a0e1a044a840271e8a5400","runner_token":"stb","group":"detector","enabled":true},
     {"id":"IGEM","family":"PCA-DB-IGEM","branch":"agent/igem-classification-guidance-screening","sha":"dce30cfa40eb263e81296fd9ab45d36e3726a07c","runner_token":"igem","group":"detector","enabled":true},
-    {"id":"BHCL","family":"BHCL","branch":"agent/bhcl-hierarchical-contrastive-screening","sha":"b42f0d9d86034fca699aea9abf5715afb9cfa7db","runner_token":"bhcl","group":"detector","enabled":true},
+    {"id":"BHCL","family":"BHCL","branch":"agent/bhcl-hierarchical-contrastive-screening","sha":"6d17cbbe859783e043f73beee469e952bba2cb89","runner_token":"bhcl","group":"detector","enabled":true},
     {"id":"HIERVIP","family":"Expert-HierVIP","branch":"agent/expert-hiervip-screening","sha":"35b87ed3331d7d62703d125d2702350deb085fb0","runner_token":"hier","group":"detector","enabled":true},
     {"id":"CPE","family":"FSCE-CPE","branch":"agent/fsce-cpe-screening","sha":"61cef52ea0ab5f1ca19b95bcfd19d6fb6f09d67f","runner_token":"fsce_cpe","group":"detector","enabled":true},
     {"id":"PWCA","family":"DCAL-PWCA","branch":"agent/dcal-pwca-screening","sha":"f9bfecdf85a4eb375bf5846f1cec06c9e4518e0e","runner_token":"dcal_pwca","group":"detector","enabled":true},
