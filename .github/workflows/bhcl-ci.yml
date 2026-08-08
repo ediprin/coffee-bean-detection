@@ -94,3 +94,35 @@ jobs:
               assert z.grad is not None and torch.isfinite(z.grad).all()
               print(variant, float(loss.detach()))
           PY
+      - name: YOLO26 end-to-end BHCL criterion smoke check
+        run: |
+          python - <<'PY'
+          import torch
+          from pathlib import Path
+          from ultralytics.cfg import get_cfg
+          from coffee_detector.bhcl import BHCLConfig, BHCLDetectionModel
+
+          model = BHCLDetectionModel(
+              str(Path('configs/coffee_fg/models/yolo26n-p3.yaml')),
+              nc=21,
+              verbose=False,
+              bhcl=BHCLConfig(embedding_dim=16, temperature=0.1, loss_weight=0.6, epsilon=0.1, anchor_chunk_size=16, variant='bhcl'),
+          ).train()
+          model.args = get_cfg()
+          output = model(torch.randn(2, 3, 128, 128))
+          assert 'bhcl_embeddings' in output['one2many']
+          assert 'bhcl_embeddings' not in output['one2one']
+          criterion = model.init_criterion()
+          assert hasattr(criterion, 'one2many') and hasattr(criterion, 'one2one')
+          batch = {
+              'batch_idx': torch.tensor([0.0, 1.0]),
+              'cls': torch.tensor([[0.0], [12.0]]),
+              'bboxes': torch.tensor([[0.5,0.5,0.3,0.3], [0.5,0.5,0.25,0.25]]),
+          }
+          total, detached = criterion(output, batch)
+          assert torch.isfinite(total).all()
+          assert torch.isfinite(detached).all()
+          total.sum().backward()
+          print(type(criterion).__name__)
+          print('BHCL YOLO26 end-to-end criterion smoke passed')
+          PY
