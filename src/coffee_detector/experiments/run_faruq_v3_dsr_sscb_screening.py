@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import traceback
 from pathlib import Path
 
 import yaml
@@ -22,6 +23,8 @@ CONFIGS = {
     "S1": REPO_ROOT / "configs/dsr_sscb/S1_calibrated_sscb.yaml",
 }
 METRICS = ("macro_map50_95", "bottom3_class_map50_95", "worst_class_map50_95")
+RUN_REVISION = "b8"
+MICRO_BATCH = 8
 
 
 def _load_json(path: str | Path, label: str) -> dict:
@@ -55,6 +58,8 @@ def _load_config(arm: str) -> dict:
         raise RuntimeError(f"Config {arm} memiliki arm yang salah")
     if not isinstance(payload.get("sscb"), dict) or not isinstance(payload.get("train"), dict):
         raise RuntimeError(f"Config {arm} tidak lengkap")
+    if int(payload["train"].get("batch", -1)) != MICRO_BATCH:
+        raise RuntimeError(f"Config {arm} harus memakai micro-batch {MICRO_BATCH} untuk repair SSCB")
     return payload
 
 
@@ -120,10 +125,11 @@ def run_faruq_v3_dsr_sscb_screening(
     for arm in ("M0", "S0", "S1"):
         config = _load_config(arm)
         configs[arm] = config
-        run_name = f"{arm}_seed{seed}"
+        run_name = f"{arm}_{RUN_REVISION}_seed{seed}"
         run_dir = output_root / run_name
         best = run_dir / "weights/best.pt"
         last = run_dir / "weights/last.pt"
+        failure_trace = reports_root / f"{run_name}_failure_traceback.txt"
         executed = False
 
         if not best.is_file():
@@ -154,13 +160,28 @@ def run_faruq_v3_dsr_sscb_screening(
                 )
                 if device is not None:
                     train_args["device"] = device
-            print(f"{'RESUME' if last.is_file() else 'START'} {arm} | mode={config['sscb']['mode']} | seed={seed}", flush=True)
-            model.train(trainer=trainer, **train_args)
+            print(
+                f"{'RESUME' if last.is_file() else 'START'} {arm} | mode={config['sscb']['mode']} "
+                f"| batch={config['train']['batch']} | seed={seed}",
+                flush=True,
+            )
+            try:
+                model.train(trainer=trainer, **train_args)
+            except Exception:
+                failure_trace.write_text(traceback.format_exc(), encoding="utf-8")
+                print(f"SSCB FAILURE TRACE: {failure_trace}", flush=True)
+                raise
             executed = True
 
         if not best.is_file():
             raise FileNotFoundError(f"{arm} best.pt tidak ditemukan: {best}")
-        report = evaluate(best, data_root, reports_root / f"{arm}_seed{seed}_val.json", split="val", device=device)
+        report = evaluate(
+            best,
+            data_root,
+            reports_root / f"{arm}_{RUN_REVISION}_seed{seed}_val.json",
+            split="val",
+            device=device,
+        )
         if report["metrics"].get("classes_without_ground_truth", []):
             raise RuntimeError(f"Validation {arm} kehilangan kelas")
         results[arm] = _metrics(report)
@@ -181,7 +202,7 @@ def run_faruq_v3_dsr_sscb_screening(
     decisions = {arm: _decision(deltas[arm]["vs_D0FT"]) for arm in ("M0", "S0", "S1")}
 
     payload = {
-        "protocol": "faruq-v3-dsr-sscb-bbox-transfer-v1",
+        "protocol": "faruq-v3-dsr-sscb-bbox-transfer-v2-b8",
         "stage": "broad_search_screening",
         "seed": seed,
         "evaluation_split": "val",
@@ -192,6 +213,10 @@ def run_faruq_v3_dsr_sscb_screening(
             "DSRDet CLIP-attention semantic labels are replaced by train-bbox foreground masks; "
             "YOLO26 localization and TAL remain native; SSCB affects residual classification only"
         ),
+        "technical_repair": (
+            "All M0/S0/S1 arms use micro-batch 8 and fresh b8 run directories after semantic arms "
+            "failed before epoch 1 at batch 16. Ultralytics nbs-based accumulation remains native."
+        ),
         "transfer_choices": {
             "semantic_supervisor": "bbox_union_foreground_BCE",
             "hidden_dim": 64,
@@ -199,6 +224,8 @@ def run_faruq_v3_dsr_sscb_screening(
             "max_offset_pixels": 2.0,
             "semantic_aux_weight": 0.2,
             "sampler": "torch_grid_sample_bilinear",
+            "micro_batch": MICRO_BATCH,
+            "run_revision": RUN_REVISION,
         },
         "d0_checkpoint_sha256": checkpoint_hash,
         "results": results,
@@ -207,7 +234,7 @@ def run_faruq_v3_dsr_sscb_screening(
         "decisions": decisions,
         "training_executed_this_call": training_executed,
     }
-    summary = reports_root / "dsr_sscb_seed42_screening.json"
+    summary = reports_root / "dsr_sscb_b8_seed42_screening.json"
     summary.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     payload["summary"] = str(summary)
     return payload
