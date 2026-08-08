@@ -82,6 +82,10 @@ class SSCBDetectionLoss:
                 if not isinstance(head, SSCBDetectHead):
                     raise TypeError("SSCB loss memerlukan SSCBDetectHead")
                 self.sscb_config = SSCBConfig.from_mapping(head.config)
+                # Ultralytics E2ELoss instantiates this loss twice: top-k 10 for
+                # one-to-many and top-k 1 for the native one-to-one branch. The
+                # SSCB semantic auxiliary exists only on one-to-many by design.
+                self.sscb_semantic_required = int(tal_topk) != 1
 
             def get_assigned_targets_and_loss(self, preds, batch):
                 assignments, loss, _ = super().get_assigned_targets_and_loss(preds, batch)
@@ -91,7 +95,13 @@ class SSCBDetectionLoss:
                         raise RuntimeError("M0 tidak boleh menghasilkan semantic auxiliary")
                     return assignments, loss, loss.detach()
                 if semantic_logits is None:
-                    raise RuntimeError("Semantic arm aktif tetapi semantic logits hilang")
+                    if self.sscb_semantic_required:
+                        raise RuntimeError("Semantic arm one-to-many aktif tetapi semantic logits hilang")
+                    # Native one-to-one path intentionally has no SSCB semantic
+                    # branch; return its unmodified native loss.
+                    return assignments, loss, loss.detach()
+                if not self.sscb_semantic_required:
+                    raise RuntimeError("One-to-one path tidak boleh menghasilkan semantic auxiliary")
                 auxiliary = semantic_foreground_loss(semantic_logits, batch)
                 loss[1] = loss[1] + float(self.sscb_config.semantic_aux_weight) * auxiliary
                 return assignments, loss, loss.detach()
