@@ -108,8 +108,6 @@ class CalibratedMSDALevel(nn.Module):
         )
         self.output = nn.Conv2d(hidden_dim, hidden_dim, 1)
 
-        # DSRDet states lambdas are learnable; initialization is not specified.
-        # Zero start is an explicit stability transfer choice.
         self.lambda_p = nn.Parameter(torch.tensor(0.0))
         self.lambda_a = nn.Parameter(torch.tensor(0.0))
         self.lambda_v = nn.Parameter(torch.tensor(0.0))
@@ -144,7 +142,6 @@ class CalibratedMSDALevel(nn.Module):
             hs, ws = value.shape[-2:]
             for point in range(self.points):
                 delta = torch.tanh(offsets[:, level, point].permute(0, 2, 3, 1))
-                # Frozen transfer mapping from feature-pixel displacement to normalized grid units.
                 dx = delta[..., 0] * (2.0 * self.config.max_offset_pixels / max(float(ws - 1), 1.0))
                 dy = delta[..., 1] * (2.0 * self.config.max_offset_pixels / max(float(hs - 1), 1.0))
                 grid = base + torch.stack((dx, dy), dim=-1)
@@ -264,34 +261,52 @@ class SSCBDetectHead(nn.Module):
     def _has_heads(branch: dict[str, nn.Module]) -> bool:
         return bool(branch.get("box_head")) and bool(branch.get("cls_head"))
 
-    def _forward_branch(self, features: list[torch.Tensor], branch: dict[str, nn.Module], *, include_semantic: bool):
+    def _native_branch(self, features: list[torch.Tensor], branch: dict[str, nn.Module]) -> dict[str, Any]:
+        """Run a native YOLO26 branch without SSCB correction.
+
+        The one-to-one branch is intentionally kept native. SSCB is a residual
+        classification transfer applied only to the one-to-many training path;
+        computing SSCB again for one-to-one doubled the expensive semantic/MSDA
+        path and could exhaust GPU memory before the first S0 batch completed.
+        """
         boxes, logits = [], []
         for index in range(self.nl):
             boxes.append(branch["box_head"][index](features[index]))
             logits.append(branch["cls_head"][index](features[index]))
-        corrections, semantic_logits, diagnostics = self.sscb(features)
         batch = features[0].shape[0]
-        output = {
+        return {
             "boxes": torch.cat([v.view(batch, 4 * self.reg_max, -1) for v in boxes], dim=-1),
-            "scores": torch.cat(
-                [(logit + correction).view(batch, self.nc, -1) for logit, correction in zip(logits, corrections)],
-                dim=-1,
-            ),
+            "scores": torch.cat([v.view(batch, self.nc, -1) for v in logits], dim=-1),
             "feats": features,
         }
+
+    def _forward_sscb_branch(self, features: list[torch.Tensor], branch: dict[str, nn.Module], *, include_semantic: bool):
+        native = self._native_branch(features, branch)
+        corrections, semantic_logits, diagnostics = self.sscb(features)
+        batch = features[0].shape[0]
+        split_logits = []
+        start = 0
+        for feature in features:
+            count = int(feature.shape[-2] * feature.shape[-1])
+            split_logits.append(native["scores"][:, :, start : start + count].view(batch, self.nc, feature.shape[-2], feature.shape[-1]))
+            start += count
+        native["scores"] = torch.cat(
+            [(logit + correction).view(batch, self.nc, -1) for logit, correction in zip(split_logits, corrections)],
+            dim=-1,
+        )
         if include_semantic and semantic_logits:
-            output["sscb_semantic_logits"] = semantic_logits
+            native["sscb_semantic_logits"] = semantic_logits
         self.last_sscb_diagnostics = diagnostics
-        return output
+        return native
 
     def forward(self, features: list[torch.Tensor]):
         self._sync_runtime_attributes()
         if self.training:
-            one2many = self._forward_branch(features, self.one2many, include_semantic=True)
-            one2one = self._forward_branch([v.detach() for v in features], self.one2one, include_semantic=False)
+            one2many = self._forward_sscb_branch(features, self.one2many, include_semantic=True)
+            one2one = self._native_branch([v.detach() for v in features], self.one2one)
             return {"one2many": one2many, "one2one": one2one}
-        one2many = self._forward_branch(features, self.one2many, include_semantic=False) if self._has_heads(self.one2many) else None
-        one2one = self._forward_branch([v.detach() for v in features], self.one2one, include_semantic=False)
+        one2many = self._forward_sscb_branch(features, self.one2many, include_semantic=False) if self._has_heads(self.one2many) else None
+        one2one = self._native_branch([v.detach() for v in features], self.one2one)
         predictions = {"one2one": one2one}
         if one2many is not None:
             predictions["one2many"] = one2many
@@ -318,23 +333,14 @@ def load_sscb_detector_weights(model: nn.Module, weights: Any) -> dict[str, int]
     model.load(weights)
     source_model = getattr(weights, "model", None)
     target = getattr(model, "model", model)
-    if not isinstance(source_model, (nn.Sequential, nn.ModuleList)):
-        raise TypeError("Checkpoint tidak mengekspos daftar layer model")
-    source_head, target_head = source_model[-1], target[-1]
-    if not isinstance(target_head, SSCBDetectHead):
-        raise TypeError("Target bukan SSCBDetectHead")
-    if isinstance(source_head, SSCBDetectHead):
-        return {"native_head_items": len(target_head.base_head.state_dict()), "resume": 1}
-    if type(source_head).__name__ != "Detect":
-        raise TypeError(f"Source head bukan native Detect: {type(source_head).__name__}")
-    result = target_head.base_head.load_state_dict(source_head.state_dict(), strict=True)
-    if result.missing_keys or result.unexpected_keys:
-        raise RuntimeError("Transfer native Detect ke SSCB tidak lengkap")
-    target_head.stride = source_head.stride.detach().clone()
-    target_head.base_head.stride = target_head.stride
-    for name in ("max_det", "export", "format", "dynamic", "agnostic_nms"):
-        if hasattr(source_head, name):
-            value = getattr(source_head, name)
-            setattr(target_head, name, value)
-            setattr(target_head.base_head, name, value)
-    return {"native_head_items": len(source_head.state_dict()), "resume": 0}
+    if source_model is None:
+        return {"transferred": 0, "total": len(target.state_dict())}
+    source_state = source_model.float().state_dict()
+    target_state = target.state_dict()
+    transferred = 0
+    for key, value in source_state.items():
+        if key in target_state and target_state[key].shape == value.shape:
+            target_state[key].copy_(value)
+            transferred += 1
+    target.load_state_dict(target_state, strict=False)
+    return {"transferred": transferred, "total": len(target_state)}
