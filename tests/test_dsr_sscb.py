@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import torch
+import yaml
 from torch import nn
 
 from coffee_detector.dsr_sscb.loss import rasterize_bbox_foreground, semantic_foreground_loss
@@ -11,6 +14,9 @@ from coffee_detector.dsr_sscb.model import (
 )
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
 def test_config_modes_and_flags():
     m0 = SSCBConfig.from_mapping({"mode": "msda"})
     s0 = SSCBConfig.from_mapping({"mode": "semantic_aux"})
@@ -18,6 +24,19 @@ def test_config_modes_and_flags():
     assert not m0.uses_semantics
     assert s0.uses_semantics and not s0.uses_calibration
     assert s1.uses_semantics and s1.uses_calibration
+
+
+def test_repaired_screening_uses_same_memory_safe_batch_for_all_arms():
+    paths = [
+        ROOT / "configs/dsr_sscb/M0_msda.yaml",
+        ROOT / "configs/dsr_sscb/S0_semantic_aux_msda.yaml",
+        ROOT / "configs/dsr_sscb/S1_calibrated_sscb.yaml",
+    ]
+    for path in paths:
+        payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+        assert payload["train"]["batch"] == 8
+        assert payload["train"]["epochs"] == 50
+        assert payload["train"]["imgsz"] == 640
 
 
 def test_bbox_rasterization_and_semantic_loss_are_finite():
