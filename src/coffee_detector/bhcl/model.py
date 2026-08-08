@@ -176,5 +176,9 @@ class BHCLDetectionModel(DetectionModel):
         self.model[-1] = BHCLDetectHead(self.model[-1], self.bhcl_config)
 
     def init_criterion(self):
+        from ultralytics.utils.loss import E2ELoss
         from .loss import BHCLDetectionLoss
+
+        if getattr(self, "end2end", False):
+            return E2ELoss(self, loss_fn=BHCLDetectionLoss)
         return BHCLDetectionLoss(self)
