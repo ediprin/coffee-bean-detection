@@ -23,7 +23,7 @@
     "GDSC1 is recorded but disabled because it is a transfer hypothesis rather than a faithful GDS reproduction for YOLO26 TAL.",
     "DC2 stages are diagnostics with distinct protocols and are recorded separately from the common detector gate.",
     "DRIV automatically resolves the sibling DRNET predecessor summary when --drnet-summary is omitted; therefore DRNET must run before DRIV.",
-    "SSCB was re-frozen after an end-to-end YOLO26 repair: semantic auxiliary is one-to-many only while the one-to-one path remains native; synthetic forward/loss/backward CI passed.",
+    "SSCB was re-frozen after two batch-16 first-batch failures: the repaired one-to-many semantic path is retained, all M0/S0/S1 arms now use the same micro-batch 8 with fresh b8 run directories, failure tracebacks are persisted, and synthetic forward/loss/backward CI passed.",
     "BHCL was re-frozen after wrapping its custom loss with Ultralytics E2ELoss for YOLO26 end-to-end one-to-many/one-to-one training; synthetic forward/loss/backward CI passed."
   ],
   "candidates": [
@@ -33,7 +33,7 @@
     {"id":"DRNET","family":"DRNet","branch":"agent/drnet-dual-refinement-screening","sha":"e754b9dfe451823fc4df85a0cf319e3bc84bcb96","runner_token":"drnet","group":"detector","enabled":true},
     {"id":"DRIV","family":"DRNet-IV","branch":"agent/drnet-interaction-verification-screening","sha":"de8adfc1c071ae94c5201452e6e822c5ce7155b5","runner_token":"interaction","group":"detector","enabled":true},
     {"id":"FBNR","family":"DSRDet-FBNR","branch":"agent/dsr-fbnr-screening","sha":"86f5ccc5ca58d88353d2ed7c339783762cac1110","runner_token":"fbnr","group":"detector","enabled":true},
-    {"id":"SSCB","family":"DSRDet-SSCB-MSDA","branch":"agent/dsr-sscb-msda-screening","sha":"364d68c842c947f2278229e90429573cea2da659","runner_token":"sscb","group":"detector","enabled":true},
+    {"id":"SSCB","family":"DSRDet-SSCB-MSDA","branch":"agent/dsr-sscb-msda-screening","sha":"b792e684d23ca04f2b1f337fe70919becbe77816","runner_token":"sscb","group":"detector","enabled":true},
     {"id":"SEMAUX","family":"Semantic-Aux","branch":"agent/leaf-preserving-semantic-screening","sha":"cf3c9e77e2ccadf7185a064dbbd09fbbc54f616a","runner_token":"semantic","group":"detector","enabled":true},
     {"id":"SG1","family":"Semantic-Guided-Leaf","branch":"agent/semantic-guided-leaf-screening","sha":"f1cdea577ccfaf51f8e559fac1950b33feb495d7","runner_token":"semantic","group":"detector","enabled":true},
     {"id":"CG1","family":"LFDet-CGFI","branch":"agent/lfdet-cgfi-frequency-screening","sha":"9e29ec9c30afa51d7b84558a731688a14f485a13","runner_token":"cgfi","group":"detector","enabled":true},
