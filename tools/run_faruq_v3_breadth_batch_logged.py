@@ -15,6 +15,7 @@ base = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(base)
 
 _ORIGINAL_RUN = base.run
+_ORIGINAL_BUILD_RUNNER_COMMAND = base.build_runner_command
 
 
 def _candidate_log_path(cmd: list[str]) -> Path | None:
@@ -35,13 +36,7 @@ def run_with_tee(
     env: dict[str, str] | None = None,
     capture: bool = False,
 ) -> subprocess.CompletedProcess:
-    """Preserve controller semantics while teeing candidate stdout/stderr to Drive.
-
-    Helper/git/preflight calls keep the original capture behavior. Actual candidate
-    runner calls stream line-by-line to both the Colab console and a persistent
-    runner.log under that candidate's output root, so a first-batch failure keeps
-    the full traceback instead of only surfacing `Runner exit code 1`.
-    """
+    """Preserve controller semantics while teeing candidate stdout/stderr to Drive."""
     log_path = None if capture else _candidate_log_path(cmd)
     if log_path is None:
         return _ORIGINAL_RUN(cmd, cwd=cwd, env=env, capture=capture)
@@ -68,7 +63,39 @@ def run_with_tee(
     return subprocess.CompletedProcess(cmd, returncode, stdout=None, stderr=None)
 
 
+def build_runner_command_with_dependencies(**kwargs):
+    """Wire branch-local predecessor reports without weakening required-arg checks."""
+    help_output = kwargs["help_output"]
+    needs_drnet = "--drnet-summary" in help_output
+    if needs_drnet:
+        # Hide this single dependency from the base required-option parser; we
+        # resolve and append it explicitly below from the sibling DRNET output.
+        patched = help_output.replace(
+            "--drnet-summary DRNET_SUMMARY",
+            "[--drnet-summary DRNET_SUMMARY]",
+        )
+        kwargs = dict(kwargs)
+        kwargs["help_output"] = patched
+    cmd = _ORIGINAL_BUILD_RUNNER_COMMAND(**kwargs)
+    if needs_drnet:
+        output_root = Path(kwargs["output_root"]).expanduser().resolve()
+        reports = output_root.parent / "DRNET" / "val_reports"
+        candidates = sorted(
+            reports.glob("*.json"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        ) if reports.is_dir() else []
+        candidates = [p for p in candidates if "audit" not in p.name.lower()]
+        if not candidates:
+            raise FileNotFoundError(
+                f"DRIV membutuhkan summary DRNET yang valid, tidak ditemukan di {reports}"
+            )
+        cmd += ["--drnet-summary", str(candidates[0])]
+    return cmd
+
+
 base.run = run_with_tee
+base.build_runner_command = build_runner_command_with_dependencies
 
 
 if __name__ == "__main__":
