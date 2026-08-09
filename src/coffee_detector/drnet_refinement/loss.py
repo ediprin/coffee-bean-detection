@@ -39,11 +39,18 @@ def confusion_minimized_positive_loss(
     competitor = competitors.max(dim=1).values
     separability = (alpha - competitor).clamp(min=-1.0 + 1e-6, max=1.0)
 
+    # Keep every branch in the same dtype as separability under AMP. Python
+    # float constants can otherwise promote exp/log expressions to float32,
+    # which makes indexed assignment into a float16 weight tensor fail.
     weight = torch.ones_like(separability)
     easy = separability > float(lambda1)
     wrong = separability < 0.0
-    weight[easy] = torch.exp(-10.0 * (separability[easy] - float(lambda1)))
-    weight[wrong] = -float(lambda2) * torch.log(separability[wrong] + 1.0) + 1.0
+    if bool(easy.any()):
+        easy_weight = torch.exp(-10.0 * (separability[easy] - float(lambda1)))
+        weight[easy] = easy_weight.to(dtype=weight.dtype)
+    if bool(wrong.any()):
+        wrong_weight = -float(lambda2) * torch.log(separability[wrong] + 1.0) + 1.0
+        weight[wrong] = wrong_weight.to(dtype=weight.dtype)
 
     targets = F.one_hot(labels, num_classes=fine_logits.shape[1]).to(fine_logits.dtype)
     per_class = F.binary_cross_entropy_with_logits(fine_logits, targets, reduction="none")
