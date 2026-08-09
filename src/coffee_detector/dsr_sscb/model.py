@@ -305,7 +305,19 @@ class SSCBDetectHead(nn.Module):
             one2many = self._forward_sscb_branch(features, self.one2many, include_semantic=True)
             one2one = self._native_branch([v.detach() for v in features], self.one2one)
             return {"one2many": one2many, "one2one": one2one}
-        one2many = self._forward_sscb_branch(features, self.one2many, include_semantic=False) if self._has_heads(self.one2many) else None
+        # Ultralytics validation runs the model in eval mode but still computes
+        # the one-to-many training loss from the returned prediction dictionary.
+        # Preserve semantic logits here whenever semantics are enabled; inference
+        # itself continues to use the native one-to-one path below.
+        one2many = (
+            self._forward_sscb_branch(
+                features,
+                self.one2many,
+                include_semantic=self.config.uses_semantics,
+            )
+            if self._has_heads(self.one2many)
+            else None
+        )
         one2one = self._native_branch([v.detach() for v in features], self.one2one)
         predictions = {"one2one": one2one}
         if one2many is not None:
