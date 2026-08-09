@@ -6,6 +6,21 @@ import torch.nn.functional as F
 from .model import BHCLConfig, BHCLDetectHead
 
 
+def _require_finite(name: str, tensor: torch.Tensor) -> None:
+    """Fail at the first non-finite BHCL tensor with actionable diagnostics."""
+    finite = torch.isfinite(tensor)
+    if bool(finite.all()):
+        return
+    finite_values = tensor.detach()[finite]
+    minimum = float(finite_values.min()) if finite_values.numel() else float("nan")
+    maximum = float(finite_values.max()) if finite_values.numel() else float("nan")
+    raise FloatingPointError(
+        f"BHCL non-finite tensor: {name}; shape={tuple(tensor.shape)}; "
+        f"finite={int(finite.sum())}/{tensor.numel()}; min_finite={minimum:.6g}; "
+        f"max_finite={maximum:.6g}"
+    )
+
+
 def hierarchical_contrastive_loss(
     embeddings: torch.Tensor,
     leaf_labels: torch.Tensor,
@@ -20,6 +35,9 @@ def hierarchical_contrastive_loss(
     non-self positive for an anchor, that undefined term contributes zero while
     the outer normalization remains |I|, a defensive transfer rule because the
     source paper generates paired augmented views and therefore assumes positives.
+
+    The denominator is evaluated with logsumexp rather than exp->sum->log. This
+    is algebraically equivalent but avoids avoidable overflow in long real runs.
     """
     if embeddings.ndim != 2 or embeddings.shape[1] != config.embedding_dim:
         raise ValueError("HCL embedding dimension tidak valid")
@@ -29,7 +47,9 @@ def hierarchical_contrastive_loss(
     if not len(leaf_labels):
         return embeddings.sum() * 0.0
 
-    z = F.normalize(embeddings, dim=1, eps=1e-8)
+    _require_finite("hcl_embeddings_input", embeddings)
+    z = F.normalize(embeddings.float(), dim=1, eps=1e-8)
+    _require_finite("hcl_embeddings_normalized", z)
     hierarchy = prototype_bank.hierarchy
     coarse_labels = hierarchy.coarse_labels(leaf_labels)
     levels = (coarse_labels, leaf_labels)
@@ -44,9 +64,11 @@ def hierarchical_contrastive_loss(
         row = torch.arange(stop - start, device=z.device)
         source = torch.arange(start, stop, device=z.device)
         logits = anchors @ z.transpose(0, 1) / tau
-        exp_logits = torch.exp(logits)
-        denominator = (exp_logits.sum(dim=1) - exp_logits[row, source]).clamp_min(1e-12)
-        log_denominator = torch.log(denominator)
+        _require_finite("hcl_pair_logits", logits)
+        denominator_logits = logits.clone()
+        denominator_logits[row, source] = -torch.inf
+        log_denominator = torch.logsumexp(denominator_logits, dim=1)
+        _require_finite("hcl_log_denominator", log_denominator)
 
         for level_index, labels in enumerate(levels):
             class_count = int(labels.max()) + 1
@@ -66,10 +88,12 @@ def hierarchical_contrastive_loss(
                     / positive_count[valid]
                     / tau
                 )
-                total = total + weights[level_index] * (
-                    log_denominator[valid] - mean_positive_logit
-                ).sum()
-    return total / float(n)
+                contribution = log_denominator[valid] - mean_positive_logit
+                _require_finite(f"hcl_level{level_index}_contribution", contribution)
+                total = total + weights[level_index] * contribution.sum()
+    output = total / float(n)
+    _require_finite("hcl_output", output)
+    return output
 
 
 def balanced_level_loss(
@@ -80,7 +104,14 @@ def balanced_level_loss(
     temperature: float,
     anchor_chunk_size: int,
 ) -> torch.Tensor:
-    """BHCL Eq. (8) averaged over P'_l(i) for one hierarchy level."""
+    """BHCL Eq. (8) averaged over P'_l(i) for one hierarchy level.
+
+    The original denominator
+      sum_c (sum_{j in c,j!=i} exp(s_ij/tau) + exp(s_ip_c/tau))/(n_c+1)
+    is computed exactly in log-space by assigning each pair/prototype its
+    category divisor before logsumexp. This preserves the objective while
+    removing the numerically fragile explicit exponentiation chain.
+    """
     if embeddings.ndim != 2 or prototypes.ndim != 2:
         raise ValueError("BHCL embeddings/prototypes harus matriks")
     if embeddings.shape[1] != prototypes.shape[1]:
@@ -95,39 +126,55 @@ def balanced_level_loss(
     if int(labels.min()) < 0 or int(labels.max()) >= class_count:
         raise ValueError("Label hierarchy di luar rentang")
 
-    one_hot = F.one_hot(labels, num_classes=class_count).to(dtype=embeddings.dtype)
+    work_embeddings = embeddings.float()
+    work_prototypes = prototypes.float()
+    _require_finite("bhcl_level_embeddings", work_embeddings)
+    _require_finite("bhcl_level_prototypes", work_prototypes)
+
+    one_hot = F.one_hot(labels, num_classes=class_count).to(dtype=work_embeddings.dtype)
     counts = one_hot.sum(dim=0)
-    category_embedding_sum = one_hot.transpose(0, 1) @ embeddings
+    category_embedding_sum = one_hot.transpose(0, 1) @ work_embeddings
     divisors = counts + 1.0
+    log_divisors = torch.log(divisors)
+    pair_log_divisors = log_divisors[labels]
     tau = float(temperature)
-    total = embeddings.new_zeros(())
+    total = work_embeddings.new_zeros(())
 
     for start in range(0, n, int(anchor_chunk_size)):
         stop = min(start + int(anchor_chunk_size), n)
-        anchors = embeddings[start:stop]
+        anchors = work_embeddings[start:stop]
         anchor_labels = labels[start:stop]
-        row_indices = torch.arange(stop - start, device=embeddings.device)
-        source_indices = torch.arange(start, stop, device=embeddings.device)
+        row_indices = torch.arange(stop - start, device=work_embeddings.device)
+        source_indices = torch.arange(start, stop, device=work_embeddings.device)
 
-        pair_logits = anchors @ embeddings.transpose(0, 1) / tau
-        exp_pairs = torch.exp(pair_logits)
-        per_category = exp_pairs @ one_hot
-        self_exp = exp_pairs[row_indices, source_indices]
-        per_category[row_indices, anchor_labels] -= self_exp
-        prototype_logits = anchors @ prototypes.transpose(0, 1) / tau
-        per_category = per_category + torch.exp(prototype_logits)
-        denominator = (per_category / divisors.unsqueeze(0)).sum(dim=1).clamp_min(1e-12)
+        pair_logits = anchors @ work_embeddings.transpose(0, 1) / tau
+        prototype_logits = anchors @ work_prototypes.transpose(0, 1) / tau
+        _require_finite("bhcl_pair_logits", pair_logits)
+        _require_finite("bhcl_prototype_logits", prototype_logits)
+
+        adjusted_pairs = pair_logits - pair_log_divisors.unsqueeze(0)
+        adjusted_pairs[row_indices, source_indices] = -torch.inf
+        adjusted_prototypes = prototype_logits - log_divisors.unsqueeze(0)
+        log_denominator = torch.logsumexp(
+            torch.cat((adjusted_pairs, adjusted_prototypes), dim=1),
+            dim=1,
+        )
+        _require_finite("bhcl_log_denominator", log_denominator)
 
         similarity_sum_all = anchors @ category_embedding_sum.transpose(0, 1)
         own_similarity_sum = similarity_sum_all[row_indices, anchor_labels]
-        self_similarity = (anchors * embeddings[source_indices]).sum(dim=1)
-        own_prototype_similarity = (anchors * prototypes[anchor_labels]).sum(dim=1)
+        self_similarity = (anchors * work_embeddings[source_indices]).sum(dim=1)
+        own_prototype_similarity = (anchors * work_prototypes[anchor_labels]).sum(dim=1)
         positive_similarity_sum = own_similarity_sum - self_similarity + own_prototype_similarity
         positive_count = counts[anchor_labels].clamp_min(1.0)
         mean_positive_logit = positive_similarity_sum / positive_count / tau
-        total = total + (torch.log(denominator) - mean_positive_logit).sum()
+        contribution = log_denominator - mean_positive_logit
+        _require_finite("bhcl_level_contribution", contribution)
+        total = total + contribution.sum()
 
-    return total / float(n)
+    output = total / float(n)
+    _require_finite("bhcl_level_output", output)
+    return output
 
 
 def balanced_hierarchical_contrastive_loss(
@@ -147,7 +194,9 @@ def balanced_hierarchical_contrastive_loss(
     if not len(leaf_labels):
         return embeddings.sum() * 0.0
 
-    z = F.normalize(embeddings, dim=1, eps=1e-8)
+    _require_finite("bhcl_embeddings_input", embeddings)
+    z = F.normalize(embeddings.float(), dim=1, eps=1e-8)
+    _require_finite("bhcl_embeddings_normalized", z)
     prototype_bank.update(z.detach(), leaf_labels)
     hierarchy = prototype_bank.hierarchy
     coarse_labels = hierarchy.coarse_labels(leaf_labels)
@@ -156,13 +205,16 @@ def balanced_hierarchical_contrastive_loss(
 
     output = z.new_zeros(())
     for level_index, labels in enumerate(level_labels, start=1):
+        prototypes = prototype_bank.normalized(level_index).to(device=z.device, dtype=z.dtype)
+        _require_finite(f"bhcl_level{level_index}_prototype_bank", prototypes)
         output = output + weights[level_index - 1] * balanced_level_loss(
             z,
             labels,
-            prototype_bank.normalized(level_index).to(device=z.device, dtype=z.dtype),
+            prototypes,
             temperature=config.temperature,
             anchor_chunk_size=config.anchor_chunk_size,
         )
+    _require_finite("bhcl_output", output)
     return output
 
 
@@ -184,12 +236,15 @@ class BHCLDetectionLoss:
 
             def get_assigned_targets_and_loss(self, preds, batch):
                 assignments, loss, _ = super().get_assigned_targets_and_loss(preds, batch)
+                _require_finite("native_detection_loss_before_bhcl", loss)
                 embeddings = preds.get("bhcl_embeddings")
                 if embeddings is None:
                     return assignments, loss, loss.detach()
 
+                _require_finite("dense_bhcl_embeddings", embeddings)
                 fg_mask, target_gt_idx = assignments[:2]
                 pred_scores = preds["scores"].permute(0, 2, 1).contiguous()
+                _require_finite("prediction_scores", pred_scores)
                 if embeddings.shape[:2] != pred_scores.shape[:2]:
                     raise RuntimeError("HCL/BHCL dense embeddings tidak sejajar dengan predictions")
                 if not bool(fg_mask.any()):
@@ -221,6 +276,7 @@ class BHCLDetectionLoss:
                 assigned_labels = gt_labels.gather(1, target_gt_idx.long())
                 positive_embeddings = embeddings[fg_mask]
                 positive_labels = assigned_labels[fg_mask]
+                _require_finite("positive_bhcl_embeddings", positive_embeddings)
                 if self.bhcl_config.variant == "hcl":
                     auxiliary = hierarchical_contrastive_loss(
                         positive_embeddings,
@@ -235,7 +291,9 @@ class BHCLDetectionLoss:
                         self.bhcl_head.bhcl_prototypes,
                         self.bhcl_config,
                     )
-                loss[1] = loss[1] + float(self.bhcl_config.loss_weight) * auxiliary
+                _require_finite("bhcl_auxiliary_loss", auxiliary)
+                loss[1] = loss[1] + float(self.bhcl_config.loss_weight) * auxiliary.to(loss.dtype)
+                _require_finite("detection_loss_after_bhcl", loss)
                 return assignments, loss, loss.detach()
 
         return _BoundBHCLDetectionLoss()
