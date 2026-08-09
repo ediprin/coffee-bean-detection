@@ -175,8 +175,9 @@ class SFRSpatialDetectHead(nn.Module):
                 "one2many": self._forward_branch(features, self.one2many),
                 "one2one": self._forward_branch([x.detach() for x in features], self.one2one),
             }
+        one2many = self._forward_branch(features, self.one2many)
         one2one = self._forward_branch([x.detach() for x in features], self.one2one)
-        predictions = {"one2one": one2one}
+        predictions = {"one2many": one2many, "one2one": one2one}
         inference = self.base_head._inference(one2one)
         output = self.base_head.postprocess(inference.permute(0, 2, 1))
         return output if self.export else (output, predictions)
