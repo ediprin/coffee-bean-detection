@@ -118,6 +118,14 @@ Protokol auditnya dibekukan di
 Hasil serta koreksi gate v1 dicatat di
 [docs/FARUQ_V3_OPERATIONAL_AUDIT_RESULT_2026-08-02.md](docs/FARUQ_V3_OPERATIONAL_AUDIT_RESULT_2026-08-02.md).
 
+Setelah konfirmasi paired tiga seed ACMC dinyatakan PASS, satu-satunya jalur
+test yang diizinkan tersedia di
+[`notebooks/Faruq_V3_ACMC_Locked_Test_Colab.ipynb`](notebooks/Faruq_V3_ACMC_Locked_Test_Colab.ipynb).
+Notebook terlebih dahulu membuang seluruh parent/hash test Roboflow yang pernah
+muncul di development dan menghentikan inference jika dukungan independennya
+tidak memenuhi gate. Protokol beku dan larangan tuning pascatest tercatat di
+[docs/FARUQ_V3_ACMC_LOCKED_TEST_PROTOCOL.md](docs/FARUQ_V3_ACMC_LOCKED_TEST_PROTOCOL.md).
+
 Aturan permanen untuk satu folder Drive bersama, perpindahan akun Colab, dan
 bug shortcut DriveFS dicatat di
 [docs/COLAB_SHARED_DRIVE_RUNBOOK.md](docs/COLAB_SHARED_DRIVE_RUNBOOK.md).
