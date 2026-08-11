@@ -169,21 +169,30 @@ def _divergence(gx: torch.Tensor, gy: torch.Tensor) -> torch.Tensor:
 
 
 def _poisson_reconstruct(divergence: torch.Tensor, source: torch.Tensor) -> torch.Tensor:
-    """FFT Poisson solver for DSRDet Eq. (8), using a discrete Laplacian."""
-    _, _, height, width = divergence.shape
-    fy = torch.fft.fftfreq(height, device=divergence.device, dtype=divergence.dtype)
-    fx = torch.fft.fftfreq(width, device=divergence.device, dtype=divergence.dtype)
+    """FFT Poisson solver for DSRDet Eq. (8), using a discrete Laplacian.
+
+    FFT reconstruction is intentionally performed in FP32. CUDA cuFFT only
+    supports power-of-two spatial dimensions for FP16 inputs, while the frozen
+    screening resolution is 640x640. Keeping this numerical subroutine in FP32
+    makes it AMP-safe without changing the surrounding augmentation semantics.
+    """
+    output_dtype = source.dtype
+    divergence_fp32 = divergence.float()
+    source_fp32 = source.float()
+    _, _, height, width = divergence_fp32.shape
+    fy = torch.fft.fftfreq(height, device=divergence.device, dtype=torch.float32)
+    fx = torch.fft.fftfreq(width, device=divergence.device, dtype=torch.float32)
     yy, xx = torch.meshgrid(fy, fx, indexing="ij")
     eigen = 2.0 * torch.cos(2.0 * torch.pi * xx) + 2.0 * torch.cos(2.0 * torch.pi * yy) - 4.0
-    div_hat = torch.fft.fft2(divergence)
+    div_hat = torch.fft.fft2(divergence_fp32)
     safe = eigen.clone()
     safe[0, 0] = 1.0
     out_hat = div_hat / safe
     # Poisson reconstruction leaves the DC term undefined; preserve source mean.
-    source_mean = source.mean(dim=(-2, -1))
+    source_mean = source_fp32.mean(dim=(-2, -1))
     out_hat[..., 0, 0] = source_mean * float(height * width)
-    output = torch.fft.ifft2(out_hat).real
-    return output.clamp(0.0, 1.0)
+    output = torch.fft.ifft2(out_hat).real.clamp(0.0, 1.0)
+    return output.to(dtype=output_dtype)
 
 
 def background_gradient_blend(images: torch.Tensor, foreground_mask: torch.Tensor) -> torch.Tensor:
