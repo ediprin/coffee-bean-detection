@@ -22,8 +22,9 @@ Faruq-v3 checkpoints on those artifacts would be identity-leaked.
 - Train/validation parent and exact-hash separation must already pass the
   grouped dataset gate.
 - Test is unavailable and is never accessed.
-- Cutouts are generated from validation boxes with deterministic foreground
-  estimation.
+- Parent authority is taken from the Faruq-v3 grouped validation manifest.
+- Cutout masks come from the audited/repaired Faruq-v2 COCO polygons for those
+  exact parents. Bounding-box foreground estimation is not used.
 - Classes: balanced diagnostic prior across all 21 SNI classes.
 - Visibility: mild.
 - Canvas: 1024 pixels.

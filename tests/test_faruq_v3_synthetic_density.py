@@ -1,11 +1,72 @@
 import json
 from pathlib import Path
 
+from PIL import Image, ImageDraw
+
 from coffee_detector.experiments import run_faruq_v3_synthetic_density_screening as screen
 from coffee_detector.experiments.run_faruq_v3_synthetic_density_setup import (
     _audit_library,
+    _prepare_faruq_polygon_library,
 )
 from coffee_detector.prepare_sni_fullscene import SNI21_CLASSES
+
+
+def test_polygon_library_preserves_all_canonical_classes(tmp_path: Path) -> None:
+    polygon_root = tmp_path / "polygon"
+    images = []
+    annotations = []
+    manifest = []
+    for class_id, _ in enumerate(SNI21_CLASSES):
+        file_name = f"images/parent_{class_id:02d}_jpg.rf.abcdef.jpg"
+        image_path = polygon_root / "train" / file_name
+        image_path.parent.mkdir(parents=True, exist_ok=True)
+        image = Image.new("RGB", (32, 32), "white")
+        ImageDraw.Draw(image).rectangle(
+            (8, 8, 23, 23), fill=(class_id * 9 % 255, 80, 180)
+        )
+        image.save(image_path)
+        images.append(
+            {"id": class_id, "file_name": file_name, "width": 32, "height": 32}
+        )
+        annotations.append(
+            {
+                "id": class_id,
+                "image_id": class_id,
+                "category_id": class_id,
+                "segmentation": [[8, 8, 23, 8, 23, 23, 8, 23]],
+            }
+        )
+        manifest.append(
+            {
+                "source_parent_id": f"parent{class_id:02d}jpg",
+                "output_split": "val",
+            }
+        )
+    categories = [
+        {"id": class_id, "name": name}
+        for class_id, name in enumerate(SNI21_CLASSES)
+    ]
+    for split in ("train", "val"):
+        root = polygon_root / split
+        root.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "images": images if split == "train" else [],
+            "annotations": annotations if split == "train" else [],
+            "categories": categories,
+        }
+        (root / "_annotations.coco.json").write_text(
+            json.dumps(payload), encoding="utf-8"
+        )
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    result = _prepare_faruq_polygon_library(
+        polygon_root, manifest_path, tmp_path / "library"
+    )
+    assert len(result["assets"]) == len(SNI21_CLASSES)
+    assert result["classes"] == {
+        str(class_id): name for class_id, name in enumerate(SNI21_CLASSES)
+    }
+    assert result["audit"]["failures"] == 0
 
 
 def test_validation_library_audit_accepts_group_safe_parents(tmp_path: Path) -> None:
@@ -24,7 +85,11 @@ def test_validation_library_audit_accepts_group_safe_parents(tmp_path: Path) -> 
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     library = {
-        "source": {"root": str(data_root), "source_split": "val"},
+        "source": {
+            "root": str(data_root),
+            "source_split": "val",
+            "source_group_split": "faruq_v3_validation",
+        },
         "classes": {str(index): name for index, name in enumerate(SNI21_CLASSES)},
         "assets": [
             {"asset_id": str(index), "source_parent_id": parents[index]}
@@ -57,7 +122,11 @@ def test_validation_library_audit_rejects_train_parent_overlap(
     manifest_path = tmp_path / "manifest.json"
     manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
     library = {
-        "source": {"root": str(data_root), "source_split": "val"},
+        "source": {
+            "root": str(data_root),
+            "source_split": "val",
+            "source_group_split": "faruq_v3_validation",
+        },
         "classes": {str(index): name for index, name in enumerate(SNI21_CLASSES)},
         "assets": [
             {"asset_id": str(index), "source_parent_id": parents[index]}
