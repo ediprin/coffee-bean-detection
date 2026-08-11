@@ -135,6 +135,10 @@ serta
 [`notebooks/Faruq_V3_ACMC_Locked_Test_V2_Colab.ipynb`](notebooks/Faruq_V3_ACMC_Locked_Test_V2_Colab.ipynb).
 Kegagalan gate v1 tidak ditimpa; pada v2, bottom-3 dan worst-class AP hanya
 bersifat deskriptif karena support kelas langka terbatas.
+Hasil finalnya tercatat di
+[docs/FARUQ_V3_ACMC_LOCKED_TEST_RESULT_2026-08-11.md](docs/FARUQ_V3_ACMC_LOCKED_TEST_RESULT_2026-08-11.md):
+ACMC1 naik pada 3/3 seed, tetapi paired-parent bootstrap tidak melewati gate
+0,95 sehingga putusan finalnya `NOT_CONFIRMED`.
 
 Aturan permanen untuk satu folder Drive bersama, perpindahan akun Colab, dan
 bug shortcut DriveFS dicatat di
