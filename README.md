@@ -151,6 +151,14 @@ Hasil seed-42 tercatat di
 delta macro positif pada 4/4 kondisi, tetapi kecil dan tidak mengubah putusan
 locked test `NOT_CONFIRMED`.
 
+Evaluasi lintas sumber nyata yang paling hemat tersedia di
+[`notebooks/Faruq_V3_ACMC_Adrian_External_Colab.ipynb`](notebooks/Faruq_V3_ACMC_Adrian_External_Colab.ipynb)
+dengan protokol beku
+[`docs/FARUQ_V3_ACMC_ADRIAN_EXTERNAL_PROTOCOL.md`](docs/FARUQ_V3_ACMC_ADRIAN_EXTERNAL_PROTOCOL.md).
+Notebook menjalankan inference tiga pasangan checkpoint beku pada Adrian
+validation saja, memverifikasi hash checkpoint terhadap locked-test final,
+tidak mengekstrak test, dan tidak mengizinkan tuning pascatest.
+
 Aturan permanen untuk satu folder Drive bersama, perpindahan akun Colab, dan
 bug shortcut DriveFS dicatat di
 [docs/COLAB_SHARED_DRIVE_RUNBOOK.md](docs/COLAB_SHARED_DRIVE_RUNBOOK.md).
