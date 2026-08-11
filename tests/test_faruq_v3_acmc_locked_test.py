@@ -71,7 +71,8 @@ def test_locked_test_aggregates_paired_frozen_checkpoints(tmp_path: Path, monkey
                 "bottom3_class_map50_95": base - 0.1,
                 "worst_class_map50_95": base - 0.15,
                 "map50_95_by_class": {name: base for name in SNI21_CLASSES},
-            }
+            },
+            "prediction_observations": [],
         }
 
     monkeypatch.setattr(module, "_evaluate_checkpoint", fake_evaluate)
@@ -89,3 +90,25 @@ def test_locked_test_aggregates_paired_frozen_checkpoints(tmp_path: Path, monkey
     assert result["further_tuning_authorized"] is False
     assert result["aggregate"]["macro_map50_95"]["head_improved_seeds"] == 3
     assert result["aggregate"]["macro_map50_95"]["head_delta_mean"] == pytest.approx(0.02)
+
+
+def test_parent_bootstrap_uses_paired_images_and_detects_positive_delta() -> None:
+    target = {"class_id": 0, "xyxy": [0.0, 0.0, 10.0, 10.0]}
+    correct = {"class_id": 0, "score": 0.9, "xyxy": [0.0, 0.0, 10.0, 10.0]}
+    wrong = {"class_id": 0, "score": 0.9, "xyxy": [20.0, 20.0, 30.0, 30.0]}
+    observations = {}
+    for seed in (42, 123, 2026):
+        observations[str(seed)] = {
+            "D0FT": [
+                {"image_name": "a.jpg", "targets": [target], "predictions": [wrong]},
+                {"image_name": "b.jpg", "targets": [target], "predictions": [wrong]},
+            ],
+            "ACMC1": [
+                {"image_name": "a.jpg", "targets": [target], "predictions": [correct]},
+                {"image_name": "b.jpg", "targets": [target], "predictions": [correct]},
+            ],
+        }
+    result = module._paired_parent_bootstrap(observations, iterations=10, seed=7)
+    assert result["independent_parents"] == 2
+    assert result["custom_macro_point_delta"] > 0.9
+    assert result["probability_positive"] == 1.0

@@ -8,6 +8,9 @@ import json
 import statistics
 from pathlib import Path
 
+import numpy as np
+from PIL import Image
+
 from coffee_detector.evaluate import _classwise_summary
 from coffee_detector.experiments.run_faruq_v3_acmc import METRICS
 from coffee_detector.prepare_sni_fullscene import SNI21_CLASSES
@@ -31,7 +34,12 @@ def _sha256(path: str | Path) -> str:
     return digest.hexdigest()
 
 
-def _validate_authority(confirmation: dict, eligibility: dict) -> None:
+def _validate_authority(
+    confirmation: dict,
+    eligibility: dict,
+    amendment: dict | None,
+    eligibility_hash: str,
+) -> str:
     if (
         confirmation.get("protocol")
         != "faruq-v3-acmc-paired-optimization-confirmation-v1"
@@ -43,17 +51,241 @@ def _validate_authority(confirmation: dict, eligibility: dict) -> None:
         or confirmation.get("test_images_accessed") is not False
     ):
         raise RuntimeError("Summary validation tidak mengotorisasi locked test")
+    if eligibility.get("format") != "coffee_detector.faruq_locked_test_eligibility.v1":
+        raise RuntimeError("Format eligibility test tidak dikenal")
+    if eligibility.get("training_executed") is not False or eligibility.get("inference_executed") is not False:
+        raise RuntimeError("Eligibility bukan audit pra-inference")
     if (
-        eligibility.get("format")
-        != "coffee_detector.faruq_locked_test_eligibility.v1"
-        or eligibility.get("decision") != "PASS"
-        or eligibility.get("next_action")
-        != "AUTHORIZE_FROZEN_ACMC_TEST_INFERENCE"
-        or eligibility.get("training_executed") is not False
-        or eligibility.get("inference_executed") is not False
-        or not all(eligibility.get("gates", {}).values())
+        eligibility.get("decision") == "PASS"
+        and eligibility.get("next_action") == "AUTHORIZE_FROZEN_ACMC_TEST_INFERENCE"
+        and all(eligibility.get("gates", {}).values())
     ):
-        raise RuntimeError("Test Faruq bebas-leakage tidak lolos eligibility gate")
+        return "v1"
+    if amendment is None:
+        raise RuntimeError("Eligibility v1 FAIL memerlukan amendemen support v2")
+    if (
+        amendment.get("format")
+        != "coffee_detector.faruq_locked_test_amendment.v2"
+        or amendment.get("decision") != "PASS"
+        or amendment.get("next_action")
+        != "AUTHORIZE_V2_FROZEN_ACMC_TEST_INFERENCE"
+        or amendment.get("model_inference_executed") is not False
+        or amendment.get("training_executed") is not False
+        or amendment.get("further_tuning_authorized") is not False
+        or amendment.get("source_v1_eligibility_sha256") != eligibility_hash
+        or not all(amendment.get("gates", {}).values())
+    ):
+        raise RuntimeError("Amendemen support v2 tidak mengotorisasi inference")
+    return "v2"
+
+
+def _ground_truth(label_path: Path, width: int, height: int) -> list[dict]:
+    targets = []
+    for raw in label_path.read_text(encoding="utf-8").splitlines():
+        fields = raw.split()
+        if not fields:
+            continue
+        if len(fields) != 5:
+            raise ValueError(f"Locked test hanya menerima box YOLO: {label_path}")
+        class_id = int(fields[0])
+        x, y, box_width, box_height = map(float, fields[1:])
+        targets.append(
+            {
+                "class_id": class_id,
+                "xyxy": [
+                    (x - box_width / 2) * width,
+                    (y - box_height / 2) * height,
+                    (x + box_width / 2) * width,
+                    (y + box_height / 2) * height,
+                ],
+            }
+        )
+    return targets
+
+
+def _collect_prediction_observations(model, test_root: Path, device: str | None) -> list[dict]:
+    image_paths = sorted((test_root / "test/images").glob("*"))
+    image_paths = [path for path in image_paths if path.is_file()]
+    if not image_paths:
+        raise FileNotFoundError("Locked test tidak memiliki gambar")
+    kwargs = {
+        "source": [str(path) for path in image_paths],
+        "imgsz": 640,
+        "conf": 0.001,
+        "iou": 0.7,
+        "max_det": 500,
+        "stream": True,
+        "verbose": False,
+    }
+    if device is not None:
+        kwargs["device"] = device
+    observations = []
+    for result in model.predict(**kwargs):
+        image_path = Path(result.path)
+        with Image.open(image_path) as image:
+            width, height = image.size
+        label_path = test_root / "test/labels" / image_path.with_suffix(".txt").name
+        targets = _ground_truth(label_path, width, height)
+        boxes = result.boxes
+        predictions = []
+        if boxes is not None and len(boxes):
+            xyxy = boxes.xyxy.detach().cpu().numpy()
+            scores = boxes.conf.detach().cpu().numpy()
+            classes = boxes.cls.detach().cpu().numpy().astype(int)
+            predictions = [
+                {
+                    "class_id": int(class_id),
+                    "score": float(score),
+                    "xyxy": [float(value) for value in box],
+                }
+                for box, score, class_id in zip(xyxy, scores, classes)
+            ]
+        observations.append(
+            {"image_name": image_path.name, "targets": targets, "predictions": predictions}
+        )
+    observations.sort(key=lambda row: row["image_name"].lower())
+    if len(observations) != len(image_paths):
+        raise RuntimeError("Jumlah hasil predict tidak sama dengan locked-test images")
+    return observations
+
+
+def _iou(left: np.ndarray, right: np.ndarray) -> np.ndarray:
+    if not len(left) or not len(right):
+        return np.zeros((len(left), len(right)), dtype=np.float64)
+    top_left = np.maximum(left[:, None, :2], right[None, :, :2])
+    bottom_right = np.minimum(left[:, None, 2:], right[None, :, 2:])
+    intersection = np.clip(bottom_right - top_left, 0.0, None).prod(axis=2)
+    left_area = np.clip(left[:, 2:] - left[:, :2], 0.0, None).prod(axis=1)
+    right_area = np.clip(right[:, 2:] - right[:, :2], 0.0, None).prod(axis=1)
+    union = left_area[:, None] + right_area[None, :] - intersection
+    return intersection / np.clip(union, 1e-12, None)
+
+
+IOU_THRESHOLDS = np.linspace(0.5, 0.95, 10)
+
+
+def _precompute_observation_stats(observations: list[dict]) -> list[list[dict]]:
+    prepared = []
+    for observation in observations:
+        class_rows = []
+        for class_id in range(len(SNI21_CLASSES)):
+            targets = np.asarray(
+                [row["xyxy"] for row in observation["targets"] if row["class_id"] == class_id],
+                dtype=np.float64,
+            ).reshape(-1, 4)
+            predictions = [
+                row for row in observation["predictions"] if row["class_id"] == class_id
+            ]
+            predictions.sort(key=lambda row: row["score"], reverse=True)
+            boxes = np.asarray([row["xyxy"] for row in predictions], dtype=np.float64).reshape(-1, 4)
+            scores = np.asarray([row["score"] for row in predictions], dtype=np.float64)
+            overlaps = _iou(boxes, targets)
+            true_positive = np.zeros((len(predictions), len(IOU_THRESHOLDS)), dtype=bool)
+            for threshold_index, threshold in enumerate(IOU_THRESHOLDS):
+                used = set()
+                for prediction_index in range(len(predictions)):
+                    if not len(targets):
+                        break
+                    order = np.argsort(overlaps[prediction_index])[::-1]
+                    for target_index in order:
+                        if overlaps[prediction_index, target_index] < threshold:
+                            break
+                        if int(target_index) not in used:
+                            used.add(int(target_index))
+                            true_positive[prediction_index, threshold_index] = True
+                            break
+            class_rows.append(
+                {"targets": len(targets), "scores": scores, "tp": true_positive}
+            )
+        prepared.append(class_rows)
+    return prepared
+
+
+def _average_precision(tp: np.ndarray, scores: np.ndarray, targets: int) -> float:
+    if targets <= 0:
+        return float("nan")
+    if not len(scores):
+        return 0.0
+    order = np.argsort(scores)[::-1]
+    true_positive = np.cumsum(tp[order].astype(np.float64))
+    false_positive = np.cumsum((~tp[order]).astype(np.float64))
+    recall = true_positive / targets
+    precision = true_positive / np.maximum(true_positive + false_positive, 1e-12)
+    recall_curve = np.concatenate(([0.0], recall, [1.0]))
+    precision_curve = np.concatenate(([1.0], precision, [0.0]))
+    precision_curve = np.maximum.accumulate(precision_curve[::-1])[::-1]
+    grid = np.linspace(0.0, 1.0, 101)
+    return float(np.interp(grid, recall_curve, precision_curve).mean())
+
+
+def _macro_map(prepared: list[list[dict]], sample: np.ndarray) -> float:
+    class_values = []
+    for class_id in range(len(SNI21_CLASSES)):
+        rows = [prepared[int(index)][class_id] for index in sample]
+        targets = sum(int(row["targets"]) for row in rows)
+        if targets <= 0:
+            continue
+        scores = np.concatenate([row["scores"] for row in rows]) if rows else np.empty(0)
+        matrices = [row["tp"] for row in rows]
+        true_positive = np.concatenate(matrices, axis=0) if matrices else np.zeros((0, 10), dtype=bool)
+        aps = [
+            _average_precision(true_positive[:, threshold], scores, targets)
+            for threshold in range(len(IOU_THRESHOLDS))
+        ]
+        class_values.append(float(np.mean(aps)))
+    return float(np.mean(class_values)) if class_values else float("nan")
+
+
+def _paired_parent_bootstrap(
+    observations_by_seed: dict[str, dict], *, iterations: int = 1000, seed: int = 20260809
+) -> dict:
+    prepared = {}
+    image_names = None
+    for seed_key, record in observations_by_seed.items():
+        prepared[seed_key] = {}
+        for arm in ("D0FT", "ACMC1"):
+            observations = record[arm]
+            names = [row["image_name"] for row in observations]
+            if image_names is None:
+                image_names = names
+            elif names != image_names:
+                raise RuntimeError("Urutan parent observations berbeda antar-checkpoint")
+            prepared[seed_key][arm] = _precompute_observation_stats(observations)
+    assert image_names is not None
+    count = len(image_names)
+    full = np.arange(count)
+    per_seed_point = {
+        seed_key: {
+            arm: _macro_map(prepared[seed_key][arm], full)
+            for arm in ("D0FT", "ACMC1")
+        }
+        for seed_key in prepared
+    }
+    point_delta = statistics.mean(
+        values["ACMC1"] - values["D0FT"] for values in per_seed_point.values()
+    )
+    generator = np.random.default_rng(seed)
+    deltas = np.empty(iterations, dtype=np.float64)
+    for iteration in range(iterations):
+        sample = generator.integers(0, count, size=count)
+        seed_deltas = []
+        for seed_key in prepared:
+            left = _macro_map(prepared[seed_key]["D0FT"], sample)
+            right = _macro_map(prepared[seed_key]["ACMC1"], sample)
+            seed_deltas.append(right - left)
+        deltas[iteration] = statistics.mean(seed_deltas)
+        if (iteration + 1) % 100 == 0:
+            print(f"PAIRED PARENT BOOTSTRAP {iteration + 1}/{iterations}", flush=True)
+    return {
+        "iterations": iterations,
+        "seed": seed,
+        "independent_parents": count,
+        "custom_macro_point_delta": point_delta,
+        "ci95_low": float(np.quantile(deltas, 0.025)),
+        "ci95_high": float(np.quantile(deltas, 0.975)),
+        "probability_positive": float(np.mean(deltas > 0.0)),
+        "per_seed_custom_macro": per_seed_point,
+    }
 
 
 def _evaluate_checkpoint(
@@ -71,6 +303,7 @@ def _evaluate_checkpoint(
             cached.get("checkpoint_sha256") != checkpoint_hash
             or cached.get("test_manifest_sha256") != test_manifest_hash
             or cached.get("split") != "test"
+            or not isinstance(cached.get("prediction_observations"), list)
         ):
             raise RuntimeError(f"Report test cache tidak kompatibel: {output}")
         print(f"REUSE LOCKED TEST REPORT: {output.name}", flush=True)
@@ -93,7 +326,8 @@ def _evaluate_checkpoint(
     }
     if device is not None:
         kwargs["device"] = device
-    metrics = YOLO(str(checkpoint)).val(**kwargs)
+    model = YOLO(str(checkpoint))
+    metrics = model.val(**kwargs)
     results = {key: float(value) for key, value in metrics.results_dict.items()}
     box = getattr(metrics, "box", None)
     if box is None or getattr(box, "ap", None) is None:
@@ -103,6 +337,7 @@ def _evaluate_checkpoint(
     )
     if results.get("classes_without_ground_truth"):
         raise RuntimeError("Locked test kehilangan ground truth kelas")
+    observations = _collect_prediction_observations(model, data_yaml.parent, device)
     payload = {
         "protocol": "faruq-v3-acmc-locked-test-report-v1",
         "checkpoint": str(checkpoint),
@@ -113,6 +348,7 @@ def _evaluate_checkpoint(
         "training_executed": False,
         "test_images_accessed": True,
         "metrics": results,
+        "prediction_observations": observations,
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -127,6 +363,7 @@ def run_faruq_v3_acmc_locked_test(
     d0ft_checkpoints: tuple[str | Path, ...],
     acmc_checkpoints: tuple[str | Path, ...],
     *,
+    amendment_summary: str | Path | None = None,
     seeds: tuple[int, ...] = FROZEN_SEEDS,
     device: str | None = None,
     authorize_test: bool = False,
@@ -149,8 +386,21 @@ def run_faruq_v3_acmc_locked_test(
         raise FileNotFoundError("Paket locked test belum lengkap")
     confirmation = _load_json(confirmation_summary, "ACMC paired confirmation")
     eligibility = _load_json(eligibility_summary, "Locked-test eligibility")
-    _validate_authority(confirmation, eligibility)
+    amendment = (
+        _load_json(amendment_summary, "Locked-test amendment v2")
+        if amendment_summary is not None
+        else None
+    )
+    eligibility_hash = _sha256(eligibility_summary)
+    protocol_version = _validate_authority(
+        confirmation, eligibility, amendment, eligibility_hash
+    )
     test_manifest_hash = _sha256(manifest)
+    authority_hashes = {
+        "eligibility": eligibility_hash,
+        "confirmation": _sha256(confirmation_summary),
+        "amendment": _sha256(amendment_summary) if amendment_summary is not None else None,
+    }
 
     checkpoint_map = {
         "D0FT": tuple(Path(path).expanduser().resolve() for path in d0ft_checkpoints),
@@ -175,6 +425,7 @@ def run_faruq_v3_acmc_locked_test(
             cached.get("status") != "complete"
             or cached.get("test_manifest_sha256") != test_manifest_hash
             or cached.get("checkpoint_hashes") != expected_hashes
+            or cached.get("authority_hashes") != authority_hashes
         ):
             raise RuntimeError("Final locked-test cache tidak kompatibel")
         print(f"REUSE FINAL LOCKED TEST: {summary_path}", flush=True)
@@ -182,8 +433,10 @@ def run_faruq_v3_acmc_locked_test(
 
     reports_root = output_root / "reports"
     per_seed: dict[str, dict] = {}
+    bootstrap_observations: dict[str, dict] = {}
     for index, seed in enumerate(frozen_seeds):
         results = {}
+        bootstrap_observations[str(seed)] = {}
         for arm in ("D0FT", "ACMC1"):
             checkpoint = checkpoint_map[arm][index]
             print(f"LOCKED TEST {arm} seed={seed}", flush=True)
@@ -196,6 +449,7 @@ def run_faruq_v3_acmc_locked_test(
                 device=device,
             )
             results[arm] = report["metrics"]
+            bootstrap_observations[str(seed)][arm] = report["prediction_observations"]
         deltas = {
             metric: float(results["ACMC1"][metric]) - float(results["D0FT"][metric])
             for metric in METRICS
@@ -230,19 +484,35 @@ def run_faruq_v3_acmc_locked_test(
         arm_values["delta_mean"] = arm_values["ACMC1"]["mean"] - arm_values["D0FT"]["mean"]
         classwise[class_name] = arm_values
 
+    bootstrap = (
+        _paired_parent_bootstrap(bootstrap_observations)
+        if protocol_version == "v2"
+        else None
+    )
     criteria = {
         "macro_head_gain_positive": aggregate["macro_map50_95"]["head_delta_mean"] > 0.0,
         "macro_head_improved_at_least_2_of_3": aggregate["macro_map50_95"]["head_improved_seeds"] >= 2,
-        "bottom3_head_mean_not_lower": aggregate["bottom3_class_map50_95"]["head_delta_mean"] >= 0.0,
-        "worst_head_mean_drop_no_more_than_1_point": aggregate["worst_class_map50_95"]["head_delta_mean"] >= -0.01,
     }
+    if bootstrap is not None:
+        criteria["paired_parent_bootstrap_probability_at_least_95_percent"] = (
+            bootstrap["probability_positive"] >= 0.95
+        )
+    else:
+        criteria.update(
+            {
+                "bottom3_head_mean_not_lower": aggregate["bottom3_class_map50_95"]["head_delta_mean"] >= 0.0,
+                "worst_head_mean_drop_no_more_than_1_point": aggregate["worst_class_map50_95"]["head_delta_mean"] >= -0.01,
+            }
+        )
     conclusion = "CONFIRMED" if all(criteria.values()) else "NOT_CONFIRMED"
     payload = {
-        "protocol": "faruq-v3-acmc-single-locked-test-v1",
+        "protocol": f"faruq-v3-acmc-single-locked-test-{protocol_version}",
+        "protocol_version": protocol_version,
         "status": "complete",
         "conclusion": conclusion,
         "seeds": list(frozen_seeds),
         "test_manifest_sha256": test_manifest_hash,
+        "authority_hashes": authority_hashes,
         "checkpoint_hashes": {arm: list(values) for arm, values in checkpoint_hashes.items()},
         "test_images_accessed": True,
         "test_opened": True,
@@ -251,6 +521,15 @@ def run_faruq_v3_acmc_locked_test(
         "per_seed": per_seed,
         "aggregate": aggregate,
         "classwise": classwise,
+        "paired_parent_bootstrap": bootstrap,
+        "metric_roles": {
+            "primary": "macro_map50_95",
+            "secondary_descriptive_only": (
+                ["bottom3_class_map50_95", "worst_class_map50_95"]
+                if protocol_version == "v2"
+                else []
+            ),
+        },
         "criteria": criteria,
         "next_action": "FINALIZE_THESIS_RESULT_NO_FURTHER_TUNING",
     }
@@ -265,6 +544,7 @@ def main() -> None:
     parser.add_argument("--test-root", required=True)
     parser.add_argument("--eligibility-summary", required=True)
     parser.add_argument("--confirmation-summary", required=True)
+    parser.add_argument("--amendment-summary")
     parser.add_argument("--output-root", required=True)
     parser.add_argument("--d0ft-checkpoints", nargs=3, required=True)
     parser.add_argument("--acmc-checkpoints", nargs=3, required=True)
@@ -279,6 +559,7 @@ def main() -> None:
         args.output_root,
         tuple(args.d0ft_checkpoints),
         tuple(args.acmc_checkpoints),
+        amendment_summary=args.amendment_summary,
         seeds=tuple(args.seeds),
         device=args.device,
         authorize_test=args.authorize_test,

@@ -126,6 +126,16 @@ muncul di development dan menghentikan inference jika dukungan independennya
 tidak memenuhi gate. Protokol beku dan larangan tuning pascatest tercatat di
 [docs/FARUQ_V3_ACMC_LOCKED_TEST_PROTOCOL.md](docs/FARUQ_V3_ACMC_LOCKED_TEST_PROTOCOL.md).
 
+Audit v1 kemudian menemukan 129 parent bebas leakage dan seluruh 21 kelas,
+tetapi gagal hanya pada ambang support per kelas sebelum inference model.
+Amandemen support v2 yang transparan, paired-parent bootstrap, dan notebook
+final tersedia di
+[`docs/FARUQ_V3_ACMC_LOCKED_TEST_AMENDMENT_V2.md`](docs/FARUQ_V3_ACMC_LOCKED_TEST_AMENDMENT_V2.md)
+serta
+[`notebooks/Faruq_V3_ACMC_Locked_Test_V2_Colab.ipynb`](notebooks/Faruq_V3_ACMC_Locked_Test_V2_Colab.ipynb).
+Kegagalan gate v1 tidak ditimpa; pada v2, bottom-3 dan worst-class AP hanya
+bersifat deskriptif karena support kelas langka terbatas.
+
 Aturan permanen untuk satu folder Drive bersama, perpindahan akun Colab, dan
 bug shortcut DriveFS dicatat di
 [docs/COLAB_SHARED_DRIVE_RUNBOOK.md](docs/COLAB_SHARED_DRIVE_RUNBOOK.md).
