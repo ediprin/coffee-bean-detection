@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
+import yaml
 
 from coffee_detector.experiments import run_faruq_v3_acmc_locked_test as module
 from coffee_detector.prepare_sni_fullscene import SNI21_CLASSES
@@ -16,7 +17,10 @@ def _write_json(path: Path, payload: dict) -> Path:
 def _fixture(tmp_path: Path):
     test_root = tmp_path / "test_root"
     test_root.mkdir()
-    (test_root / "data.yaml").write_text("test: test/images\nnames: []\n", encoding="utf-8")
+    (test_root / "data.yaml").write_text(
+        "val: test/images\ntest: test/images\nnames: {0: bean}\nlocked_test_only: true\n",
+        encoding="utf-8",
+    )
     (test_root / "faruq_locked_test_manifest.json").write_text("[]", encoding="utf-8")
     eligibility = _write_json(
         tmp_path / "eligibility.json",
@@ -62,7 +66,7 @@ def test_locked_test_requires_explicit_authority(tmp_path: Path) -> None:
 def test_locked_test_aggregates_paired_frozen_checkpoints(tmp_path: Path, monkeypatch) -> None:
     test_root, eligibility, confirmation, d0ft, acmc = _fixture(tmp_path)
 
-    def fake_evaluate(checkpoint, data_yaml, output, **kwargs):
+    def fake_evaluate(checkpoint, data_yaml, test_root, output, **kwargs):
         is_acmc = "ACMC1" in checkpoint.name
         base = 0.70 + (0.02 if is_acmc else 0.0)
         return {
@@ -112,3 +116,30 @@ def test_parent_bootstrap_uses_paired_images_and_detects_positive_delta() -> Non
     assert result["independent_parents"] == 2
     assert result["custom_macro_point_delta"] > 0.9
     assert result["probability_positive"] == 1.0
+
+
+def test_runtime_yaml_adds_required_schema_keys_without_changing_locked_source(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "locked" / "data.yaml"
+    source.parent.mkdir()
+    source.write_text(
+        yaml.safe_dump(
+            {
+                "path": str(source.parent),
+                "val": "test/images",
+                "test": "test/images",
+                "names": {0: "bean"},
+                "locked_test_only": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    runtime = module._ultralytics_test_yaml(source, tmp_path / "output")
+    original = yaml.safe_load(source.read_text(encoding="utf-8"))
+    compatible = yaml.safe_load(runtime.read_text(encoding="utf-8"))
+    assert "train" not in original
+    assert compatible["train"] == "test/images"
+    assert compatible["val"] == "test/images"
+    assert compatible["test"] == "test/images"
+    assert compatible["runtime_schema_alias_only"] is True

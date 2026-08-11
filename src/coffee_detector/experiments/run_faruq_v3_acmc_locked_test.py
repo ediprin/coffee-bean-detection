@@ -9,6 +9,7 @@ import statistics
 from pathlib import Path
 
 import numpy as np
+import yaml
 from PIL import Image
 
 from coffee_detector.evaluate import _classwise_summary
@@ -17,6 +18,36 @@ from coffee_detector.prepare_sni_fullscene import SNI21_CLASSES
 
 
 FROZEN_SEEDS = (42, 123, 2026)
+
+
+def _ultralytics_test_yaml(
+    locked_yaml: str | Path, output_root: str | Path
+) -> Path:
+    """Create a schema-compatible evaluation YAML without changing locked data."""
+
+    locked_yaml = Path(locked_yaml).expanduser().resolve()
+    output_root = Path(output_root).expanduser().resolve()
+    payload = yaml.safe_load(locked_yaml.read_text(encoding="utf-8")) or {}
+    if payload.get("locked_test_only") is not True:
+        raise RuntimeError("YAML sumber bukan paket locked-test")
+    test_images = payload.get("test")
+    if not test_images or not payload.get("names"):
+        raise RuntimeError("YAML locked-test tidak lengkap")
+    compatible = dict(payload)
+    # Ultralytics requires train and val keys even for split=test. They are
+    # schema placeholders only: this runner never invokes model.train().
+    compatible["train"] = test_images
+    compatible["val"] = test_images
+    compatible["test"] = test_images
+    compatible["path"] = str(locked_yaml.parent)
+    compatible["runtime_schema_alias_only"] = True
+    output = output_root / "locked_test_ultralytics_runtime.yaml"
+    output_root.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        yaml.safe_dump(compatible, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+    return output
 
 
 def _load_json(path: str | Path, label: str) -> dict:
@@ -291,6 +322,7 @@ def _paired_parent_bootstrap(
 def _evaluate_checkpoint(
     checkpoint: Path,
     data_yaml: Path,
+    test_root: Path,
     output: Path,
     *,
     checkpoint_hash: str,
@@ -337,7 +369,7 @@ def _evaluate_checkpoint(
     )
     if results.get("classes_without_ground_truth"):
         raise RuntimeError("Locked test kehilangan ground truth kelas")
-    observations = _collect_prediction_observations(model, data_yaml.parent, device)
+    observations = _collect_prediction_observations(model, test_root, device)
     payload = {
         "protocol": "faruq-v3-acmc-locked-test-report-v1",
         "checkpoint": str(checkpoint),
@@ -384,6 +416,7 @@ def run_faruq_v3_acmc_locked_test(
     manifest = test_root / "faruq_locked_test_manifest.json"
     if not data_yaml.is_file() or not manifest.is_file():
         raise FileNotFoundError("Paket locked test belum lengkap")
+    runtime_data_yaml = _ultralytics_test_yaml(data_yaml, output_root)
     confirmation = _load_json(confirmation_summary, "ACMC paired confirmation")
     eligibility = _load_json(eligibility_summary, "Locked-test eligibility")
     amendment = (
@@ -442,7 +475,8 @@ def run_faruq_v3_acmc_locked_test(
             print(f"LOCKED TEST {arm} seed={seed}", flush=True)
             report = _evaluate_checkpoint(
                 checkpoint,
-                data_yaml,
+                runtime_data_yaml,
+                test_root,
                 reports_root / f"{arm}_seed{seed}_test.json",
                 checkpoint_hash=checkpoint_hashes[arm][index],
                 test_manifest_hash=test_manifest_hash,
