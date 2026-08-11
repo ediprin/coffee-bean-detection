@@ -4,7 +4,46 @@ import argparse
 import json
 from pathlib import Path
 
+import numpy as np
+
 from .dataset import discover_layout
+
+
+def _classwise_summary(metric_object, names: dict[int, str]) -> dict:
+    """Summarize only classes that actually have evaluation targets.
+
+    Ultralytics ``Metric.maps`` fills classes without targets with the overall
+    mAP. Using it directly would make an absent rare class look average rather
+    than exposing the missing coverage.
+    """
+
+    class_indices = [
+        int(value) for value in np.asarray(metric_object.ap_class_index).reshape(-1)
+    ]
+    average_precision = np.asarray(metric_object.ap, dtype=np.float64)
+    if average_precision.ndim == 1:
+        average_precision = average_precision[:, None]
+    by_class = {
+        names[class_id]: float(average_precision[row].mean())
+        for row, class_id in enumerate(class_indices)
+        if class_id in names and row < len(average_precision)
+    }
+    missing = [names[class_id] for class_id in sorted(set(names) - set(class_indices))]
+    if not by_class:
+        return {
+            "map50_95_by_class": {},
+            "classes_without_ground_truth": missing,
+        }
+    values = np.asarray(list(by_class.values()), dtype=np.float64)
+    return {
+        "map50_95_by_class": by_class,
+        "classes_without_ground_truth": missing,
+        "macro_map50_95": float(values.mean()),
+        "worst_class_map50_95": float(values.min()),
+        "bottom3_class_map50_95": float(
+            np.sort(values)[: min(3, len(values))].mean()
+        ),
+    }
 
 
 def evaluate(
@@ -28,16 +67,15 @@ def evaluate(
         kwargs["device"] = device
     metrics = YOLO(str(checkpoint)).val(**kwargs)
     results = {key: float(value) for key, value in metrics.results_dict.items()}
-    box = getattr(metrics, "box", None)
-    if box is not None and getattr(box, "maps", None) is not None:
-        maps = list(box.maps)
-        results["map50_95_by_class"] = {
-            layout.names[index]: float(maps[index])
-            for index in sorted(layout.names)
-            if index < len(maps)
-        }
-        if results["map50_95_by_class"]:
-            results["worst_class_map50_95"] = min(results["map50_95_by_class"].values())
+    for metric_name, metric_object in (
+        ("box", getattr(metrics, "box", None)),
+        ("mask", getattr(metrics, "seg", None)),
+    ):
+        if metric_object is None or getattr(metric_object, "ap", None) is None:
+            continue
+        prefix = "" if metric_name == "box" else "mask_"
+        for key, value in _classwise_summary(metric_object, layout.names).items():
+            results[f"{prefix}{key}"] = value
     payload = {
         "checkpoint": str(checkpoint),
         "data": str(layout.root),
