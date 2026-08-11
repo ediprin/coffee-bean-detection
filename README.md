@@ -140,6 +140,13 @@ Hasil finalnya tercatat di
 ACMC1 naik pada 3/3 seed, tetapi paired-parent bootstrap tidak melewati gate
 0,95 sehingga putusan finalnya `NOT_CONFIRMED`.
 
+Stress test density sintetis pasca-test tersedia di
+[`notebooks/Faruq_V3_Synthetic_Density_Colab.ipynb`](notebooks/Faruq_V3_Synthetic_Density_Colab.ipynb)
+dengan protokol
+[docs/FARUQ_V3_SYNTHETIC_DENSITY_PROTOCOL.md](docs/FARUQ_V3_SYNTHETIC_DENSITY_PROTOCOL.md).
+Notebook meregenerasi scene hanya dari Faruq-v3 validation yang group-disjoint;
+B0--B3 lama tidak digunakan karena overlap dengan parent training Faruq-v3.
+
 Aturan permanen untuk satu folder Drive bersama, perpindahan akun Colab, dan
 bug shortcut DriveFS dicatat di
 [docs/COLAB_SHARED_DRIVE_RUNBOOK.md](docs/COLAB_SHARED_DRIVE_RUNBOOK.md).
