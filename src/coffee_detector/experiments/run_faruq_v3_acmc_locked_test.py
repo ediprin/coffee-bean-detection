@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import statistics
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -134,43 +135,40 @@ def _ground_truth(label_path: Path, width: int, height: int) -> list[dict]:
     return targets
 
 
-def _collect_prediction_observations(model, test_root: Path, device: str | None) -> list[dict]:
+def _collect_saved_prediction_observations(
+    test_root: Path, prediction_labels: Path
+) -> list[dict]:
     image_paths = sorted((test_root / "test/images").glob("*"))
     image_paths = [path for path in image_paths if path.is_file()]
     if not image_paths:
         raise FileNotFoundError("Locked test tidak memiliki gambar")
-    kwargs = {
-        "source": [str(path) for path in image_paths],
-        "imgsz": 640,
-        "conf": 0.001,
-        "iou": 0.7,
-        "max_det": 500,
-        "stream": True,
-        "verbose": False,
-    }
-    if device is not None:
-        kwargs["device"] = device
     observations = []
-    for result in model.predict(**kwargs):
-        image_path = Path(result.path)
+    for image_path in image_paths:
         with Image.open(image_path) as image:
             width, height = image.size
         label_path = test_root / "test/labels" / image_path.with_suffix(".txt").name
         targets = _ground_truth(label_path, width, height)
-        boxes = result.boxes
         predictions = []
-        if boxes is not None and len(boxes):
-            xyxy = boxes.xyxy.detach().cpu().numpy()
-            scores = boxes.conf.detach().cpu().numpy()
-            classes = boxes.cls.detach().cpu().numpy().astype(int)
-            predictions = [
-                {
-                    "class_id": int(class_id),
-                    "score": float(score),
-                    "xyxy": [float(value) for value in box],
-                }
-                for box, score, class_id in zip(xyxy, scores, classes)
-            ]
+        prediction_path = prediction_labels / image_path.with_suffix(".txt").name
+        if prediction_path.is_file():
+            for raw in prediction_path.read_text(encoding="utf-8").splitlines():
+                fields = raw.split()
+                if len(fields) != 6:
+                    raise ValueError(f"Prediksi YOLO tidak memiliki confidence: {prediction_path}")
+                class_id = int(fields[0])
+                x, y, box_width, box_height, score = map(float, fields[1:])
+                predictions.append(
+                    {
+                        "class_id": class_id,
+                        "score": score,
+                        "xyxy": [
+                            (x - box_width / 2) * width,
+                            (y - box_height / 2) * height,
+                            (x + box_width / 2) * width,
+                            (y + box_height / 2) * height,
+                        ],
+                    }
+                )
         observations.append(
             {"image_name": image_path.name, "targets": targets, "predictions": predictions}
         )
@@ -346,30 +344,41 @@ def _evaluate_checkpoint(
     except ImportError as error:  # pragma: no cover
         raise RuntimeError("Ultralytics belum terpasang") from error
 
-    kwargs = {
-        "data": str(data_yaml),
-        "split": "test",
-        "imgsz": 640,
-        "batch": 16,
-        "workers": 2,
-        "max_det": 500,
-        "plots": False,
-        "verbose": True,
-    }
-    if device is not None:
-        kwargs["device"] = device
-    model = YOLO(str(checkpoint))
-    metrics = model.val(**kwargs)
-    results = {key: float(value) for key, value in metrics.results_dict.items()}
-    box = getattr(metrics, "box", None)
-    if box is None or getattr(box, "ap", None) is None:
-        raise RuntimeError("Evaluator tidak menghasilkan box AP")
-    results.update(
-        _classwise_summary(box, {index: name for index, name in enumerate(SNI21_CLASSES)})
-    )
-    if results.get("classes_without_ground_truth"):
-        raise RuntimeError("Locked test kehilangan ground truth kelas")
-    observations = _collect_prediction_observations(model, test_root, device)
+    with tempfile.TemporaryDirectory(prefix="faruq_locked_test_") as temporary:
+        kwargs = {
+            "data": str(data_yaml),
+            "split": "test",
+            "imgsz": 640,
+            "batch": 16,
+            "workers": 2,
+            "max_det": 500,
+            "conf": 0.001,
+            "iou": 0.7,
+            "plots": False,
+            "verbose": True,
+            "save_txt": True,
+            "save_conf": True,
+            "project": temporary,
+            "name": "evaluation",
+            "exist_ok": True,
+        }
+        if device is not None:
+            kwargs["device"] = device
+        model = YOLO(str(checkpoint))
+        metrics = model.val(**kwargs)
+        results = {key: float(value) for key, value in metrics.results_dict.items()}
+        box = getattr(metrics, "box", None)
+        if box is None or getattr(box, "ap", None) is None:
+            raise RuntimeError("Evaluator tidak menghasilkan box AP")
+        results.update(
+            _classwise_summary(box, {index: name for index, name in enumerate(SNI21_CLASSES)})
+        )
+        if results.get("classes_without_ground_truth"):
+            raise RuntimeError("Locked test kehilangan ground truth kelas")
+        save_dir = Path(getattr(metrics, "save_dir", Path(temporary) / "evaluation"))
+        observations = _collect_saved_prediction_observations(
+            test_root, save_dir / "labels"
+        )
     payload = {
         "protocol": "faruq-v3-acmc-locked-test-report-v1",
         "checkpoint": str(checkpoint),

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from PIL import Image
 
 from coffee_detector.experiments import run_faruq_v3_acmc_locked_test as module
 from coffee_detector.prepare_sni_fullscene import SNI21_CLASSES
@@ -143,3 +144,23 @@ def test_runtime_yaml_adds_required_schema_keys_without_changing_locked_source(
     assert compatible["val"] == "test/images"
     assert compatible["test"] == "test/images"
     assert compatible["runtime_schema_alias_only"] is True
+
+
+def test_saved_validation_predictions_are_reused_for_bootstrap(tmp_path: Path) -> None:
+    test_root = tmp_path / "locked"
+    images = test_root / "test/images"
+    labels = test_root / "test/labels"
+    predictions = tmp_path / "validation/labels"
+    images.mkdir(parents=True)
+    labels.mkdir(parents=True)
+    predictions.mkdir(parents=True)
+    Image.new("RGB", (100, 80)).save(images / "bean.jpg")
+    (labels / "bean.txt").write_text("0 0.5 0.5 0.2 0.25\n", encoding="utf-8")
+    (predictions / "bean.txt").write_text(
+        "0 0.5 0.5 0.2 0.25 0.9\n", encoding="utf-8"
+    )
+    rows = module._collect_saved_prediction_observations(test_root, predictions)
+    assert len(rows) == 1
+    assert rows[0]["targets"][0]["xyxy"] == pytest.approx([40, 30, 60, 50])
+    assert rows[0]["predictions"][0]["xyxy"] == pytest.approx([40, 30, 60, 50])
+    assert rows[0]["predictions"][0]["score"] == pytest.approx(0.9)
