@@ -19,4 +19,7 @@ def test_v2_notebook_freezes_amendment_before_inference_and_never_trains() -> No
     assert "model_inference_executed" in source
     assert "train_experiment" not in source
     assert "--authorize-training" not in source
+    assert "locked_test_v2_run.log" in source
+    assert "stderr=subprocess.STDOUT" in source
+    assert "100 BARIS TERAKHIR" in source
     assert "tidak ada tuning berikutnya" in source
