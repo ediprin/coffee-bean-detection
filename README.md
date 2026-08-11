@@ -146,6 +146,10 @@ dengan protokol
 [docs/FARUQ_V3_SYNTHETIC_DENSITY_PROTOCOL.md](docs/FARUQ_V3_SYNTHETIC_DENSITY_PROTOCOL.md).
 Notebook meregenerasi scene hanya dari Faruq-v3 validation yang group-disjoint;
 B0--B3 lama tidak digunakan karena overlap dengan parent training Faruq-v3.
+Hasil seed-42 tercatat di
+[docs/FARUQ_V3_SYNTHETIC_DENSITY_RESULT_2026-08-12.md](docs/FARUQ_V3_SYNTHETIC_DENSITY_RESULT_2026-08-12.md):
+delta macro positif pada 4/4 kondisi, tetapi kecil dan tidak mengubah putusan
+locked test `NOT_CONFIRMED`.
 
 Aturan permanen untuk satu folder Drive bersama, perpindahan akun Colab, dan
 bug shortcut DriveFS dicatat di
