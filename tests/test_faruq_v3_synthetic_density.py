@@ -5,10 +5,17 @@ from PIL import Image, ImageDraw
 
 from coffee_detector.experiments import run_faruq_v3_synthetic_density_screening as screen
 from coffee_detector.experiments.run_faruq_v3_synthetic_density_setup import (
+    ARTIFACT_ROLE,
     _audit_library,
     _prepare_faruq_polygon_library,
 )
+from coffee_detector.generate_vadcp_dataset import ARTIFACT_ROLES
 from coffee_detector.prepare_sni_fullscene import SNI21_CLASSES
+
+
+def test_density_setup_uses_supported_development_artifact_role() -> None:
+    assert ARTIFACT_ROLE == "development_benchmark"
+    assert ARTIFACT_ROLE in ARTIFACT_ROLES
 
 
 def test_polygon_library_preserves_all_canonical_classes(tmp_path: Path) -> None:

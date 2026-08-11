@@ -29,6 +29,9 @@ from .vadcp.profile import (
 from .vadcp.types import Cutout
 
 
+ARTIFACT_ROLES = frozenset({"training_augmentation", "development_benchmark"})
+
+
 def _normalized_name(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", value.lower())
 
@@ -223,7 +226,7 @@ def generate_vadcp_dataset(
 ) -> dict:
     if synthetic_images <= 0:
         raise ValueError("synthetic_images harus positif")
-    if artifact_role not in {"training_augmentation", "development_benchmark"}:
+    if artifact_role not in ARTIFACT_ROLES:
         raise ValueError(f"artifact_role tidak dikenal: {artifact_role}")
     library_source_split = str(library_source_split).strip().lower()
     synthetic_split = str(synthetic_split).strip().lower()

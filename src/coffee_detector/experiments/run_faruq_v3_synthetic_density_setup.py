@@ -33,6 +33,9 @@ from coffee_detector.vadcp.library import (
 from coffee_detector.vadcp.profile import build_scene_calibration, save_scene_calibration
 
 
+ARTIFACT_ROLE = "development_benchmark"
+
+
 def _load_json(path: str | Path, label: str) -> dict | list:
     path = Path(path).expanduser().resolve()
     if not path.is_file():
@@ -350,7 +353,7 @@ def run_faruq_v3_synthetic_density_setup(
                 materialize_real_splits=False,
                 scene_profile=calibration,
                 target_names=names,
-                artifact_role="development_diagnostic",
+                artifact_role=ARTIFACT_ROLE,
                 library_source_split="val",
                 synthetic_split="val",
                 class_balanced=True,
