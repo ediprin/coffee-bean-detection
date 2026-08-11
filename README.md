@@ -158,6 +158,11 @@ dengan protokol beku
 Notebook menjalankan inference tiga pasangan checkpoint beku pada Adrian
 validation saja, memverifikasi hash checkpoint terhadap locked-test final,
 tidak mengekstrak test, dan tidak mengizinkan tuning pascatest.
+Hasilnya tercatat di
+[`docs/FARUQ_V3_ACMC_ADRIAN_EXTERNAL_RESULT_2026-08-12.md`](docs/FARUQ_V3_ACMC_ADRIAN_EXTERNAL_RESULT_2026-08-12.md):
+ACMC1 turun 0,30 poin Macro mAP50-95 dan lebih rendah pada 3/3 seed, sedangkan
+kedua model runtuh ke sekitar 3--4% pada domain Adrian. Statusnya
+`DOES_NOT_SUPPORT_EXTERNAL_DIRECTION` dan tidak mengubah locked-test.
 
 Aturan permanen untuk satu folder Drive bersama, perpindahan akun Colab, dan
 bug shortcut DriveFS dicatat di
