@@ -1,6 +1,6 @@
 {
   "protocol": "faruq-v3-breadth-screening-batch-v1",
-  "frozen_at": "2026-08-10",
+  "frozen_at": "2026-08-11",
   "seed": 42,
   "evaluation_split": "val",
   "test_policy": "locked_do_not_extract_do_not_open",
@@ -26,7 +26,8 @@
     "DRNET was re-frozen after the real AMP run exposed a Half/Float indexed-assignment mismatch in CML weighting; the repaired loss keeps CML weights in the logits dtype.",
     "SF1/CF1/SC1 were re-frozen after real validation exposed an eval contract mismatch: Ultralytics validation still needs one2many predictions for loss while inference uses one2one. Repaired heads return both branches in eval predictions.",
     "SSCB validation was repaired after the batch-8 real run exposed missing semantic logits on the eval-mode one-to-many loss path; the candidate is re-frozen at the exact repaired commit below.",
-    "BHCL was re-frozen with log-space contrastive denominators plus first-nonfinite tensor diagnostics after the real run triggered Ultralytics NaN recovery despite a finite first validation epoch."
+    "BHCL was re-frozen with log-space contrastive denominators plus first-nonfinite tensor diagnostics after the real run triggered Ultralytics NaN recovery despite a finite first validation epoch.",
+    "FBNR was re-frozen after the real AMP run exposed a CUDA cuFFT FP16 restriction at 640x640; only the Poisson FFT subroutine now executes in FP32 and casts back to the source dtype."
   ],
   "candidates": [
     {"id":"SAF1","family":"SAFPN","branch":"agent/safpn-classification-alignment","sha":"e36f89fd92e32c2cbd82e47a2d8147c9b2943b58","runner_token":"safpn","group":"detector","enabled":true},
@@ -34,7 +35,7 @@
     {"id":"PCL1","family":"PCLDet","branch":"agent/pcldet-prototype-baseline-screening","sha":"0f86c0eff79079d7adb563c2cda5c8bdbe8e0ab1","runner_token":"pcl","group":"detector","enabled":true},
     {"id":"DRNET","family":"DRNet","branch":"agent/drnet-dual-refinement-screening","sha":"99ea656ad1145cb695f48a3183d89c8be520de89","runner_token":"drnet","group":"detector","enabled":true},
     {"id":"DRIV","family":"DRNet-IV","branch":"agent/drnet-interaction-verification-screening","sha":"de8adfc1c071ae94c5201452e6e822c5ce7155b5","runner_token":"interaction","group":"detector","enabled":true},
-    {"id":"FBNR","family":"DSRDet-FBNR","branch":"agent/dsr-fbnr-screening","sha":"86f5ccc5ca58d88353d2ed7c339783762cac1110","runner_token":"fbnr","group":"detector","enabled":true},
+    {"id":"FBNR","family":"DSRDet-FBNR","branch":"agent/dsr-fbnr-screening","sha":"504441d6da6e24de8995eca9bfd319ef048f22d8","runner_token":"fbnr","group":"detector","enabled":true},
     {"id":"SSCB","family":"DSRDet-SSCB-MSDA","branch":"agent/dsr-sscb-msda-screening","sha":"d0bcde1ae4667461b763696bd49c9a49ca96fdf4","runner_token":"sscb","group":"detector","enabled":true},
     {"id":"SEMAUX","family":"Semantic-Aux","branch":"agent/leaf-preserving-semantic-screening","sha":"cf3c9e77e2ccadf7185a064dbbd09fbbc54f616a","runner_token":"semantic","group":"detector","enabled":true},
     {"id":"SG1","family":"Semantic-Guided-Leaf","branch":"agent/semantic-guided-leaf-screening","sha":"f1cdea577ccfaf51f8e559fac1950b33feb495d7","runner_token":"semantic","group":"detector","enabled":true},
