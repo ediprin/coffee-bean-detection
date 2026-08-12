@@ -1,0 +1,25 @@
+code: FCT0
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+stb:
+  window_size: 4
+  num_heads: 4
+  mlp_ratio: 4.0
+fcstb:
+  mode: control
+  temperature: 2.0
+  distillation_weight: 0.0
+  minimum_teacher_gt_probability: 0.10
+train:
+  epochs: 20
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 8
+  optimizer: AdamW
+  lr0: 0.001
+  cos_lr: true
+  pretrained: false
+  cache: false
+  close_mosaic: 10
+  max_det: 500
+  compile: false
