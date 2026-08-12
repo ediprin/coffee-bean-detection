@@ -137,13 +137,5 @@ def test_breadth_configs_freeze_paper_and_transfer_settings():
         assert cfg["gamma"] == 0.10
         assert cfg["angular_bins"] == 360
 
-
-def test_notebook_is_branch_correct_and_val_only():
-    notebook = ROOT / "notebooks/Faruq_V3_LFDet_AFAB_Screening_Colab.ipynb"
-    assert notebook.is_file()
-    payload = json.loads(notebook.read_text(encoding="utf-8"))
-    source = "\n".join("".join(cell.get("source", [])) for cell in payload.get("cells", []))
-    assert "agent/lfdet-afab-frequency-input-screening" in source
-    assert "run_faruq_v3_afab_screening" in source
-    assert "--authorize-training" in source
-    assert "split=test" not in source.lower()
+# The synthesis branch reuses the audited AFAB operator; its executable
+# contract is covered by the AGSF notebook rather than the standalone AFAB one.

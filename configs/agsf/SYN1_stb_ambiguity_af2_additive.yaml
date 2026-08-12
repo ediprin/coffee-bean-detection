@@ -1,0 +1,26 @@
+code: SYN1
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+agsf:
+  frequency_mode: additive
+  hidden_dim: 64
+  context_kernel: 3
+  correction_scale: 1.0
+  ambiguity_floor: 0.0
+  window_size: 4
+  num_heads: 4
+  mlp_ratio: 4.0
+  af2_patch_size: 32
+  af2_overlap: 0.50
+  af2_radius_ratio: 0.05
+  af2_gamma: 0.10
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500
