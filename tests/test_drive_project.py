@@ -103,6 +103,33 @@ def test_resolver_can_use_artifacts_when_shortcut_target_is_an_id(
     ) == project
 
 
+def test_resolver_skips_incomplete_marked_root_for_complete_shortcut(
+    tmp_path: Path,
+) -> None:
+    incomplete = _marked_project(tmp_path / "MyDrive" / "Coffee_Bean_Detection")
+    complete = _marked_project(
+        tmp_path
+        / ".shortcut-targets-by-id"
+        / "shared-id"
+        / "Coffee_Bean_Detection"
+    )
+    required = (
+        Path("bundles/faruq-development-v3-grouped.tar"),
+        Path("experiments/baseline/weights/best.pt"),
+        Path("experiments/control/report.json"),
+    )
+    for relative in required:
+        artifact = complete / relative
+        artifact.parent.mkdir(parents=True, exist_ok=True)
+        artifact.write_bytes(b"complete")
+
+    assert not (incomplete / required[0]).is_file()
+    assert resolve_drive_project_root(
+        [tmp_path / "MyDrive", tmp_path / ".shortcut-targets-by-id"],
+        required_relative_paths=required,
+    ) == complete
+
+
 def test_require_project_artifact_uses_exact_relative_path(tmp_path: Path) -> None:
     project = _marked_project(tmp_path / "Coffee_Bean_Detection")
     artifact = project / "bundles" / "dataset.tar"

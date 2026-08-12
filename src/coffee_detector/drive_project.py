@@ -32,6 +32,14 @@ def _candidate_rank(path: Path) -> tuple[int, int, str]:
     return preference, len(path.parts), normalized
 
 
+def _contains_required_artifacts(
+    candidate: Path, required: tuple[Path, ...]
+) -> bool:
+    """Return whether one project root contains every caller-required file."""
+
+    return all((candidate / relative).is_file() for relative in required)
+
+
 def resolve_drive_project_root(
     search_roots: Iterable[str | Path] = DEFAULT_DRIVE_SEARCH_ROOTS,
     *,
@@ -55,13 +63,25 @@ def resolve_drive_project_root(
         direct = root / PROJECT_DIRECTORY
         if direct.is_dir() and (
             all((direct / name).is_file() for name in PROJECT_MARKERS)
-            or (required and all((direct / item).is_file() for item in required))
+            or (required and _contains_required_artifacts(direct, required))
         ):
             candidates[direct.as_posix()] = direct
         for marker in root.rglob(PROJECT_MARKERS[0]):
             candidate = marker.parent
             if all((candidate / name).is_file() for name in PROJECT_MARKERS):
                 candidates[candidate.as_posix()] = candidate
+
+    # Marker files establish that a directory is a project root, but they do
+    # not establish that this account sees a complete copy of the project.
+    # This matters when MyDrive contains an old/incomplete directory while a
+    # shared shortcut exposes the complete project.  A caller that supplies
+    # required paths must receive one root containing *all* of them.
+    if required:
+        candidates = {
+            key: candidate
+            for key, candidate in candidates.items()
+            if _contains_required_artifacts(candidate, required)
+        }
 
     # Google Drive FUSE can retain a cached shortcut view after files are moved
     # into the shared folder.  In that case marker files may lag behind larger
@@ -79,9 +99,7 @@ def resolve_drive_project_root(
                     candidate = match
                     for _ in anchor.parts:
                         candidate = candidate.parent
-                    if all(
-                        (candidate / relative).is_file() for relative in required
-                    ):
+                    if _contains_required_artifacts(candidate, required):
                         candidates[candidate.as_posix()] = candidate
 
     if not candidates:
