@@ -191,4 +191,7 @@ def test_notebook_is_branch_correct_val_only_and_generates_frozen_text_cache():
     assert "ViT-B-32" in source and "openai" in source
     assert "run_faruq_v3_ftif_screening" in source
     assert "--authorize-training" in source
+    assert "CHUNK3_OUTPUT" in source
+    assert "saved_epochs" in source
+    assert "RESUME OUTPUT" in source
     assert "split=test" not in source.lower()
