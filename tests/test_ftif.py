@@ -83,6 +83,19 @@ def test_ftif_similarity_exists_only_for_one2many_when_alignment_enabled():
     assert candidate.model[-1].config.temperature == 0.07
 
 
+def test_ftif_eval_predictions_keep_similarity_for_validation_loss():
+    _, candidate = _models(alignment=True)
+    candidate.eval()
+    with torch.no_grad():
+        output = candidate(torch.randn(1, 3, 128, 128))
+    predictions = output[1]
+    assert "ftif_similarity" in predictions["one2many"]
+    assert "ftif_similarity" not in predictions["one2one"]
+    assert predictions["one2many"]["ftif_similarity"].shape == (
+        predictions["one2many"]["scores"].transpose(1, 2).shape
+    )
+
+
 def test_ftif_e2e_loss_routes_alignment_only_to_one2many():
     _, candidate = _models(alignment=True)
     candidate.args = type(

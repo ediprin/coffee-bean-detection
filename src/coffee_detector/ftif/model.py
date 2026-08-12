@@ -224,7 +224,15 @@ class FTIFDetectHead(nn.Module):
             return {"one2many": one2many, "one2one": one2one}
 
         one2many = (
-            self._forward_branch(features, self.one2many, include_alignment=False)
+            # Ultralytics computes validation loss from the auxiliary
+            # one-to-many predictions while the module is in eval mode.  FT3
+            # therefore still needs Eq. (19) similarity here; decoded
+            # inference continues to use one-to-one and is unchanged.
+            self._forward_branch(
+                features,
+                self.one2many,
+                include_alignment=bool(self.config.bidirectional_alignment),
+            )
             if self._has_heads(self.one2many)
             else None
         )
