@@ -15,6 +15,7 @@ from coffee_detector.ftif import (
     load_text_embedding_payload,
     validate_manifest_against_class_names,
 )
+from coffee_detector.experiments.run_faruq_v3_ftif_screening import _run_is_complete
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_YAML = ROOT / "configs/coffee_fg/models/yolo26n-p3.yaml"
@@ -80,6 +81,45 @@ def test_ftif_similarity_exists_only_for_one2many_when_alignment_enabled():
     similarity = output["one2many"]["ftif_similarity"]
     assert similarity.shape == scores.shape
     assert candidate.model[-1].config.temperature == 0.07
+
+
+def test_ftif_e2e_loss_routes_alignment_only_to_one2many():
+    _, candidate = _models(alignment=True)
+    candidate.args = type(
+        "Args", (), {"box": 7.5, "cls": 0.5, "dfl": 1.5, "epochs": 2}
+    )()
+    criterion = candidate.init_criterion()
+    assert criterion.one2many.apply_ftif_alignment is True
+    assert criterion.one2one.apply_ftif_alignment is False
+
+    candidate.train()
+    predictions = candidate(torch.randn(1, 3, 128, 128))
+    batch = {
+        "batch_idx": torch.tensor([0.0]),
+        "cls": torch.tensor([[1.0]]),
+        "bboxes": torch.tensor([[0.5, 0.5, 0.25, 0.25]]),
+    }
+    loss, components = criterion(predictions, batch)
+    assert torch.isfinite(loss).all()
+    assert torch.isfinite(components).all()
+
+
+def test_ftif_runner_does_not_treat_partial_best_as_complete(tmp_path):
+    run_dir = tmp_path / "FT3_seed42"
+    weights = run_dir / "weights"
+    weights.mkdir(parents=True)
+    torch.save({"epoch": 0, "optimizer": {"state": {}}}, weights / "best.pt")
+    assert _run_is_complete(run_dir, expected_epochs=50) is False
+
+    torch.save({"epoch": 4, "optimizer": {"state": {}}}, weights / "last.pt")
+    (run_dir / "results.csv").write_text(
+        "epoch,metrics/mAP50-95(B)\n1,0.7\n2,0.8\n3,0.75\n4,0.76\n5,0.77\n",
+        encoding="utf-8",
+    )
+    assert _run_is_complete(run_dir, expected_epochs=50) is False
+
+    torch.save({"epoch": -1, "optimizer": None}, weights / "last.pt")
+    assert _run_is_complete(run_dir, expected_epochs=50) is True
 
 
 def test_bidirectional_alignment_prefers_correct_pairing():

@@ -105,6 +105,14 @@ class FTIFDetectionLoss:
                     raise TypeError("FTIF loss memerlukan FTIFDetectHead")
                 self.ftif_head = head
                 self.ftif_config = FTIFConfig.from_mapping(head.config)
+                # YOLO26 E2ELoss constructs this loss twice: one-to-many uses
+                # tal_topk2=None, while one-to-one uses tal_topk2=1.  The
+                # frozen FTIF protocol attaches Eq. (20) only to one-to-many;
+                # the one-to-one branch intentionally has no similarity
+                # matrix and must retain the native loss.
+                self.apply_ftif_alignment = bool(
+                    self.ftif_config.bidirectional_alignment and tal_topk2 is None
+                )
 
             def get_assigned_targets_and_loss(self, preds, batch):
                 assignments, loss, _ = super().get_assigned_targets_and_loss(preds, batch)
@@ -112,6 +120,12 @@ class FTIFDetectionLoss:
                 if not self.ftif_config.bidirectional_alignment:
                     if similarity is not None:
                         raise RuntimeError("Similarity tidak boleh dibuat saat alignment nonaktif")
+                    return assignments, loss, loss.detach()
+                if not self.apply_ftif_alignment:
+                    if similarity is not None:
+                        raise RuntimeError(
+                            "FTIF similarity hanya boleh dibuat untuk branch one-to-many"
+                        )
                     return assignments, loss, loss.detach()
                 if similarity is None:
                     raise RuntimeError("FTIF alignment aktif tetapi similarity matrix hilang")

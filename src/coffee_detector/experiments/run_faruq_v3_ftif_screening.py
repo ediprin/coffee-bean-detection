@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 from pathlib import Path
@@ -26,6 +27,47 @@ CONFIGS = {
     "FT2": REPO_ROOT / "configs/ftif/FT2_base_specific_crossattn.yaml",
     "FT3": REPO_ROOT / "configs/ftif/FT3_base_specific_bidirectional.yaml",
 }
+
+
+def _checkpoint_state(path: Path) -> tuple[int | None, bool]:
+    """Return checkpoint epoch and whether resumable optimizer state exists."""
+    if not path.is_file():
+        return None, False
+    from ultralytics.utils.patches import torch_load
+
+    payload = torch_load(path, map_location="cpu")
+    if not isinstance(payload, dict):
+        return None, False
+    epoch = payload.get("epoch")
+    return (int(epoch) if epoch is not None else None), payload.get("optimizer") is not None
+
+
+def _result_epochs(path: Path) -> int:
+    if not path.is_file():
+        return 0
+    with path.open(newline="", encoding="utf-8") as stream:
+        rows = list(csv.DictReader(stream))
+    if not rows:
+        return 0
+    try:
+        return int(float(rows[-1].get("epoch", len(rows))))
+    except (TypeError, ValueError):
+        return len(rows)
+
+
+def _run_is_complete(run_dir: Path, expected_epochs: int) -> bool:
+    best = run_dir / "weights/best.pt"
+    last = run_dir / "weights/last.pt"
+    if not best.is_file() or not last.is_file():
+        return False
+    if _result_epochs(run_dir / "results.csv") >= int(expected_epochs):
+        return True
+    epoch, has_optimizer = _checkpoint_state(last)
+    # Ultralytics strips completed (including legitimately early-stopped)
+    # checkpoints to epoch=-1 and removes optimizer state during finalization.
+    return epoch == -1 and not has_optimizer
+
+
 METRICS = ("macro_map50_95", "bottom3_class_map50_95", "worst_class_map50_95")
 
 
@@ -88,14 +130,20 @@ def _train_arm(
 
     run_dir = output_root / f"{arm}_seed{seed}"
     best, last = run_dir / "weights/best.pt", run_dir / "weights/last.pt"
+    expected_epochs = int(payload["train"]["epochs"])
     trainer = make_ftif_trainer(
         config,
         text_embedding_path=text_embedding_path,
         d0_checkpoint=d0_checkpoint,
     )
     training_executed = False
-    if not best.is_file():
-        if last.is_file():
+    if not _run_is_complete(run_dir, expected_epochs):
+        last_epoch, last_resumable = _checkpoint_state(last)
+        if last.is_file() and last_resumable and last_epoch is not None and last_epoch >= 0:
+            print(
+                f"RESUME {arm} seed={seed} dari epoch {last_epoch + 1}/{expected_epochs}",
+                flush=True,
+            )
             model = YOLO(str(last))
             args = {"resume": True}
             if device is not None:
@@ -120,8 +168,11 @@ def _train_arm(
                 args["device"] = device
             model.train(trainer=trainer, **args)
         training_executed = True
-    if not best.is_file():
-        raise FileNotFoundError(best)
+    if not _run_is_complete(run_dir, expected_epochs):
+        raise RuntimeError(
+            f"Run {arm} belum lengkap setelah trainer selesai: {run_dir}. "
+            "Checkpoint parsial tidak boleh dievaluasi."
+        )
     return best, training_executed, config.to_dict()
 
 
