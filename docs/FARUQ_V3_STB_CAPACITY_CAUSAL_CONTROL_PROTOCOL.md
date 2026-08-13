@@ -61,6 +61,25 @@ STB1 seed-42 artifacts are reused; only CMC0 is trained in this stage.
 - No test extraction or evaluation.
 - No hyperparameter change after observing CMC0.
 
+## Paired three-seed confirmation amendment
+
+The seed-42 PASS freezes a single confirmation protocol. Existing D0 seed 123
+and 2026 checkpoints from the ACMC paired experiment are reused; baseline
+training is not repeated. For each new seed, both STB1 and CMC0 start from the
+same seed-matched D0 checkpoint and use their unchanged 50-epoch schedules.
+Seed 42 is reused from the completed causal-control report.
+
+The aggregate confirmation passes only if STB1 versus CMC0:
+
+- gains at least 0.5 Macro point on average;
+- improves Macro in at least 2/3 seeds;
+- does not lower mean Bottom-3 and improves it in at least 2/3 seeds;
+- loses no more than one mean Worst-class point.
+
+Only seeds 123 and 2026 may be newly trained. Every run writes independent
+Drive directories and heartbeat locks, resumes from `last.pt`, and refuses a
+non-monotonic results file. Test extraction and evaluation remain forbidden.
+
 ## Resume incident amendment
 
 The first seed-42 execution was interrupted after a clean best checkpoint at

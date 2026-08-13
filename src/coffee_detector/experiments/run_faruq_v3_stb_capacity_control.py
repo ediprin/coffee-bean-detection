@@ -88,9 +88,12 @@ def _run_complete(run_dir: Path, epochs: int) -> bool:
     best, last = run_dir / "weights/best.pt", run_dir / "weights/last.pt"
     if not best.is_file() or not last.is_file():
         return False
-    if _epochs(run_dir / "results.csv") >= epochs:
-        return True
     epoch, resumable = _checkpoint_state(last)
+    completed_epochs = _epochs(run_dir / "results.csv")
+    if completed_epochs >= epochs:
+        return (epoch == -1 and not resumable) or (
+            epoch is not None and epoch + 1 >= epochs
+        )
     return epoch == -1 and not resumable
 
 
@@ -148,10 +151,15 @@ def _recover_from_best(run_dir: Path) -> dict:
 
 
 @contextmanager
-def _exclusive_training_lock(output_root: Path, stale_seconds: int = 300):
+def _exclusive_training_lock(
+    output_root: Path,
+    stale_seconds: int = 300,
+    *,
+    lock_name: str = "CMC0_seed42.training.lock",
+):
     """Drive-visible heartbeat lock preventing concurrent Colab writers."""
 
-    lock = output_root / "CMC0_seed42.training.lock"
+    lock = output_root / lock_name
     token = uuid.uuid4().hex
     while True:
         try:

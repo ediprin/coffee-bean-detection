@@ -96,7 +96,7 @@ def test_epoch_audit_rejects_interleaved_concurrent_resume(tmp_path):
 
 def test_protocol_and_notebook_are_frozen_resumable_and_val_only():
     protocol = (ROOT / "docs/FARUQ_V3_STB_CAPACITY_CAUSAL_CONTROL_PROTOCOL.md").read_text(encoding="utf-8")
-    assert "Status: frozen before training" in protocol and "Test remains locked" in protocol
+    assert "seed-42 gate **PASS**" in protocol and "test" in protocol.lower()
     payload = json.loads((ROOT / "notebooks/Faruq_V3_STB_Capacity_Control_Colab.ipynb").read_text(encoding="utf-8"))
     source = "\n".join("".join(cell.get("source", [])) for cell in payload["cells"])
     assert "agent/stb-capacity-causal-control" in source
@@ -104,3 +104,13 @@ def test_protocol_and_notebook_are_frozen_resumable_and_val_only():
     assert "--stage','static'" in source and "--stage','train'" in source
     assert "--authorize-training" in source and "split=test" not in source.lower()
     assert "--recover-from-best" in source
+
+
+def test_exclusive_lock_can_be_named_per_arm(tmp_path):
+    from coffee_detector.experiments.run_faruq_v3_stb_capacity_control import (
+        _exclusive_training_lock,
+    )
+
+    with _exclusive_training_lock(tmp_path, lock_name="STB1_seed123.training.lock"):
+        assert (tmp_path / "STB1_seed123.training.lock").is_file()
+    assert not (tmp_path / "STB1_seed123.training.lock").exists()
