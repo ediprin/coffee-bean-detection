@@ -151,17 +151,23 @@ confirmation.
 5. Cross-source generalization is unsupported; Adrian evaluation collapsed for
    both D0FT and ACMC1.
 
-## Registered next candidate (no result yet)
+## FMH1 focal-modulation completion
 
-`FMH1` was frozen before training on 2026-08-13. It replaces STB1's shifted
-window blocks with two official-style FocalNet modulation blocks on each
-P3/P4/P5 classification input while preserving the native YOLO26 box path and
-an exact D0 identity start. Its validation-only seed-42 gate requires it to
-beat both STB1 and the stronger FCT0 optimization control; passing does not
-open test. Until `fmh1_seed42_decision.json` exists, FMH1 has no empirical
-status and must not be placed in the result ranking.
+FMH1 replaced STB1's shifted-window blocks with two official-style FocalNet
+modulation blocks on each P3/P4/P5 classification input while preserving the
+native YOLO26 box path and an exact D0 identity start.
 
-Frozen protocol: `docs/FARUQ_V3_FOCAL_MODULATION_PROTOCOL.md`.
+| Model | Macro | Bottom-3 | Worst | Decision |
+|---|---:|---:|---:|---|
+| FMH1 | 87.60% | 79.40% | 78.99% | FAIL |
+
+FMH1 was lower than STB1 by 1.07 Macro, 4.24 Bottom-3, and 1.82 Worst-class
+points. It was lower than FCT0 by 1.80, 5.43, and 5.16 points respectively.
+Every frozen criterion failed, so no capacity control, extra seed, or test
+evaluation is authorized.
+
+Protocol: `docs/FARUQ_V3_FOCAL_MODULATION_PROTOCOL.md`. Result:
+`docs/FARUQ_V3_FOCAL_MODULATION_RESULT_2026-08-13.md`.
 
 ## Authoritative raw sources
 
@@ -173,3 +179,4 @@ Frozen protocol: `docs/FARUQ_V3_FOCAL_MODULATION_PROTOCOL.md`.
 - `experiments/faruq-v3-agsf-synthesis-v1/val_reports/agsf_core_seed42_decision.json`
 - `experiments/faruq-v3-sgfr-frozen-synthesis-v1/val_reports/sgfr_geometry_seed42_decision.json`
 - `experiments/faruq-v3-fcstb-distillation-v1/val_reports/fcstb_seed42_decision.json`
+- `experiments/faruq-v3-focal-modulation-v1/val_reports/fmh1_seed42_decision.json`
