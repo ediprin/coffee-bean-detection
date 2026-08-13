@@ -143,13 +143,17 @@ confirmation.
    validation and locked-test evaluation. Its locked-test trend is positive but
    formally `NOT_CONFIRMED`.
 2. STB1 is the strongest canonical seed-42 breadth candidate by Macro and
-   IGEM1 by Worst-class AP.
+   IGEM1 by Worst-class AP. STB1 also passed its seed-42 capacity-near-matched
+   causal screen against CMC0, but paired seeds 123/2026 remain outstanding.
 3. AFAB, FTIF, and the other retained breadth candidates remain discovery
    evidence only.
 4. AGSF, SGFR, and FC-STB are completed negative synthesis results. None
    authorizes additional seed or test access under its frozen protocol.
 5. Cross-source generalization is unsupported; Adrian evaluation collapsed for
    both D0FT and ACMC1.
+6. FCT0 is the highest seed-42 optimization-control observation (89.40 / 84.83
+   / 84.15), not an architectural winner. No candidate may claim superiority
+   from that row without a matched mechanism comparison.
 
 ## FMH1 focal-modulation completion
 
@@ -169,16 +173,30 @@ evaluation is authorized.
 Protocol: `docs/FARUQ_V3_FOCAL_MODULATION_PROTOCOL.md`. Result:
 `docs/FARUQ_V3_FOCAL_MODULATION_RESULT_2026-08-13.md`.
 
-## Registered STB causal control (no result yet)
+## STB capacity-causal control completion
 
 `CMC0` was frozen before training to distinguish STB1's shifted-window spatial
 interaction from added head capacity. CMC0 uses the same D0 initialization,
 P3/P4/P5 placement, two-block depth, identity gate, and 50-epoch schedule as
 STB1, but every operation is pointwise in H/W. CMC0 has 4,588,025 parameters
-versus STB1's 4,589,201 (0.0256% difference). Only CMC0 seed 42 is authorized
-at this stage; STB1 is reused and test remains locked.
+versus STB1's 4,589,201 (0.0256% difference).
+
+| Model | Macro | Bottom-3 | Worst | Role |
+|---|---:|---:|---:|---|
+| D0FT | 86.69% | 74.98% | 72.02% | native optimization control |
+| CMC0 | 87.10% | 81.87% | **81.31%** | capacity-near-matched non-spatial control |
+| STB1 | **88.67%** | **83.64%** | 80.81% | shifted-window spatial candidate |
+
+CMC0 first passed its viability gate against D0FT. Relative to CMC0, STB1
+gained +1.57 Macro and +1.77 Bottom-3 points while losing only 0.49
+Worst-class point, within the frozen one-point tolerance. Every seed-42 causal
+criterion passed. This supports a spatial-token-mixing effect beyond parameter
+count at seed 42; it does not yet establish a seed-robust or test-confirmed
+causal effect. Paired CMC0/STB1 confirmation on seeds 123 and 2026 is now
+authorized. Test remains locked.
 
 Frozen protocol: `docs/FARUQ_V3_STB_CAPACITY_CAUSAL_CONTROL_PROTOCOL.md`.
+Result: `docs/FARUQ_V3_STB_CAPACITY_CAUSAL_CONTROL_RESULT_2026-08-13.md`.
 
 ## Authoritative raw sources
 
@@ -191,3 +209,4 @@ Frozen protocol: `docs/FARUQ_V3_STB_CAPACITY_CAUSAL_CONTROL_PROTOCOL.md`.
 - `experiments/faruq-v3-sgfr-frozen-synthesis-v1/val_reports/sgfr_geometry_seed42_decision.json`
 - `experiments/faruq-v3-fcstb-distillation-v1/val_reports/fcstb_seed42_decision.json`
 - `experiments/faruq-v3-focal-modulation-v1/val_reports/fmh1_seed42_decision.json`
+- `experiments/faruq-v3-stb-capacity-control-v1/val_reports/stb_capacity_control_seed42_decision.json`

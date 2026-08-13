@@ -1,6 +1,7 @@
 # Faruq-v3 STB Capacity-Causal Control Protocol
 
-Status: frozen before training. Test remains locked.
+Status: seed-42 gate **PASS**. Paired seeds 123/2026 are authorized; test
+remains locked.
 
 ## Question
 
