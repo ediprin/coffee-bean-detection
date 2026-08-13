@@ -27,7 +27,10 @@ def make_stb_control_trainer(
                     stb=frozen,
                 )
             )
-            if not getattr(self.args, "resume", False):
+            if weights is not None:
+                transfer = load_stb_control_weights(model, weights)
+                print(f"CMC0 RESUME WEIGHT TRANSFER: {transfer}", flush=True)
+            elif not getattr(self.args, "resume", False):
                 from ultralytics import YOLO
 
                 transfer = load_stb_control_weights(model, YOLO(str(bound)).model)

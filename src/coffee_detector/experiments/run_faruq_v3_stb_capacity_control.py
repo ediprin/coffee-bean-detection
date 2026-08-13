@@ -6,6 +6,12 @@ import argparse
 import csv
 import hashlib
 import json
+import os
+import shutil
+import threading
+import time
+import uuid
+from contextlib import contextmanager
 from pathlib import Path
 
 import yaml
@@ -46,17 +52,24 @@ def _metrics(payload: dict) -> dict[str, float]:
     return {name: float(source[name]) for name in METRICS}
 
 
-def _epochs(path: Path) -> int:
+def _epoch_sequence(path: Path) -> list[int]:
     if not path.is_file():
-        return 0
+        return []
     with path.open(newline="", encoding="utf-8") as stream:
         rows = list(csv.DictReader(stream))
-    if not rows:
+    return [int(float(row["epoch"])) for row in rows]
+
+
+def _epochs(path: Path) -> int:
+    sequence = _epoch_sequence(path)
+    if not sequence:
         return 0
-    try:
-        return int(float(rows[-1].get("epoch", len(rows)))) + 1
-    except (TypeError, ValueError):
-        return len(rows)
+    expected = list(range(sequence[0], sequence[0] + len(sequence)))
+    if sequence != expected:
+        raise RuntimeError(
+            f"results.csv tidak monotonik; kemungkinan dua runtime menulis bersamaan: {sequence}"
+        )
+    return sequence[-1] + 1
 
 
 def _checkpoint_state(path: Path) -> tuple[int | None, bool]:
@@ -79,6 +92,103 @@ def _run_complete(run_dir: Path, epochs: int) -> bool:
         return True
     epoch, resumable = _checkpoint_state(last)
     return epoch == -1 and not resumable
+
+
+def _recover_from_best(run_dir: Path) -> dict:
+    """Explicitly discard interleaved resume rows and restart from clean best.pt."""
+
+    best, last = run_dir / "weights/best.pt", run_dir / "weights/last.pt"
+    csv_path = run_dir / "results.csv"
+    if not best.is_file() or not csv_path.is_file():
+        raise FileNotFoundError("Recovery memerlukan best.pt dan results.csv")
+    try:
+        completed = _epochs(csv_path)
+    except RuntimeError:
+        completed = None
+    if completed is not None:
+        return {"status": "not_needed", "clean_epochs": completed}
+    from ultralytics.utils.patches import torch_load
+
+    checkpoint = torch_load(best, map_location="cpu")
+    best_epoch = int(checkpoint.get("epoch", -1))
+    if best_epoch < 0 or checkpoint.get("optimizer") is None:
+        raise RuntimeError("best.pt bukan checkpoint resumable")
+    with csv_path.open(newline="", encoding="utf-8") as stream:
+        rows = list(csv.DictReader(stream))
+        fields = list(rows[0]) if rows else []
+    keep = []
+    expected = 1
+    for row in rows:
+        epoch = int(float(row["epoch"]))
+        if epoch != expected or epoch > best_epoch + 1:
+            break
+        keep.append(row)
+        expected += 1
+    if len(keep) != best_epoch + 1:
+        raise RuntimeError(
+            f"CSV bersih hanya {len(keep)} epoch, tetapi best.pt memerlukan {best_epoch + 1}"
+        )
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    backup = run_dir / f"corrupt_resume_backup_{stamp}"
+    backup.mkdir(parents=True, exist_ok=False)
+    shutil.copy2(csv_path, backup / "results.csv")
+    if last.is_file():
+        shutil.copy2(last, backup / "last.pt")
+    with csv_path.open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(keep)
+    shutil.copy2(best, last)
+    return {
+        "status": "recovered",
+        "recovered_from_epoch": best_epoch + 1,
+        "backup": str(backup),
+        "discarded_rows": len(rows) - len(keep),
+    }
+
+
+@contextmanager
+def _exclusive_training_lock(output_root: Path, stale_seconds: int = 300):
+    """Drive-visible heartbeat lock preventing concurrent Colab writers."""
+
+    lock = output_root / "CMC0_seed42.training.lock"
+    token = uuid.uuid4().hex
+    while True:
+        try:
+            descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(descriptor, json.dumps({"token": token, "pid": os.getpid()}).encode())
+            os.close(descriptor)
+            break
+        except FileExistsError:
+            age = time.time() - lock.stat().st_mtime
+            if age <= stale_seconds:
+                raise RuntimeError(
+                    f"CMC0 sedang ditulis runtime lain (heartbeat {age:.0f} detik lalu). "
+                    "Hentikan runtime lain; jangan menjalankan dua notebook pada output yang sama."
+                )
+            lock.unlink(missing_ok=True)
+    stopped = threading.Event()
+
+    def heartbeat():
+        while not stopped.wait(30):
+            try:
+                lock.touch()
+            except OSError:
+                return
+
+    thread = threading.Thread(target=heartbeat, daemon=True)
+    thread.start()
+    try:
+        yield lock
+    finally:
+        stopped.set()
+        thread.join(timeout=2)
+        try:
+            payload = json.loads(lock.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            payload = {}
+        if payload.get("token") == token:
+            lock.unlink(missing_ok=True)
 
 
 def _comparison(stb: dict, control: dict) -> dict:
@@ -112,6 +222,7 @@ def run_stb_capacity_control(
     seed: int = 42,
     device: str | None = None,
     authorize_training: bool = False,
+    recover_from_best: bool = False,
 ) -> dict:
     if seed != 42 or stage not in {"static", "train"}:
         raise ValueError("STB causal control dikunci seed 42 dan stage static/train")
@@ -150,26 +261,31 @@ def run_stb_capacity_control(
     run_dir = output_root / f"CMC0_seed{seed}"
     best, last = run_dir / "weights/best.pt", run_dir / "weights/last.pt"
     training_executed = False
+    recovery = None
+    if recover_from_best:
+        recovery = _recover_from_best(run_dir)
+        print(f"RECOVERY CMC0: {recovery}", flush=True)
     if not _run_complete(run_dir, epochs):
         from ultralytics import YOLO
 
         trainer = make_stb_control_trainer(config, d0_checkpoint=d0_checkpoint)
         epoch, resumable = _checkpoint_state(last)
-        if last.is_file() and resumable and epoch is not None and epoch >= 0:
-            print(f"RESUME CMC0 dari epoch {epoch + 1}/{epochs}", flush=True)
-            model, args = YOLO(str(last)), {"resume": True}
-        else:
-            print("START CMC0 dari checkpoint D0 yang sama dengan STB1", flush=True)
-            model = YOLO(str(REPO_ROOT / payload["model"]))
-            args = dict(payload["train"])
-            args.update(
-                data=str(data_root / "data.yaml"), project=str(output_root),
-                name=f"CMC0_seed{seed}", exist_ok=True, seed=seed,
-                deterministic=True, plots=True, verbose=True,
-            )
-        if device is not None:
-            args["device"] = device
-        model.train(trainer=trainer, **args)
+        with _exclusive_training_lock(output_root):
+            if last.is_file() and resumable and epoch is not None and epoch >= 0:
+                print(f"RESUME CMC0 dari epoch {epoch + 1}/{epochs}", flush=True)
+                model, args = YOLO(str(last)), {"resume": True}
+            else:
+                print("START CMC0 dari checkpoint D0 yang sama dengan STB1", flush=True)
+                model = YOLO(str(REPO_ROOT / payload["model"]))
+                args = dict(payload["train"])
+                args.update(
+                    data=str(data_root / "data.yaml"), project=str(output_root),
+                    name=f"CMC0_seed{seed}", exist_ok=True, seed=seed,
+                    deterministic=True, plots=True, verbose=True,
+                )
+            if device is not None:
+                args["device"] = device
+            model.train(trainer=trainer, **args)
         training_executed = True
     if not _run_complete(run_dir, epochs):
         raise RuntimeError(f"Run CMC0 belum lengkap: {run_dir}")
@@ -193,6 +309,7 @@ def run_stb_capacity_control(
         "capacity": static["models"],
         "parameter_relative_gap": static["parameter_relative_gap"],
         "training_executed_this_call": training_executed,
+        "recovery": recovery,
         "decision": decision,
         "next_action": "AUTHORIZE_PAIRED_STB_CONTROL_MULTI_SEED" if decision == "PASS" else "STOP_STB_CAUSAL_CLAIM_WITHOUT_TEST",
         "checkpoint": str(best),
@@ -214,11 +331,17 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device")
     parser.add_argument("--authorize-training", action="store_true")
+    parser.add_argument(
+        "--recover-from-best",
+        action="store_true",
+        help="Explicitly quarantine an interleaved resume and continue from clean best.pt",
+    )
     args = parser.parse_args()
     result = run_stb_capacity_control(
         args.data_root, args.grouped_summary, args.d0_checkpoint, args.stb_summary,
         args.output_root, stage=args.stage, seed=args.seed, device=args.device,
         authorize_training=args.authorize_training,
+        recover_from_best=args.recover_from_best,
     )
     print(json.dumps(result, indent=2, ensure_ascii=False))
 

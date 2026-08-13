@@ -1,4 +1,5 @@
 import json
+import csv
 from pathlib import Path
 
 import torch
@@ -6,6 +7,7 @@ import torch
 from coffee_detector.experiments.run_faruq_v3_stb_capacity_control import (
     _comparison,
     _control_validity,
+    _epochs,
 )
 from coffee_detector.stb import STBConfig, STBDetectionModel, load_stb_weights
 from coffee_detector.stb_control import (
@@ -78,6 +80,20 @@ def test_gate_requires_viable_control_and_stb_advantage():
     assert _comparison(dict(stb, macro_map50_95=0.873), control)["decision"] == "FAIL"
 
 
+def test_epoch_audit_rejects_interleaved_concurrent_resume(tmp_path):
+    path = tmp_path / "results.csv"
+    with path.open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=["epoch"])
+        writer.writeheader()
+        writer.writerows({"epoch": value} for value in (1, 2, 3, 2, 4))
+    try:
+        _epochs(path)
+    except RuntimeError as error:
+        assert "tidak monotonik" in str(error)
+    else:
+        raise AssertionError("Interleaved CSV seharusnya ditolak")
+
+
 def test_protocol_and_notebook_are_frozen_resumable_and_val_only():
     protocol = (ROOT / "docs/FARUQ_V3_STB_CAPACITY_CAUSAL_CONTROL_PROTOCOL.md").read_text(encoding="utf-8")
     assert "Status: frozen before training" in protocol and "Test remains locked" in protocol
@@ -87,3 +103,4 @@ def test_protocol_and_notebook_are_frozen_resumable_and_val_only():
     assert "resolve_drive_project_root(required_relative_paths=REQUIRED)" in source
     assert "--stage','static'" in source and "--stage','train'" in source
     assert "--authorize-training" in source and "split=test" not in source.lower()
+    assert "--recover-from-best" in source

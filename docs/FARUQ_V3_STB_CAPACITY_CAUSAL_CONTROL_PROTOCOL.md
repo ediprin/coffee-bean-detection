@@ -59,3 +59,19 @@ STB1 seed-42 artifacts are reused; only CMC0 is trained in this stage.
 - Seed 42 is screening, not final confirmation.
 - No test extraction or evaluation.
 - No hyperparameter change after observing CMC0.
+
+## Resume incident amendment
+
+The first seed-42 execution was interrupted after a clean best checkpoint at
+epoch 11. The original resume adapter failed to load the custom CMC0 weights,
+and overlapping Colab resumes produced non-monotonic CSV rows. All rows after
+the clean prefix are invalid. The runner now (1) strictly loads the complete
+CMC0 checkpoint on resume, (2) rejects non-monotonic epoch sequences, and (3)
+uses a Drive-visible heartbeat lock to prevent concurrent writers.
+
+The explicit `--recover-from-best` action archives the corrupt CSV/last
+checkpoint, restores `last.pt` from the resumable clean `best.pt`, truncates
+the CSV to its matching 11-epoch prefix, and resumes unchanged training. It is
+idempotent when the run is already clean. This is engineering recovery, not
+model selection or hyperparameter tuning; the architecture, seed, schedule,
+validation gate, and test lock remain unchanged.
