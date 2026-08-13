@@ -1,8 +1,12 @@
 # Faruq-v3 SGFR Frozen Residual Synthesis Protocol
 
-Status: frozen before training  
+Status: completed with a negative geometry-stage result.
 Protocol: `faruq-v3-sgfr-frozen-synthesis-v1`  
 Date frozen: 2026-08-12
+
+SGI1 did not beat its optimization-matched SGC0 control, so SGF2 was not
+authorized and test remained closed. See
+`FARUQ_V3_SGFR_FROZEN_SYNTHESIS_RESULT_2026-08-13.md`.
 
 ## Question
 

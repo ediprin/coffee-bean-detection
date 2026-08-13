@@ -1,6 +1,9 @@
 # Faruq-v3 AGSF Synthesis Protocol v1
 
-Status: frozen before training. Date: 2026-08-12.
+Status: completed with a negative core-stage result. Date: 2026-08-13.
+
+SYN0 failed the frozen gate against STB1, so SYN1/SYN2 were not authorized and
+test remained closed. See `FARUQ_V3_AGSF_SYNTHESIS_RESULT_2026-08-13.md`.
 
 ## Research question
 
