@@ -169,6 +169,17 @@ evaluation is authorized.
 Protocol: `docs/FARUQ_V3_FOCAL_MODULATION_PROTOCOL.md`. Result:
 `docs/FARUQ_V3_FOCAL_MODULATION_RESULT_2026-08-13.md`.
 
+## Registered STB causal control (no result yet)
+
+`CMC0` was frozen before training to distinguish STB1's shifted-window spatial
+interaction from added head capacity. CMC0 uses the same D0 initialization,
+P3/P4/P5 placement, two-block depth, identity gate, and 50-epoch schedule as
+STB1, but every operation is pointwise in H/W. CMC0 has 4,588,025 parameters
+versus STB1's 4,589,201 (0.0256% difference). Only CMC0 seed 42 is authorized
+at this stage; STB1 is reused and test remains locked.
+
+Frozen protocol: `docs/FARUQ_V3_STB_CAPACITY_CAUSAL_CONTROL_PROTOCOL.md`.
+
 ## Authoritative raw sources
 
 - `experiments/faruq-v3-breadth-screening-batch-v1/master_results.json`
