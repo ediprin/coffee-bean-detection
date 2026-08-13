@@ -86,5 +86,9 @@ def test_notebook_is_resumable_shared_drive_and_validation_only() -> None:
     assert "D0_seed2026/weights/best.pt" in source
     assert "--seeds', '123', '2026'" in source
     assert "--authorize-training" in source
+    assert "stdout=log_stream" in source
+    assert "stdout=subprocess.PIPE" not in source
+    assert "time.sleep(60)" in source
+    assert "[STATUS]" in source
     assert "split=test" not in source.lower()
     assert "test tidak" in source.lower()
