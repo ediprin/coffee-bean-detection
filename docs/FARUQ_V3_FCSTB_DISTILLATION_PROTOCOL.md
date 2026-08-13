@@ -1,6 +1,11 @@
 # Faruq-v3 FC-STB Frequency-Consistent Distillation Protocol
 
-Status: frozen before training (2026-08-13).
+Status: completed with a negative distillation result (2026-08-13).
+
+The frozen seed-42 gate failed. AF2 showed validation headroom, but FCD1 did
+not beat either STB1 or its optimization-matched FCT0 control on the required
+lower-tail metrics. No additional seed or test evaluation is authorized. See
+`FARUQ_V3_FCSTB_DISTILLATION_RESULT_2026-08-13.md`.
 
 ## Question
 
