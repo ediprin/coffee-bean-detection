@@ -210,3 +210,14 @@ Result: `docs/FARUQ_V3_STB_CAPACITY_CAUSAL_CONTROL_RESULT_2026-08-13.md`.
 - `experiments/faruq-v3-fcstb-distillation-v1/val_reports/fcstb_seed42_decision.json`
 - `experiments/faruq-v3-focal-modulation-v1/val_reports/fmh1_seed42_decision.json`
 - `experiments/faruq-v3-stb-capacity-control-v1/val_reports/stb_capacity_control_seed42_decision.json`
+
+## AF2 and IGEM1 paired confirmation authorization
+
+**Status: protocol frozen; seed 123/2026 not yet run.** After the STB/CMC0
+confirmation, the next limited confirmation package reuses the completed
+three-seed D0FT controls and trains only AF2 and IGEM1 for seeds 123 and 2026.
+Seed 42 is reused from breadth screening. Each candidate receives an
+independent validation-only decision; test is not reopened.
+
+Frozen protocol:
+`docs/FARUQ_V3_AF2_IGEM_PAIRED_CONFIRMATION_PROTOCOL.md`.
