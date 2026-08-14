@@ -41,6 +41,32 @@ def _checkpoint_seed(path: str | Path) -> int:
     return int(args["seed"])
 
 
+def _install_checkpoint_compatibility(model_name: str) -> None:
+    """Install only compatibility shims required by known legacy checkpoints.
+
+    ACMC1 seed42 predates the later ACMC2 ``entropy_margin_gates`` attribute.
+    PyTorch restores pickled modules without rerunning ``__init__``; therefore a
+    valid entropy-only ACMC1 checkpoint can lack that newer attribute. This is
+    the same narrow compatibility behavior used by the repository's validated
+    ACMC1 residual-error audit V3/V4.
+    """
+    if model_name != "ACMC1":
+        return
+    from coffee_detector.ambiguity_multilevel.model import AmbiguityConditionedFusion
+
+    def _legacy_compatible_ambiguity(self, logits: torch.Tensor, level: int) -> torch.Tensor:
+        probability = logits.detach().softmax(dim=1)
+        entropy = self._entropy(probability)
+        gates = getattr(self, "entropy_margin_gates", None)
+        if gates is None:
+            return entropy
+        margin_uncertainty = self._margin_uncertainty(probability)
+        return gates[level](entropy, margin_uncertainty)
+
+    AmbiguityConditionedFusion._ambiguity = _legacy_compatible_ambiguity
+    print("ACMC1 legacy checkpoint compatibility: INSTALLED", flush=True)
+
+
 def _target_tensors(image_path, annotations, device):
     image = cv2.imread(str(image_path))
     if image is None:
@@ -80,6 +106,9 @@ def _confidence_match(pred_boxes, pred_conf, target_boxes):
 
 
 def export_events(checkpoint, data_root, output, *, model_name: str, seed: int, device: str = "0"):
+    # Compatibility must be installed before Ultralytics unpickles/executes a
+    # legacy custom head.
+    _install_checkpoint_compatibility(model_name)
     from ultralytics import YOLO
 
     checkpoint = Path(checkpoint).expanduser().resolve()
