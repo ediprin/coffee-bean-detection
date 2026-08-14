@@ -57,9 +57,12 @@ head depth, pyramid placement, initialization, or training schedule. The
 remaining controlled distinction is spatial token interaction. The result is
 therefore evidence for an STB spatial-mixing contribution on Faruq-v3.
 
-This remains a screening result. It is not yet evidence of multi-seed
-robustness and does not authorize test access. The next frozen action is a
-paired CMC0-versus-STB1 confirmation on seeds 123 and 2026.
+This seed-42 screening result subsequently failed multi-seed confirmation.
+Across seeds 42/123/2026, STB1 exceeded CMC0 by only +0.07 Macro point on
+average, below the frozen +0.50-point threshold. Therefore this section must
+not be cited without the completed follow-up:
+`FARUQ_V3_STB_CAPACITY_PAIRED_CONFIRMATION_RESULT_2026-08-14.md`.
+Test access was not authorized.
 
 ## Resume provenance
 

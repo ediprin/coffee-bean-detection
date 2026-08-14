@@ -1,7 +1,9 @@
 # Faruq-v3 STB Capacity-Causal Control Protocol
 
-Status: seed-42 gate **PASS**. Paired seeds 123/2026 are authorized; test
-remains locked.
+Status: seed-42 gate **PASS**; paired seed 42/123/2026 confirmation **FAIL**.
+The STB spatial-causal claim is stopped and test remains locked. Frozen rules
+below are preserved as preregistered; completed values are recorded in
+`FARUQ_V3_STB_CAPACITY_PAIRED_CONFIRMATION_RESULT_2026-08-14.md`.
 
 ## Question
 

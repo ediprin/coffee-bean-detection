@@ -1,6 +1,6 @@
 # Faruq-v3 Model Experiment Master Log
 
-Snapshot date: 2026-08-13
+Snapshot date: 2026-08-14
 
 This document consolidates the completed Faruq-v3 detector experiments that
 led from the YOLO26n baseline through ACMC, breadth screening, and the latest
@@ -143,8 +143,11 @@ confirmation.
    validation and locked-test evaluation. Its locked-test trend is positive but
    formally `NOT_CONFIRMED`.
 2. STB1 is the strongest canonical seed-42 breadth candidate by Macro and
-   IGEM1 by Worst-class AP. STB1 also passed its seed-42 capacity-near-matched
-   causal screen against CMC0, but paired seeds 123/2026 remain outstanding.
+   IGEM1 by Worst-class AP. STB1 passed its seed-42 capacity-near-matched
+   screen, but **failed** the paired three-seed causal gate against CMC0:
+   Macro gain was only +0.07 point against the frozen +0.50 requirement.
+   STB remains a high-performing validation reference, not a confirmed spatial
+   mechanism or a test-authorized candidate.
 3. AFAB, FTIF, and the other retained breadth candidates remain discovery
    evidence only.
 4. AGSF, SGFR, and FC-STB are completed negative synthesis results. None
@@ -198,6 +201,26 @@ authorized. Test remains locked.
 Frozen protocol: `docs/FARUQ_V3_STB_CAPACITY_CAUSAL_CONTROL_PROTOCOL.md`.
 Result: `docs/FARUQ_V3_STB_CAPACITY_CAUSAL_CONTROL_RESULT_2026-08-13.md`.
 
+### Paired seed 42/123/2026 result
+
+| Model | Macro mean | Bottom-3 mean | Worst mean |
+|---|---:|---:|---:|
+| CMC0 | 87.75% | 78.99% | 75.45% |
+| STB1 | **87.82%** | **80.50%** | **78.36%** |
+| STB1 minus CMC0 | +0.07 | +1.50 | +2.90 points |
+
+Per-seed STB1-minus-CMC0 Macro deltas were `+1.57`, `-1.38`, and `+0.02`
+points for seeds 42, 123, and 2026. Bottom-3 deltas were `+1.77`, `-1.70`,
+and `+4.43`; Worst-class deltas were `-0.49`, `-0.31`, and `+9.52` points.
+
+The paired confirmation **FAILS** because mean Macro gain (+0.07 point) is
+below the frozen +0.50-point threshold. Although mean lower-tail metrics are
+higher, Worst improves in only 1/3 seeds and its positive mean is driven by
+seed 2026. The STB spatial-causal claim is stopped and test remains closed.
+
+Full result:
+`docs/FARUQ_V3_STB_CAPACITY_PAIRED_CONFIRMATION_RESULT_2026-08-14.md`.
+
 ## Authoritative raw sources
 
 - `experiments/faruq-v3-breadth-screening-batch-v1/master_results.json`
@@ -210,11 +233,13 @@ Result: `docs/FARUQ_V3_STB_CAPACITY_CAUSAL_CONTROL_RESULT_2026-08-13.md`.
 - `experiments/faruq-v3-fcstb-distillation-v1/val_reports/fcstb_seed42_decision.json`
 - `experiments/faruq-v3-focal-modulation-v1/val_reports/fmh1_seed42_decision.json`
 - `experiments/faruq-v3-stb-capacity-control-v1/val_reports/stb_capacity_control_seed42_decision.json`
+- `experiments/faruq-v3-stb-paired-confirmation-v1/val_reports/stb_capacity_paired_confirmation.json`
 
 ## AF2 and IGEM1 paired confirmation authorization
 
-**Status: protocol frozen; seed 123/2026 not yet run.** After the STB/CMC0
-confirmation, the next limited confirmation package reuses the completed
+**Status: protocol frozen; seed 123/2026 not yet run.** The STB/CMC0 paired
+confirmation is now complete with a FAIL decision. The next limited
+confirmation package reuses the completed
 three-seed D0FT controls and trains only AF2 and IGEM1 for seeds 123 and 2026.
 Seed 42 is reused from breadth screening. Each candidate receives an
 independent validation-only decision; test is not reopened.
