@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import torch
@@ -99,3 +100,15 @@ def test_frozen_screening_gate_requires_geometry_specific_and_size_gain():
     assert _geometry_gate(geo, control, d0ft)["decision"] == "PASS"
     failed = dict(geo, size_class_mean_map50_95=0.803)
     assert _geometry_gate(failed, control, d0ft)["decision"] == "FAIL"
+
+
+def test_colab_uses_compact_progress_instead_of_streaming_ultralytics_output():
+    notebook = ROOT / "notebooks/Faruq_V3_Geometry_Conditioning_Screening_Colab.ipynb"
+    payload = json.loads(notebook.read_text(encoding="utf-8"))
+    source = "\n".join(
+        "".join(cell.get("source", [])) for cell in payload.get("cells", [])
+    )
+    assert "TRAIN_LOG = Path('/content/geometry_conditioning_train.log')" in source
+    assert "def compact_progress():" in source
+    assert "time.sleep(60)" in source
+    assert "for line in process.stdout" not in source
