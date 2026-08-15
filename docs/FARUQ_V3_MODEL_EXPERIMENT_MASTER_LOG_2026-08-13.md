@@ -234,15 +234,34 @@ Full result:
 - `experiments/faruq-v3-focal-modulation-v1/val_reports/fmh1_seed42_decision.json`
 - `experiments/faruq-v3-stb-capacity-control-v1/val_reports/stb_capacity_control_seed42_decision.json`
 - `experiments/faruq-v3-stb-paired-confirmation-v1/val_reports/stb_capacity_paired_confirmation.json`
+- `experiments/faruq-v3-af2-igem-paired-confirmation-v1/val_reports/af2_igem_paired_confirmation.json`
 
 ## AF2 and IGEM1 paired confirmation authorization
 
-**Status: protocol frozen; seed 123/2026 not yet run.** The STB/CMC0 paired
-confirmation is now complete with a FAIL decision. The next limited
-confirmation package reuses the completed
-three-seed D0FT controls and trains only AF2 and IGEM1 for seeds 123 and 2026.
-Seed 42 is reused from breadth screening. Each candidate receives an
-independent validation-only decision; test is not reopened.
+**Status: completed — AF2 PASS and IGEM1 PASS.** The paired confirmation reused
+the completed three-seed D0FT controls and seed-42 breadth results, then trained
+only AF2 and IGEM1 for seeds 123 and 2026. Test was not accessed.
+
+| Model | Macro mean | Bottom-3 mean | Worst mean | Decision |
+|---|---:|---:|---:|---|
+| D0FT | 86.62% | 76.58% | 73.05% | control |
+| **AF2** | **87.94%** | **79.37%** | **78.15%** | **PASS** |
+| IGEM1 | 87.71% | 79.27% | 77.74% | **PASS** |
+
+AF2 minus D0FT averaged +1.32 Macro, +2.80 Bottom-3, and +5.10
+Worst-class points. Macro improved in 3/3 seeds, while Bottom-3 and Worst
+improved in 2/3. IGEM1 minus D0FT averaged +1.10, +2.69, and +4.69 points
+respectively, with the same improvement counts. Both candidates satisfied all
+independently frozen gates.
+
+AF2 is the descriptive lead between the two because its aggregate means are
+slightly higher and its lower-tail dispersion is smaller. The protocol did not
+freeze a direct AF2-versus-IGEM1 superiority test, so this is not a formal
+pairwise superiority claim. No test reopening or post-result fusion/tuning is
+authorized.
 
 Frozen protocol:
 `docs/FARUQ_V3_AF2_IGEM_PAIRED_CONFIRMATION_PROTOCOL.md`.
+
+Full result:
+`docs/FARUQ_V3_AF2_IGEM_PAIRED_CONFIRMATION_RESULT_2026-08-15.md`.
