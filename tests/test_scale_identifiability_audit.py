@@ -24,10 +24,19 @@ def test_expected_auc_perfect_order():
     assert 3.0 < threshold < 4.0
 
 
-def test_iqr_overlap():
+def test_iqr_overlap_positive_case():
     a = _summary(np.asarray([1.0, 2.0, 3.0, 4.0]))
-    b = _summary(np.asarray([3.0, 4.0, 5.0, 6.0]))
+    b = _summary(np.asarray([2.0, 3.0, 4.0, 5.0]))
     overlap = _iqr_overlap(a, b)
     assert overlap["exists"] is True
-    assert overlap["width"] >= 0.0
-    assert 0.0 <= overlap["fraction_of_iqr_union"] <= 1.0
+    assert overlap["width"] > 0.0
+    assert 0.0 < overlap["fraction_of_iqr_union"] <= 1.0
+
+
+def test_iqr_overlap_disjoint_case():
+    a = _summary(np.asarray([1.0, 2.0, 3.0, 4.0]))
+    b = _summary(np.asarray([5.0, 6.0, 7.0, 8.0]))
+    overlap = _iqr_overlap(a, b)
+    assert overlap["exists"] is False
+    assert overlap["width"] == 0.0
+    assert overlap["fraction_of_iqr_union"] == 0.0
