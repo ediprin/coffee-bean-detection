@@ -1,6 +1,12 @@
+import json
+from pathlib import Path
+
 import torch
 
 from coffee_detector.circle_cpe import CircleCPEConfig, circle_pair_loss
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_circle_loss_prefers_separated_class_geometry():
@@ -34,3 +40,19 @@ def test_circle_config_projection_is_inference_matched_to_cpe():
     assert projection.iou_threshold == 0.7
     assert projection.temperature == 0.2
     assert projection.loss_weight == 0.005
+
+
+def test_colab_v2_reuses_control_reports_without_requiring_old_checkpoints():
+    notebook = ROOT / "notebooks/Faruq_V3_Circle_CPE_Matched_Objective_Screening_Colab_v2.ipynb"
+    payload = json.loads(notebook.read_text(encoding="utf-8"))
+    source = "\n".join(
+        "".join(cell.get("source", [])) for cell in payload.get("cells", [])
+    )
+    report = "CPE0_REPORT=CONTROL_REPORT_DIR/'CPE0_seed42_val.json'"
+    conditional = (
+        "CPE0_CHECKPOINT=None if CPE0_REPORT.is_file() "
+        "else find_unique_checkpoint('CPE0_seed42')"
+    )
+    assert report in source
+    assert conditional in source
+    assert source.index(report) < source.index(conditional)
