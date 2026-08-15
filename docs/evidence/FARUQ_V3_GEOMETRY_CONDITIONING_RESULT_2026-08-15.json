@@ -1,0 +1,50 @@
+{
+  "protocol": "faruq-v3-geometry-conditioning-screening-v1",
+  "date": "2026-08-15",
+  "seed": 42,
+  "evaluation_split": "val",
+  "test_opened": false,
+  "decision": "RETAIN",
+  "next_action": "AUTHORIZE_PAIRED_THREE_SEED_GEO_CONFIRMATION",
+  "results": {
+    "D0FT": {
+      "macro_map50_95": 0.8668870418312263,
+      "bottom3_class_map50_95": 0.7498085237045921,
+      "worst_class_map50_95": 0.7202242739437643
+    },
+    "GEO-C0": {
+      "macro_map50_95": 0.870901248008038,
+      "bottom3_class_map50_95": 0.755102524482739,
+      "worst_class_map50_95": 0.703566748066748,
+      "size_class_mean_map50_95": 0.8672419348887721
+    },
+    "GEO1": {
+      "macro_map50_95": 0.8731200296459662,
+      "bottom3_class_map50_95": 0.806079403461867,
+      "worst_class_map50_95": 0.7870544032327583,
+      "size_class_mean_map50_95": 0.8833418591985887
+    }
+  },
+  "deltas": {
+    "GEO1_minus_GEO-C0": {
+      "macro_map50_95": 0.0022187816379282133,
+      "bottom3_class_map50_95": 0.05097687897912806,
+      "worst_class_map50_95": 0.08348765516601031,
+      "size_class_mean_map50_95": 0.016099924309816625
+    },
+    "GEO1_minus_D0FT": {
+      "macro_map50_95": 0.0062329878147399,
+      "bottom3_class_map50_95": 0.0562708797572749,
+      "worst_class_map50_95": 0.066830129288994
+    }
+  },
+  "capacity": {
+    "D0_parameters": 2511990,
+    "GEO-C0_parameters": 2512843,
+    "GEO1_parameters": 2512843,
+    "added_parameters": 853
+  },
+  "control_validity": "PASS",
+  "geometry_retain_gate": "PASS",
+  "authoritative_runtime_report": "Coffee_Bean_Detection/experiments/faruq-v3-geometry-conditioning-screening-v1/val_reports/geometry_conditioning_seed42_decision.json"
+}
