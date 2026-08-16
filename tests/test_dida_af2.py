@@ -119,6 +119,41 @@ def test_end_to_end_paired_loss_is_finite_and_three_component(tmp_path):
     )
 
 
+def test_validation_eval_tuple_uses_single_native_view():
+    from pathlib import Path
+
+    from coffee_detector.dida_af2.model import DIDAAF2DetectionModel
+
+    root = Path(__file__).resolve().parents[1]
+    payload = yaml.safe_load(
+        (root / "configs/dida_af2/AF2FT_yolo26n.yaml").read_text(encoding="utf-8")
+    )
+    model = DIDAAF2DetectionModel(
+        str(root / payload["model"]),
+        ch=3,
+        nc=21,
+        verbose=False,
+        afab=payload["afab"],
+        dida=payload["dida"],
+    )
+    model.args = SimpleNamespace(box=7.5, cls=0.5, dfl=1.5, epochs=50)
+    image = torch.rand(1, 3, 64, 64)
+    batch = {
+        "img": image,
+        "batch_idx": torch.tensor([0]),
+        "cls": torch.tensor([[3.0]]),
+        "bboxes": torch.tensor([[0.5, 0.5, 0.3, 0.3]]),
+    }
+    model.eval()
+    predictions = model(image)
+    assert isinstance(predictions, tuple)
+    assert isinstance(predictions[0], torch.Tensor)
+    assert isinstance(predictions[1], dict)
+    loss, items = model.loss(batch, predictions)
+    assert loss.shape == items.shape == (3,)
+    assert torch.isfinite(loss).all() and torch.isfinite(items).all()
+
+
 def test_factorial_decision_requires_joint_to_beat_both_single_factors(tmp_path):
     from coffee_detector.experiments.run_faruq_v3_dida_af2_decision import (
         run_faruq_v3_dida_af2_decision,

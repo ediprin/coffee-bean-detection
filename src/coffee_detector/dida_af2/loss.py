@@ -216,8 +216,29 @@ class DIDAE2ELoss:
         return native, dg, fg, matched, weak_loss[1], strong_loss[1]
 
     def __call__(self, preds, batch):
-        if not isinstance(preds, tuple) or len(preds) != 2:
-            raise TypeError("DIDA-AF2 memerlukan pasangan prediksi weak/strong")
+        # During training ``model.loss(batch)`` explicitly supplies two raw
+        # dictionaries: (weak, style). Ultralytics validation instead calls
+        # ``model.loss(batch, preds)`` with the ordinary eval output
+        # (decoded_predictions, raw_branches). Do not mistake that native eval
+        # tuple for the paired training views.
+        if (
+            isinstance(preds, tuple)
+            and len(preds) == 2
+            and isinstance(preds[0], torch.Tensor)
+            and isinstance(preds[1], dict)
+        ):
+            raw = preds[1]
+            many = self.one2many.loss(raw["one2many"], batch)
+            one = self.one2one.loss(raw["one2one"], batch)
+            return self.o2m * many[0] + self.o2o * one[0], one[1]
+        if (
+            not isinstance(preds, tuple)
+            or len(preds) != 2
+            or not all(isinstance(view, dict) for view in preds)
+        ):
+            raise TypeError(
+                "DIDA-AF2 memerlukan pasangan raw prediction weak/strong saat training"
+            )
         weak = self.one2many.parse_output(preds[0])
         strong = self.one2many.parse_output(preds[1])
         many = self._branch(
