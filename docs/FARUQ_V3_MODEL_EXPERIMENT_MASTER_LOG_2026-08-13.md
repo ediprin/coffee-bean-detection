@@ -1,6 +1,6 @@
 # Faruq-v3 Model Experiment Master Log
 
-Snapshot date: 2026-08-14
+Snapshot date: 2026-08-16
 
 This document consolidates the completed Faruq-v3 detector experiments that
 led from the YOLO26n baseline through ACMC, breadth screening, and the latest
@@ -235,6 +235,30 @@ Full result:
 - `experiments/faruq-v3-stb-capacity-control-v1/val_reports/stb_capacity_control_seed42_decision.json`
 - `experiments/faruq-v3-stb-paired-confirmation-v1/val_reports/stb_capacity_paired_confirmation.json`
 - `experiments/faruq-v3-af2-igem-paired-confirmation-v1/val_reports/af2_igem_paired_confirmation.json`
+
+## Coffee Standard v8 external robustness update
+
+The public Roboflow v8 split was rejected after audit because 14 augmented
+parent identities crossed train, validation, and test. A leakage-safe external
+diagnostic was constructed using one representative from each of 148
+independent parent identities and 3,989 boxes from 18 directly equivalent
+SNI-21 classes. No target-domain training was performed.
+
+At seed 42, AF2 ranked first among all 11 retained models with 17.06% Macro
+mAP50-95 versus 12.59% for D0FT (+4.47 points). Existing checkpoints then
+confirmed the direction across three paired seeds:
+
+| Metric | D0FT mean | AF2 mean | Mean paired delta | Improved seeds |
+|---|---:|---:|---:|---:|
+| Macro mAP50-95 | 11.43% | **15.51%** | **+4.08 points** | 3/3 |
+| Bottom-3 | 0.25% | **0.35%** | +0.10 point | 2/3 |
+| Worst class | 0.01% | **0.04%** | +0.02 point | 2/3 |
+
+The external gate passed. This strengthens AF2's status from an in-domain
+candidate to a target-free cross-dataset robustness direction. It does not
+establish target-domain usability: absolute Bottom-3 and Worst AP remain near
+zero. Full result:
+`docs/COFFEE_STANDARD_V8_EXTERNAL_RESULT_2026-08-16.md`.
 
 ## AF2 and IGEM1 paired confirmation authorization
 
