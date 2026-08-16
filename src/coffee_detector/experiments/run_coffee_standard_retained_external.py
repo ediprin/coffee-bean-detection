@@ -13,7 +13,23 @@ from pathlib import Path
 
 import yaml
 
-from coffee_detector.experiments.run_faruq_v3_retained_synthetic_density import MODEL_SPECS
+
+# Keep this registry local: workers execute with the historical branch that
+# defines each custom checkpoint class, and those branches do not necessarily
+# contain the newer cross-model orchestration modules.
+MODEL_SPECS = {
+    "D0FT": ("agent/af2-igem-paired-confirmation", "faruq-v3-acmc-optimization-control-v1/D0FT_seed42/weights/best.pt"),
+    "AF1": ("agent/af2-igem-paired-confirmation", "faruq-v3-breadth-screening-batch-v1/candidates/AFAB/AF1_seed42/weights/best.pt"),
+    "AF2": ("agent/af2-igem-paired-confirmation", "faruq-v3-breadth-screening-batch-v1/candidates/AFAB/AF2_seed42/weights/best.pt"),
+    "IGEM1": ("agent/af2-igem-paired-confirmation", "faruq-v3-breadth-screening-batch-v1/candidates/IGEM/IGEM1_seed42/weights/best.pt"),
+    "STB1": ("agent/af2-igem-paired-confirmation", "faruq-v3-breadth-screening-batch-v1/candidates/STB1/STB1_seed42/weights/best.pt"),
+    "SAF1": ("agent/safpn-classification-alignment", "faruq-v3-breadth-screening-batch-v1/candidates/SAF1/SAF1_seed42/weights/best.pt"),
+    "LPS1": ("agent/leaf-preserving-semantic-screening", "faruq-v3-breadth-screening-batch-v1/candidates/SEMAUX/LPS1_seed42/weights/best.pt"),
+    "CPE0": ("agent/circle-cpe-screening", "faruq-v3-breadth-screening-batch-v1/candidates/CPE/CPE0_seed42/weights/best.pt"),
+    "CPE7": ("agent/circle-cpe-screening", "faruq-v3-breadth-screening-batch-v1/candidates/CPE/CPE7_seed42/weights/best.pt"),
+    "ACMC1": ("agent/af2-igem-paired-confirmation", "faruq-v3-acmc-one-stage-v1/ACMC1_seed42/weights/best.pt"),
+    "GEO1": ("agent/circle-cpe-screening", "faruq-v3-geometry-conditioning-screening-v1/GEO1_seed42/weights/best.pt"),
+}
 
 
 def _load(path: str | Path) -> dict:
