@@ -1,0 +1,18 @@
+code: GEO-FACT
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+geometry_factorization:
+  shared_hidden_dim: 60
+  family_hidden_dim: 35
+  max_normalized_side: 2.0
+  max_aspect_ratio: 10.0
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500
