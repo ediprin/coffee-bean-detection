@@ -289,3 +289,33 @@ Frozen protocol:
 
 Full result:
 `docs/FARUQ_V3_AF2_IGEM_PAIRED_CONFIRMATION_RESULT_2026-08-15.md`.
+
+## DIDA-AF2 factorial study authorization
+
+**Status: protocol and implementation frozen; static gate PASS; no training
+result yet.** The static audit was executed against the completed AF2 seed-42
+checkpoint on 2026-08-17. All gates passed: exact factorial flags, identical
+model/state schema and inference, safe paired views, finite auxiliary losses
+and gradients, operational GT matching, classification-only auxiliary API,
+and no test access. Based on AF2's simultaneous in-domain and Coffee Standard
+directional gains, the next study tests a training-only 2 x 2 decomposition:
+
+| Arm | Domain-generalization objective | Fine-grained margin |
+|---|---:|---:|
+| AF2FT | no | no |
+| AF2DG | yes | no |
+| AF2FG | no | yes |
+| AF2DGFG | yes | yes |
+
+All arms initialize from the same AF2 checkpoint, execute two forwards, and
+retain the exact AF2 inference graph. DG pairs branch-native assignments by GT
+identity and applies detached weak-to-style class consistency. FG applies a
+dynamic smooth Top-3 margin directly to native class logits. No embedding
+head, ROI stage, inference parameter, or test access is introduced.
+
+The four seed-42 arms may run only after the static audit passes. The joint arm
+must beat the control and both single-factor arms under the prospectively
+frozen Macro/Bottom-3/Worst gate before seeds 123/2026 are authorized. Coffee
+Standard remains external-development evidence and cannot serve as a new final
+test. Protocol:
+`docs/FARUQ_V3_DIDA_AF2_FACTORIAL_PROTOCOL.md`.
