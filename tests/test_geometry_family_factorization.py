@@ -2,7 +2,11 @@ from pathlib import Path
 
 import torch
 
-from coffee_detector.experiments.run_faruq_v3_geometry_family_factorization import _aggregate
+from coffee_detector.experiments.run_faruq_v3_geometry_family_factorization import (
+    _aggregate,
+    _missing_reports,
+    _normalize_arms,
+)
 from coffee_detector.geometry_factorization.model import (
     FAMILIES,
     Family35x3GeometryAdapter,
@@ -117,3 +121,22 @@ def test_exploratory_gate_rejects_no_coffee_recovery():
     _, _, criteria = _aggregate(per_seed)
     assert criteria["kulit_kopi_family_mean_gain_at_least_0_5_point"] is False
     assert not all(criteria.values())
+
+
+def test_parallel_arm_selection_is_explicit_and_deduplicated():
+    assert _normalize_arms(None) == ("GEO-SHARED60", "GEO-FAM35x3")
+    assert _normalize_arms(["GEO-FAM35x3", "GEO-FAM35x3"]) == (
+        "GEO-FAM35x3",
+    )
+
+
+def test_parallel_report_grid_detects_only_missing_arm_seed_pairs(tmp_path):
+    reports = tmp_path / "val_reports"
+    reports.mkdir()
+    for seed in (42, 123, 2026):
+        (reports / f"GEO-SHARED60_seed{seed}_val.json").write_text("{}")
+    assert _missing_reports(reports) == [
+        "GEO-FAM35x3_seed42",
+        "GEO-FAM35x3_seed123",
+        "GEO-FAM35x3_seed2026",
+    ]

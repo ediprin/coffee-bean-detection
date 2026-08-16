@@ -33,6 +33,10 @@ MODEL_YAML = REPO_ROOT / "configs/coffee_fg/models/yolo26n-p3.yaml"
 CONFIG = REPO_ROOT / "configs/geometry_factorization/GEO_family_exact_capacity.yaml"
 SEEDS = (42, 123, 2026)
 METRICS = ("macro_map50_95", "bottom3_class_map50_95", "worst_class_map50_95")
+ARM_MODES = {
+    "GEO-SHARED60": "shared60",
+    "GEO-FAM35x3": "family35x3",
+}
 PROTOCOL = "faruq-v3-geometry-family-factorization-v1"
 SOURCE_PROTOCOL = "faruq-v3-geometry-conditioning-paired-confirmation-v1"
 DECOMP_PROTOCOL = "faruq-v3-geometry-family-effect-decomposition-v1"
@@ -123,6 +127,46 @@ def _family_means(size_by_class: dict[str, float]) -> dict[str, float]:
             raise RuntimeError(f"Family {family} harus memiliki 3 size classes, got={len(values)}")
         result[family] = float(np.mean(values))
     return result
+
+
+def _normalize_arms(arms: tuple[str, ...] | list[str] | None) -> tuple[str, ...]:
+    if arms is None:
+        return tuple(ARM_MODES)
+    selected = tuple(dict.fromkeys(str(arm) for arm in arms))
+    if not selected:
+        raise ValueError("Minimal satu arm harus dipilih")
+    unknown = tuple(arm for arm in selected if arm not in ARM_MODES)
+    if unknown:
+        raise ValueError(f"Arm tidak dikenal: {unknown}")
+    return selected
+
+
+def _report_path(reports: Path, arm: str, seed: int) -> Path:
+    return reports / f"{arm}_seed{seed}_val.json"
+
+
+def _missing_reports(reports: Path) -> list[str]:
+    return [
+        f"{arm}_seed{seed}"
+        for seed in SEEDS
+        for arm in ARM_MODES
+        if not _report_path(reports, arm, seed).is_file()
+    ]
+
+
+def _load_evaluated_arm(reports: Path, arm: str, seed: int) -> dict:
+    report = _load_json(_report_path(reports, arm, seed), f"{arm} seed{seed} report")
+    if report.get("split") != "val":
+        raise RuntimeError(f"{arm} seed{seed} bukan validation")
+    if report.get("metrics", {}).get("classes_without_ground_truth", []):
+        raise RuntimeError(f"Validation {arm} seed{seed} kehilangan kelas")
+    row = _metrics(report)
+    size_mean, by_class = _size_mean(report)
+    row["size_class_mean_map50_95"] = size_mean
+    row["size_map50_95_by_class"] = by_class
+    row["family_mean_map50_95"] = _family_means(by_class)
+    row["checkpoint"] = str(report.get("checkpoint", ""))
+    return row
 
 
 def _train_arm(
@@ -255,9 +299,11 @@ def run_family_factorization(
     stage: str,
     device: str | None = None,
     authorize_training: bool = False,
+    arms: tuple[str, ...] | list[str] | None = None,
 ) -> dict:
-    if stage not in {"static", "train"}:
+    if stage not in {"static", "train", "finalize"}:
         raise ValueError(stage)
+    selected_arms = _normalize_arms(arms)
     data_root = Path(data_root).expanduser().resolve()
     project_root = Path(project_root).expanduser().resolve()
     confirmation_summary = Path(confirmation_summary).expanduser().resolve()
@@ -266,7 +312,6 @@ def run_family_factorization(
     output_root.mkdir(parents=True, exist_ok=True)
     if (data_root / "test").exists():
         raise RuntimeError("Development root tidak boleh mengekspos test")
-    layout = discover_layout(data_root)
     _validate_sources(confirmation_summary, family_decomposition)
 
     provenance = {str(seed): _verify_seed_provenance(project_root, seed) for seed in SEEDS}
@@ -274,79 +319,146 @@ def run_family_factorization(
     static_root.mkdir(parents=True, exist_ok=True)
 
     if stage == "static":
-        audits = {}
-        for seed in SEEDS:
-            audit_path = static_root / f"seed{seed}_geometry_factorization_static.json"
-            audit = static_geometry_factorization_audit(
-                MODEL_YAML,
-                provenance[str(seed)]["d0_checkpoint"],
-                layout.names,
-                audit_path,
-                nc=len(layout.names),
-            )
-            audits[str(seed)] = audit
-        gates = {
-            "all_static_audits_pass": all(audit["decision"] == "PASS" for audit in audits.values()),
-            "all_shared_added_parameters_849": all(
-                audit["models"]["GEO-SHARED60"]["added_parameters"] == 849 for audit in audits.values()
-            ),
-            "all_family_added_parameters_849": all(
-                audit["models"]["GEO-FAM35x3"]["added_parameters"] == 849 for audit in audits.values()
-            ),
-        }
-        payload = {
-            "protocol": "faruq-v3-geometry-family-factorization-preflight-v1",
-            "seeds": list(SEEDS),
-            "evaluation_split": "val",
-            "training_executed": False,
-            "test_images_accessed": False,
-            "test_opened": False,
-            "provenance": provenance,
-            "audits": {seed: audit["summary"] for seed, audit in audits.items()},
-            "gates": gates,
-            "decision": "PASS" if all(gates.values()) else "FAIL",
-        }
         destination = output_root / "static_preflight.json"
-        destination.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        if destination.is_file():
+            payload = _load_json(destination, "Static preflight")
+            if payload.get("decision") == "PASS":
+                payload["summary"] = str(destination)
+                return payload
+        with _training_lock(output_root, "STATIC-PREFLIGHT", 0):
+            if destination.is_file():
+                payload = _load_json(destination, "Static preflight")
+                if payload.get("decision") == "PASS":
+                    payload["summary"] = str(destination)
+                    return payload
+            layout = discover_layout(data_root)
+            audits = {}
+            for seed in SEEDS:
+                audit_path = static_root / f"seed{seed}_geometry_factorization_static.json"
+                audit = static_geometry_factorization_audit(
+                    MODEL_YAML,
+                    provenance[str(seed)]["d0_checkpoint"],
+                    layout.names,
+                    audit_path,
+                    nc=len(layout.names),
+                )
+                audits[str(seed)] = audit
+            gates = {
+                "all_static_audits_pass": all(
+                    audit["decision"] == "PASS" for audit in audits.values()
+                ),
+                "all_shared_added_parameters_849": all(
+                    audit["models"]["GEO-SHARED60"]["added_parameters"] == 849
+                    for audit in audits.values()
+                ),
+                "all_family_added_parameters_849": all(
+                    audit["models"]["GEO-FAM35x3"]["added_parameters"] == 849
+                    for audit in audits.values()
+                ),
+            }
+            payload = {
+                "protocol": "faruq-v3-geometry-family-factorization-preflight-v1",
+                "seeds": list(SEEDS),
+                "evaluation_split": "val",
+                "training_executed": False,
+                "test_images_accessed": False,
+                "test_opened": False,
+                "provenance": provenance,
+                "audits": {seed: audit["summary"] for seed, audit in audits.items()},
+                "gates": gates,
+                "decision": "PASS" if all(gates.values()) else "FAIL",
+            }
+            destination.write_text(
+                json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
         payload["summary"] = str(destination)
         return payload
 
-    if not authorize_training:
-        raise RuntimeError("Training family factorization belum diotorisasi")
     preflight = _load_json(output_root / "static_preflight.json", "Static preflight")
     if preflight.get("decision") != "PASS":
         raise RuntimeError("Static family-factorization preflight belum PASS")
 
     reports = output_root / "val_reports"
     reports.mkdir(parents=True, exist_ok=True)
-    dataset_audit = audit_dataset(data_root, reports / "dataset_audit.json", near_threshold=-1)
-    if not dataset_audit["safe_for_training"]:
-        raise RuntimeError("Audit dataset gagal")
-
-    payload = yaml.safe_load(CONFIG.read_text(encoding="utf-8")) or {}
-    config = GeometryFactorizationConfig.from_mapping(payload["geometry_factorization"])
-    train_args = dict(payload["train"])
-    per_seed = {}
     training_executed = {}
 
+    if stage == "train":
+        if not authorize_training:
+            raise RuntimeError("Training family factorization belum diotorisasi")
+        audit_suffix = "_".join(
+            arm.replace("GEO-", "").lower() for arm in selected_arms
+        )
+        dataset_audit = audit_dataset(
+            data_root,
+            reports / f"dataset_audit_{audit_suffix}.json",
+            near_threshold=-1,
+        )
+        if not dataset_audit["safe_for_training"]:
+            raise RuntimeError("Audit dataset gagal")
+        payload = yaml.safe_load(CONFIG.read_text(encoding="utf-8")) or {}
+        config = GeometryFactorizationConfig.from_mapping(payload["geometry_factorization"])
+        train_args = dict(payload["train"])
+        for seed in SEEDS:
+            d0_checkpoint = Path(provenance[str(seed)]["d0_checkpoint"])
+            for arm in selected_arms:
+                best, executed = _train_arm(
+                    arm=arm,
+                    mode=ARM_MODES[arm],
+                    seed=seed,
+                    d0_checkpoint=d0_checkpoint,
+                    data_root=data_root,
+                    output_root=output_root,
+                    config=config,
+                    train_args=train_args,
+                    device=device,
+                )
+                _evaluate_arm(arm, seed, best, data_root, reports, device)
+                training_executed[f"{arm}_seed{seed}"] = executed
+
+        missing = _missing_reports(reports)
+        if missing:
+            result = {
+                "protocol": PROTOCOL,
+                "scientific_status": "parallel_arm_training_partial",
+                "seeds": list(SEEDS),
+                "selected_arms": list(selected_arms),
+                "evaluation_split": "val",
+                "test_images_accessed": False,
+                "test_opened": False,
+                "completed_reports": [
+                    f"{arm}_seed{seed}"
+                    for seed in SEEDS
+                    for arm in ARM_MODES
+                    if _report_path(reports, arm, seed).is_file()
+                ],
+                "missing_reports": missing,
+                "decision": "WAITING_FOR_OTHER_ARM",
+                "next_action": "RUN_OTHER_ARM_THEN_FINALIZE",
+                "training_executed_this_call": training_executed,
+            }
+            progress = reports / (
+                "geometry_family_factorization_progress_"
+                + "_".join(arm.replace("GEO-", "").lower() for arm in selected_arms)
+                + ".json"
+            )
+            progress.write_text(
+                json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
+            result["summary"] = str(progress)
+            return result
+
+    missing = _missing_reports(reports)
+    if missing:
+        raise RuntimeError(
+            "Finalisasi menunggu report arm lain: " + ", ".join(missing)
+        )
+
+    per_seed = {}
     for seed in SEEDS:
-        d0_checkpoint = Path(provenance[str(seed)]["d0_checkpoint"])
         d0ft_report = _load_json(provenance[str(seed)]["d0ft_report"], f"D0FT seed{seed}")
         results = {"D0FT": _metrics(d0ft_report)}
-        for arm, mode in (("GEO-SHARED60", "shared60"), ("GEO-FAM35x3", "family35x3")):
-            best, executed = _train_arm(
-                arm=arm,
-                mode=mode,
-                seed=seed,
-                d0_checkpoint=d0_checkpoint,
-                data_root=data_root,
-                output_root=output_root,
-                config=config,
-                train_args=train_args,
-                device=device,
-            )
-            results[arm] = _evaluate_arm(arm, seed, best, data_root, reports, device)
-            training_executed[f"{arm}_seed{seed}"] = executed
+        for arm in ARM_MODES:
+            results[arm] = _load_evaluated_arm(reports, arm, seed)
         shared, family = results["GEO-SHARED60"], results["GEO-FAM35x3"]
         deltas = {metric: family[metric] - shared[metric] for metric in METRICS}
         deltas["size_class_mean_map50_95"] = (
@@ -399,9 +511,10 @@ def main() -> None:
     parser.add_argument("--confirmation-summary", required=True)
     parser.add_argument("--family-decomposition", required=True)
     parser.add_argument("--output-root", required=True)
-    parser.add_argument("--stage", choices=("static", "train"), required=True)
+    parser.add_argument("--stage", choices=("static", "train", "finalize"), required=True)
     parser.add_argument("--device")
     parser.add_argument("--authorize-training", action="store_true")
+    parser.add_argument("--arms", nargs="+", choices=tuple(ARM_MODES))
     args = parser.parse_args()
     result = run_family_factorization(
         args.data_root,
@@ -412,6 +525,7 @@ def main() -> None:
         stage=args.stage,
         device=args.device,
         authorize_training=args.authorize_training,
+        arms=args.arms,
     )
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
