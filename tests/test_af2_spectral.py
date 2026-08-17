@@ -191,7 +191,11 @@ def test_protocol_and_kaggle_notebooks_freeze_the_staged_contract():
     for arm in expected:
         path = ROOT / f"notebooks/Faruq_V3_AF2_Spectral_{arm}_Kaggle.ipynb"
         payload = json.loads(path.read_text(encoding="utf-8"))
+        assert payload["cells"][1]["source"][0].endswith("\n")
         source = "\n".join("".join(cell.get("source", [])) for cell in payload["cells"])
+        for cell in payload["cells"]:
+            if cell.get("cell_type") == "code":
+                compile("".join(cell["source"]), str(path), "exec")
         assert arm in source
         assert "prepare_af2_spectral_kaggle_input" in source
         assert "restore_spectral_kaggle_run" in source
