@@ -59,6 +59,32 @@ The static audit must PASS on CPU and GPU before any arm trains. It verifies:
 - all D0 weights transferred, identical YAML/schedule, no persistent frontend
   state, no ROI/decoded-box dependency, and no test access.
 
+### Pre-training implementation amendment — 2026-08-18
+
+Before any spectral arm was trained, the first Kaggle GPU static audit exposed
+an implementation-level ambiguity in the word `deterministic`: exact
+`torch.equal()` failed for repeated CUDA FFT/overlap-reduction evaluations,
+and even two separately instantiated `AF2C` wrappers of the same legacy AF2
+operator were not bitwise identical on the CUDA probe. No validation metric,
+training result, or test data had been observed at this point.
+
+The audit definition was therefore corrected **before training** as follows:
+
+- the frozen `AF2C` equivalence claim remains a **bitwise CPU** equality test;
+- on the actual CUDA runtime, AF2C equivalence and repeated frontend output use
+  a fixed numerical reproducibility gate with `atol=1e-6`, `rtol=1e-6`;
+- the audit records bitwise repeat equality and maximum absolute repeat
+  difference for every arm as diagnostics;
+- any difference outside the fixed tolerance still blocks training;
+- Stage 1 is blocked only by its five declared arms plus shared structural
+  gates; `PCG1/WAV1` remain separately audited and cannot bypass their own
+  alternative-arm gate.
+
+This amendment changes no arm definition, spectral constant, training
+hyperparameter, dataset, model weights, metric gate, or model-selection rule.
+It is a pre-training reproducibility-audit correction, not a data-dependent
+hyperparameter change.
+
 The train-only observability audit covers every 1,665 train image. It reports
 angular occupancy, entropy and threshold distribution, radial energy,
 retained spectral mass, rectangular-versus-Hann leakage proxy, RGB/luminance
