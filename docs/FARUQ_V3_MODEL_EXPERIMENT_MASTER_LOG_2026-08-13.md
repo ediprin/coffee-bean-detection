@@ -351,3 +351,18 @@ status is unchanged. Test was not accessed.
 
 Protocol: `docs/FARUQ_V3_AF2_ADAPTIVE_RESIDUAL_GATE_PROTOCOL.md`.
 Result: `docs/FARUQ_V3_AF2_ADAPTIVE_RESIDUAL_GATE_RESULT_2026-08-17.md`.
+
+## AF2 channel-calibration factorization authorization
+
+**Status: protocol frozen; static audit and training not yet run.** The AF2R
+control result exposed a narrower hypothesis: its zero-information gate can
+still learn an input-independent RGB residual scale. The new factorization
+compares exact 30-epoch AF2 continuation (`AF2FT30`, zero added parameters)
+against a three-scalar channel calibrator (`AF2CAL3`).
+
+Both arms start from the same completed AF2 seed-42 checkpoint and use the
+same grouped Faruq-v3 data and schedule. Only a gain over continuation training
+that also retains the completed AF2R0 region may authorize multi-seed
+confirmation. Test remains blocked.
+
+Protocol: `docs/FARUQ_V3_AF2_CHANNEL_CALIBRATION_PROTOCOL.md`.
