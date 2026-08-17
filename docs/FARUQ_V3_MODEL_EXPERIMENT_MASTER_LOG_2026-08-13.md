@@ -354,15 +354,22 @@ Result: `docs/FARUQ_V3_AF2_ADAPTIVE_RESIDUAL_GATE_RESULT_2026-08-17.md`.
 
 ## AF2 channel-calibration factorization authorization
 
-**Status: protocol frozen; static audit and training not yet run.** The AF2R
-control result exposed a narrower hypothesis: its zero-information gate can
-still learn an input-independent RGB residual scale. The new factorization
-compares exact 30-epoch AF2 continuation (`AF2FT30`, zero added parameters)
-against a three-scalar channel calibrator (`AF2CAL3`).
+**Status: completed -- FAIL at seed 42; stopped without extra seeds or test.**
+The static audit passed: `AF2FT30` retained AF2's 2,511,990 parameters, while
+`AF2CAL3` added exactly three RGB residual-scale parameters and reproduced AF2
+at initialization. Both matched 30-epoch arms completed:
 
-Both arms start from the same completed AF2 seed-42 checkpoint and use the
-same grouped Faruq-v3 data and schedule. Only a gain over continuation training
-that also retains the completed AF2R0 region may authorize multi-seed
-confirmation. Test remains blocked.
+| Model | Macro | Bottom-3 | Worst |
+|---|---:|---:|---:|
+| Frozen AF2 | 88.20% | 80.04% | 79.35% |
+| AF2R0 reference | **89.55%** | **84.30%** | **83.97%** |
+| `AF2FT30` control | 89.00% | 83.88% | 83.55% |
+| `AF2CAL3` candidate | 88.77% | 83.72% | 83.00% |
+
+AF2CAL3 lost 0.23 Macro, 0.17 Bottom-3, and 0.55 Worst-class points to
+the matched continuation control. The AF2R0 gain is therefore not explained
+by input-independent three-channel residual calibration. Seeds 123/2026 and
+test access are not authorized. Fixed AF2's prior evidence is unchanged.
 
 Protocol: `docs/FARUQ_V3_AF2_CHANNEL_CALIBRATION_PROTOCOL.md`.
+Result: `docs/FARUQ_V3_AF2_CHANNEL_CALIBRATION_RESULT_2026-08-17.md`.
