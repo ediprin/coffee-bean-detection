@@ -373,3 +373,16 @@ test access are not authorized. Fixed AF2's prior evidence is unchanged.
 
 Protocol: `docs/FARUQ_V3_AF2_CHANNEL_CALIBRATION_PROTOCOL.md`.
 Result: `docs/FARUQ_V3_AF2_CHANNEL_CALIBRATION_RESULT_2026-08-17.md`.
+
+## AF2 spectral factorization
+
+**Status: protocol frozen; implementation prepared; no training result.** The
+next bounded study separates AF2's Fourier-window, orientation, radial-band,
+threshold, and RGB/luminance assumptions into seven parameter-free one-stage
+candidates: AF2WIN, AF2ORI, AF2POL, AF2SOFT, AF2LUM, PCG1, and WAV1. AF2C is
+the historical bitwise control and is not retrained. Stage 1 screens the five
+AF2 factorizations at seed 42; Stage 2 screens PCG1/WAV1; only a retained
+global winner may receive paired seeds 123/2026. The locked Faruq test remains
+closed. No outcome is asserted by this authorization entry.
+
+Protocol: `docs/FARUQ_V3_AF2_SPECTRAL_FACTORIZATION_PROTOCOL.md`.
