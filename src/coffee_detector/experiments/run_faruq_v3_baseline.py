@@ -14,6 +14,54 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 CONFIG = REPO_ROOT / "configs/coffee_fg/D0_yolo26n_p3.yaml"
 
 
+def _verified_kaggle_relocation(payload: dict, data_root: Path) -> bool:
+    """Accept a moved immutable Faruq-v3 archive without trusting its old absolute path."""
+
+    contract_path = data_root / "kaggle_input_contract.json"
+    if not contract_path.is_file():
+        return False
+    try:
+        contract = json.loads(contract_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+
+    from coffee_detector.experiments.prepare_faruq_v3_kaggle import (
+        ARCHIVE_SHA256,
+        EXPECTED_ANNOTATIONS,
+        EXPECTED_IMAGES,
+    )
+
+    if contract.get("format") != "coffee_detector.faruq_v3_kaggle_input_contract.v1":
+        return False
+    if contract.get("decision") != "PASS" or contract.get("test_images_accessed") is not False:
+        return False
+    if contract.get("archive_sha256") != ARCHIVE_SHA256:
+        return False
+    try:
+        contract_root = Path(contract.get("data_root", "")).expanduser().resolve()
+    except (OSError, RuntimeError):
+        return False
+    if contract_root != data_root:
+        return False
+    if payload.get("images_by_split") != EXPECTED_IMAGES:
+        return False
+    if payload.get("annotations_by_split") != EXPECTED_ANNOTATIONS:
+        return False
+
+    splits = contract.get("splits", {})
+    for split in ("train", "val"):
+        entry = splits.get(split, {})
+        if int(entry.get("images", -1)) != EXPECTED_IMAGES[split]:
+            return False
+        if int(entry.get("labels", -1)) != EXPECTED_IMAGES[split]:
+            return False
+        if int(entry.get("annotations", -1)) != EXPECTED_ANNOTATIONS[split]:
+            return False
+        if entry.get("classes") != list(range(21)):
+            return False
+    return True
+
+
 def load_faruq_grouped_summary(path: str | Path, data_root: str | Path) -> dict:
     path = Path(path).expanduser().resolve()
     data_root = Path(data_root).expanduser().resolve()
@@ -31,9 +79,10 @@ def load_faruq_grouped_summary(path: str | Path, data_root: str | Path) -> dict:
     if payload.get("test_images_accessed") is not False:
         raise RuntimeError("Provenance test lock tidak valid")
     recorded_root = Path(payload.get("output_root", "")).expanduser().resolve()
-    if recorded_root != data_root:
+    if recorded_root != data_root and not _verified_kaggle_relocation(payload, data_root):
         raise RuntimeError(
-            f"Summary berasal dari dataset berbeda: {recorded_root} != {data_root}"
+            f"Summary berasal dari dataset berbeda: {recorded_root} != {data_root}; "
+            "tidak ada kontrak relokasi Kaggle terverifikasi"
         )
     return payload
 
