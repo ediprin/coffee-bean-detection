@@ -205,6 +205,17 @@ def test_protocol_and_kaggle_notebooks_freeze_the_staged_contract():
     global_source = "\n".join("".join(cell.get("source", [])) for cell in global_payload["cells"])
     assert "run_spectral_decision" in global_source
     assert "test_opened" in global_source
+    sequential = json.loads(
+        (ROOT / "notebooks/Faruq_V3_AF2_Spectral_Stage1_Sequential_Kaggle.ipynb").read_text(
+            encoding="utf-8"
+        )
+    )
+    sequential_source = "\n".join(
+        "".join(cell.get("source", [])) for cell in sequential["cells"]
+    )
+    assert "for arm in ARMS: run_arm(arm)" in sequential_source
+    assert "restore_spectral_kaggle_run" in sequential_source
+    assert "time.sleep(120)" in sequential_source
 
 
 def test_kaggle_restore_requires_an_exact_arm_seed_and_sha_contract(tmp_path):
