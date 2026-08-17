@@ -316,19 +316,30 @@ Protocol: `docs/FARUQ_V3_DIDA_AF2_FACTORIAL_PROTOCOL.md`.
 
 Full result: `docs/FARUQ_V3_DIDA_AF2_FACTORIAL_RESULT_2026-08-17.md`.
 
-## AF2 controlled illumination robustness authorization
+## AF2 controlled illumination robustness
 
-**Status: protocol frozen; evaluation not yet run.** Existing paired D0FT and
-AF2 checkpoints will be evaluated without training on identical Faruq-v3
-validation images under clean, exposure, contrast, color-temperature, and
-localized-shadow conditions. Conditions are applied directly to the native
-preprocessed input tensor, preserving geometry and leaving labels untouched.
-Robustness is defined as AF2's clean-normalized degradation
-minus D0FT's clean-normalized degradation, rather than raw stressed accuracy.
-
-Seed 42 is screened first. Seeds 123/2026 remain blocked unless AF2 passes the
-predefined Macro/Bottom-3/Worst degradation gate. Test remains locked. A PASS
-supports synthetic photometric robustness only; measured real-illumination
-robustness requires a new controlled capture dataset.
+**Status: completed -- FAIL at seed 42; no confirmation seeds or test.** AF2's
+mean Macro robustness advantage was +1.74 points, but it was positive in only
+2/9 conditions. Mean Worst-class robustness was -2.32 points, below the frozen
+-1 point tolerance. Warm (+5.66 Macro) and cool (+18.79) shifts drove the
+positive mean; exposure, contrast, and localized shadow were predominantly
+negative. Fixed AF2 therefore does not support a general illumination-
+robustness claim. Its prior clean in-domain and Coffee Standard evidence is
+unchanged.
 
 Protocol: `docs/FARUQ_V3_AF2_ILLUMINATION_ROBUSTNESS_PROTOCOL.md`.
+Result: `docs/FARUQ_V3_AF2_ILLUMINATION_ROBUSTNESS_RESULT_2026-08-17.md`.
+
+## Raw-preserving adaptive AF2 authorization
+
+**Status: protocol frozen; static audit and training not yet run.** AF2R1 adds
+an illumination-conditioned residual gate directly to fixed AF2, while AF2R0
+is an equal-parameter zero-information control. Both start at exact AF2 and
+retain the raw image path. The study trains no auxiliary DG/FG loss and does
+not combine AF2 with another detector or head.
+
+Seed-42 clean validation is screened first. Only a PASS against both AF2R0 and
+the frozen AF2 reference may open the paired illumination screen. Seeds
+123/2026 and test remain blocked.
+
+Protocol: `docs/FARUQ_V3_AF2_ADAPTIVE_RESIDUAL_GATE_PROTOCOL.md`.
