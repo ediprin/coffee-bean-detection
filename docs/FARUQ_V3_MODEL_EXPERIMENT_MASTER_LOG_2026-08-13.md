@@ -292,30 +292,26 @@ Full result:
 
 ## DIDA-AF2 factorial study authorization
 
-**Status: protocol and implementation frozen; static gate PASS; no training
-result yet.** The static audit was executed against the completed AF2 seed-42
-checkpoint on 2026-08-17. All gates passed: exact factorial flags, identical
-model/state schema and inference, safe paired views, finite auxiliary losses
-and gradients, operational GT matching, classification-only auxiliary API,
-and no test access. Based on AF2's simultaneous in-domain and Coffee Standard
-directional gains, the next study tests a training-only 2 x 2 decomposition:
+**Status: completed -- FAIL; stopped at seed 42 without test.** The static
+audit was executed against the completed AF2 seed-42 checkpoint on 2026-08-17.
+All implementation gates passed: exact factorial flags, identical model/state
+schema and inference, safe paired views, finite auxiliary losses and
+gradients, operational GT matching, classification-only auxiliary API, and no
+test access. The subsequent training-only 2 x 2 decomposition produced:
 
-| Arm | Domain-generalization objective | Fine-grained margin |
-|---|---:|---:|
-| AF2FT | no | no |
-| AF2DG | yes | no |
-| AF2FG | no | yes |
-| AF2DGFG | yes | yes |
+| Arm | DG objective | FG margin | Macro | Bottom-3 | Worst |
+|---|---:|---:|---:|---:|---:|
+| AF2FT | no | no | 87.68% | 78.37% | 75.12% |
+| AF2DG | yes | no | 87.05% | 76.31% | 73.13% |
+| AF2FG | no | yes | 87.61% | 78.37% | 75.29% |
+| AF2DGFG | yes | yes | 86.92% | 75.60% | 73.65% |
 
-All arms initialize from the same AF2 checkpoint, execute two forwards, and
-retain the exact AF2 inference graph. DG pairs branch-native assignments by GT
-identity and applies detached weak-to-style class consistency. FG applies a
-dynamic smooth Top-3 margin directly to native class logits. No embedding
-head, ROI stage, inference parameter, or test access is introduced.
+DG alone reduced Macro/Bottom-3/Worst by 0.62/2.06/1.99 points. FG alone was
+approximately neutral, with -0.06/~0.00/+0.16 point changes. The joint arm
+reduced the three metrics by 0.76/2.77/1.47 points relative to control and
+failed all seven frozen criteria. Therefore seeds 123/2026 and test access are
+not authorized. AF2's prior retained status is unchanged.
 
-The four seed-42 arms may run only after the static audit passes. The joint arm
-must beat the control and both single-factor arms under the prospectively
-frozen Macro/Bottom-3/Worst gate before seeds 123/2026 are authorized. Coffee
-Standard remains external-development evidence and cannot serve as a new final
-test. Protocol:
-`docs/FARUQ_V3_DIDA_AF2_FACTORIAL_PROTOCOL.md`.
+Protocol: `docs/FARUQ_V3_DIDA_AF2_FACTORIAL_PROTOCOL.md`.
+
+Full result: `docs/FARUQ_V3_DIDA_AF2_FACTORIAL_RESULT_2026-08-17.md`.
