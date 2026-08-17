@@ -49,4 +49,3 @@ def make_af2cal_trainer(
 
     AF2CALTrainer.__name__ = "AF2CALTrainer"
     return AF2CALTrainer
-

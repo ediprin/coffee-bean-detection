@@ -32,4 +32,3 @@ class AF2ChannelCalibratedEnhancer(nn.Module):
     def forward(self, raw: torch.Tensor) -> torch.Tensor:
         output, _ = self.forward_with_scale(raw)
         return output
-

@@ -68,4 +68,3 @@ not a new calibration mechanism.
 A seed-42 PASS supports only a lightweight in-domain calibration direction.
 It does not establish multi-seed superiority, external-domain robustness,
 illumination robustness, locked-test performance, or deployment readiness.
-

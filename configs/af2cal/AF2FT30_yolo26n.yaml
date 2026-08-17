@@ -21,4 +21,3 @@ train: &train
   cache: false
   close_mosaic: 10
   max_det: 500
-

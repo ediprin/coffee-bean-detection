@@ -54,4 +54,3 @@ def load_af2cal_weights(model: nn.Module, weights: Any) -> dict[str, int]:
         "shape_compatible_items": len(common),
         "new_calibration_items": len(target_state) - len(common),
     }
-
