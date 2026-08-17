@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
-import argparse
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +19,8 @@ from .operator import SpectralInputEnhancer
 REPO_ROOT = Path(__file__).resolve().parents[3]
 MODEL_YAML = REPO_ROOT / "configs/coffee_fg/models/yolo26n-p3.yaml"
 CONFIG_ROOT = REPO_ROOT / "configs/af2_spectral"
+STAGE1_ARMS = ("AF2WIN", "AF2ORI", "AF2POL", "AF2SOFT", "AF2LUM")
+ALTERNATIVE_ARMS = ("PCG1", "WAV1")
 
 
 def sha256(path: str | Path) -> str:
@@ -95,7 +97,7 @@ def run_spectral_static_audit(
         schema = {key: tuple(value.shape) for key, value in model.state_dict().items()}
         state_keys = list(frontend.state_dict())
         geometry_coverage = True
-        if arm in {"AF2WIN", "AF2ORI", "AF2POL", "AF2SOFT", "AF2LUM"}:
+        if arm in STAGE1_ARMS:
             geometry_coverage = bool(
                 frontend.angle_bin.numel() == spectral.patch_size**2
                 and int(frontend.angle_bin.min()) >= 0
@@ -107,6 +109,21 @@ def run_spectral_static_audit(
         common_schedule = schedule if common_schedule is None else common_schedule
         all_schedules_equal &= schedule == common_schedule
         all_models_equal &= payload["model"] == str(MODEL_YAML.relative_to(REPO_ROOT)).replace("\\", "/")
+        arm_gates = {
+            "finite_output": bool(torch.isfinite(first).all()),
+            "deterministic_output": torch.equal(first.detach(), second.detach()),
+            "active_output": not torch.equal(first.detach(), sample.detach()),
+            "raw_path_preserved_on_nonnegative_probe": bool(
+                (first.detach() + 1.0e-7 >= sample.detach()).all()
+            ),
+            "finite_input_gradients": input_gradient_finite,
+            "zero_persistent_frontend_state": not state_keys,
+            "same_parameter_count": candidate_parameters == source_parameters,
+            "same_state_dict_schema": schema == source_schema,
+            "all_source_weights_transferred": transfer.get("shape_compatible_items")
+            == transfer.get("source_items"),
+            "frequency_geometry_covered": geometry_coverage,
+        }
         arm_results[arm] = {
             "parameters": candidate_parameters,
             "added_parameters": candidate_parameters - source_parameters,
@@ -115,51 +132,57 @@ def run_spectral_static_audit(
             "mean_input_change": float((first.detach() - sample.detach()).abs().mean()),
             "output_range": [float(first.detach().min()), float(first.detach().max())],
             "transfer": transfer,
-            "gates": {
-                "finite_output": bool(torch.isfinite(first).all()),
-                "deterministic_output": torch.equal(first.detach(), second.detach()),
-                "active_output": not torch.equal(first.detach(), sample.detach()),
-                "raw_path_preserved_on_nonnegative_probe": bool(
-                    (first.detach() + 1.0e-7 >= sample.detach()).all()
-                ),
-                "finite_input_gradients": input_gradient_finite,
-                "zero_persistent_frontend_state": not state_keys,
-                "same_parameter_count": candidate_parameters == source_parameters,
-                "same_state_dict_schema": schema == source_schema,
-                "all_source_weights_transferred": transfer.get("shape_compatible_items")
-                == transfer.get("source_items"),
-                "frequency_geometry_covered": geometry_coverage,
-            },
+            "gates": arm_gates,
+            "failed_gates": [key for key, value in arm_gates.items() if not value],
         }
 
-    gates = {
+    common_gates = {
         "arm_codes_exact": tuple(ARMS)
         == ("AF2C", "AF2WIN", "AF2ORI", "AF2POL", "AF2SOFT", "AF2LUM", "PCG1", "WAV1"),
         "legacy_af2c_bitwise_equal": torch.equal(legacy_value, control_value),
         "same_model_yaml": all_models_equal,
         "same_training_schedule": all_schedules_equal,
-        "all_arm_gates_pass": all(
-            all(entry["gates"].values()) for entry in arm_results.values()
-        ),
         "no_roi_align": True,
         "no_decoded_box_dependency": True,
         "test_accessed": False,
     }
-    decision = (
-        "PASS"
-        if all(value for key, value in gates.items() if key != "test_accessed")
-        and not gates["test_accessed"]
-        else "FAIL"
+    common_pass = (
+        all(value for key, value in common_gates.items() if key != "test_accessed")
+        and not common_gates["test_accessed"]
     )
+    arm_pass = {
+        arm: common_pass and all(entry["gates"].values())
+        for arm, entry in arm_results.items()
+    }
+    authorized_arms = [arm for arm in ARMS[1:] if arm_pass[arm]]
+    stage1_decision = "PASS" if all(arm_pass[arm] for arm in STAGE1_ARMS) else "FAIL"
+    alternative_controls_decision = (
+        "PASS" if all(arm_pass[arm] for arm in ALTERNATIVE_ARMS) else "FAIL"
+    )
+    overall_decision = "PASS" if all(arm_pass.values()) else "FAIL"
+    gates = {
+        **common_gates,
+        "stage1_all_arm_gates_pass": all(arm_pass[arm] for arm in STAGE1_ARMS),
+        "alternative_controls_all_arm_gates_pass": all(
+            arm_pass[arm] for arm in ALTERNATIVE_ARMS
+        ),
+        "all_arm_gates_pass": all(arm_pass.values()),
+    }
     result = {
-        "format": "coffee_detector.af2_spectral.static_audit.v1",
-        "decision": decision,
+        "format": "coffee_detector.af2_spectral.static_audit.v2",
+        "decision": overall_decision,
+        "stage1_decision": stage1_decision,
+        "alternative_controls_decision": alternative_controls_decision,
         "d0_checkpoint": str(checkpoint),
         "d0_checkpoint_sha256": sha256(checkpoint),
         "source_parameters": source_parameters,
         "arms": arm_results,
+        "arm_authorization": arm_pass,
+        "authorized_arms": authorized_arms,
         "gates": gates,
-        "training_authorized": decision == "PASS",
+        "training_authorized": bool(authorized_arms),
+        "stage1_training_authorized": stage1_decision == "PASS",
+        "alternative_controls_training_authorized": alternative_controls_decision == "PASS",
         "test_access_authorized": False,
     }
     output.parent.mkdir(parents=True, exist_ok=True)
