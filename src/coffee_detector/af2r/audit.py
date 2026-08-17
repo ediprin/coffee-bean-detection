@@ -79,10 +79,14 @@ def run_af2r_static_audit(
         for code, path in CONFIGS.items()
     }
     source = YOLO(str(checkpoint)).model.to(device).eval()
+    source_enhancer = getattr(source, "afab", None)
+    if source_enhancer is None:
+        raise RuntimeError("Checkpoint sumber bukan AF2: enhancer afab tidak ditemukan")
     nc = int(getattr(source.model[-1], "nc", 21))
     torch.manual_seed(20260817)
     sample = torch.rand(1, 3, 64, 64, device=device)
     with torch.inference_mode():
+        source_input = source_enhancer(sample)
         source_output = source(sample)
 
     records: dict[str, Any] = {}
@@ -99,6 +103,7 @@ def run_af2r_static_audit(
         transfer = load_af2r_weights(candidate, source)
         candidate.eval()
         with torch.inference_mode():
+            candidate_input = candidate.af2r(sample)
             output_value = candidate(sample)
             _, gate = candidate.af2r.forward_with_gate(sample)
             recovered = candidate.af2r.af2.recover(sample)
@@ -113,7 +118,8 @@ def run_af2r_static_audit(
             "trainable_parameters": sum(
                 parameter.numel() for parameter in candidate.parameters() if parameter.requires_grad
             ),
-            "initial_af2_max_abs_diff": _difference(source_output, output_value),
+            "initial_af2_input_max_abs_diff": _difference(source_input, candidate_input),
+            "initial_detector_output_max_abs_diff": _difference(source_output, output_value),
             "initial_gate_min": float(gate.min()),
             "initial_gate_max": float(gate.max()),
             "conditioning_abs_sum": float(features.abs().sum()),
@@ -154,10 +160,20 @@ def run_af2r_static_audit(
         "same_parameter_count": control["parameters"] == candidate["parameters"],
         "same_state_dict_schema": control["state_schema"] == candidate["state_schema"],
         "added_parameters_under_1000": 0 < added_parameters < 1000,
-        "initial_af2_output_preserved": max(
-            control["initial_af2_max_abs_diff"], candidate["initial_af2_max_abs_diff"]
+        # The front-end tensor is the wiring contract and must be bitwise
+        # identical. Separate CUDA detector forwards may differ by a few ULPs
+        # even with identical inputs/weights, so detector output is a bounded
+        # numerical diagnostic rather than a bitwise gate.
+        "initial_af2_input_bitwise_preserved": max(
+            control["initial_af2_input_max_abs_diff"],
+            candidate["initial_af2_input_max_abs_diff"],
         )
-        <= 1.0e-6,
+        == 0.0,
+        "initial_detector_output_numerically_consistent": max(
+            control["initial_detector_output_max_abs_diff"],
+            candidate["initial_detector_output_max_abs_diff"],
+        )
+        <= 1.0e-4,
         "initial_gate_exactly_one": all(
             record["initial_gate_min"] == 1.0 and record["initial_gate_max"] == 1.0
             for record in records.values()

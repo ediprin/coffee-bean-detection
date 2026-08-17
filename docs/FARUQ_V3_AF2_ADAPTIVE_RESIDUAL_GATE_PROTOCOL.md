@@ -70,7 +70,9 @@ Training is allowed only when the audit verifies:
 
 1. identical arm architecture, parameter count, state schema, and schedule;
 2. fewer than 1,000 added parameters;
-3. both arms initially reproduce the completed AF2 output within `1e-6`;
+3. both arms reproduce the completed AF2 front-end tensor bitwise at
+   initialization; separate detector forwards must additionally agree within
+   `1e-4` to tolerate the observed few-ULP CUDA convolution variation;
 4. both gates initially equal exactly one;
 5. AF2R0 receives zero information and AF2R1 receives nonzero cues;
 6. active gate output is bounded, changes the AF2 input, and has finite
@@ -113,3 +115,15 @@ It does not by itself establish real-lux robustness, varietal robustness,
 locked-test superiority, or deployment readiness. Efficiency must be reported
 with parameter count, FP32 size, and same-device latency before making a
 lightweight claim.
+
+## Static-audit implementation amendment
+
+The first static audit, run before any training, loaded all 708 AF2 tensors and
+verified an exact unit gate but reported a detector-output difference of
+`3.0517578125e-05`. The original `1e-6` whole-detector threshold therefore
+confounded front-end equivalence with numerical variation from two independent
+CUDA detector forwards. The executable audit was corrected before training to
+gate on bitwise equality of the actual AF2-enhanced input tensor. The repeated
+detector-forward comparison remains as a `1e-4` diagnostic. This amendment
+does not change any clean-validation, illumination, seed, or promotion
+criterion.
