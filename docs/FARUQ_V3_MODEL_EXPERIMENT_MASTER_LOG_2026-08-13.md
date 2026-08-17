@@ -330,16 +330,24 @@ unchanged.
 Protocol: `docs/FARUQ_V3_AF2_ILLUMINATION_ROBUSTNESS_PROTOCOL.md`.
 Result: `docs/FARUQ_V3_AF2_ILLUMINATION_ROBUSTNESS_RESULT_2026-08-17.md`.
 
-## Raw-preserving adaptive AF2 authorization
+## Raw-preserving adaptive AF2
 
-**Status: protocol frozen; static audit and training not yet run.** AF2R1 adds
-an illumination-conditioned residual gate directly to fixed AF2, while AF2R0
-is an equal-parameter zero-information control. Both start at exact AF2 and
-retain the raw image path. The study trains no auxiliary DG/FG loss and does
-not combine AF2 with another detector or head.
+**Status: completed -- FAIL at seed 42; stopped without illumination, extra
+seeds, or test.** The static audit passed with 467 added parameters and exact
+AF2 initialization. Both 30-epoch arms completed on grouped Faruq-v3
+validation:
 
-Seed-42 clean validation is screened first. Only a PASS against both AF2R0 and
-the frozen AF2 reference may open the paired illumination screen. Seeds
-123/2026 and test remain blocked.
+| Model | Macro | Bottom-3 | Worst |
+|---|---:|---:|---:|
+| Frozen AF2 | 88.20% | 80.04% | 79.35% |
+| **AF2R0 control** | **89.55%** | **84.30%** | **83.97%** |
+| AF2R1 illumination | 88.93% | 83.16% | 82.57% |
+
+AF2R1 lost 0.62 Macro, 1.13 Bottom-3, and 1.40 Worst-class points to the
+equal-parameter zero-information control. It preserved the original AF2
+reference, but failed all three causal criteria against AF2R0. The adaptive
+illumination mechanism is therefore rejected; fixed AF2's earlier retained
+status is unchanged. Test was not accessed.
 
 Protocol: `docs/FARUQ_V3_AF2_ADAPTIVE_RESIDUAL_GATE_PROTOCOL.md`.
+Result: `docs/FARUQ_V3_AF2_ADAPTIVE_RESIDUAL_GATE_RESULT_2026-08-17.md`.

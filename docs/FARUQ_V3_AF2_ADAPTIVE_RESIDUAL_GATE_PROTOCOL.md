@@ -1,7 +1,9 @@
 # Faruq-v3 Raw-Preserving Adaptive AF2 Protocol
 
-Status: **frozen before training**  
+Status: **completed -- FAIL at seed 42; protocol frozen before training**
 Date: 2026-08-17
+
+Result: `docs/FARUQ_V3_AF2_ADAPTIVE_RESIDUAL_GATE_RESULT_2026-08-17.md`.
 
 ## Research question
 
