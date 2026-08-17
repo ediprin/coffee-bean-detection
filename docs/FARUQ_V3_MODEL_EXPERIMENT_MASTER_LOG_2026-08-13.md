@@ -315,3 +315,20 @@ not authorized. AF2's prior retained status is unchanged.
 Protocol: `docs/FARUQ_V3_DIDA_AF2_FACTORIAL_PROTOCOL.md`.
 
 Full result: `docs/FARUQ_V3_DIDA_AF2_FACTORIAL_RESULT_2026-08-17.md`.
+
+## AF2 controlled illumination robustness authorization
+
+**Status: protocol frozen; evaluation not yet run.** Existing paired D0FT and
+AF2 checkpoints will be evaluated without training on identical Faruq-v3
+validation images under clean, exposure, contrast, color-temperature, and
+localized-shadow conditions. Conditions are applied directly to the native
+preprocessed input tensor, preserving geometry and leaving labels untouched.
+Robustness is defined as AF2's clean-normalized degradation
+minus D0FT's clean-normalized degradation, rather than raw stressed accuracy.
+
+Seed 42 is screened first. Seeds 123/2026 remain blocked unless AF2 passes the
+predefined Macro/Bottom-3/Worst degradation gate. Test remains locked. A PASS
+supports synthetic photometric robustness only; measured real-illumination
+robustness requires a new controlled capture dataset.
+
+Protocol: `docs/FARUQ_V3_AF2_ILLUMINATION_ROBUSTNESS_PROTOCOL.md`.
