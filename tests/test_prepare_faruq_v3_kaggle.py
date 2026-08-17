@@ -83,3 +83,17 @@ def test_prepare_kaggle_input_extracts_validates_and_rewrites_yaml(
     assert contract["splits"]["val"]["classes"] == list(range(21))
     assert not (data_root / "test").exists()
 
+
+def test_kaggle_notebook_installs_ultralytics_before_importing_it():
+    notebook_path = (
+        Path(__file__).resolve().parents[1] / "notebooks/Faruq_V3_AF2R_Kaggle.ipynb"
+    )
+    notebook = json.loads(notebook_path.read_text(encoding="utf-8"))
+    setup = "".join(notebook["cells"][1]["source"])
+    install = "'ultralytics==8.4.96'"
+    first_import = "import ultralytics"
+
+    assert install in setup
+    assert setup.index(install) < setup.index(first_import)
+    assert "TORCH_VERSION_BEFORE" in setup
+    assert "TORCH_VERSION_AFTER" in setup
