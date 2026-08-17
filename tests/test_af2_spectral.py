@@ -220,6 +220,15 @@ def test_protocol_and_kaggle_notebooks_freeze_the_staged_contract():
     assert "for arm in ARMS: run_arm(arm)" in sequential_source
     assert "restore_spectral_kaggle_run" in sequential_source
     assert "time.sleep(120)" in sequential_source
+    bundle = json.loads(
+        (ROOT / "notebooks/Faruq_V3_AF2_Spectral_Kaggle_Bundle_Colab.ipynb").read_text(
+            encoding="utf-8"
+        )
+    )
+    bundle_source = "\n".join("".join(cell.get("source", [])) for cell in bundle["cells"])
+    assert "build_af2_spectral_kaggle_bundle" in bundle_source
+    assert "D0 checkpoints" in bundle_source
+    assert "datasets','version" in bundle_source
 
 
 def test_kaggle_restore_requires_an_exact_arm_seed_and_sha_contract(tmp_path):
