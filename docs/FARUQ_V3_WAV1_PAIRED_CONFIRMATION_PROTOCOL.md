@@ -17,20 +17,25 @@ This is a follow-up to the completed AF2 spectral-factorization study. WAV1 was 
 - Classes: 21, all required in validation.
 - Seeds: 42, 123, 2026.
 - Seed 42 WAV1 is reused from the completed spectral Stage-2 run; it is not retrained.
+- The seed-42 metrics are frozen in repository evidence `docs/evidence/FARUQ_V3_WAV1_SEED42_RESULT_2026-08-19.json`; a Kaggle Saved Version of seed42 is not required for this confirmation.
 - Only WAV1 seeds 123 and 2026 are newly trained.
 - Each new seed starts from the existing seed-matched D0 checkpoint.
 - Faruq locked test is not restored, read, or reopened.
 
 ## Frozen WAV1 seed-42 observation
 
-Source artifact: `WAV1_seed42_result.json` from the completed Kaggle Saved Version.
+Repository evidence snapshot: `docs/evidence/FARUQ_V3_WAV1_SEED42_RESULT_2026-08-19.json`, transcribed from the completed Kaggle WAV1 seed-42 result before any seed-123/2026 training.
 
 - Macro mAP50-95: 0.8841052369918866
 - Bottom-3 mAP50-95: 0.8327607439278027
 - Worst-class mAP50-95: 0.8203489485589485
 - Median batch-1 latency at 640 px: 15.922472000056587 ms
+- WAV1 checkpoint SHA256: `ff8d06f2f9b98ae005c1b60d67613e3397eb541dc6420a3d2b069f8cd56ac426`
+- Initial D0 seed42 SHA256: `0c458841b84bedce4e0ddada6a5773f6a5ac8a91dad084a4a5f24e89f04e6367`
 - evaluation split: validation
 - test accessed: false
+
+The seed-42 checkpoint itself is not needed because this confirmation uses only its already completed validation metrics. The seed-42 result is never retrained or recomputed.
 
 ## Frozen implementation
 
