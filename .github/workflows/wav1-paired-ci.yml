@@ -1,0 +1,54 @@
+name: WAV1 Paired CI
+
+on:
+  push:
+    branches:
+      - agent/wav1-paired-confirmation
+    paths:
+      - "src/coffee_detector/experiments/run_faruq_v3_wav1_paired_confirmation.py"
+      - "notebooks/Faruq_V3_WAV1_Paired_Multiseed_Kaggle.ipynb"
+      - "docs/FARUQ_V3_WAV1_PAIRED_CONFIRMATION_PROTOCOL.md"
+      - "tests/test_wav1_paired_confirmation.py"
+      - ".github/workflows/wav1-paired-ci.yml"
+  pull_request:
+    paths:
+      - "src/coffee_detector/experiments/run_faruq_v3_wav1_paired_confirmation.py"
+      - "notebooks/Faruq_V3_WAV1_Paired_Multiseed_Kaggle.ipynb"
+      - "docs/FARUQ_V3_WAV1_PAIRED_CONFIRMATION_PROTOCOL.md"
+      - "tests/test_wav1_paired_confirmation.py"
+      - ".github/workflows/wav1-paired-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wav1-paired-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Verify runtime
+        run: |
+          python - <<'PY'
+          import ultralytics
+          print('ultralytics:', ultralytics.__version__)
+          assert ultralytics.__version__ == '8.4.96'
+          PY
+      - name: WAV1 paired regression tests
+        run: python -m pytest -q tests/test_wav1_paired_confirmation.py
+      - name: Runner CLI smoke check
+        run: python -m coffee_detector.experiments.run_faruq_v3_wav1_paired_confirmation --help
