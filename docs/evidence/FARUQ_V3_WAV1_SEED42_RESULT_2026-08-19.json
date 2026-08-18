@@ -1,0 +1,31 @@
+{
+  "format": "coffee_detector.af2_spectral.arm_result.v1",
+  "arm": "WAV1",
+  "seed": 42,
+  "metrics": {
+    "macro_map50_95": 0.8841052369918866,
+    "bottom3_class_map50_95": 0.8327607439278027,
+    "worst_class_map50_95": 0.8203489485589485
+  },
+  "latency": {
+    "device": "cuda:0",
+    "batch": 1,
+    "image_size": 640,
+    "warmup": 10,
+    "iterations": 50,
+    "median_ms": 15.922472000056587,
+    "p95_ms": 17.801744999815128
+  },
+  "checkpoint": "/kaggle/working/af2-spectral-factorization-v1/WAV1/WAV1_seed42/weights/best.pt",
+  "checkpoint_sha256": "ff8d06f2f9b98ae005c1b60d67613e3397eb541dc6420a3d2b069f8cd56ac426",
+  "initial_d0_checkpoint": "/kaggle/input/datasets/situjukamkape/faruq-v3-experiment-core-v1/D0_seed42_best.pt",
+  "initial_d0_checkpoint_sha256": "0c458841b84bedce4e0ddada6a5773f6a5ac8a91dad084a4a5f24e89f04e6367",
+  "config": "configs/af2_spectral/WAV1_yolo26n.yaml",
+  "evaluation_split": "val",
+  "test_images_accessed": false,
+  "provenance": {
+    "source": "completed Kaggle WAV1 seed42 run",
+    "source_date": "2026-08-18",
+    "purpose": "immutable seed42 reuse for paired multiseed confirmation; no checkpoint or test access required"
+  }
+}
