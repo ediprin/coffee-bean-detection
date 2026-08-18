@@ -51,19 +51,21 @@ def run_af2_refinement_static_audit(
     control_bitwise = torch.equal(control(cpu_probe), legacy(cpu_probe))
 
     radial = AF2RefinementInputEnhancer(frozen_refinement_config("AF2RAD"))
+    angle_map_equal = torch.equal(radial.radial.angle_bin.cpu(), legacy.angle_bin.cpu())
     radial_geometry = {
         "angular_bins": radial.radial.config.angular_bins,
         "radial_bands": radial.radial.radial_bands,
         "radial_values": sorted(radial.radial.radial_bin.unique().tolist()),
-        "angle_min": int(radial.radial.angle_bin.min().item()),
-        "angle_max": int(radial.radial.angle_bin.max().item()),
+        "sampled_angle_min": int(radial.radial.angle_bin.min().item()),
+        "sampled_angle_max": int(radial.radial.angle_bin.max().item()),
+        "sampled_angle_count": int(radial.radial.angle_bin.unique().numel()),
+        "legacy_angle_map_bitwise_equal": angle_map_equal,
     }
     radial_gate = (
         radial_geometry["angular_bins"] == 360
         and radial_geometry["radial_bands"] == 3
         and radial_geometry["radial_values"] == [0, 1, 2]
-        and radial_geometry["angle_min"] == 0
-        and radial_geometry["angle_max"] == 359
+        and angle_map_equal
     )
 
     torch.manual_seed(42019)
@@ -141,13 +143,15 @@ def run_af2_refinement_static_audit(
     gates = {
         "d0_is_sni21": checkpoint_gate,
         "legacy_af2c_bitwise_equal": control_bitwise,
-        "radial_is_3x360": radial_gate,
+        "radial_is_3x360_with_legacy_angle_map": radial_gate,
         "wav1_cue_bitwise_equal": wavelet_equivalent,
         "max_fusion_never_attenuates_af2_cue": max_fusion_gate,
         "all_arm_gates_pass": all(not entry["failed_gates"] for entry in arms.values()),
         "test_accessed": False,
     }
-    decision = "PASS" if all(value for key, value in gates.items() if key != "test_accessed") and gates["test_accessed"] is False else "FAIL"
+    decision = "PASS" if all(
+        value for key, value in gates.items() if key != "test_accessed"
+    ) and gates["test_accessed"] is False else "FAIL"
     result = {
         "format": "coffee_detector.af2_refinement.static_audit.v1",
         "d0_checkpoint": str(checkpoint),
