@@ -1,0 +1,78 @@
+{
+  "format": "coffee_detector.af2_refinement.result_evidence.v1",
+  "date": "2026-08-19",
+  "branch": "agent/af2-rad-wavelet-refinement",
+  "training_notebook_commit": "35ec68dfc1af5fa27ee29ee2acc86b6b4aa914c2",
+  "seed": 42,
+  "evaluation_split": "val",
+  "test_images_accessed": false,
+  "static_audit": {
+    "decision": "PASS",
+    "d0_nc": 21,
+    "d0_checkpoint_sha256": "0c458841b84bedce4e0ddada6a5773f6a5ac8a91dad084a4a5f24e89f04e6367",
+    "legacy_af2c_bitwise_equal": true,
+    "radial_is_3x360_with_legacy_angle_map": true,
+    "wav1_cue_bitwise_equal": true,
+    "max_fusion_never_attenuates_af2_cue": true,
+    "all_arm_gates_pass": true,
+    "test_accessed": false
+  },
+  "baseline": {
+    "arm": "AF2C",
+    "macro_map50_95": 0.8819734111428803,
+    "bottom3_class_map50_95": 0.8004276546678737,
+    "worst_class_map50_95": 0.7934699749241949
+  },
+  "candidates": {
+    "AF2RAD": {
+      "macro_map50_95": 0.8677600196622086,
+      "bottom3_class_map50_95": 0.7695391825702375,
+      "worst_class_map50_95": 0.7208954755796306,
+      "median_latency_ms": 24.52367800015054,
+      "delta_vs_af2c": {
+        "macro": -0.014213391480671689,
+        "bottom3": -0.030888472097636233,
+        "worst": -0.07257449934456428
+      },
+      "decision": "REJECT"
+    },
+    "AF2WAV": {
+      "macro_map50_95": 0.877249716535619,
+      "bottom3_class_map50_95": 0.8170718587221266,
+      "worst_class_map50_95": 0.8081718313943018,
+      "median_latency_ms": 25.444991999393096,
+      "delta_vs_af2c": {
+        "macro": -0.004723694607261297,
+        "bottom3": 0.01664420405425293,
+        "worst": 0.014701856470106911
+      },
+      "decision": "REJECT"
+    },
+    "AF2RADWAV": {
+      "macro_map50_95": 0.8710128999453404,
+      "bottom3_class_map50_95": 0.793473319349312,
+      "worst_class_map50_95": 0.771334337294846,
+      "median_latency_ms": 27.2647900001175,
+      "delta_vs_af2c": {
+        "macro": -0.010960511197539935,
+        "bottom3": -0.006954335318561711,
+        "worst": -0.022135637629348892
+      },
+      "decision": "REJECT"
+    }
+  },
+  "frozen_gate": {
+    "macro_gain_at_least_points": 0.5,
+    "bottom3_not_lower": true,
+    "worst_drop_no_more_than_points": 1.0
+  },
+  "retained": [],
+  "winner": null,
+  "decision": "FAIL",
+  "next": "KEEP_AF2C_AND_STOP",
+  "interpretation": {
+    "radial_alone_explains_af2pol": false,
+    "af2_wavelet_max_fusion_supported": false,
+    "radial_wavelet_composition_supported": false
+  }
+}
