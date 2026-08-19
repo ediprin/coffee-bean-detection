@@ -62,19 +62,29 @@ def _validate_candidate(payload: dict, seed: int) -> dict[str, float]:
 
 
 def _validate_reference(payload: dict) -> dict[int, dict[str, float]]:
+    """Accept either the AF2/IGEM paired artifact or its upstream D0FT confirmation."""
     if (
         payload.get("seeds") != [42, 123, 2026]
         or payload.get("evaluation_split") != "val"
         or payload.get("test_images_accessed") is not False
         or payload.get("test_opened") is not False
     ):
-        raise RuntimeError("AF2/IGEM reference bukan tiga-seed validation-only evidence")
+        raise RuntimeError("D0FT reference bukan tiga-seed validation-only evidence")
+
+    is_acmc_d0ft = payload.get("protocol") == "faruq-v3-acmc-paired-optimization-confirmation-v1"
+    if is_acmc_d0ft and payload.get("decision") != "PASS":
+        raise RuntimeError("Upstream D0FT paired confirmation bukan PASS")
+
     result = {}
     for seed in SEEDS:
         row = payload.get("per_seed", {}).get(str(seed), {})
-        if "D0FT" not in row:
+        if is_acmc_d0ft:
+            source = row.get("results", {}).get("D0FT")
+        else:
+            source = row.get("D0FT")
+        if source is None:
             raise RuntimeError(f"D0FT seed {seed} hilang dari reference")
-        result[seed] = _metrics(row["D0FT"])
+        result[seed] = _metrics(source)
     return result
 
 
@@ -113,13 +123,13 @@ def run_decision(
     seed42_evidence: str | Path,
     seed123_result: str | Path,
     seed2026_result: str | Path,
-    af2_igem_reference: str | Path,
+    d0ft_reference: str | Path,
     output_path: str | Path,
 ) -> dict:
     seed42_payload = _read(seed42_evidence, "WAV_L1 seed42 evidence")
     seed123_payload = _read(seed123_result, "WAV_L1 seed123 result")
     seed2026_payload = _read(seed2026_result, "WAV_L1 seed2026 result")
-    reference = _read(af2_igem_reference, "AF2/IGEM D0FT reference")
+    reference = _read(d0ft_reference, "D0FT paired reference")
 
     candidate = {
         42: _validate_seed42(seed42_payload),
@@ -164,14 +174,14 @@ def main() -> None:
     parser.add_argument("--seed42-evidence", required=True)
     parser.add_argument("--seed123-result", required=True)
     parser.add_argument("--seed2026-result", required=True)
-    parser.add_argument("--af2-igem-reference", required=True)
+    parser.add_argument("--d0ft-reference", required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     run_decision(
         args.seed42_evidence,
         args.seed123_result,
         args.seed2026_result,
-        args.af2_igem_reference,
+        args.d0ft_reference,
         args.output,
     )
 
