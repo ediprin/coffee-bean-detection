@@ -194,3 +194,53 @@ def static_stb_guided_audit(
     }
     output_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     return result
+
+
+def audit_stb_guided_checkpoint(
+    checkpoint: str | Path,
+    *,
+    expected_parameters: int,
+    output_path: str | Path | None = None,
+) -> dict:
+    """Verify that a trained S2/S3 checkpoint remains deployment-only WAV-L1.
+
+    This audit deliberately looks at the serialized artifact after Ultralytics
+    has written/stripped it. A training-only teacher or AF2 object must not
+    survive inside the deployed checkpoint/model.
+    """
+
+    from ultralytics import YOLO
+
+    checkpoint = Path(checkpoint).expanduser().resolve()
+    candidate = YOLO(str(checkpoint)).model.cpu().eval()
+    state_keys = tuple(candidate.state_dict())
+    module_names = tuple(name.lower() for name, _ in candidate.named_modules())
+    parameters = sum(parameter.numel() for parameter in candidate.parameters())
+    head = candidate.model[-1]
+    factorization = getattr(candidate, "factorization_config", None)
+    checks = {
+        "loadable_by_ultralytics": True,
+        "parameter_count_matches_static_wav_l1": parameters == int(expected_parameters),
+        "factorization_is_wav_l1": getattr(factorization, "arm", None) == "WAV_L1",
+        "native_detect_head_retained": type(head).__name__ == "Detect",
+        "state_has_no_teacher": not any("teacher" in key.lower() for key in state_keys),
+        "state_has_no_af2": not any("af2" in key.lower() for key in state_keys),
+        "modules_have_no_teacher": not any("teacher" in name for name in module_names),
+        "modules_have_no_af2": not any("af2" in name for name in module_names),
+        "criterion_not_serialized": getattr(candidate, "criterion", None) is None,
+    }
+    result = {
+        "format": "coffee_detector.stb_guided.checkpoint_audit.v1",
+        "checkpoint": str(checkpoint),
+        "checkpoint_sha256": sha256(checkpoint),
+        "parameters": parameters,
+        "checks": checks,
+        "test_images_accessed": False,
+        "test_opened": False,
+        "decision": "PASS" if all(checks.values()) else "FAIL",
+    }
+    if output_path is not None:
+        destination = Path(output_path).expanduser().resolve()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    return result
