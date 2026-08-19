@@ -1,0 +1,64 @@
+name: WAV1 Factorization CI
+
+on:
+  push:
+    branches:
+      - agent/wav1-mechanism-factorization
+    paths:
+      - "src/coffee_detector/wav1_factorization/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_wav1_factorization_*.py"
+      - "src/coffee_detector/experiments/prepare_wav1_factorization_kaggle.py"
+      - "configs/wav1_factorization/**"
+      - "notebooks/Faruq_V3_WAV1_Factorization_*.ipynb"
+      - "docs/FARUQ_V3_WAV1_MECHANISM_FACTORIZATION_PROTOCOL.md"
+      - "tests/test_wav1_factorization*.py"
+      - ".github/workflows/wav1-factorization-ci.yml"
+  pull_request:
+    paths:
+      - "src/coffee_detector/wav1_factorization/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_wav1_factorization_*.py"
+      - "src/coffee_detector/experiments/prepare_wav1_factorization_kaggle.py"
+      - "configs/wav1_factorization/**"
+      - "notebooks/Faruq_V3_WAV1_Factorization_*.ipynb"
+      - "docs/FARUQ_V3_WAV1_MECHANISM_FACTORIZATION_PROTOCOL.md"
+      - "tests/test_wav1_factorization*.py"
+      - ".github/workflows/wav1-factorization-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wav1-factorization-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Verify runtime
+        run: |
+          python - <<'PY'
+          import ultralytics
+          print('ultralytics:', ultralytics.__version__)
+          assert ultralytics.__version__ == '8.4.96'
+          PY
+      - name: WAV1 factorization regression tests
+        run: python -m pytest -q tests/test_wav1_factorization.py tests/test_wav1_factorization_kaggle.py
+      - name: CLI smoke checks
+        run: |
+          python -m coffee_detector.experiments.run_faruq_v3_wav1_factorization_audit --help
+          python -m coffee_detector.experiments.run_faruq_v3_wav1_factorization_arm --help
+          python -m coffee_detector.experiments.run_faruq_v3_wav1_factorization_decision --help
+          python -m coffee_detector.experiments.prepare_wav1_factorization_kaggle --help
