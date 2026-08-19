@@ -1,0 +1,35 @@
+name: STB-guided CI
+
+on:
+  push:
+    branches:
+      - agent/stb-guided-robust-wav-yolo
+    paths:
+      - 'src/coffee_detector/stb_guided/**'
+      - 'src/coffee_detector/experiments/run_faruq_v3_stb_guided.py'
+      - 'src/coffee_detector/experiments/prepare_stb_guided_kaggle.py'
+      - 'configs/stb_guided/**'
+      - 'tests/test_stb_guided.py'
+      - '.github/workflows/stb-guided-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned runtime
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ultralytics==8.4.96
+          python -m pip install --no-deps -e .
+      - name: Compile changed modules
+        run: |
+          python -m compileall -q src/coffee_detector/stb_guided
+          python -m compileall -q src/coffee_detector/experiments/run_faruq_v3_stb_guided.py
+          python -m compileall -q src/coffee_detector/experiments/prepare_stb_guided_kaggle.py
+      - name: Unit tests
+        run: python -m pytest -q tests/test_stb_guided.py
