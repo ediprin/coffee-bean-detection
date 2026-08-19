@@ -22,6 +22,7 @@ from coffee_detector.experiments.run_faruq_v3_stb_capacity_control import (
 )
 from coffee_detector.stb_guided import (
     STBGuidedConfig,
+    audit_stb_guided_checkpoint,
     make_stb_guided_trainer,
     sha256,
     static_stb_guided_audit,
@@ -185,6 +186,17 @@ def run_stb_guided(
     if not _run_complete(run_dir, epochs):
         raise RuntimeError(f"Run S2 belum lengkap: {run_dir}")
 
+    expected_parameters = int(static["parameters"]["wav_l1_reference"])
+    checkpoint_audit = audit_stb_guided_checkpoint(
+        best,
+        expected_parameters=expected_parameters,
+        output_path=reports / f"{run_name}_checkpoint_audit.json",
+    )
+    if checkpoint_audit["decision"] != "PASS":
+        raise RuntimeError(
+            "Checkpoint S2 melanggar deployment contract; hentikan sebelum evaluasi"
+        )
+
     report = evaluate(
         best,
         data_root,
@@ -218,6 +230,7 @@ def run_stb_guided(
             "descriptive_delta_vs_STB1_teacher": _delta(candidate, stb1),
         },
         "static_parameters": static.get("parameters", {}),
+        "checkpoint_audit": checkpoint_audit,
         "training_executed_this_call": training_executed,
         "checkpoint": str(best),
         "decision": gate["decision"],
