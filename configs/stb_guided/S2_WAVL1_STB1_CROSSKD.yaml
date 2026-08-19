@@ -1,0 +1,22 @@
+code: S2_WAVL1_STB1_CROSSKD
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+factorization:
+  arm: WAV_L1
+  eps: 1.0e-8
+stb_guided:
+  mode: crosskd
+  temperature: 2.0
+  distillation_weight: 0.50
+  minimum_teacher_gt_probability: 0.10
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: false
+  cache: false
+  close_mosaic: 10
+  max_det: 500
+  save_period: 1
