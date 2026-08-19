@@ -1,0 +1,125 @@
+{
+  "format": "coffee_detector.wav1_paired_confirmation.v1",
+  "protocol": "faruq-v3-wav1-paired-confirmation-v1",
+  "date": "2026-08-19",
+  "seeds": [42, 123, 2026],
+  "newly_trained_seeds": [123, 2026],
+  "evaluation_split": "val",
+  "test_images_accessed": false,
+  "test_opened": false,
+  "frontend_contract": {
+    "config_sha256": "70de7874371344c362d48d953e70fc9a99201ed2c0f88e063c8c4eadce0335b4",
+    "arm": "WAV1",
+    "wavelet_levels": 2,
+    "parameter_free": true,
+    "no_persistent_state": true,
+    "repeatable_cpu_bitwise": true,
+    "finite_output": true,
+    "finite_gradient": true
+  },
+  "seed42_latency": {
+    "device": "cuda:0",
+    "batch": 1,
+    "image_size": 640,
+    "warmup": 10,
+    "iterations": 50,
+    "median_ms": 15.922472000056587,
+    "p95_ms": 17.801744999815128
+  },
+  "per_seed": {
+    "42": {
+      "D0FT": {
+        "macro_map50_95": 0.8668870418312263,
+        "bottom3_class_map50_95": 0.7498085237045921,
+        "worst_class_map50_95": 0.7202242739437643
+      },
+      "WAV1": {
+        "macro_map50_95": 0.8841052369918866,
+        "bottom3_class_map50_95": 0.8327607439278027,
+        "worst_class_map50_95": 0.8203489485589485
+      }
+    },
+    "123": {
+      "D0FT": {
+        "macro_map50_95": 0.863509436662014,
+        "bottom3_class_map50_95": 0.7475135787938432,
+        "worst_class_map50_95": 0.6782955438486477
+      },
+      "WAV1": {
+        "macro_map50_95": 0.8781212742465554,
+        "bottom3_class_map50_95": 0.7755807345865325,
+        "worst_class_map50_95": 0.751321280582163
+      },
+      "d0_checkpoint_sha256": "370d0fc8105fa2321ffdeb052ca53b7488a4499eba7da9ec6a00bbaa3600af9e"
+    },
+    "2026": {
+      "D0FT": {
+        "macro_map50_95": 0.8680961918251362,
+        "bottom3_class_map50_95": 0.799932607409076,
+        "worst_class_map50_95": 0.7931074960001684
+      },
+      "WAV1": {
+        "macro_map50_95": 0.8598020819819567,
+        "bottom3_class_map50_95": 0.7853359571015842,
+        "worst_class_map50_95": 0.7387221476779986
+      },
+      "d0_checkpoint_sha256": "a750df124c010c785afad3e316c0cced12326c1c0db689e67a13e65d5319bd95"
+    }
+  },
+  "aggregate": {
+    "macro_map50_95": {
+      "d0ft_mean": 0.8661642234394589,
+      "d0ft_std": 0.002377273764675651,
+      "wav1_mean": 0.8740095310734662,
+      "wav1_std": 0.012662569241676573,
+      "paired_delta_mean": 0.007845307634007407,
+      "paired_delta_std": 0.014037765930903742,
+      "paired_delta_min": -0.008294109843179465,
+      "improved_seeds": 2,
+      "deltas": {
+        "42": 0.017218195160660255,
+        "123": 0.014611837584541432,
+        "2026": -0.008294109843179465
+      }
+    },
+    "bottom3_class_map50_95": {
+      "d0ft_mean": 0.7657515699691704,
+      "d0ft_std": 0.029623878601341424,
+      "wav1_mean": 0.7978924785386399,
+      "wav1_std": 0.030588200993460945,
+      "paired_delta_mean": 0.03214090856946942,
+      "paired_delta_std": 0.04890186225205213,
+      "paired_delta_min": -0.014596650307491799,
+      "improved_seeds": 2,
+      "deltas": {
+        "42": 0.0829522202232107,
+        "123": 0.02806715579268937,
+        "2026": -0.014596650307491799
+      }
+    },
+    "worst_class_map50_95": {
+      "d0ft_mean": 0.7305424379308602,
+      "d0ft_std": 0.05809728453429835,
+      "wav1_mean": 0.7701307922730366,
+      "wav1_std": 0.04394407756514404,
+      "paired_delta_mean": 0.03958835434217656,
+      "paired_delta_std": 0.08250382235335445,
+      "paired_delta_min": -0.05438534832216979,
+      "improved_seeds": 2,
+      "deltas": {
+        "42": 0.10012467461518415,
+        "123": 0.07302573673351531,
+        "2026": -0.05438534832216979
+      }
+    }
+  },
+  "criteria": {
+    "macro_gain_at_least_0_5_point": true,
+    "macro_improved_at_least_2_of_3": true,
+    "bottom3_mean_not_lower": true,
+    "bottom3_improved_at_least_2_of_3": true,
+    "worst_mean_drop_no_more_than_1_point": true
+  },
+  "decision": "PASS",
+  "next_action": "REPORT_WAV1_VALIDATION_ROBUSTNESS_WITHOUT_REOPENING_TEST"
+}
