@@ -26,8 +26,10 @@ same framework for completeness, but S3 is **not authorized** by this protocol.
 Three completed results motivate this test:
 
 1. WAV-L1 is already a validation-robust, parameter-free deployment candidate.
-2. STB1 has the strongest lower-tail validation profile among the retained
-   architectural models.
+2. STB1 has the strongest aggregate lower-tail validation profile among the
+   retained architectural models across the frozen three seeds. This does **not**
+   mean STB1 dominates WAV-L1 on every individual seed; seed-42 is therefore a
+   genuine transfer test rather than a guaranteed stronger-teacher case.
 3. The earlier FC-STB experiment (`FARUQ_V3_FCSTB_DISTILLATION_RESULT_2026-08-13.md`)
    showed that **direct GT-bounded AF2 -> STB logit distillation failed**, even
    though the teacher had complementary decisions. Therefore this protocol does
@@ -76,7 +78,7 @@ has at least the frozen minimum GT probability are distilled.
 Frozen S2 values:
 
 - temperature: `2.0`
-- distillation weight: `0.50`
+- branch-local distillation coefficient: `0.50`
 - minimum teacher GT probability: `0.10`
 - epochs: `50`
 - image size: `640`
@@ -84,6 +86,12 @@ Frozen S2 values:
 - optimizer: `auto`
 - close mosaic: `10`
 - max detections: `500`
+
+**Implementation clarification frozen before training:** because YOLO26 detaches
+its one2one features, CrossKD is attached to the non-detached one2many branch.
+The `0.50` coefficient is applied inside that classification branch and the
+result then follows YOLO26's existing one2many/one2one weighting schedule. This
+is part of the frozen implementation, not a post-result tuning choice.
 
 No box/localization distillation is added.
 
