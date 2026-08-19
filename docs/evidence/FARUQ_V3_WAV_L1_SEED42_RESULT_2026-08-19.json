@@ -1,0 +1,27 @@
+{
+  "format": "coffee_detector.wav_l1.seed42_reference.v1",
+  "arm": "WAV_L1",
+  "seed": 42,
+  "evaluation_split": "val",
+  "test_images_accessed": false,
+  "metrics": {
+    "macro_map50_95": 0.885720537714217,
+    "bottom3_class_map50_95": 0.8399334705085897,
+    "worst_class_map50_95": 0.8209474694929713
+  },
+  "d0ft_seed42_metrics": {
+    "macro_map50_95": 0.8668870418312263,
+    "bottom3_class_map50_95": 0.7498085237045921,
+    "worst_class_map50_95": 0.7202242739437643
+  },
+  "source_record": "docs/FARUQ_V3_WAV1_MECHANISM_FACTORIZATION_STAGE1_RESULT_2026-08-19.md",
+  "source_scope": "completed frozen Stage-1 seed-42 mechanism-factorization screen",
+  "selection_status": "mechanistic_survivor",
+  "implementation": {
+    "config": "configs/wav1_factorization/WAV_L1_yolo26n.yaml",
+    "cue": "level-1 Haar LH/HL/HH detail-energy magnitude on Rec.709 luminance",
+    "normalization": "stable_minmax_spatial for the new causal control, then common AFAB gate",
+    "parameter_free_frontend": true
+  },
+  "note": "Headline validation metrics are frozen before seed-123/2026 confirmation training. Full per-class Stage-1 JSON was not required by the simplified Kaggle notebook."
+}
