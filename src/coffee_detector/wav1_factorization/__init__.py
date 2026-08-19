@@ -7,6 +7,7 @@ from .model import (
 from .operator import (
     WAV1FactorizationEnhancer,
     fixed_local_highpass,
+    stable_minmax_spatial,
     wavelet_detail_levels,
 )
 
@@ -20,5 +21,6 @@ __all__ = [
     "frozen_arm_config",
     "load_factorization_weights",
     "make_factorization_trainer",
+    "stable_minmax_spatial",
     "wavelet_detail_levels",
 ]
