@@ -10,9 +10,39 @@ from coffee_detector.af2_spectral.operator import (
     haar_dwt2,
     rgb_luminance,
 )
-from coffee_detector.afab.operator import afab_gate, minmax_spatial
+from coffee_detector.afab.operator import afab_gate
 
 from .config import WAV1FactorizationConfig
+
+
+# Numerical guard only for the NEW causal controls. WAV1_REF must remain bitwise
+# delegated to the already-confirmed implementation. The floor is derived from
+# float32 machine precision, not tuned on validation performance.
+_FLOAT32_FLAT_TOL = 64.0 * torch.finfo(torch.float32).eps
+
+
+def stable_minmax_spatial(value: torch.Tensor, eps: float = 1.0e-8) -> torch.Tensor:
+    """Min-max normalize while mapping numerically-flat maps exactly to zero.
+
+    Plain min-max can amplify CPU/GPU convolution roundoff in an otherwise
+    constant cue into a full [0,1] spatial gate. For the new controls we first
+    compute the normalization in float32 and treat a spatial range within
+    64 float32 eps (relative to max(|x|, 1)) as numerical flatness. This is a
+    numerical contract, not a validation-tuned experimental hyperparameter.
+    """
+
+    if not torch.is_floating_point(value):
+        raise TypeError("normalisasi membutuhkan tensor floating point")
+    dtype = value.dtype
+    work = value.float()
+    low = work.amin(dim=(-2, -1), keepdim=True)
+    high = work.amax(dim=(-2, -1), keepdim=True)
+    spread = high - low
+    scale = work.abs().amax(dim=(-2, -1), keepdim=True).clamp_min(1.0)
+    threshold = scale * max(float(eps), _FLOAT32_FLAT_TOL)
+    normalized = (work - low) / spread.clamp_min(threshold)
+    normalized = torch.where(spread > threshold, normalized, torch.zeros_like(normalized))
+    return normalized.to(dtype=dtype)
 
 
 def wavelet_detail_levels(
@@ -76,17 +106,17 @@ class WAV1FactorizationEnhancer(nn.Module):
             assert self.reference is not None
             return self.reference.recover(value)
         if self.config.arm == "HP1":
-            cue = minmax_spatial(fixed_local_highpass(value), self.config.eps)
+            cue = stable_minmax_spatial(fixed_local_highpass(value), self.config.eps)
         else:
             detail1, detail2 = wavelet_detail_levels(value, self.config.eps)
             if self.config.arm == "WAV_L1":
-                cue = minmax_spatial(detail1, self.config.eps)
+                cue = stable_minmax_spatial(detail1, self.config.eps)
             elif self.config.arm == "WAV_L2":
-                cue = minmax_spatial(detail2, self.config.eps)
+                cue = stable_minmax_spatial(detail2, self.config.eps)
             elif self.config.arm == "WAV_RAWFUSE":
                 # Deliberately removes WAV1's per-level equalization. The only
                 # normalization happens after the raw scale evidence is fused.
-                cue = minmax_spatial(detail1 + detail2, self.config.eps)
+                cue = stable_minmax_spatial(detail1 + detail2, self.config.eps)
             else:  # defensive: config validation should make this unreachable
                 raise RuntimeError(f"arm tidak ditangani: {self.config.arm}")
         return cue.expand_as(value)
