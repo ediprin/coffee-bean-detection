@@ -1,3 +1,4 @@
+from .audit import sha256, static_stb_guided_audit
 from .config import MODES, STBGuidedConfig
 from .loss import (
     STBGuidedE2ELoss,
@@ -18,4 +19,6 @@ __all__ = [
     "positive_consistency_kl",
     "load_stb_guided_weights",
     "make_stb_guided_trainer",
+    "sha256",
+    "static_stb_guided_audit",
 ]
