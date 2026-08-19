@@ -10,13 +10,13 @@ import yaml
 
 from coffee_detector.af2_spectral import SpectralInputEnhancer
 from coffee_detector.af2_spectral.config import frozen_arm_config as frozen_spectral_arm_config
-from coffee_detector.afab.operator import minmax_spatial
 from coffee_detector.wav1_factorization import (
     ARMS,
     TRAIN_ARMS,
     WAV1FactorizationEnhancer,
     fixed_local_highpass,
     frozen_arm_config,
+    stable_minmax_spatial,
     wavelet_detail_levels,
 )
 
@@ -48,11 +48,19 @@ def test_all_factorization_frontends_are_parameter_free_finite_active_and_differ
         assert image.grad is not None and torch.isfinite(image.grad).all()
 
 
+def test_stable_minmax_maps_numerically_flat_cues_to_zero():
+    exact = torch.full((1, 1, 16, 16), 0.25)
+    near = exact.clone()
+    near[..., 0, 0] += 2.0e-7
+    assert torch.equal(stable_minmax_spatial(exact), torch.zeros_like(exact))
+    assert torch.equal(stable_minmax_spatial(near), torch.zeros_like(near))
+
+
 def test_constant_image_has_zero_effect_for_new_causal_controls():
     image = torch.full((1, 3, 64, 64), 0.4)
     for arm in TRAIN_ARMS:
         frontend = WAV1FactorizationEnhancer(frozen_arm_config(arm))
-        assert torch.equal(frontend(image), image)
+        assert torch.equal(frontend(image), image), arm
 
 
 def test_hp1_is_fixed_binomial_highpass_without_state():
@@ -73,9 +81,9 @@ def test_l1_l2_and_rawfuse_match_declared_formulas():
     l2 = WAV1FactorizationEnhancer(frozen_arm_config("WAV_L2")).recover(image)[:, :1]
     raw = WAV1FactorizationEnhancer(frozen_arm_config("WAV_RAWFUSE")).recover(image)[:, :1]
 
-    assert torch.allclose(l1, minmax_spatial(d1), atol=1.0e-7, rtol=1.0e-7)
-    assert torch.allclose(l2, minmax_spatial(d2), atol=1.0e-7, rtol=1.0e-7)
-    assert torch.allclose(raw, minmax_spatial(d1 + d2), atol=1.0e-7, rtol=1.0e-7)
+    assert torch.allclose(l1, stable_minmax_spatial(d1), atol=1.0e-7, rtol=1.0e-7)
+    assert torch.allclose(l2, stable_minmax_spatial(d2), atol=1.0e-7, rtol=1.0e-7)
+    assert torch.allclose(raw, stable_minmax_spatial(d1 + d2), atol=1.0e-7, rtol=1.0e-7)
 
 
 def test_new_training_configs_are_schedule_matched_and_do_not_redefine_wav1():
