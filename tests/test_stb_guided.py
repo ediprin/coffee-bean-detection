@@ -91,9 +91,15 @@ class _ScaleBlock(nn.Module):
 class _FakeBaseHead(nn.Module):
     def __init__(self, channels: tuple[int, ...], nc: int) -> None:
         super().__init__()
-        self.one2one = {
-            "cls_head": nn.ModuleList([nn.Conv2d(channel, nc, 1) for channel in channels])
-        }
+        # Register the fake teacher heads as real submodules so the no-gradient
+        # assertion covers every parameter used by the cross-head forward.
+        self.one2one_cls_head = nn.ModuleList(
+            [nn.Conv2d(channel, nc, 1) for channel in channels]
+        )
+
+    @property
+    def one2one(self):
+        return {"cls_head": self.one2one_cls_head}
 
 
 def _fake_stb_head(channels: tuple[int, ...] = (8, 16, 32), nc: int = 3) -> STBDetectHead:
