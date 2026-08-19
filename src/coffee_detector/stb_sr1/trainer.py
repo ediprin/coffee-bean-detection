@@ -27,14 +27,16 @@ def make_stb_sr1_trainer(
                     stb=frozen,
                 )
             )
-            if weights is not None:
-                transfer = load_stb_sr1_weights(model, weights)
-                print(f"STB-SR1 RESUME WEIGHT TRANSFER: {transfer}", flush=True)
-            elif not getattr(self.args, "resume", False):
+            if not getattr(self.args, "resume", False):
                 from ultralytics import YOLO
 
                 transfer = load_stb_sr1_weights(model, YOLO(str(bound)).model)
                 print(f"STB-SR1 NATIVE D0 TRANSFER: {transfer}", flush=True)
+            elif weights is not None:
+                transfer = load_stb_sr1_weights(model, weights)
+                print(f"STB-SR1 RESUME WEIGHT TRANSFER: {transfer}", flush=True)
+            else:
+                raise RuntimeError("Resume STB-SR1 memerlukan checkpoint weights")
             return model
 
         def final_eval(self):
