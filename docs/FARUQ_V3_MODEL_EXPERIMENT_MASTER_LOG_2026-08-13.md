@@ -386,3 +386,28 @@ global winner may receive paired seeds 123/2026. The locked Faruq test remains
 closed. No outcome is asserted by this authorization entry.
 
 Protocol: `docs/FARUQ_V3_AF2_SPECTRAL_FACTORIZATION_PROTOCOL.md`.
+
+## AF2 isolated radial/orientation factorization
+
+**Status: completed at seed 42 -- AF2_ORIENT RETAIN; AF2_RADIAL REJECT; test
+closed.** The study isolated the two CAFR factors directly against original
+AF2, without the cumulative CAFR changes:
+
+| Model | Macro | Bottom-3 | Worst | Delta vs AF2 (Macro / Bottom-3 / Worst) |
+|---|---:|---:|---:|---:|
+| AF2 reference | 88.20% | 80.04% | 79.35% | control |
+| AF2_RADIAL | 86.57% | 78.21% | 75.41% | -1.62 / -1.83 / -3.94 points |
+| **AF2_ORIENT** | **88.33%** | **81.38%** | **80.14%** | **+0.13 / +1.34 / +0.79 points** |
+
+Fixed three-band radial separation reduced every primary metric and is
+rejected. Unsigned 180-degree orientation folding improved all three metrics
+and is retained for paired seeds 123/2026. The frozen isolation protocol did
+not define a +0.5-point Macro threshold, so such a threshold is not introduced
+after observing the results. The radial-plus-orientation combination is not
+authorized because only the orientation factor was useful. Test was not
+accessed.
+
+Protocol: `docs/AF2_ISOLATED_RADIAL_ORIENTATION_PROTOCOL_2026-08-21.md`.
+
+Full result:
+`docs/FARUQ_V3_AF2_ISOLATED_RADIAL_ORIENTATION_RESULT_2026-08-21.md`.

@@ -26,6 +26,10 @@ CONFIGS = {
     "AF2_RADIAL": REPO_ROOT / "configs/af2_iso/AF2_RADIAL_yolo26n.yaml",
     "AF2_ORIENT": REPO_ROOT / "configs/af2_iso/AF2_ORIENT_yolo26n.yaml",
 }
+ALLOWED_SEEDS = {
+    "AF2_RADIAL": (42,),
+    "AF2_ORIENT": (42, 123, 2026),
+}
 
 
 def _sha256(path: str | Path) -> str:
@@ -34,6 +38,16 @@ def _sha256(path: str | Path) -> str:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _checkpoint_seed(path: Path) -> int:
+    from ultralytics.utils.patches import torch_load
+
+    payload = torch_load(path, map_location="cpu")
+    train_args = payload.get("train_args") if isinstance(payload, dict) else None
+    if not isinstance(train_args, dict) or "seed" not in train_args:
+        raise RuntimeError(f"Checkpoint D0 tidak merekam seed: {path}")
+    return int(train_args["seed"])
 
 
 def _latency(checkpoint: Path, device: str, iterations: int = 50) -> dict:
@@ -82,8 +96,8 @@ def run_faruq_v3_af2_iso_arm(
 ) -> dict:
     if arm not in TRAIN_ARMS:
         raise ValueError(f"arm harus salah satu {TRAIN_ARMS}")
-    if seed != 42:
-        raise ValueError("AF2 isolated screen dikunci pada seed 42")
+    if seed not in ALLOWED_SEEDS[arm]:
+        raise ValueError(f"{arm} hanya mengizinkan seed {ALLOWED_SEEDS[arm]}")
     if not authorize_training:
         raise RuntimeError("Training belum diotorisasi; tambahkan --authorize-training")
 
@@ -94,6 +108,8 @@ def run_faruq_v3_af2_iso_arm(
         raise RuntimeError("Development root tidak boleh mengekspos split test")
     if not checkpoint.is_file():
         raise FileNotFoundError(checkpoint)
+    if _checkpoint_seed(checkpoint) != seed:
+        raise RuntimeError(f"Checkpoint D0 tidak cocok dengan seed {seed}")
     load_faruq_grouped_summary(grouped_summary, data_root)
 
     reports = output_root / "val_reports"
