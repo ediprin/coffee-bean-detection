@@ -1,0 +1,73 @@
+name: CAFR CI
+
+on:
+  push:
+    branches:
+      - agent/cafr-yolo
+    paths:
+      - "src/coffee_detector/cafr/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_cafr_arm.py"
+      - "configs/cafr/**"
+      - "tests/test_cafr.py"
+      - "docs/FARUQ_V3_CAFR_PROTOCOL_2026-08-20.md"
+      - ".github/workflows/cafr-ci.yml"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - "src/coffee_detector/cafr/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_cafr_arm.py"
+      - "configs/cafr/**"
+      - "tests/test_cafr.py"
+      - "docs/FARUQ_V3_CAFR_PROTOCOL_2026-08-20.md"
+      - ".github/workflows/cafr-ci.yml"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cafr-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-and-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Runtime versions
+        run: |
+          python - <<'PY'
+          import ultralytics
+          print('ultralytics:', ultralytics.__version__)
+          assert ultralytics.__version__ == '8.4.96'
+          PY
+      - name: CAFR unit and contract tests
+        run: python -m pytest -q tests/test_cafr.py
+      - name: CLI smoke checks
+        run: |
+          python -m coffee_detector.cafr.calibration --help
+          python -m coffee_detector.experiments.run_faruq_v3_cafr_arm --help
+      - name: CAFR frontend smoke check
+        run: |
+          python - <<'PY'
+          import torch
+          from coffee_detector.cafr import CAFRInputEnhancer, frozen_variant_config
+          x = torch.rand(2, 3, 96, 96)
+          m = CAFRInputEnhancer(frozen_variant_config('CAFR', patch_size=32))
+          y = m(x)
+          assert y.shape == x.shape
+          assert torch.isfinite(y).all()
+          assert not list(m.parameters())
+          print('CAFR smoke check passed')
+          PY
