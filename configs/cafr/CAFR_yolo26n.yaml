@@ -1,0 +1,32 @@
+code: CAFR
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+cafr:
+  variant: CAFR
+  # Replace this with the frozen output of coffee_detector.cafr.calibration before training.
+  patch_size: 32
+  overlap: 0.50
+  gamma: 0.10
+  angular_bins: 16
+  orientation_period: 180.0
+  radial_boundaries: [0.3333333333, 0.6666666667]
+  soft_selection: true
+  soft_temperature: 0.02
+  chunk_size: 128
+  eps: 1.0e-8
+protocol:
+  patch_calibration_required: true
+  patch_candidates: [16, 32, 64]
+  patch_selection_rule: largest_candidate_not_exceeding_median_equivalent_bbox_side
+  locked_test: forbidden_during_development
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: false
+  cache: false
+  close_mosaic: 10
+  max_det: 500
+  save_period: 1
