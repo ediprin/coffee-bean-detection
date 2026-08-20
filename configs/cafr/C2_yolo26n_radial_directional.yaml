@@ -1,0 +1,26 @@
+code: C2
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+cafr:
+  variant: C2
+  patch_size: 32
+  overlap: 0.50
+  gamma: 0.10
+  angular_bins: 360
+  orientation_period: 360.0
+  radial_boundaries: [0.3333333333, 0.6666666667]
+  soft_selection: false
+  soft_temperature: 0.02
+  chunk_size: 128
+  eps: 1.0e-8
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: false
+  cache: false
+  close_mosaic: 10
+  max_det: 500
+  save_period: 1
