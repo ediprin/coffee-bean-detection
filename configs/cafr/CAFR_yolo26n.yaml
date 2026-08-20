@@ -2,13 +2,14 @@ code: CAFR
 model: configs/coffee_fg/models/yolo26n-p3.yaml
 cafr:
   variant: CAFR
-  # Replace this with the frozen output of coffee_detector.cafr.calibration before training.
+  # Placeholder only. The runner replaces this with the frozen output of
+  # coffee_detector.cafr.calibration before the first CAFR training run.
   patch_size: 32
   overlap: 0.50
   gamma: 0.10
   angular_bins: 16
   orientation_period: 180.0
-  radial_boundaries: [0.3333333333, 0.6666666667]
+  radial_boundaries: [0.3333333333333333, 0.6666666666666666]
   soft_selection: true
   soft_temperature: 0.02
   chunk_size: 128
