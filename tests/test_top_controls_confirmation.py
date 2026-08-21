@@ -1,9 +1,17 @@
 import json
+import shutil
 from pathlib import Path
 
 from coffee_detector.experiments.run_faruq_v3_top_controls_confirmation_decision import (
     METRICS,
     run_faruq_v3_top_controls_confirmation_decision,
+)
+from coffee_detector.experiments.prepare_top_controls_kaggle import (
+    ARTIFACTS,
+    build_top_controls_kaggle_bundle,
+    ensure_run_contract,
+    restore_top_control_kaggle_run,
+    run_directory,
 )
 
 
@@ -197,3 +205,54 @@ def test_parallel_colab_notebooks_fix_one_unique_arm_and_seed():
         assert "assert not (DATA/'test').exists()" in source
         observed.add((arm, seed))
     assert observed == expected
+
+
+def test_kaggle_bundle_and_resume_contract_are_explicit(tmp_path):
+    project = tmp_path / "project"
+    for relative in ARTIFACTS.values():
+        path = project / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(f"artifact:{relative}".encode())
+    bundle = tmp_path / "bundle"
+    manifest = build_top_controls_kaggle_bundle(project, bundle)
+    assert manifest["test_images_included"] is False
+    assert set(manifest["artifacts"]) == set(ARTIFACTS)
+
+    output = tmp_path / "output"
+    source = bundle / "AF2_seed123_best.pt"
+    contract = ensure_run_contract(
+        output, arm="AF2R0", seed=123, source_checkpoint=source
+    )
+    (contract.parent / "weights").mkdir()
+    (contract.parent / "weights" / "last.pt").write_bytes(b"resume")
+    saved = tmp_path / "saved-version"
+    shutil.copytree(output, saved)
+    restored_output = tmp_path / "restored"
+    restored = restore_top_control_kaggle_run(
+        saved,
+        restored_output,
+        arm="AF2R0",
+        seed=123,
+        source_checkpoint=source,
+    )
+    assert restored == run_directory(restored_output, "AF2R0", 123)
+    assert (restored / "weights/last.pt").read_bytes() == b"resume"
+
+
+def test_all_sequential_kaggle_notebook_compiles_and_stays_test_locked():
+    path = ROOT / "notebooks/Faruq_V3_Top_Controls_All_Sequential_Kaggle.ipynb"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    source = "\n".join(
+        "".join(cell.get("source", [])) for cell in payload["cells"]
+    )
+    for cell in payload["cells"]:
+        if cell.get("cell_type") == "code":
+            compile("".join(cell["source"]), str(path), "exec")
+    assert "ARMS=('FCT0','AF2R0','AF2R1','AF2CAL3')" in source
+    assert "SEEDS=(123,2026)" in source
+    assert "restore_top_control_kaggle_run" in source
+    assert "faruq-development-v3-grouped.tar.bin" in source
+    assert "top_controls_kaggle_manifest.json" in source
+    assert "assert not (DATA/'test').exists()" in source
+    assert "test_images_accessed':False" in source
+    assert "make_archive" in source
