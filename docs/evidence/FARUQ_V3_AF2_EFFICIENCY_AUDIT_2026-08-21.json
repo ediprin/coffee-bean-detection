@@ -1,0 +1,114 @@
+{
+  "format": "coffee_detector.af2.efficiency_evidence.v1",
+  "date": "2026-08-21",
+  "protocol": "docs/FARUQ_V3_AF2_EFFICIENCY_AUDIT_PROTOCOL_2026-08-21.md",
+  "seeds": [42, 123, 2026],
+  "models": ["D0FT", "AF2"],
+  "environment": {
+    "gpu_name": "Tesla T4",
+    "gpu_capability": [7, 5],
+    "torch_version": "2.11.0+cu128",
+    "cuda_version": "12.8",
+    "ultralytics_version": "8.4.96"
+  },
+  "settings": {
+    "batch_size": 1,
+    "image_size": 640,
+    "dtype": "float32",
+    "timing_scope": "synchronized_gpu_tensor_forward",
+    "input_transfer_included": false,
+    "postprocessing_included": false,
+    "warmup_iterations": 30,
+    "measured_iterations": 100
+  },
+  "aggregate": {
+    "parameter_count": {
+      "d0ft_mean": 2511990.0,
+      "af2_mean": 2511990.0,
+      "delta_mean": 0.0,
+      "ratio_mean": 1.0
+    },
+    "state_tensor_bytes": {
+      "d0ft_mean": 10124840.0,
+      "af2_mean": 10124840.0,
+      "delta_mean": 0.0,
+      "ratio_mean": 1.0
+    },
+    "buffer_bytes": {
+      "d0ft_mean": 76880.0,
+      "af2_mean": 89168.0,
+      "delta_mean": 12288.0,
+      "ratio_mean": 1.1598335067637877
+    },
+    "checkpoint_file_bytes": {
+      "d0ft_mean": 5389786.333333333,
+      "af2_mean": 5401040.333333333,
+      "delta_mean": 11254.0,
+      "ratio_mean": 1.0020880234028484
+    },
+    "latency_mean_ms": {
+      "d0ft_mean": 14.538638399997504,
+      "d0ft_std": 0.685558804487994,
+      "af2_mean": 25.351309536667753,
+      "af2_std": 2.914711953093232,
+      "delta_mean": 10.812671136670247,
+      "ratio_mean": 1.7483238391789273
+    },
+    "latency_median_ms": {
+      "d0ft_mean": 13.522299166652374,
+      "d0ft_std": 0.021532148099907285,
+      "af2_mean": 23.591295166662956,
+      "af2_std": 3.3444874445562607,
+      "delta_mean": 10.06899600001058,
+      "ratio_mean": 1.7450186881310585,
+      "paired": {
+        "42": {"D0FT": 13.539673999986235, "AF2": 21.254777499990496, "ratio": 1.56981456865299},
+        "123": {"D0FT": 13.535268999987693, "AF2": 21.198106500008862, "ratio": 1.5661385451613956},
+        "2026": {"D0FT": 13.491954499983194, "AF2": 28.321001499989507, "ratio": 2.09910295057879}
+      }
+    },
+    "latency_p95_ms": {
+      "d0ft_mean": 19.153880366663618,
+      "af2_mean": 33.780590066655236,
+      "delta_mean": 14.626709699991617,
+      "ratio_mean": 1.7666859211704837
+    },
+    "throughput_images_per_second": {
+      "d0ft_mean": 68.93069563929363,
+      "af2_mean": 39.955380218367544,
+      "delta_mean": -28.975315420926094,
+      "ratio_mean": 0.5809785803177001
+    },
+    "peak_allocated_bytes": {
+      "d0ft_mean": 75220480.0,
+      "af2_mean": 127555072.0,
+      "delta_mean": 52334592.0,
+      "ratio_mean": 1.6957492427594187
+    },
+    "peak_reserved_bytes": {
+      "d0ft_mean": 94371840.0,
+      "af2_mean": 150994944.0,
+      "delta_mean": 56623104.0,
+      "ratio_mean": 1.6
+    },
+    "incremental_inference_peak_bytes": {
+      "d0ft_mean": 26345472.0,
+      "af2_mean": 78667776.0,
+      "delta_mean": 52322304.0,
+      "ratio_mean": 2.986007462686567
+    }
+  },
+  "gates": {
+    "paired_environment_unchanged": true,
+    "detector_parameter_count_equal": true,
+    "all_reports_training_false": true,
+    "all_reports_test_false": true
+  },
+  "parameter_free_frontend_supported": true,
+  "training_executed": false,
+  "test_images_accessed": false,
+  "decision": "DESCRIPTIVE_DEPLOYMENT_AUDIT",
+  "excluded_claim_metric": "model_sample_resident_bytes",
+  "claim_limit": "same-device tensor-forward comparison; checkpoint size is not a parameter-count proxy; standard YOLO FLOPs are omitted because they do not count the FFT frontend",
+  "source_artifact": "experiments/faruq-v3-af2-efficiency-audit-v1/af2_efficiency_summary.json"
+}

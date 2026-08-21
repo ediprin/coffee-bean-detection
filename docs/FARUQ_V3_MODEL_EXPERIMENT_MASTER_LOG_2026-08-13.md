@@ -467,15 +467,24 @@ Full result:
 
 ## AF2 same-device efficiency audit
 
-**Status: protocol frozen; measurement not yet executed; no training or data
-access.** The final deployment audit compares completed D0FT and original AF2
-checkpoints at seeds 42/123/2026 using paired FP32 tensor-forward measurements
-on the same CUDA runtime. It records parameter/state/checkpoint size, median
-and p95 latency, throughput, and CUDA memory. The AF2 FFT frontend is included
-in latency, while host-to-device transfer and postprocessing are excluded.
-Standard YOLO FLOPs are not reported because they omit this frontend. This is
-a descriptive trade-off audit and cannot alter the completed accuracy or
-mechanism conclusions.
+**Status: completed -- all validity gates passed; no training or data/test
+access.** D0FT and original AF2 were measured in paired FP32 tensor-forward
+runs at seeds 42/123/2026 on a Tesla T4. Both models retained exactly
+2,511,990 parameters and identical 10,124,840-byte serialized tensor state.
+AF2 median latency was 23.59 ms versus 13.52 ms (1.745x), p95 latency was
+33.78 ms versus 19.15 ms (1.767x), and throughput was 39.96 versus 68.93
+image/s (0.581x). Peak allocated CUDA memory rose from 75.2 MB to 127.6 MB
+(1.696x). The checkpoint-file increase was only 11,254 bytes.
+
+The result supports `parameter-free frontend`, but explicitly rejects any
+interpretation of `compute-free` or `memory-free`. Combined with the completed
+accuracy confirmation (+1.32 Macro, +2.80 Bottom-3, +5.10 Worst-class points),
+AF2 provides a lower-tail accuracy benefit in exchange for substantial FFT
+latency and temporary memory. Host-to-device transfer, postprocessing, I/O,
+and standard YOLO FLOPs remain outside the claim.
 
 Protocol:
 `docs/FARUQ_V3_AF2_EFFICIENCY_AUDIT_PROTOCOL_2026-08-21.md`.
+
+Full result:
+`docs/FARUQ_V3_AF2_EFFICIENCY_AUDIT_RESULT_2026-08-21.md`.
