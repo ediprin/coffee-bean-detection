@@ -438,21 +438,29 @@ Protocol:
 Full result:
 `docs/FARUQ_V3_AF2_ORIENT_PAIRED_CONFIRMATION_RESULT_2026-08-21.md`.
 
-## AF2 mechanism diagnostic authorization
+## AF2 mechanism diagnostic
 
-**Status: protocol frozen and implementation prepared; no diagnostic result
-yet.** The next analysis reuses completed paired D0FT and original-AF2
-checkpoints for seeds 42/123/2026. It performs validation-only inference and
-decomposes the AF2 difference into raw top-500 proposal accessibility,
-final-detection localization accessibility, and localization-conditioned
-Top-1 class accuracy. A +0.5-point mean gain with improvement in at least 2/3
-seeds is frozen as the minimum support for either localization or
-classification attribution. The output is post-hoc mechanism evidence, not a
-new model-selection gate or causal proof. No training or test access is
-authorized.
+**Status: completed -- CLASSIFICATION_DOMINANT across paired seeds
+42/123/2026; no training or test access.** Raw top-500 proposal accessibility
+was already saturated and did not improve (99.81% D0FT versus 99.75% AF2,
+-0.06 point). In contrast, final proposal accessibility rose from 77.63% to
+89.54% (+11.91 points), localization-conditioned Top-1 accuracy rose from
+62.46% to 70.58% (+8.12), and correct-decision recall rose from 48.54% to
+63.18% (+14.64). All final-output and conditional classification directions
+improved in 3/3 seeds.
+
+The final accessibility gain is attributed to improved class confidence and
+candidate ranking because the underlying raw geometric candidate pool did not
+improve. AF2 therefore supports a fine-grained discrimination/ranking claim,
+not a raw-localization claim. Per-class effects remain heterogeneous, so the
+result does not establish universal class improvement. This remains post-hoc
+validation association rather than causal proof or a new selection gate.
 
 Protocol:
 `docs/FARUQ_V3_AF2_MECHANISM_DIAGNOSTIC_PROTOCOL_2026-08-21.md`.
 
 Notebook:
 `notebooks/Faruq_V3_AF2_Mechanism_Diagnostic_Colab.ipynb`.
+
+Full result:
+`docs/FARUQ_V3_AF2_MECHANISM_DIAGNOSTIC_RESULT_2026-08-21.md`.

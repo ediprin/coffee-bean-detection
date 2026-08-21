@@ -1,0 +1,93 @@
+{
+  "format": "coffee_detector.af2.mechanism_diagnostic.evidence.v1",
+  "date": "2026-08-21",
+  "protocol": "docs/FARUQ_V3_AF2_MECHANISM_DIAGNOSTIC_PROTOCOL_2026-08-21.md",
+  "seeds": [42, 123, 2026],
+  "models": ["D0FT", "AF2"],
+  "aggregate": {
+    "raw_proposal_accessibility": {
+      "d0ft_mean": 0.9980988593155894,
+      "af2_mean": 0.9974651457541192,
+      "delta_mean": -0.0006337135614702394,
+      "delta_std": 0.0008962063132909686,
+      "delta_min": -0.0019011406844107182,
+      "improved_seeds": 0,
+      "deltas": {"42": 0.0, "123": -0.0019011406844107182, "2026": 0.0}
+    },
+    "final_proposal_accessibility": {
+      "d0ft_mean": 0.7762991128010139,
+      "af2_mean": 0.8954372623574144,
+      "delta_mean": 0.11913814955640052,
+      "delta_std": 0.0062734441930365524,
+      "delta_min": 0.11216730038022815,
+      "improved_seeds": 3,
+      "deltas": {"42": 0.11787072243346008, "123": 0.12737642585551334, "2026": 0.11216730038022815}
+    },
+    "matched_recall": {
+      "d0ft_mean": 0.7762991128010139,
+      "af2_mean": 0.8954372623574144,
+      "delta_mean": 0.11913814955640052,
+      "delta_std": 0.0062734441930365524,
+      "delta_min": 0.11216730038022815,
+      "improved_seeds": 3
+    },
+    "conditional_top1_accuracy": {
+      "d0ft_mean": 0.6246294952561455,
+      "af2_mean": 0.7058410980959565,
+      "delta_mean": 0.08121160283981095,
+      "delta_std": 0.05795620812753274,
+      "delta_min": 0.00805833869534578,
+      "improved_seeds": 3,
+      "deltas": {"42": 0.08577522115918956, "123": 0.14980124866489752, "2026": 0.00805833869534578}
+    },
+    "localized_wrong_class_rate": {
+      "d0ft_mean": 0.3753705047438544,
+      "af2_mean": 0.2941589019040435,
+      "delta_mean": -0.08121160283981094,
+      "delta_std": 0.05795620812753277,
+      "delta_min": -0.14980124866489752
+    },
+    "proposal_miss_rate": {
+      "d0ft_mean": 0.2237008871989861,
+      "af2_mean": 0.10456273764258557,
+      "delta_mean": -0.11913814955640052,
+      "delta_std": 0.0062734441930365524,
+      "delta_min": -0.12737642585551334
+    },
+    "correct_decision_recall": {
+      "d0ft_mean": 0.48542458808618505,
+      "af2_mean": 0.6318124207858048,
+      "delta_mean": 0.14638783269961975,
+      "delta_std": 0.04974550546714923,
+      "delta_min": 0.08365019011406838,
+      "improved_seeds": 3,
+      "deltas": {"42": 0.15019011406844107, "123": 0.2053231939163498, "2026": 0.08365019011406838}
+    }
+  },
+  "criteria": {
+    "raw_localization_mean_gain_at_least_0_5_point": false,
+    "raw_localization_improved_at_least_2_of_3": false,
+    "conditional_classification_mean_gain_at_least_0_5_point": true,
+    "conditional_classification_improved_at_least_2_of_3": true
+  },
+  "localization_supported": false,
+  "classification_supported": true,
+  "attribution": "CLASSIFICATION_DOMINANT",
+  "per_class_extremes": {
+    "largest_conditional_gains": [
+      {"class_name": "biji_bertutul_tutul", "mean_delta": 0.49826580517790636},
+      {"class_name": "kulit_tanduk_ukuran_kecil", "mean_delta": 0.39611770014583314},
+      {"class_name": "biji_coklat", "mean_delta": 0.32882775119617225},
+      {"class_name": "tanah_batu_ranting_kecil", "mean_delta": 0.15206659600252279}
+    ],
+    "largest_conditional_losses": [
+      {"class_name": "kulit_tanduk_ukuran_sedang", "mean_delta": -0.2637087443673121},
+      {"class_name": "biji_berlubang_satu", "mean_delta": -0.16277406878429893}
+    ]
+  },
+  "training_executed": false,
+  "evaluation_split": "val",
+  "test_images_accessed": false,
+  "claim_limit": "post-hoc validation association; not causal proof and not a model-selection gate",
+  "source_artifact": "experiments/faruq-v3-af2-mechanism-diagnostic-v1/af2_mechanism_diagnostic.json"
+}
