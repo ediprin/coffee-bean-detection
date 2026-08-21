@@ -543,3 +543,29 @@ Notebook:
 
 Full result:
 `docs/FARUQ_V3_AF2_REUSED_TEST_POSTHOC_RESULT_2026-08-21.md`.
+
+## AF2 feature-frequency classification adapter
+
+**Status: protocol and implementation frozen before training on 2026-08-22;
+seed-42 screening not yet executed; test remains locked.** This user-authorized
+direction reopens validation-only model screening after the earlier thesis
+evidence freeze. It follows the completed `CLASSIFICATION_DOMINANT` mechanism
+diagnosis and does not modify the AF2 image frontend or YOLO26 box pathway.
+
+Two capacity-matched arms are frozen. `AF2FFA0` receives a zero spectral
+descriptor, while `AF2FFA1` receives the fixed high-frequency energy ratio of
+each P3/P4/P5 channel. Both start as exact AF2 identities, add the same 1,344
+parameters (about 0.054% for YOLO26n), and use identical 30-epoch continuation
+schedules from the seed-matched AF2 checkpoint. Static audit, arm runner,
+seed-42 decision, paired confirmation decision, unit tests, and a compact
+validation-only Colab notebook are implemented.
+
+Seed-42 PASS requires at least +0.5 Macro point, no Bottom-3 decrease, and no
+more than 1-point Worst-class decrease versus the capacity control. FAIL stops
+the direction without extra seeds or test access.
+
+Protocol:
+`docs/FARUQ_V3_AF2_FEATURE_FREQUENCY_ADAPTER_PROTOCOL.md`.
+
+Notebook:
+`notebooks/Faruq_V3_AF2_Feature_Frequency_Adapter_Colab.ipynb`.
