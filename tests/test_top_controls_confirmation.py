@@ -318,6 +318,14 @@ def test_canonical_upload_colab_follows_historical_core_protocol():
     assert "ARCHIVE_SHA256" in source
     assert "EXPECTED_ANNOTATIONS" in source
     assert "checkpoint_validation" in source
+    assert "kaggle==2.2.2" in source
+    assert "datasets', 'list', '--mine'" in source
+    assert source.index("datasets', 'list', '--mine'") < source.index(
+        "datasets', 'version'"
+    )
+    assert source.index("datasets', 'list', '--mine'") < source.index(
+        "datasets', 'create'"
+    )
     assert "completed_training_runs_included" in source
     assert "kaggle_saved_version_only" in source
     assert "run_contract.json" in source
