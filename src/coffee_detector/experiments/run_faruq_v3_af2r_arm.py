@@ -17,6 +17,7 @@ from coffee_detector.experiments.run_faruq_v3_stb_capacity_control import (
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ARMS = ("AF2R0", "AF2R1")
+ALLOWED_SEEDS = (42, 123, 2026)
 CONFIGS = {
     "AF2R0": REPO_ROOT / "configs/af2r/AF2R0_yolo26n_zero_control.yaml",
     "AF2R1": REPO_ROOT / "configs/af2r/AF2R1_yolo26n_illumination_gate.yaml",
@@ -35,6 +36,16 @@ def _read(path: Path, label: str) -> dict:
     if not path.is_file():
         raise FileNotFoundError(f"{label} tidak ditemukan: {path}")
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _checkpoint_seed(path: Path) -> int:
+    from ultralytics.utils.patches import torch_load
+
+    payload = torch_load(path, map_location="cpu")
+    train_args = payload.get("train_args") if isinstance(payload, dict) else None
+    if not isinstance(train_args, dict) or "seed" not in train_args:
+        raise RuntimeError(f"Checkpoint AF2 tidak merekam seed: {path}")
+    return int(train_args["seed"])
 
 
 def _complete(run_dir: Path, epochs: int) -> bool:
@@ -60,8 +71,8 @@ def run_faruq_v3_af2r_arm(
 ) -> dict:
     if arm not in ARMS:
         raise ValueError(f"Arm harus salah satu {ARMS}")
-    if seed != 42:
-        raise ValueError("Screening AF2R dikunci pada seed 42")
+    if seed not in ALLOWED_SEEDS:
+        raise ValueError(f"Seed AF2R harus salah satu {ALLOWED_SEEDS}")
     if not authorize_training:
         raise RuntimeError("Training belum diotorisasi")
     data_root = Path(data_root).expanduser().resolve()
@@ -73,6 +84,8 @@ def run_faruq_v3_af2r_arm(
         raise RuntimeError("Development root tidak boleh mengekspos test")
     if not (data_root / "data.yaml").is_file() or not checkpoint.is_file():
         raise FileNotFoundError("Dataset development atau checkpoint AF2 tidak lengkap")
+    if _checkpoint_seed(checkpoint) != seed:
+        raise RuntimeError(f"Checkpoint AF2 bukan seed {seed}: {checkpoint}")
     _read(grouped_summary, "Grouped summary")
     audit = _read(static_audit, "Static audit")
     if audit.get("decision") != "PASS" or not audit.get("training_authorized"):
@@ -104,7 +117,7 @@ def run_faruq_v3_af2r_arm(
                 model = YOLO(str(last))
                 args = {"resume": True, "device": device}
             else:
-                print(f"START {arm} seed {seed} dari AF2 seed 42", flush=True)
+                print(f"START {arm} seed {seed} dari AF2 seed-matched", flush=True)
                 model = YOLO(str(REPO_ROOT / payload["model"]))
                 args = dict(payload["train"])
                 args.update(
