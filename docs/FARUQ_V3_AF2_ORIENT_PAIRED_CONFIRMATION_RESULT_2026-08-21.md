@@ -1,8 +1,11 @@
 # Faruq-v3 AF2_ORIENT Paired Confirmation Result
 
-Date: 2026-08-21  
-Protocol: `docs/FARUQ_V3_AF2_ORIENT_PAIRED_CONFIRMATION_PROTOCOL_2026-08-21.md`  
-Evaluation: grouped Faruq-v3 validation, paired seeds 42/123/2026  
+Date: 2026-08-21
+
+Protocol: `docs/FARUQ_V3_AF2_ORIENT_PAIRED_CONFIRMATION_PROTOCOL_2026-08-21.md`
+
+Evaluation: grouped Faruq-v3 validation, paired seeds 42/123/2026
+
 Test accessed: **no**
 
 ## Result
