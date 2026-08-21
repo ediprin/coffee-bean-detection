@@ -488,3 +488,25 @@ Protocol:
 
 Full result:
 `docs/FARUQ_V3_AF2_EFFICIENCY_AUDIT_RESULT_2026-08-21.md`.
+
+## Thesis evidence freeze
+
+**Status: completed -- model search closed; original AF2 selected as the thesis
+model.** The repository evidence has been consolidated into a claim-level
+matrix and thesis blueprint. The primary claim is the controlled adaptation of
+the parameter-free AF2 frequency-angular frontend to an end-to-end YOLO26
+detector for the grouped SNI-21 task. D0FT remains the mandatory optimization
+control. Three-seed in-domain validation, classification-dominant mechanism
+diagnosis, target-free Coffee Standard evaluation, negative stress tests, and
+same-device efficiency jointly define the contribution and its limits.
+
+The freeze explicitly forbids claims of a newly invented FFT algorithm,
+cross-paper SOTA, general illumination robustness, real 300-gram readiness,
+full-system 40 FPS, uniform per-class improvement, or untouched Faruq test
+confirmation. No further training or test access is authorized by this entry.
+
+Evidence matrix:
+`docs/FARUQ_V3_AF2_THESIS_EVIDENCE_MATRIX_2026-08-21.md`.
+
+Thesis blueprint:
+`docs/FARUQ_V3_AF2_THESIS_BLUEPRINT_2026-08-21.md`.

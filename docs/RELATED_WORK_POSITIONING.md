@@ -2,7 +2,7 @@
 
 Document ID: `RW-COFFEE-YOLO`
 
-Current version: `v1.0.1`
+Current version: `v1.1.0`
 
 Effective date: `2026-08-02`
 
@@ -30,6 +30,7 @@ Supersedes: none (initial frozen version).
 |---|---|---|---|
 | `v1.0.0` | 2026-08-02 | Frozen | Initial evidence map; publication-status hierarchy fixed with Hong as the primary architecture anchor, Gope as YOLO-family baseline anchor, Ji as mechanism/ablation anchor, Lei as classification-localization conceptual anchor, and Bahy plus Jundullah as SNI problem anchors. |
 | `v1.0.1` | 2026-08-02 | Frozen | Status-only update after the Hong full-transfer implementation passed its no-training architecture gate; the evidence hierarchy and research position are unchanged. |
+| `v1.1.0` | 2026-08-21 | Frozen for thesis writing | Empirical position updated after Hong transfer failed and AF2 passed paired three-seed validation, external Coffee Standard evaluation, mechanism attribution, and efficiency audit. Citation hierarchy is unchanged; AF2/LFDet is now the selected architecture-adaptation center. |
 
 ## Research Scope
 
@@ -313,10 +314,36 @@ Until independent evidence exists, do not claim:
   ordinary depthwise convolution; or
 - that test performance is available.
 
-## Immediate Decision
+## Historical immediate decision (`v1.0.1`)
 
 The static architecture work under `HONG_YOLO26_REPRODUCTION_PROTOCOL.md`
 v1.2.0 is complete and recorded in `HONG_YOLO26_IMPLEMENTATION_AUDIT.md`.
 The next conditional action is review of that static report followed by the
 single `HF_seed42` validation screen. No component ablation, extra seed, or
 test access is authorized before the full-transfer fail-fast decision.
+
+## Current decision (`v1.1.0`)
+
+The Hong full-transfer screen subsequently failed its frozen seed-42 gate:
+Macro fell 4.92 points, conditional Top-1 fell 16.89 points, Bottom-3 fell
+23.58 points, and Worst-class AP fell 33.01 points, despite higher proposal
+accessibility. That result closes Hong transfer as the thesis candidate but
+does not invalidate Hong et al.'s original YOLOv10 study.
+
+The selected thesis model is original AF2, a transfer of LFDet's AFAB-2
+frequency-angular mechanism into the input graph of YOLO26. Against
+seed-matched D0FT over seeds 42/123/2026, AF2 gains 1.32 Macro, 2.80 Bottom-3,
+and 5.10 Worst-class points on average. Its raw proposal accessibility does not
+improve, while localization-conditioned Top-1 rises 8.12 points; the mechanism
+is therefore classification/ranking dominant. It also gains 4.08 Macro points
+on the leakage-safe Coffee Standard mapping without target training.
+
+The architectural claim is an **adaptation**, not invention of AFAB-2. The
+thesis contribution combines the one-stage YOLO26 integration with grouped
+SNI-21 evaluation, matched optimization controls, lower-tail confirmation,
+conditional mechanism diagnosis, external-domain evidence, negative
+factorizations, and same-device efficiency measurement. The final claim set is
+frozen in:
+
+- `FARUQ_V3_AF2_THESIS_EVIDENCE_MATRIX_2026-08-21.md`;
+- `FARUQ_V3_AF2_THESIS_BLUEPRINT_2026-08-21.md`.
