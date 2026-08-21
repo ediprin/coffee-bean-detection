@@ -73,9 +73,13 @@ classifier.
    correct-decision-recall gain.
 3. A target-free external evaluation showing +4.08-point mean Macro on the
    leakage-safe 18-class Coffee Standard mapping, improved in 3/3 seeds.
-4. A same-device deployment audit showing identical parameters but 1.745x
+4. A reused-test post-hoc evaluation showing +2.02-point Macro, +3.65-point
+   Bottom-3, and +2.38-point Worst-class means on the available Faruq test,
+   improved in 3/3 seeds; the paired-parent Macro interval is +0.13 to +3.86
+   points. This is corroboration, not an untouched locked-test confirmation.
+5. A same-device deployment audit showing identical parameters but 1.745x
    median latency and 1.696x peak allocated CUDA memory.
-5. Controlled negative ablations showing that radial separation, orientation
+6. Controlled negative ablations showing that radial separation, orientation
    folding, adaptive illumination gating, channel calibration, and extra
    DG/FG objectives do not supersede original AF2 under their frozen gates.
 
@@ -146,8 +150,10 @@ mAP50-95.
 4. Mechanism diagnostic: raw accessibility, final accessibility, conditional
    Top-1, wrong-class rate, miss rate, and correct-decision recall.
 5. Coffee Standard external paired results.
-6. Efficiency trade-off.
-7. Negative AF2 extensions and illumination stress test.
+6. Faruq reused-test post-hoc result, explicitly separated from confirmatory
+   evidence.
+7. Efficiency trade-off.
+8. Negative AF2 extensions and illumination stress test.
 
 Do not place every screened architecture in the primary result table. The
 full breadth belongs in an appendix or screening-flow figure.
@@ -214,7 +220,10 @@ full breadth belongs in an appendix or screening-flow figure.
 > improve, whereas localization-conditioned Top-1 accuracy increased by 8.12
 > points, indicating a classification/ranking-dominant effect. Without target
 > training, AF2 also improved Coffee Standard Macro by 4.08 points across all
-> three seeds. The frontend added no detector parameters, but increased median
+> three seeds. On the previously consumed Faruq test package, AF2 also improved
+> Macro by 2.02 points and Bottom-3 by 3.65 points in 3/3 seeds; this remains
+> reused-test post-hoc evidence rather than a new locked-test confirmation. The
+> frontend added no detector parameters, but increased median
 > T4 tensor-forward latency from 13.52 to 23.59 ms and peak allocated memory
 > from 75.2 to 127.6 MB.
 
@@ -235,10 +244,11 @@ Do not use:
 
 The thesis is ready to move from model search to writing. Original AF2 is the
 fixed proposed model, D0FT is the fixed primary control, and no further model
-tuning is justified by the completed evidence. Any future real-dense dataset,
-independent in-domain test, coffee-variety evaluation, or deployment pipeline
-must be presented as future work rather than silently added to the current
-claim set.
+tuning is justified by the completed evidence. The reused Faruq-test result is
+supporting post-hoc evidence and does not remove the need for a new untouched
+in-domain test. Any future real-dense dataset, independent in-domain test,
+coffee-variety evaluation, or deployment pipeline must be presented as future
+work rather than silently added to the current claim set.
 
 Evidence authority:
 `docs/FARUQ_V3_AF2_THESIS_EVIDENCE_MATRIX_2026-08-21.md`.

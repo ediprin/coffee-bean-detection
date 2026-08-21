@@ -24,6 +24,7 @@ explicit boundary.
 |---|---|---:|---|---|---|
 | Is the development split suitable for controlled comparison? | Faruq-v3 contains 1,665 train images/2,986 instances and 294 validation images/526 instances; all 21 classes have 24--26 validation instances; exact-hash and parent overlap are zero; test is absent from the development archive. | A | The development comparison is parent-grouped and class-complete. | This does not create an untouched final in-domain test for AF2. | `FARUQ_V3_BASELINE_PROTOCOL.md` |
 | Is AF2 better than an optimization-matched control in-domain? | Across seeds 42/123/2026, D0FT to AF2: Macro 86.62% to 87.94% (+1.32 points, 3/3 seeds); Bottom-3 76.58% to 79.37% (+2.80, 2/3); Worst 73.05% to 78.15% (+5.10, 2/3). Every frozen confirmation gate passed. | A | AF2 provides a stable mean validation improvement, with its largest benefit in lower-tail classes. | Do not call this independent test superiority or cross-paper SOTA. | `FARUQ_V3_AF2_IGEM_PAIRED_CONFIRMATION_RESULT_2026-08-15.md` |
+| Does the direction persist on the available Faruq test package? | On the test package previously consumed by ACMC, AF2 improves Macro by +2.02 points, Bottom-3 by +3.65, and Worst by +2.38 versus D0FT; every metric improves in 3/3 seeds. The 129-parent bootstrap gives a +1.93-point custom Macro delta, CI95% +0.13 to +3.86, and 98.1% positive probability. | C post-hoc | The positive in-domain direction persists descriptively on the reused Faruq test package. | This is not an untouched locked-test confirmation and cannot authorize tuning. Five of 21 classes have negative mean deltas. | `FARUQ_V3_AF2_REUSED_TEST_POSTHOC_RESULT_2026-08-21.md` |
 | Is the gain merely extra optimization? | Every AF2 seed starts from the same seed-matched D0 checkpoint and is compared with the corresponding D0FT schedule control. | A | AF2 gains are measured beyond matched continued optimization. | Comparing AF2 only with the earlier D0 baseline would overstate the architectural effect. | AF2/IGEM protocol and evidence JSON |
 | Does AF2 improve raw localization geometry? | Raw top-500 proposal accessibility is already saturated: D0FT 99.81%, AF2 99.75%, delta -0.06 point, improved 0/3 seeds. | A diagnostic | There is no evidence that AF2 generates more geometrically accessible raw proposals. | Do not claim localization improvement from final recall alone. | `FARUQ_V3_AF2_MECHANISM_DIAGNOSTIC_RESULT_2026-08-21.md` |
 | Does AF2 improve fine-grained class decision after localization? | Conditional Top-1 accuracy rises 62.46% to 70.58% (+8.12 points, 3/3); localized wrong-class rate falls by 8.12; correct-decision recall rises 48.54% to 63.18% (+14.64, 3/3). | A diagnostic | AF2's observed mechanism is classification/ranking dominant. | This is post-hoc association, not causal proof for every class. | Mechanism diagnostic result/evidence |
@@ -56,13 +57,17 @@ explicit boundary.
    count but higher FFT latency and peak CUDA memory.
 6. Several theoretically plausible AF2 extensions fail controlled gates,
    supporting retention of the simpler original operator.
+7. On the previously consumed Faruq test package, AF2 directionally improves
+   Macro and lower-tail AP in 3/3 seeds, with positive paired-parent bootstrap
+   evidence; this is supporting post-hoc evidence only.
 
 ### Claims that are not supported
 
 1. AF2 is a newly invented Fourier algorithm.
 2. AF2 is state of the art against papers that use different data, taxonomies,
    splits, hardware, or metrics.
-3. AF2 has been confirmed on an untouched Faruq-v3 in-domain test.
+3. AF2 has been confirmed on a new untouched Faruq-v3 in-domain test. The
+   available test result is explicitly reused-test post-hoc evidence.
 4. AF2 is universally robust across illumination, acquisition domains, coffee
    varieties, or all 21 classes.
 5. AF2 is ready for real 300-gram dense scenes, conveyor operation, counting,

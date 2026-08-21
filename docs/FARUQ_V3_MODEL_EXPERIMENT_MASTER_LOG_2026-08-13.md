@@ -513,22 +513,33 @@ Thesis blueprint:
 
 ## AF2 reused Faruq-test post-hoc evaluation
 
-**Status: protocol frozen and test access explicitly authorized; inference
-pending.** The Faruq-v3 test package was previously consumed by the ACMC study,
-so it is not an untouched locked test for AF2. By explicit user authorization,
-the original AF2 checkpoints at seeds 42/123/2026 may now be evaluated once as
-descriptive reused-test evidence. Existing D0FT test reports are reused only
-when their test-manifest SHA matches; D0FT is not inferred again. No training,
-checkpoint selection, threshold tuning, or follow-up model tuning is allowed.
+**Status: completed -- POSTHOC_DIRECTION_POSITIVE; reused test, not a new
+locked-test confirmation.** The original AF2 checkpoints at seeds 42/123/2026
+were evaluated against the historical D0FT reports on the identical
+129-parent Faruq test package. Test-manifest SHA matched, no training or tuning
+was performed, and AF2 improved every primary metric in all three seeds:
+
+| Metric | D0FT mean | AF2 mean | Mean delta | Minimum delta | Improved seeds |
+|---|---:|---:|---:|---:|---:|
+| Macro | 86.31% | 88.33% | +2.02 points | +1.00 | 3/3 |
+| Bottom-3 | 72.85% | 76.49% | +3.65 points | +1.44 | 3/3 |
+| Worst class | 69.07% | 71.46% | +2.38 points | +1.05 | 3/3 |
+
+The 1,000-iteration paired-parent bootstrap gave a +1.93-point custom Macro
+delta, 95% interval +0.13 to +3.86 points, and 98.1% positive probability.
+Five of 21 classes still had negative mean deltas, so universal class
+improvement is not supported.
 
 The output must remain labeled
-`REUSED_TEST_POSTHOC_NOT_LOCKED_CONFIRMATION`. It reports paired three-seed
-Macro, Bottom-3, and Worst-class mAP50-95 plus a 1,000-iteration paired-parent
-bootstrap. This authorization does not replace or repair the absence of a new
-untouched in-domain test.
+`REUSED_TEST_POSTHOC_NOT_LOCKED_CONFIRMATION`. The positive result strengthens
+the in-domain direction but does not replace the absence of a new untouched
+AF2 test. No further tuning is authorized.
 
 Protocol:
 `docs/FARUQ_V3_AF2_REUSED_TEST_POSTHOC_PROTOCOL_2026-08-21.md`.
 
 Notebook:
 `notebooks/Faruq_V3_AF2_Reused_Test_Posthoc_Colab.ipynb`.
+
+Full result:
+`docs/FARUQ_V3_AF2_REUSED_TEST_POSTHOC_RESULT_2026-08-21.md`.
