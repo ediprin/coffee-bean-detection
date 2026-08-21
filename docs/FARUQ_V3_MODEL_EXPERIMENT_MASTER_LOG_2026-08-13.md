@@ -510,3 +510,25 @@ Evidence matrix:
 
 Thesis blueprint:
 `docs/FARUQ_V3_AF2_THESIS_BLUEPRINT_2026-08-21.md`.
+
+## AF2 reused Faruq-test post-hoc evaluation
+
+**Status: protocol frozen and test access explicitly authorized; inference
+pending.** The Faruq-v3 test package was previously consumed by the ACMC study,
+so it is not an untouched locked test for AF2. By explicit user authorization,
+the original AF2 checkpoints at seeds 42/123/2026 may now be evaluated once as
+descriptive reused-test evidence. Existing D0FT test reports are reused only
+when their test-manifest SHA matches; D0FT is not inferred again. No training,
+checkpoint selection, threshold tuning, or follow-up model tuning is allowed.
+
+The output must remain labeled
+`REUSED_TEST_POSTHOC_NOT_LOCKED_CONFIRMATION`. It reports paired three-seed
+Macro, Bottom-3, and Worst-class mAP50-95 plus a 1,000-iteration paired-parent
+bootstrap. This authorization does not replace or repair the absence of a new
+untouched in-domain test.
+
+Protocol:
+`docs/FARUQ_V3_AF2_REUSED_TEST_POSTHOC_PROTOCOL_2026-08-21.md`.
+
+Notebook:
+`notebooks/Faruq_V3_AF2_Reused_Test_Posthoc_Colab.ipynb`.

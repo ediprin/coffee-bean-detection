@@ -266,13 +266,17 @@ def _macro_map(prepared: list[list[dict]], sample: np.ndarray) -> float:
 
 
 def _paired_parent_bootstrap(
-    observations_by_seed: dict[str, dict], *, iterations: int = 1000, seed: int = 20260809
+    observations_by_seed: dict[str, dict],
+    *,
+    candidate_arm: str = "ACMC1",
+    iterations: int = 1000,
+    seed: int = 20260809,
 ) -> dict:
     prepared = {}
     image_names = None
     for seed_key, record in observations_by_seed.items():
         prepared[seed_key] = {}
-        for arm in ("D0FT", "ACMC1"):
+        for arm in ("D0FT", candidate_arm):
             observations = record[arm]
             names = [row["image_name"] for row in observations]
             if image_names is None:
@@ -286,12 +290,12 @@ def _paired_parent_bootstrap(
     per_seed_point = {
         seed_key: {
             arm: _macro_map(prepared[seed_key][arm], full)
-            for arm in ("D0FT", "ACMC1")
+            for arm in ("D0FT", candidate_arm)
         }
         for seed_key in prepared
     }
     point_delta = statistics.mean(
-        values["ACMC1"] - values["D0FT"] for values in per_seed_point.values()
+        values[candidate_arm] - values["D0FT"] for values in per_seed_point.values()
     )
     generator = np.random.default_rng(seed)
     deltas = np.empty(iterations, dtype=np.float64)
@@ -300,7 +304,7 @@ def _paired_parent_bootstrap(
         seed_deltas = []
         for seed_key in prepared:
             left = _macro_map(prepared[seed_key]["D0FT"], sample)
-            right = _macro_map(prepared[seed_key]["ACMC1"], sample)
+            right = _macro_map(prepared[seed_key][candidate_arm], sample)
             seed_deltas.append(right - left)
         deltas[iteration] = statistics.mean(seed_deltas)
         if (iteration + 1) % 100 == 0:
@@ -308,6 +312,7 @@ def _paired_parent_bootstrap(
     return {
         "iterations": iterations,
         "seed": seed,
+        "candidate_arm": candidate_arm,
         "independent_parents": count,
         "custom_macro_point_delta": point_delta,
         "ci95_low": float(np.quantile(deltas, 0.025)),
@@ -326,12 +331,14 @@ def _evaluate_checkpoint(
     checkpoint_hash: str,
     test_manifest_hash: str,
     device: str | None,
+    protocol: str = "faruq-v3-acmc-locked-test-report-v1",
 ) -> dict:
     if output.is_file():
         cached = _load_json(output, "Cached locked-test report")
         if (
             cached.get("checkpoint_sha256") != checkpoint_hash
             or cached.get("test_manifest_sha256") != test_manifest_hash
+            or cached.get("protocol") != protocol
             or cached.get("split") != "test"
             or not isinstance(cached.get("prediction_observations"), list)
         ):
@@ -380,7 +387,7 @@ def _evaluate_checkpoint(
             test_root, save_dir / "labels"
         )
     payload = {
-        "protocol": "faruq-v3-acmc-locked-test-report-v1",
+        "protocol": protocol,
         "checkpoint": str(checkpoint),
         "checkpoint_sha256": checkpoint_hash,
         "test_manifest_sha256": test_manifest_hash,
