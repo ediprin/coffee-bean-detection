@@ -37,12 +37,14 @@ meaningful lower-tail improvement. Therefore no post-result +0.5 threshold is
 applied here. The result is still one-seed screening evidence, not a
 seed-stability claim.
 
-## Authorized next step
+## Paired-confirmation outcome
 
-Run `AF2_ORIENT` for seeds 123 and 2026 from the corresponding seed-matched D0
-checkpoints and compare it pairwise with the already completed AF2 results.
-Test remains locked. No combined arm or additional tuning is authorized before
-that confirmation.
+The authorized seeds 123 and 2026 subsequently completed. Across all three
+paired seeds, AF2_ORIENT gained +0.32 Macro point but lost 0.12 Bottom-3 point
+and 1.50 Worst-class points on average. It therefore failed the frozen
+lower-tail confirmation gate and original AF2 remains retained. Test stayed
+locked. See
+`docs/FARUQ_V3_AF2_ORIENT_PAIRED_CONFIRMATION_RESULT_2026-08-21.md`.
 
 Machine-readable evidence:
 `docs/evidence/FARUQ_V3_AF2_ISOLATED_RADIAL_ORIENTATION_2026-08-21.json`.

@@ -411,3 +411,29 @@ Protocol: `docs/AF2_ISOLATED_RADIAL_ORIENTATION_PROTOCOL_2026-08-21.md`.
 
 Full result:
 `docs/FARUQ_V3_AF2_ISOLATED_RADIAL_ORIENTATION_RESULT_2026-08-21.md`.
+
+## AF2_ORIENT paired confirmation
+
+**Status: completed -- FAIL across seeds 42/123/2026; retain original AF2;
+test closed.** The seed-42 lower-tail improvement repeated at seed 123 but not
+at seed 2026:
+
+| Metric | AF2 mean | AF2_ORIENT mean | Mean delta | Improved seeds |
+|---|---:|---:|---:|---:|
+| Macro | 87.94% | 88.26% | +0.32 point | 2/3 |
+| Bottom-3 | 79.37% | 79.25% | -0.12 point | 2/3 |
+| Worst class | 78.15% | 76.66% | -1.50 points | 2/3 |
+
+The candidate passed both Macro criteria, but failed the frozen requirement of
+at least +0.5-point mean Bottom-3 gain and failed non-negative mean Worst-class
+delta. Seed 2026 was a class-redistribution failure rather than a global
+collapse: `biji_muda` fell 12.82 points, while several other classes improved,
+leaving Macro almost unchanged. Folding antipodal FFT directions therefore
+does not provide a stable difficult-class advantage. No combined arm, extra
+orientation tuning, or test access is authorized.
+
+Protocol:
+`docs/FARUQ_V3_AF2_ORIENT_PAIRED_CONFIRMATION_PROTOCOL_2026-08-21.md`.
+
+Full result:
+`docs/FARUQ_V3_AF2_ORIENT_PAIRED_CONFIRMATION_RESULT_2026-08-21.md`.

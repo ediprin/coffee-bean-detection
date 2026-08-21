@@ -1,0 +1,116 @@
+{
+  "format": "coffee_detector.af2_orient.paired_confirmation.evidence.v1",
+  "date": "2026-08-21",
+  "protocol": "docs/FARUQ_V3_AF2_ORIENT_PAIRED_CONFIRMATION_PROTOCOL_2026-08-21.md",
+  "evaluation_split": "val",
+  "seeds": [42, 123, 2026],
+  "per_seed": {
+    "42": {
+      "AF2": {
+        "macro_map50_95": 0.8819734111428803,
+        "bottom3_class_map50_95": 0.8004276546678737,
+        "worst_class_map50_95": 0.7934699749241949
+      },
+      "AF2_ORIENT": {
+        "macro_map50_95": 0.883260407517737,
+        "bottom3_class_map50_95": 0.8138060083939754,
+        "worst_class_map50_95": 0.801357408559643
+      }
+    },
+    "123": {
+      "AF2": {
+        "macro_map50_95": 0.8821558493202494,
+        "bottom3_class_map50_95": 0.782220798879658,
+        "worst_class_map50_95": 0.7645777179204647
+      },
+      "AF2_ORIENT": {
+        "macro_map50_95": 0.8921987054773678,
+        "bottom3_class_map50_95": 0.7905816206578842,
+        "worst_class_map50_95": 0.7793661583997791
+      }
+    },
+    "2026": {
+      "AF2": {
+        "macro_map50_95": 0.874000321686426,
+        "bottom3_class_map50_95": 0.7984624303439861,
+        "worst_class_map50_95": 0.7865328185135697
+      },
+      "AF2_ORIENT": {
+        "macro_map50_95": 0.872270262010248,
+        "bottom3_class_map50_95": 0.7732093717464302,
+        "worst_class_map50_95": 0.7189900887871771
+      }
+    }
+  },
+  "aggregate": {
+    "macro_map50_95": {
+      "af2_mean": 0.8793765273831853,
+      "af2_orient_mean": 0.8825764583351177,
+      "delta_mean": 0.0031999309519323837,
+      "delta_std": 0.006115134980243617,
+      "delta_min": -0.0017300596761780085,
+      "improved_seeds": 2,
+      "deltas": {
+        "42": 0.0012869963748567415,
+        "123": 0.010042856157118418,
+        "2026": -0.0017300596761780085
+      }
+    },
+    "bottom3_class_map50_95": {
+      "af2_mean": 0.7937036279638393,
+      "af2_orient_mean": 0.79253233359943,
+      "delta_mean": -0.0011712943644093254,
+      "delta_std": 0.021005771424721133,
+      "delta_min": -0.02525305859755589,
+      "improved_seeds": 2,
+      "deltas": {
+        "42": 0.013378353726101744,
+        "123": 0.008360821778226168,
+        "2026": -0.02525305859755589
+      }
+    },
+    "worst_class_map50_95": {
+      "af2_mean": 0.7815268371194097,
+      "af2_orient_mean": 0.7665712185821997,
+      "delta_mean": -0.014955618537210058,
+      "delta_std": 0.045672302014266385,
+      "delta_min": -0.06754272972639264,
+      "improved_seeds": 2,
+      "deltas": {
+        "42": 0.007887433635448082,
+        "123": 0.01478844047931438,
+        "2026": -0.06754272972639264
+      }
+    }
+  },
+  "seed_2026_class_attribution": {
+    "largest_losses": [
+      {"class_name": "biji_muda", "af2": 0.847151987841341, "af2_orient": 0.7189900887871771, "delta": -0.12816189905416397},
+      {"class_name": "biji_berlubang_lebih_satu", "af2": 0.9341672042863423, "af2_orient": 0.8613276842981483, "delta": -0.07283951998819393},
+      {"class_name": "tanah_batu_ranting_besar", "af2": 0.9030233829878576, "af2_orient": 0.8519399573594619, "delta": -0.05108342562839563},
+      {"class_name": "biji_berkulit_tanduk", "af2": 0.8731678988314429, "af2_orient": 0.8271759967293665, "delta": -0.045991902102076376},
+      {"class_name": "kopi_gelondong", "af2": 0.9508126610644257, "af2_orient": 0.9201770784770785, "delta": -0.03063558258734722}
+    ],
+    "largest_gains": [
+      {"class_name": "biji_normal", "af2": 0.8092689115899553, "af2_orient": 0.8778532530961103, "delta": 0.068584341506155},
+      {"class_name": "biji_hitam_sebagian", "af2": 0.826586474827854, "af2_orient": 0.8871890145295319, "delta": 0.06060253970167795},
+      {"class_name": "biji_hitam_pecah", "af2": 0.8644193589743588, "af2_orient": 0.923777467395116, "delta": 0.05935810842075717},
+      {"class_name": "biji_bertutul_tutul", "af2": 0.8556672867552125, "af2_orient": 0.8942269397438078, "delta": 0.03855965298859532}
+    ]
+  },
+  "criteria": {
+    "macro_mean_not_lower": true,
+    "macro_improved_at_least_2_of_3": true,
+    "bottom3_mean_gain_at_least_0_5_point": false,
+    "bottom3_improved_at_least_2_of_3": true,
+    "worst_mean_not_lower": false,
+    "worst_improved_at_least_2_of_3": true
+  },
+  "decision": "FAIL",
+  "next": "RETAIN_ORIGINAL_AF2",
+  "interpretation": "orientation_folding_redistributes_class_ap_but_does_not_stably_strengthen_lower_tail",
+  "training_executed_by_decision": false,
+  "test_images_accessed": false,
+  "test_opened": false,
+  "source_artifact": "experiments/faruq-v3-af2-orient-paired-confirmation-v1/val_reports/af2_orient_paired_confirmation.json"
+}
