@@ -43,6 +43,17 @@ def _finite_nonzero(parameters) -> bool:
     )
 
 
+def _max_abs_difference(left: torch.Tensor, right: torch.Tensor) -> float:
+    if left.shape != right.shape:
+        return float("inf")
+    return float((left.float() - right.float()).abs().max())
+
+
+def _state_identical(left: torch.nn.Module, right: torch.nn.Module) -> bool:
+    lhs, rhs = left.state_dict(), right.state_dict()
+    return lhs.keys() == rhs.keys() and all(torch.equal(lhs[key], rhs[key]) for key in lhs)
+
+
 def run_af2_ffa_static_audit(
     af2_checkpoint: str | Path,
     output: str | Path,
@@ -85,11 +96,36 @@ def run_af2_ffa_static_audit(
             raise TypeError(type(head).__name__)
         with torch.inference_mode():
             zero = candidate(image)
-        zero_boxes = torch.equal(
+        full_box_diff = _max_abs_difference(
             zero[1]["one2one"]["boxes"], native[1]["one2one"]["boxes"]
         )
-        zero_scores = torch.equal(
+        full_score_diff = _max_abs_difference(
             zero[1]["one2one"]["scores"], native[1]["one2one"]["scores"]
+        )
+
+        # Prove exact identity on the same head and the same feature tensors.
+        # Separate end-to-end CUDA forwards include FFT kernels and can differ
+        # by a few ULPs even when the wiring and weights are identical.
+        identity_features = [
+            torch.rand(1, adapter.channels, size, size, device=device)
+            for adapter, size in zip(head.adapters, (16, 8, 4))
+        ]
+        with torch.inference_mode():
+            native_head = head.base_head(
+                [feature.clone() for feature in identity_features]
+            )
+            wrapped_head = head([feature.clone() for feature in identity_features])
+        zero_boxes = torch.equal(
+            wrapped_head[1]["one2one"]["boxes"],
+            native_head[1]["one2one"]["boxes"],
+        )
+        zero_scores = torch.equal(
+            wrapped_head[1]["one2one"]["scores"],
+            native_head[1]["one2one"]["scores"],
+        )
+        adapter_identity = all(
+            torch.equal(adapter(feature), feature)
+            for adapter, feature in zip(head.adapters, identity_features)
         )
 
         active = AF2FFADetectionModel(
@@ -158,10 +194,19 @@ def run_af2_ffa_static_audit(
                 key: tuple(value.shape) for key, value in candidate.state_dict().items()
             },
             "descriptor_abs_sum": descriptor_sum,
+            "full_model_box_max_abs_diff": full_box_diff,
+            "full_model_score_max_abs_diff": full_score_diff,
             "transfer": transfer,
             "gates": {
+                "native_head_state_bitwise_preserved": _state_identical(
+                    head.base_head, source.model[-1]
+                ),
+                "adapter_identity_bitwise_equal": adapter_identity,
                 "identity_boxes_bitwise_equal": zero_boxes,
                 "identity_scores_bitwise_equal": zero_scores,
+                "full_model_numerically_consistent": max(
+                    full_box_diff, full_score_diff
+                ) <= 1.0e-4,
                 "active_preserves_boxes": active_boxes,
                 "active_changes_scores": active_score_diff > 0.0,
                 "finite_nonzero_adapter_gradients": _finite_nonzero(
