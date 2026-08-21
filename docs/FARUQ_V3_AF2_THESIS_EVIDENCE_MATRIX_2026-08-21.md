@@ -77,4 +77,3 @@ IGEM1 is a confirmed secondary candidate but is not the thesis center. Original
 D0, Hong transfer, ROI refiners, ontology heads, multilevel heads, synthetic
 fusion models, and AF2 extensions belong in the screening/negative-ablation
 narrative rather than the principal comparison table.
-
