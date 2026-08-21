@@ -437,3 +437,22 @@ Protocol:
 
 Full result:
 `docs/FARUQ_V3_AF2_ORIENT_PAIRED_CONFIRMATION_RESULT_2026-08-21.md`.
+
+## AF2 mechanism diagnostic authorization
+
+**Status: protocol frozen and implementation prepared; no diagnostic result
+yet.** The next analysis reuses completed paired D0FT and original-AF2
+checkpoints for seeds 42/123/2026. It performs validation-only inference and
+decomposes the AF2 difference into raw top-500 proposal accessibility,
+final-detection localization accessibility, and localization-conditioned
+Top-1 class accuracy. A +0.5-point mean gain with improvement in at least 2/3
+seeds is frozen as the minimum support for either localization or
+classification attribution. The output is post-hoc mechanism evidence, not a
+new model-selection gate or causal proof. No training or test access is
+authorized.
+
+Protocol:
+`docs/FARUQ_V3_AF2_MECHANISM_DIAGNOSTIC_PROTOCOL_2026-08-21.md`.
+
+Notebook:
+`notebooks/Faruq_V3_AF2_Mechanism_Diagnostic_Colab.ipynb`.
