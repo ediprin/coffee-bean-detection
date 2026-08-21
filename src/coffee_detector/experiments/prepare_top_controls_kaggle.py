@@ -11,6 +11,9 @@ from pathlib import Path
 import yaml
 
 from coffee_detector.experiments.prepare_faruq_v3_kaggle import (
+    ARCHIVE_BYTES,
+    ARCHIVE_NAME,
+    ARCHIVE_SHA256,
     prepare_faruq_v3_kaggle_input,
 )
 
@@ -18,6 +21,8 @@ from coffee_detector.experiments.prepare_faruq_v3_kaggle import (
 REPO_ROOT = Path(__file__).resolve().parents[3]
 MANIFEST_NAME = "top_controls_kaggle_manifest.json"
 MANIFEST_FORMAT = "coffee_detector.top_controls.kaggle_manifest.v1"
+CORE_MANIFEST_NAME = "top_controls_canonical_core_manifest.json"
+CORE_MANIFEST_FORMAT = "coffee_detector.top_controls.canonical_kaggle_core.v1"
 ARTIFACTS = {
     "STB1_seed123_best.pt": "experiments/faruq-v3-stb-paired-confirmation-v1/STB1/STB1_seed123/weights/best.pt",
     "STB1_seed2026_best.pt": "experiments/faruq-v3-stb-paired-confirmation-v1/STB1/STB1_seed2026/weights/best.pt",
@@ -60,6 +65,38 @@ def _checkpoint_seed(path: Path) -> int:
     return int(train_args["seed"])
 
 
+def _validate_yolo_checkpoint(path: Path, expected_seed: int) -> dict:
+    from ultralytics import YOLO
+
+    if path.suffix.lower() != ".pt" or path.stat().st_size < 1_000_000:
+        raise RuntimeError(f"Checkpoint tidak valid/terlalu kecil: {path}")
+    actual_seed = _checkpoint_seed(path)
+    if actual_seed != expected_seed:
+        raise RuntimeError(
+            f"Checkpoint {path.name} bukan seed {expected_seed}: {actual_seed}"
+        )
+    try:
+        model = YOLO(str(path)).model.cpu().eval()
+    except Exception as exc:
+        raise RuntimeError(
+            f"Checkpoint tidak dapat di-load Ultralytics: {path}: {exc}"
+        ) from exc
+    nc = int(getattr(model.model[-1], "nc", -1))
+    parameters = sum(parameter.numel() for parameter in model.parameters())
+    if nc != 21 or parameters <= 0:
+        raise RuntimeError(
+            f"Checkpoint bukan detektor SNI-21 valid: nc={nc}, params={parameters}"
+        )
+    return {
+        "loadable_by_ultralytics": True,
+        "seed": actual_seed,
+        "nc": nc,
+        "parameters": parameters,
+        "bytes": path.stat().st_size,
+        "sha256": sha256(path),
+    }
+
+
 def build_top_controls_kaggle_bundle(
     project_root: str | Path, output_root: str | Path
 ) -> dict:
@@ -89,6 +126,67 @@ def build_top_controls_kaggle_bundle(
     path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     manifest["manifest"] = str(path)
     return manifest
+
+
+def build_top_controls_canonical_kaggle_core(
+    project_root: str | Path, output_root: str | Path
+) -> dict:
+    """Build the canonical single Kaggle core used by a fresh account.
+
+    The immutable grouped archive stays opaque as ``.tar.bin``. Completed
+    training runs are deliberately excluded; resume state belongs to Kaggle
+    Saved Version outputs, not to the core dataset.
+    """
+
+    project_root = Path(project_root).expanduser().resolve()
+    output_root = Path(output_root).expanduser().resolve()
+    output_root.mkdir(parents=True, exist_ok=True)
+    top_controls = build_top_controls_kaggle_bundle(project_root, output_root)
+
+    archive_source = project_root / "bundles/faruq-development-v3-grouped.tar"
+    if not archive_source.is_file():
+        raise FileNotFoundError(f"Arsip Faruq-v3 tidak ditemukan: {archive_source}")
+    if (
+        archive_source.stat().st_size != ARCHIVE_BYTES
+        or sha256(archive_source) != ARCHIVE_SHA256
+    ):
+        raise RuntimeError("Arsip Faruq-v3 berbeda dari kontrak canonical")
+    archive_target = output_root / ARCHIVE_NAME
+    shutil.copy2(archive_source, archive_target)
+    if (
+        archive_target.stat().st_size != ARCHIVE_BYTES
+        or sha256(archive_target) != ARCHIVE_SHA256
+    ):
+        raise RuntimeError("Copy arsip opaque mengubah ukuran/SHA")
+
+    checkpoint_validation = {
+        name: _validate_yolo_checkpoint(output_root / name, expected_seed)
+        for name, expected_seed in CHECKPOINT_SEEDS.items()
+    }
+    manifest_path = output_root / MANIFEST_NAME
+    core = {
+        "format": CORE_MANIFEST_FORMAT,
+        "canonical_dataset_slug": "faruq-v3-experiment-core-v1",
+        "archive": {
+            "name": ARCHIVE_NAME,
+            "bytes": ARCHIVE_BYTES,
+            "sha256": ARCHIVE_SHA256,
+            "opaque": True,
+        },
+        "top_controls_manifest": {
+            "name": MANIFEST_NAME,
+            "sha256": sha256(manifest_path),
+            "format": top_controls["format"],
+        },
+        "checkpoint_validation": checkpoint_validation,
+        "completed_training_runs_included": False,
+        "resume_source": "kaggle_saved_version_only",
+        "test_images_included": False,
+    }
+    path = output_root / CORE_MANIFEST_NAME
+    path.write_text(json.dumps(core, indent=2) + "\n", encoding="utf-8")
+    core["manifest"] = str(path)
+    return core
 
 
 def _validate_summaries(artifacts: dict[str, Path]) -> None:
@@ -265,12 +363,19 @@ def main() -> None:
     build = sub.add_parser("build")
     build.add_argument("--project-root", required=True)
     build.add_argument("--output-root", required=True)
+    build_core = sub.add_parser("build-core")
+    build_core.add_argument("--project-root", required=True)
+    build_core.add_argument("--output-root", required=True)
     validate = sub.add_parser("validate")
     validate.add_argument("--input-root", required=True)
     validate.add_argument("--work-root", required=True)
     args = parser.parse_args()
     if args.command == "build":
         result = build_top_controls_kaggle_bundle(args.project_root, args.output_root)
+    elif args.command == "build-core":
+        result = build_top_controls_canonical_kaggle_core(
+            args.project_root, args.output_root
+        )
     else:
         _, _, result = prepare_top_controls_kaggle_input(args.input_root, args.work_root)
     print(json.dumps(result, indent=2), flush=True)

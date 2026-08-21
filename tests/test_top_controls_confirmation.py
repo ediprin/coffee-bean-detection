@@ -1,4 +1,5 @@
 import json
+import hashlib
 import shutil
 from pathlib import Path
 
@@ -8,11 +9,14 @@ from coffee_detector.experiments.run_faruq_v3_top_controls_confirmation_decision
 )
 from coffee_detector.experiments.prepare_top_controls_kaggle import (
     ARTIFACTS,
+    CORE_MANIFEST_FORMAT,
     build_top_controls_kaggle_bundle,
+    build_top_controls_canonical_kaggle_core,
     ensure_run_contract,
     restore_top_control_kaggle_run,
     run_directory,
 )
+from coffee_detector.experiments import prepare_top_controls_kaggle as kaggle_core
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -256,3 +260,65 @@ def test_all_sequential_kaggle_notebook_compiles_and_stays_test_locked():
     assert "assert not (DATA/'test').exists()" in source
     assert "test_images_accessed':False" in source
     assert "make_archive" in source
+
+
+def test_canonical_kaggle_core_is_opaque_load_tested_and_excludes_runs(
+    tmp_path, monkeypatch
+):
+    project = tmp_path / "project"
+    for relative in ARTIFACTS.values():
+        path = project / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(f"artifact:{relative}".encode())
+    archive = project / "bundles/faruq-development-v3-grouped.tar"
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    archive.write_bytes(b"opaque canonical archive")
+    monkeypatch.setattr(kaggle_core, "ARCHIVE_BYTES", archive.stat().st_size)
+    monkeypatch.setattr(
+        kaggle_core, "ARCHIVE_SHA256", hashlib.sha256(archive.read_bytes()).hexdigest()
+    )
+    monkeypatch.setattr(
+        kaggle_core,
+        "_validate_yolo_checkpoint",
+        lambda path, seed: {
+            "loadable_by_ultralytics": True,
+            "seed": seed,
+            "nc": 21,
+            "parameters": 1,
+            "bytes": path.stat().st_size,
+            "sha256": kaggle_core.sha256(path),
+        },
+    )
+
+    bundle = tmp_path / "bundle"
+    manifest = build_top_controls_canonical_kaggle_core(project, bundle)
+    assert manifest["format"] == CORE_MANIFEST_FORMAT
+    assert manifest["archive"]["opaque"] is True
+    assert manifest["completed_training_runs_included"] is False
+    assert manifest["resume_source"] == "kaggle_saved_version_only"
+    assert manifest["test_images_included"] is False
+    assert not list(bundle.rglob("run_contract.json"))
+
+
+def test_canonical_upload_colab_follows_historical_core_protocol():
+    path = (
+        ROOT
+        / "notebooks/Faruq_V3_Top_Controls_All_In_One_Kaggle_Upload_Colab.ipynb"
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    source = "\n".join(
+        "".join(cell.get("source", [])) for cell in payload["cells"]
+    )
+    for cell in payload["cells"]:
+        if cell.get("cell_type") == "code":
+            compile("".join(cell["source"]), str(path), "exec")
+    assert "build_top_controls_canonical_kaggle_core" in source
+    assert "faruq-v3-experiment-core-v1" in source
+    assert "faruq-development-v3-grouped.tar.bin" in source
+    assert "ARCHIVE_SHA256" in source
+    assert "EXPECTED_ANNOTATIONS" in source
+    assert "checkpoint_validation" in source
+    assert "completed_training_runs_included" in source
+    assert "kaggle_saved_version_only" in source
+    assert "run_contract.json" in source
+    assert "test_images_included" in source
