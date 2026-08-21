@@ -173,3 +173,27 @@ def test_colab_notebook_is_parameterized_resumable_and_test_locked():
     assert "top_controls_paired_confirmation.json" in source
     assert "sys.path.insert(0,str(SRC))" in source
     assert "importlib.invalidate_caches()" in source
+
+
+def test_parallel_colab_notebooks_fix_one_unique_arm_and_seed():
+    expected = {
+        (arm, seed)
+        for arm in ("FCT0", "AF2R0", "AF2R1", "AF2CAL3")
+        for seed in (123, 2026)
+    }
+    observed = set()
+    for arm, seed in sorted(expected):
+        path = ROOT / f"notebooks/Faruq_V3_{arm}_Seed{seed}_Colab.ipynb"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        source = "\n".join(
+            "".join(cell.get("source", [])) for cell in payload["cells"]
+        )
+        for cell in payload["cells"]:
+            if cell.get("cell_type") == "code":
+                compile("".join(cell["source"]), str(path), "exec")
+        assert f"ARM = '{arm}'   # fixed parallel arm" in source
+        assert f"SEED = {seed}     # fixed parallel seed" in source
+        assert "sys.path.insert(0,str(SRC))" in source
+        assert "assert not (DATA/'test').exists()" in source
+        observed.add((arm, seed))
+    assert observed == expected
