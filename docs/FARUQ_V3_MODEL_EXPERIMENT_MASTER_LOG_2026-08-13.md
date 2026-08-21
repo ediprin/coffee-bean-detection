@@ -464,3 +464,18 @@ Notebook:
 
 Full result:
 `docs/FARUQ_V3_AF2_MECHANISM_DIAGNOSTIC_RESULT_2026-08-21.md`.
+
+## AF2 same-device efficiency audit
+
+**Status: protocol frozen; measurement not yet executed; no training or data
+access.** The final deployment audit compares completed D0FT and original AF2
+checkpoints at seeds 42/123/2026 using paired FP32 tensor-forward measurements
+on the same CUDA runtime. It records parameter/state/checkpoint size, median
+and p95 latency, throughput, and CUDA memory. The AF2 FFT frontend is included
+in latency, while host-to-device transfer and postprocessing are excluded.
+Standard YOLO FLOPs are not reported because they omit this frontend. This is
+a descriptive trade-off audit and cannot alter the completed accuracy or
+mechanism conclusions.
+
+Protocol:
+`docs/FARUQ_V3_AF2_EFFICIENCY_AUDIT_PROTOCOL_2026-08-21.md`.
