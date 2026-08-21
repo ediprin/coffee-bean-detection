@@ -171,3 +171,5 @@ def test_colab_notebook_is_parameterized_resumable_and_test_locked():
     assert "test tidak boleh tersedia" in source
     assert "generic best.pt" not in source
     assert "top_controls_paired_confirmation.json" in source
+    assert "sys.path.insert(0,str(SRC))" in source
+    assert "importlib.invalidate_caches()" in source
