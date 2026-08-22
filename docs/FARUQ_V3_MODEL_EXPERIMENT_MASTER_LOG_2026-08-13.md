@@ -644,3 +644,32 @@ Result:
 
 Evidence:
 `docs/evidence/FARUQ_V3_AF2_FFA_B2_PAIRED_CONFIRMATION_2026-08-22.json`.
+
+## AF2 recovered-cue class calibration
+
+**Status: protocol and implementation frozen before seed-42 training on
+2026-08-22; test remains locked.** The AF2FFAB2 analysis showed that its mean
+Macro/Bottom-3 improvement over original AF2 came with a class-specific Worst
+trade-off, while its extra P3/P4/P5 FFT increased rather than reduced AF2's
+inference overhead. This follow-up therefore does not add another spectral
+transform or continue the full detector.
+
+`AF2RCC1` reuses the spatial RGB cue already recovered by the original AF2
+frontend and applies three bounded `21 x 3` projections directly to P3/P4/P5
+classification logits. All native AF2 detector parameters are frozen; only
+189 zero-initialized calibration weights train for 20 epochs. `AF2RCC0` is a
+schema-matched zero-cue identity used in static audit only. The audit requires
+one AF2 recovery call, no additional FFT/ROI/decoded-box dependency, exact
+initial AF2 identity, finite calibration gradients, and bitwise-invariant box
+outputs under an active correction.
+
+Seed-42 passes only if Macro remains within 0.1 point of original AF2,
+Bottom-3 is not lower, Worst remains within 0.5 point, at least two headline
+metrics improve, and `kulit_tanduk_ukuran_kecil` remains within 0.5 point.
+Only PASS can authorize paired seed 123/2026 confirmation.
+
+Protocol:
+`docs/FARUQ_V3_AF2_RECOVERED_CUE_CALIBRATION_PROTOCOL_2026-08-22.md`.
+
+Notebook:
+`notebooks/Faruq_V3_AF2_Recovered_Cue_Calibration_Colab.ipynb`.
