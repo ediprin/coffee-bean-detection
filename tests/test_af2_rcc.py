@@ -165,6 +165,11 @@ def test_static_audit_passes_on_af2_checkpoint(tmp_path: Path):
     assert result["gates"]["one_af2_recovery_call"]
     assert result["gates"]["no_additional_fft"]
     assert result["gates"]["classification_path_only"]
+    assert result["gates"]["full_model_numerically_identical"]
+    assert result["full_model_identity_tolerance"] == {
+        "atol": 5.0e-5,
+        "rtol": 1.0e-5,
+    }
 
 
 def test_decision_gate_requires_tail_and_target_preservation(tmp_path: Path):
