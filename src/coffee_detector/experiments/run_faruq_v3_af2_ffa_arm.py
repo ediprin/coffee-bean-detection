@@ -71,6 +71,7 @@ def run_faruq_v3_af2_ffa_arm(
     *,
     seed: int = 42,
     device: str = "0",
+    screening_decision: str | Path | None = None,
     authorize_training: bool = False,
 ) -> dict:
     if arm not in ARMS:
@@ -79,6 +80,19 @@ def run_faruq_v3_af2_ffa_arm(
         raise ValueError(f"Seed harus salah satu {ALLOWED_SEEDS}")
     if not authorize_training:
         raise RuntimeError("Training belum diotorisasi")
+    if seed != 42:
+        if screening_decision is None:
+            raise RuntimeError("Seed konfirmasi memerlukan keputusan screening B2")
+        screening = _read(
+            Path(screening_decision).expanduser().resolve(), "Keputusan screening B2"
+        )
+        if (
+            screening.get("format")
+            != "coffee_detector.af2_ffa.gradient_matched_seed42_decision.v1"
+            or screening.get("decision") != "RETAIN_PARETO"
+            or screening.get("test_opened") is not False
+        ):
+            raise RuntimeError("Keputusan screening B2 tidak mengotorisasi konfirmasi")
     data_root = Path(data_root).expanduser().resolve()
     checkpoint = Path(af2_checkpoint).expanduser().resolve()
     audit_path = Path(static_audit).expanduser().resolve()
@@ -174,6 +188,11 @@ def run_faruq_v3_af2_ffa_arm(
         "initial_af2_checkpoint_sha256": _sha256(checkpoint),
         "config": str(config_path),
         "static_audit": str(audit_path),
+        "screening_decision": (
+            str(Path(screening_decision).expanduser().resolve())
+            if screening_decision is not None
+            else None
+        ),
         "training_executed": training_executed,
         "test_images_accessed": False,
     }
@@ -194,6 +213,7 @@ def main() -> None:
     parser.add_argument("--output-root", required=True)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", default="0")
+    parser.add_argument("--screening-decision")
     parser.add_argument("--authorize-training", action="store_true")
     args = parser.parse_args()
     run_faruq_v3_af2_ffa_arm(
@@ -205,6 +225,7 @@ def main() -> None:
         args.output_root,
         seed=args.seed,
         device=args.device,
+        screening_decision=args.screening_decision,
         authorize_training=args.authorize_training,
     )
 

@@ -608,3 +608,22 @@ are reused; AF2FFAB1 is recorded but excluded as a scientific comparator.
 
 Protocol:
 `docs/FARUQ_V3_AF2_FFA_GRADIENT_MATCHED_BOUND_PROTOCOL_2026-08-22.md`.
+
+Seed-42 result: AF2FFAB2 achieved 88.89% Macro, 82.11% Bottom-3, and 80.49%
+Worst. Against AF2FFA0 it preserved Macro (+0.003 point) while improving
+Bottom-3/Worst by +1.27/+2.96 points. It also exceeded AF2FFA1 by
++0.33/+0.45/+0.08 points. All frozen criteria passed and the decision was
+`RETAIN_PARETO`; test remained locked.
+
+## AF2FFAB2 paired three-seed confirmation
+
+**Status: protocol frozen before seed 123/2026 training on 2026-08-22; four
+new paired runs authorized; test remains locked.** For each new seed,
+AF2FFA0 and AF2FFAB2 start from the same seed-matched AF2 checkpoint. This
+explicit continuation control prevents attributing an extra 30-epoch
+optimization effect to the frequency adapter. The two seeds may run in
+parallel, but their arms run sequentially within each account. The aggregate
+gate tests Macro non-inferiority and repeatable Bottom-3/Worst improvement.
+
+Protocol:
+`docs/FARUQ_V3_AF2_FFA_GRADIENT_MATCHED_PAIRED_PROTOCOL_2026-08-22.md`.

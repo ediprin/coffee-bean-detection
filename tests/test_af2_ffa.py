@@ -23,6 +23,12 @@ from coffee_detector.experiments.run_faruq_v3_af2_ffa_bounded_decision import (
 from coffee_detector.experiments.run_faruq_v3_af2_ffa_gradient_matched_decision import (
     run_faruq_v3_af2_ffa_gradient_matched_decision,
 )
+from coffee_detector.experiments.run_faruq_v3_af2_ffa_paired_confirmation import (
+    run_faruq_v3_af2_ffa_paired_confirmation,
+)
+from coffee_detector.experiments.run_faruq_v3_af2_ffa_arm import (
+    run_faruq_v3_af2_ffa_arm,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -341,3 +347,92 @@ def test_gradient_matched_protocol_and_notebook_are_single_arm_and_val_only():
     assert "run_faruq_v3_af2_ffa_gradient_matched_decision" in source
     assert "for arm in" not in source
     assert "split=test" not in source.lower()
+
+
+def test_non42_arm_requires_retained_screening_decision(tmp_path: Path):
+    try:
+        run_faruq_v3_af2_ffa_arm(
+            "AF2FFAB2",
+            tmp_path,
+            tmp_path / "grouped.json",
+            tmp_path / "af2.pt",
+            tmp_path / "static.json",
+            tmp_path / "output",
+            seed=123,
+            authorize_training=True,
+        )
+    except RuntimeError as error:
+        assert "keputusan screening B2" in str(error)
+    else:
+        raise AssertionError("Seed non-42 lolos tanpa keputusan screening")
+
+
+def test_paired_confirmation_requires_repeatable_pareto_gain(tmp_path: Path):
+    controls, candidates = [], []
+    for seed, deltas in {
+        42: (0.00003, 0.0127, 0.0296),
+        123: (-0.0005, 0.006, 0.010),
+        2026: (0.001, -0.002, 0.004),
+    }.items():
+        for arm, values, destination in (
+            ("AF2FFA0", (0.88, 0.80, 0.77), controls),
+            (
+                "AF2FFAB2",
+                (0.88 + deltas[0], 0.80 + deltas[1], 0.77 + deltas[2]),
+                candidates,
+            ),
+        ):
+            payload = {
+                "format": "coffee_detector.af2_ffa.arm_result.v1",
+                "arm": arm,
+                "seed": seed,
+                "initial_af2_checkpoint_sha256": f"seed-{seed}",
+                "test_images_accessed": False,
+                "metrics": dict(
+                    zip(
+                        (
+                            "macro_map50_95",
+                            "bottom3_class_map50_95",
+                            "worst_class_map50_95",
+                        ),
+                        values,
+                    )
+                ),
+            }
+            path = tmp_path / f"{arm}_{seed}.json"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            destination.append(path)
+    result = run_faruq_v3_af2_ffa_paired_confirmation(
+        tuple(controls), tuple(candidates), tmp_path / "paired.json"
+    )
+    assert result["decision"] == "PASS"
+    assert result["aggregate"]["macro_map50_95"]["improved_seeds"] == 2
+    assert result["aggregate"]["bottom3_class_map50_95"]["improved_seeds"] == 2
+    assert result["aggregate"]["worst_class_map50_95"]["improved_seeds"] == 3
+    assert result["test_opened"] is False
+
+
+def test_paired_protocol_and_notebooks_are_seed_matched_and_test_locked():
+    protocol = (
+        ROOT
+        / "docs/FARUQ_V3_AF2_FFA_GRADIENT_MATCHED_PAIRED_PROTOCOL_2026-08-22.md"
+    ).read_text(encoding="utf-8")
+    assert "Status: frozen before seed 123/2026 confirmation training" in protocol
+    assert "AF2FFA0" in protocol and "AF2FFAB2" in protocol
+    for seed in (123, 2026):
+        notebook = (
+            ROOT / f"notebooks/Faruq_V3_AF2_FFA_B2_Paired_Seed{seed}_Colab.ipynb"
+        )
+        payload = json.loads(notebook.read_text(encoding="utf-8"))
+        source = "\n".join(
+            "".join(cell.get("source", [])) for cell in payload.get("cells", [])
+        )
+        for cell in payload["cells"]:
+            if cell.get("cell_type") == "code":
+                compile("".join(cell["source"]), str(notebook), "exec")
+        assert f"SEED={seed}" in source
+        assert "AF2FFA0','AF2FFAB2" in source
+        assert "--screening-decision" in source
+        assert "AF2_seed{SEED}/weights/best.pt" in source
+        assert "run_faruq_v3_af2_ffa_paired_confirmation" in source
+        assert "split=test" not in source.lower()
