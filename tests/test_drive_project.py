@@ -103,6 +103,26 @@ def test_resolver_can_use_artifacts_when_shortcut_target_is_an_id(
     ) == project
 
 
+def test_resolver_rejects_preferred_marked_view_missing_required_artifact(
+    tmp_path: Path,
+) -> None:
+    my_drive = tmp_path / "MyDrive"
+    shortcut_targets = tmp_path / ".shortcut-targets-by-id"
+    incomplete = _marked_project(my_drive / "Coffee_Bean_Detection")
+    complete = _marked_project(
+        shortcut_targets / "target-id" / "Coffee_Bean_Detection"
+    )
+    relative = Path("bundles/dataset.tar")
+    (complete / relative).parent.mkdir(parents=True)
+    (complete / relative).write_bytes(b"archive")
+
+    assert not (incomplete / relative).exists()
+    assert resolve_drive_project_root(
+        [my_drive, shortcut_targets],
+        required_relative_paths=(relative,),
+    ) == complete
+
+
 def test_require_project_artifact_uses_exact_relative_path(tmp_path: Path) -> None:
     project = _marked_project(tmp_path / "Coffee_Bean_Detection")
     artifact = project / "bundles" / "dataset.tar"

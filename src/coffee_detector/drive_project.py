@@ -46,6 +46,12 @@ def resolve_drive_project_root(
     roots = [Path(raw_root).expanduser() for raw_root in search_roots]
     required = tuple(Path(item) for item in required_relative_paths)
     candidates: dict[str, Path] = {}
+
+    def is_complete(candidate: Path) -> bool:
+        """Require caller-supplied artifacts on the exact exposed Drive path."""
+
+        return not required or all((candidate / item).is_file() for item in required)
+
     for root in roots:
         if not root.is_dir():
             continue
@@ -56,11 +62,13 @@ def resolve_drive_project_root(
         if direct.is_dir() and (
             all((direct / name).is_file() for name in PROJECT_MARKERS)
             or (required and all((direct / item).is_file() for item in required))
-        ):
+        ) and is_complete(direct):
             candidates[direct.as_posix()] = direct
         for marker in root.rglob(PROJECT_MARKERS[0]):
             candidate = marker.parent
-            if all((candidate / name).is_file() for name in PROJECT_MARKERS):
+            if all(
+                (candidate / name).is_file() for name in PROJECT_MARKERS
+            ) and is_complete(candidate):
                 candidates[candidate.as_posix()] = candidate
 
     # Google Drive FUSE can retain a cached shortcut view after files are moved
