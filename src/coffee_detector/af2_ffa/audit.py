@@ -26,6 +26,7 @@ CONFIGS = {
     "AF2FFA0": REPO_ROOT / "configs/af2_ffa/AF2FFA0_yolo26n_zero_control.yaml",
     "AF2FFA1": REPO_ROOT / "configs/af2_ffa/AF2FFA1_yolo26n_spectral_adapter.yaml",
     "AF2FFAB1": REPO_ROOT / "configs/af2_ffa/AF2FFAB1_yolo26n_bounded_spectral_adapter.yaml",
+    "AF2FFAB2": REPO_ROOT / "configs/af2_ffa/AF2FFAB2_yolo26n_gradient_matched_bounded_adapter.yaml",
 }
 
 
@@ -188,6 +189,12 @@ def run_af2_ffa_static_audit(
                 head_probe.adapters[0].spectral_descriptor(sample_feature).abs().sum()
             )
         cap = head_probe.adapters[0].config.residual_gain_cap
+        amplitude_gradient = torch.autograd.grad(
+            head.adapters[0].residual_amplitude().sum(),
+            head.adapters[0].alpha,
+            retain_graph=False,
+        )[0]
+        amplitude_gradient_mean = float(amplitude_gradient.mean())
         bounded_deviation = 0.0
         if cap is not None:
             bounded_adapter = head_probe.adapters[0]
@@ -203,6 +210,10 @@ def run_af2_ffa_static_audit(
         records[code] = {
             "conditioning": payload["af2_ffa"]["conditioning"],
             "residual_gain_cap": payload["af2_ffa"].get("residual_gain_cap"),
+            "gradient_matched_cap": payload["af2_ffa"].get(
+                "gradient_matched_cap", False
+            ),
+            "initial_amplitude_gradient_mean": amplitude_gradient_mean,
             "parameters": sum(p.numel() for p in candidate.parameters()),
             "state_schema": {
                 key: tuple(value.shape) for key, value in candidate.state_dict().items()
@@ -234,10 +245,11 @@ def run_af2_ffa_static_audit(
         }
         models[code] = candidate
 
-    control, candidate, bounded = (
+    control, candidate, bounded_invalid, bounded_matched = (
         records["AF2FFA0"],
         records["AF2FFA1"],
         records["AF2FFAB1"],
+        records["AF2FFAB2"],
     )
     source_parameters = sum(p.numel() for p in source.parameters())
     added = candidate["parameters"] - source_parameters
@@ -258,8 +270,10 @@ def run_af2_ffa_static_audit(
         == configs["AF2FFA1"]["afab"],
         "bounded_same_training_schedule": configs["AF2FFAB1"]["train"]
         == configs["AF2FFA1"]["train"],
-        "bounded_same_parameter_count": bounded["parameters"] == candidate["parameters"],
-        "bounded_same_state_schema": bounded["state_schema"] == candidate["state_schema"],
+        "bounded_same_parameter_count": bounded_invalid["parameters"]
+        == candidate["parameters"],
+        "bounded_same_state_schema": bounded_invalid["state_schema"]
+        == candidate["state_schema"],
         "bounded_only_adds_gain_cap": {
             key: value
             for key, value in configs["AF2FFAB1"]["af2_ffa"].items()
@@ -270,10 +284,48 @@ def run_af2_ffa_static_audit(
             "residual_gain_cap"
         )
         == 0.10,
+        "matched_bound_same_model_yaml": configs["AF2FFAB2"]["model"]
+        == configs["AF2FFA1"]["model"],
+        "matched_bound_same_af2_config": configs["AF2FFAB2"]["afab"]
+        == configs["AF2FFA1"]["afab"],
+        "matched_bound_same_training_schedule": configs["AF2FFAB2"]["train"]
+        == configs["AF2FFA1"]["train"],
+        "matched_bound_same_parameter_count": bounded_matched["parameters"]
+        == candidate["parameters"],
+        "matched_bound_same_state_schema": bounded_matched["state_schema"]
+        == candidate["state_schema"],
+        "matched_bound_only_adds_cap_parameterization": {
+            key: value
+            for key, value in configs["AF2FFAB2"]["af2_ffa"].items()
+            if key not in {"residual_gain_cap", "gradient_matched_cap"}
+        }
+        == configs["AF2FFA1"]["af2_ffa"],
+        "matched_bound_gain_cap_is_10_percent": configs["AF2FFAB2"][
+            "af2_ffa"
+        ].get("residual_gain_cap")
+        == 0.10,
+        "matched_bound_flag_enabled": configs["AF2FFAB2"]["af2_ffa"].get(
+            "gradient_matched_cap"
+        )
+        is True,
+        "legacy_bound_gradient_confound_detected": abs(
+            bounded_invalid["initial_amplitude_gradient_mean"] - 0.10
+        )
+        <= 1.0e-6,
+        "matched_bound_initial_gradient_matches_unbounded": abs(
+            bounded_matched["initial_amplitude_gradient_mean"]
+            - candidate["initial_amplitude_gradient_mean"]
+        )
+        <= 1.0e-6,
         "added_parameters_under_one_percent": 0 < added < source_parameters * 0.01,
         "zero_control_has_no_frequency_information": control["descriptor_abs_sum"] == 0.0,
         "candidate_has_frequency_information": candidate["descriptor_abs_sum"] > 0.0,
-        "bounded_has_frequency_information": bounded["descriptor_abs_sum"] > 0.0,
+        "bounded_has_frequency_information": bounded_invalid["descriptor_abs_sum"]
+        > 0.0,
+        "matched_bound_has_frequency_information": bounded_matched[
+            "descriptor_abs_sum"
+        ]
+        > 0.0,
         "classification_path_only": all(
             record["gates"]["active_preserves_boxes"] for record in records.values()
         ),

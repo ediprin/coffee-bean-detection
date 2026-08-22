@@ -16,12 +16,13 @@ from coffee_detector.experiments.run_faruq_v3_stb_capacity_control import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-ARMS = ("AF2FFA0", "AF2FFA1", "AF2FFAB1")
+ARMS = ("AF2FFA0", "AF2FFA1", "AF2FFAB1", "AF2FFAB2")
 ALLOWED_SEEDS = (42, 123, 2026)
 CONFIGS = {
     "AF2FFA0": REPO_ROOT / "configs/af2_ffa/AF2FFA0_yolo26n_zero_control.yaml",
     "AF2FFA1": REPO_ROOT / "configs/af2_ffa/AF2FFA1_yolo26n_spectral_adapter.yaml",
     "AF2FFAB1": REPO_ROOT / "configs/af2_ffa/AF2FFAB1_yolo26n_bounded_spectral_adapter.yaml",
+    "AF2FFAB2": REPO_ROOT / "configs/af2_ffa/AF2FFAB2_yolo26n_gradient_matched_bounded_adapter.yaml",
 }
 
 
@@ -166,6 +167,7 @@ def run_faruq_v3_af2_ffa_arm(
         "seed": seed,
         "conditioning": adapter.conditioning,
         "residual_gain_cap": adapter.residual_gain_cap,
+        "gradient_matched_cap": adapter.gradient_matched_cap,
         "metrics": metrics,
         "checkpoint": str(best),
         "initial_af2_checkpoint": str(checkpoint),

@@ -572,8 +572,8 @@ Notebook:
 
 ## AF2-FFA bounded Pareto refinement
 
-**Status: protocol frozen before bounded training on 2026-08-22; one new
-seed-42 arm authorized; test remains locked.** The completed AF2FFA1 screen
+**Status: AF2FFAB1 completed and rejected, but marked
+`INVALID_OPTIMIZATION_CONFOUND`; test remained locked.** The completed AF2FFA1 screen
 improved Bottom-3/Worst by +0.82/+2.87 points while losing 0.33 Macro point to
 its continuation control. Rather than paying immediately for two confirmation
 seeds, one bounded candidate (`AF2FFAB1`) caps the learned spectral residual at
@@ -587,3 +587,24 @@ signal. A retained result defers rather than automatically starts multiseed.
 
 Protocol:
 `docs/FARUQ_V3_AF2_FFA_BOUNDED_REFINEMENT_PROTOCOL_2026-08-22.md`.
+
+Result: AF2FFAB1 produced 85.09% Macro, 73.33% Bottom-3, and 66.61% Worst.
+Post-run inspection found that `0.10*tanh(alpha)` reduced the initial amplitude
+gradient from 1.0 to 0.10, so the run did not isolate gain bounding from
+optimization speed. The raw result is preserved but cannot decide the bounded
+hypothesis.
+
+Result document:
+`docs/FARUQ_V3_AF2_FFA_BOUNDED_REFINEMENT_RESULT_2026-08-22.md`.
+
+## AF2-FFA gradient-matched bound correction
+
+**Status: protocol frozen before AF2FFAB2 seed-42 training on 2026-08-22; one
+new arm authorized; test remains locked.** AF2FFAB2 replaces the confounded
+parameterization with `0.10*tanh(alpha/0.10)`, retaining the ±10% bound while
+restoring the same unit initial derivative as AF2FFA1. Static audit must report
+the derivatives explicitly before training. Historical AF2FFA0/AF2FFA1 results
+are reused; AF2FFAB1 is recorded but excluded as a scientific comparator.
+
+Protocol:
+`docs/FARUQ_V3_AF2_FFA_GRADIENT_MATCHED_BOUND_PROTOCOL_2026-08-22.md`.

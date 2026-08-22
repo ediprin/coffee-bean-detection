@@ -26,6 +26,7 @@ class AF2FFAConfig:
     eps: float = 1.0e-6
     max_added_fraction: float = 0.01
     residual_gain_cap: float | None = None
+    gradient_matched_cap: bool = False
 
     @classmethod
     def from_mapping(
@@ -42,6 +43,8 @@ class AF2FFAConfig:
             0.0 < result.residual_gain_cap <= 0.5
         ):
             raise ValueError("residual_gain_cap harus berada di (0, 0.5]")
+        if result.gradient_matched_cap and result.residual_gain_cap is None:
+            raise ValueError("gradient_matched_cap memerlukan residual_gain_cap")
         return result
 
     def to_dict(self) -> dict[str, Any]:
@@ -95,11 +98,25 @@ class FeatureFrequencyAdapter(nn.Module):
         gate = torch.tanh(
             descriptor * self.scale[None, :] + self.bias[None, :]
         )
-        amplitude = self.alpha
-        if self.config.residual_gain_cap is not None:
-            amplitude = float(self.config.residual_gain_cap) * torch.tanh(amplitude)
+        amplitude = self.residual_amplitude()
         multiplier = 1.0 + amplitude[None, :] * gate
         return value * multiplier[:, :, None, None]
+
+    def residual_amplitude(self) -> torch.Tensor:
+        """Return the learned residual amplitude under the frozen parameterization.
+
+        ``gradient_matched_cap`` preserves the unbounded arm's unit derivative
+        at ``alpha=0`` while still bounding the deployed amplitude to ``±cap``.
+        The legacy bounded arm deliberately retains its historical
+        ``cap*tanh(alpha)`` behavior for reproducibility.
+        """
+
+        cap = self.config.residual_gain_cap
+        if cap is None:
+            return self.alpha
+        if self.config.gradient_matched_cap:
+            return float(cap) * torch.tanh(self.alpha / float(cap))
+        return float(cap) * torch.tanh(self.alpha)
 
 
 class AF2FFADetectHead(nn.Module):

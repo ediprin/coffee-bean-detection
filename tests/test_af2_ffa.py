@@ -20,6 +20,9 @@ from coffee_detector.experiments.run_faruq_v3_af2_ffa_decision import (
 from coffee_detector.experiments.run_faruq_v3_af2_ffa_bounded_decision import (
     run_faruq_v3_af2_ffa_bounded_decision,
 )
+from coffee_detector.experiments.run_faruq_v3_af2_ffa_gradient_matched_decision import (
+    run_faruq_v3_af2_ffa_gradient_matched_decision,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -134,17 +137,42 @@ def test_bounded_adapter_preserves_identity_and_caps_residual_gain():
     assert float(multiplier.max()) <= 1.1 + 1.0e-6
 
 
+def test_gradient_matched_bound_preserves_unbounded_initial_derivative():
+    unbounded = FeatureFrequencyAdapter(4, AF2FFAConfig())
+    legacy = FeatureFrequencyAdapter(
+        4, AF2FFAConfig(residual_gain_cap=0.10)
+    )
+    matched = FeatureFrequencyAdapter(
+        4,
+        AF2FFAConfig(residual_gain_cap=0.10, gradient_matched_cap=True),
+    )
+
+    def slope(adapter):
+        return torch.autograd.grad(
+            adapter.residual_amplitude().sum(), adapter.alpha
+        )[0]
+
+    assert torch.equal(slope(unbounded), torch.ones(4))
+    assert torch.allclose(slope(legacy), torch.full((4,), 0.10))
+    assert torch.equal(slope(matched), torch.ones(4))
+    with torch.no_grad():
+        matched.alpha.fill_(100.0)
+    assert float(matched.residual_amplitude().detach().abs().max()) <= 0.10 + 1.0e-6
+
+
 def test_configs_are_capacity_matched_and_frozen():
     paths = sorted((ROOT / "configs/af2_ffa").glob("AF2FFA*.yaml"))
-    assert len(paths) == 3
+    assert len(paths) == 4
     payloads = [yaml.safe_load(path.read_text(encoding="utf-8")) for path in paths]
     by_code = {item["code"]: item for item in payloads}
-    assert set(by_code) == {"AF2FFA0", "AF2FFA1", "AF2FFAB1"}
+    assert set(by_code) == {"AF2FFA0", "AF2FFA1", "AF2FFAB1", "AF2FFAB2"}
     assert len({json.dumps(item["afab"], sort_keys=True) for item in payloads}) == 1
     assert len({json.dumps(item["train"], sort_keys=True) for item in payloads}) == 1
     assert payloads[0]["train"]["epochs"] == 30
     assert {item["af2_ffa"]["conditioning"] for item in payloads} == {"zero", "spectral"}
     assert by_code["AF2FFAB1"]["af2_ffa"]["residual_gain_cap"] == 0.10
+    assert by_code["AF2FFAB2"]["af2_ffa"]["residual_gain_cap"] == 0.10
+    assert by_code["AF2FFAB2"]["af2_ffa"]["gradient_matched_cap"] is True
 
 
 def test_static_audit_passes_on_af2_checkpoint(tmp_path: Path):
@@ -159,6 +187,13 @@ def test_static_audit_passes_on_af2_checkpoint(tmp_path: Path):
     assert result["gates"]["same_parameter_count"]
     assert result["gates"]["bounded_same_parameter_count"]
     assert result["gates"]["bounded_gain_cap_is_10_percent"]
+    assert result["gates"]["legacy_bound_gradient_confound_detected"]
+    assert result["gates"]["matched_bound_initial_gradient_matches_unbounded"]
+    assert result["records"]["AF2FFA1"]["initial_amplitude_gradient_mean"] == 1.0
+    assert abs(
+        result["records"]["AF2FFAB1"]["initial_amplitude_gradient_mean"] - 0.1
+    ) < 1.0e-6
+    assert result["records"]["AF2FFAB2"]["initial_amplitude_gradient_mean"] == 1.0
     assert result["added_fraction"] < 0.01
 
 
@@ -248,5 +283,61 @@ def test_bounded_protocol_and_notebook_are_single_arm_and_val_only():
     )
     assert "AF2FFAB1" in source
     assert "run_faruq_v3_af2_ffa_bounded_decision" in source
+    assert "for arm in" not in source
+    assert "split=test" not in source.lower()
+
+
+def test_gradient_matched_decision_reuses_only_valid_comparators(tmp_path: Path):
+    def report(arm, macro, bottom3, worst):
+        return {
+            "arm": arm,
+            "seed": 42,
+            "initial_af2_checkpoint_sha256": "same-source",
+            "test_images_accessed": False,
+            "metrics": {
+                "macro_map50_95": macro,
+                "bottom3_class_map50_95": bottom3,
+                "worst_class_map50_95": worst,
+            },
+        }
+
+    paths = {}
+    for arm, values in {
+        "AF2FFA0": (0.889, 0.808, 0.775),
+        "AF2FFA1": (0.886, 0.816, 0.804),
+        "AF2FFAB2": (0.8891, 0.8135, 0.805),
+    }.items():
+        path = tmp_path / f"{arm}.json"
+        path.write_text(json.dumps(report(arm, *values)), encoding="utf-8")
+        paths[arm] = path
+    result = run_faruq_v3_af2_ffa_gradient_matched_decision(
+        paths["AF2FFA0"],
+        paths["AF2FFA1"],
+        paths["AF2FFAB2"],
+        tmp_path / "decision.json",
+    )
+    assert result["decision"] == "RETAIN_PARETO"
+    assert result["training_executed_for_this_study"] == ["AF2FFAB2"]
+    assert result["invalid_historical_arm_excluded_from_comparison"] == "AF2FFAB1"
+    assert result["test_opened"] is False
+
+
+def test_gradient_matched_protocol_and_notebook_are_single_arm_and_val_only():
+    protocol = (
+        ROOT
+        / "docs/FARUQ_V3_AF2_FFA_GRADIENT_MATCHED_BOUND_PROTOCOL_2026-08-22.md"
+    ).read_text(encoding="utf-8")
+    assert "Status: frozen before AF2FFAB2 training" in protocol
+    assert "0.10*tanh(alpha/0.10)" in protocol
+    notebook = (
+        ROOT
+        / "notebooks/Faruq_V3_AF2_FFA_Gradient_Matched_Bound_Seed42_Colab.ipynb"
+    )
+    payload = json.loads(notebook.read_text(encoding="utf-8"))
+    source = "\n".join(
+        "".join(cell.get("source", [])) for cell in payload.get("cells", [])
+    )
+    assert "AF2FFAB2" in source
+    assert "run_faruq_v3_af2_ffa_gradient_matched_decision" in source
     assert "for arm in" not in source
     assert "split=test" not in source.lower()
