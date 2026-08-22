@@ -569,3 +569,21 @@ Protocol:
 
 Notebook:
 `notebooks/Faruq_V3_AF2_Feature_Frequency_Adapter_Colab.ipynb`.
+
+## AF2-FFA bounded Pareto refinement
+
+**Status: protocol frozen before bounded training on 2026-08-22; one new
+seed-42 arm authorized; test remains locked.** The completed AF2FFA1 screen
+improved Bottom-3/Worst by +0.82/+2.87 points while losing 0.33 Macro point to
+its continuation control. Rather than paying immediately for two confirmation
+seeds, one bounded candidate (`AF2FFAB1`) caps the learned spectral residual at
+10% through `0.10*tanh(alpha)`. The completed AF2FFA0 and AF2FFA1 reports are
+reused after exact seed/source-checkpoint validation, so only AF2FFAB1 trains.
+
+The candidate is evaluated as a Pareto tail refinement: it must recover Macro
+against AF2FFA1, remain within 0.1 point of AF2FFA0 Macro, retain meaningful
+Bottom-3/Worst gains over AF2FFA0, and preserve the unbounded candidate's tail
+signal. A retained result defers rather than automatically starts multiseed.
+
+Protocol:
+`docs/FARUQ_V3_AF2_FFA_BOUNDED_REFINEMENT_PROTOCOL_2026-08-22.md`.

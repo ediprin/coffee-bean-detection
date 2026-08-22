@@ -25,6 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 CONFIGS = {
     "AF2FFA0": REPO_ROOT / "configs/af2_ffa/AF2FFA0_yolo26n_zero_control.yaml",
     "AF2FFA1": REPO_ROOT / "configs/af2_ffa/AF2FFA1_yolo26n_spectral_adapter.yaml",
+    "AF2FFAB1": REPO_ROOT / "configs/af2_ffa/AF2FFAB1_yolo26n_bounded_spectral_adapter.yaml",
 }
 
 
@@ -186,9 +187,22 @@ def run_af2_ffa_static_audit(
             descriptor_sum = float(
                 head_probe.adapters[0].spectral_descriptor(sample_feature).abs().sum()
             )
+        cap = head_probe.adapters[0].config.residual_gain_cap
+        bounded_deviation = 0.0
+        if cap is not None:
+            bounded_adapter = head_probe.adapters[0]
+            bounded_input = torch.ones(
+                1, bounded_adapter.channels, 16, 16, device=device
+            )
+            with torch.no_grad():
+                bounded_adapter.alpha.fill_(100.0)
+                bounded_adapter.bias.fill_(100.0)
+                bounded_output = bounded_adapter(bounded_input)
+            bounded_deviation = float((bounded_output - bounded_input).abs().max())
         source_code = inspect.getsource(AF2FFADetectHead)
         records[code] = {
             "conditioning": payload["af2_ffa"]["conditioning"],
+            "residual_gain_cap": payload["af2_ffa"].get("residual_gain_cap"),
             "parameters": sum(p.numel() for p in candidate.parameters()),
             "state_schema": {
                 key: tuple(value.shape) for key, value in candidate.state_dict().items()
@@ -214,11 +228,17 @@ def run_af2_ffa_static_audit(
                 ),
                 "no_roi_align": "roi_align" not in source_code,
                 "no_decoded_box_dependency": "decode" not in source_code.lower(),
+                "bounded_gain_enforced": cap is None
+                or bounded_deviation <= float(cap) + 1.0e-6,
             },
         }
         models[code] = candidate
 
-    control, candidate = records["AF2FFA0"], records["AF2FFA1"]
+    control, candidate, bounded = (
+        records["AF2FFA0"],
+        records["AF2FFA1"],
+        records["AF2FFAB1"],
+    )
     source_parameters = sum(p.numel() for p in source.parameters())
     added = candidate["parameters"] - source_parameters
     global_gates = {
@@ -232,9 +252,28 @@ def run_af2_ffa_static_audit(
         },
         "same_parameter_count": control["parameters"] == candidate["parameters"],
         "same_state_schema": control["state_schema"] == candidate["state_schema"],
+        "bounded_same_model_yaml": configs["AF2FFAB1"]["model"]
+        == configs["AF2FFA1"]["model"],
+        "bounded_same_af2_config": configs["AF2FFAB1"]["afab"]
+        == configs["AF2FFA1"]["afab"],
+        "bounded_same_training_schedule": configs["AF2FFAB1"]["train"]
+        == configs["AF2FFA1"]["train"],
+        "bounded_same_parameter_count": bounded["parameters"] == candidate["parameters"],
+        "bounded_same_state_schema": bounded["state_schema"] == candidate["state_schema"],
+        "bounded_only_adds_gain_cap": {
+            key: value
+            for key, value in configs["AF2FFAB1"]["af2_ffa"].items()
+            if key != "residual_gain_cap"
+        }
+        == configs["AF2FFA1"]["af2_ffa"],
+        "bounded_gain_cap_is_10_percent": configs["AF2FFAB1"]["af2_ffa"].get(
+            "residual_gain_cap"
+        )
+        == 0.10,
         "added_parameters_under_one_percent": 0 < added < source_parameters * 0.01,
         "zero_control_has_no_frequency_information": control["descriptor_abs_sum"] == 0.0,
         "candidate_has_frequency_information": candidate["descriptor_abs_sum"] > 0.0,
+        "bounded_has_frequency_information": bounded["descriptor_abs_sum"] > 0.0,
         "classification_path_only": all(
             record["gates"]["active_preserves_boxes"] for record in records.values()
         ),

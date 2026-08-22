@@ -25,6 +25,7 @@ class AF2FFAConfig:
     radial_cutoff: float = 0.35
     eps: float = 1.0e-6
     max_added_fraction: float = 0.01
+    residual_gain_cap: float | None = None
 
     @classmethod
     def from_mapping(
@@ -37,6 +38,10 @@ class AF2FFAConfig:
             raise ValueError("radial_cutoff harus berada di (0, 1)")
         if result.eps <= 0 or not 0.0 < result.max_added_fraction <= 0.05:
             raise ValueError("eps/max_added_fraction tidak valid")
+        if result.residual_gain_cap is not None and not (
+            0.0 < result.residual_gain_cap <= 0.5
+        ):
+            raise ValueError("residual_gain_cap harus berada di (0, 0.5]")
         return result
 
     def to_dict(self) -> dict[str, Any]:
@@ -90,7 +95,10 @@ class FeatureFrequencyAdapter(nn.Module):
         gate = torch.tanh(
             descriptor * self.scale[None, :] + self.bias[None, :]
         )
-        multiplier = 1.0 + self.alpha[None, :] * gate
+        amplitude = self.alpha
+        if self.config.residual_gain_cap is not None:
+            amplitude = float(self.config.residual_gain_cap) * torch.tanh(amplitude)
+        multiplier = 1.0 + amplitude[None, :] * gate
         return value * multiplier[:, :, None, None]
 
 
