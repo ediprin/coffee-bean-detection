@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import torch
 
+from coffee_detector.af2_pairs.audit import _safety_decision
 from coffee_detector.af2_pairs.model import AF2_CONFIG, _build_pair_model
 from coffee_detector.experiments.run_faruq_v3_af2_strong_pair import _decision
 
@@ -59,3 +60,12 @@ def test_decision_retains_strict_and_pareto_without_rigid_half_point_macro_gate(
     assert strict == "RETAIN_STRICT_SUPERIOR"
     assert pareto == "RETAIN_PARETO"
     assert rejected == "REJECT"
+
+
+def test_static_safety_decision_requires_test_to_remain_unaccessed():
+    safe = {"wiring": True, "finite": True, "test_accessed": False}
+    unsafe_test = {"wiring": True, "finite": True, "test_accessed": True}
+    broken = {"wiring": False, "finite": True, "test_accessed": False}
+    assert _safety_decision(safe) == "PASS"
+    assert _safety_decision(unsafe_test) == "FAIL"
+    assert _safety_decision(broken) == "FAIL"

@@ -28,6 +28,13 @@ def _parameters(model) -> int:
     return sum(value.numel() for value in model.parameters())
 
 
+def _safety_decision(gates: dict[str, bool]) -> str:
+    passed = all(
+        value for key, value in gates.items() if key != "test_accessed"
+    ) and not gates.get("test_accessed", True)
+    return "PASS" if passed else "FAIL"
+
+
 def run_af2_pair_static_audit(
     arm: str,
     model_yaml: str | Path,
@@ -94,7 +101,7 @@ def run_af2_pair_static_audit(
         "parameters": {"standalone": _parameters(source), "candidate": _parameters(pair)},
         "transfer": transfer,
         "gates": gates,
-        "decision": "PASS" if all(gates.values()) else "FAIL",
+        "decision": _safety_decision(gates),
         "training_executed": False,
         "test_opened": False,
     }
