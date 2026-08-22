@@ -1,7 +1,7 @@
 # Faruq-v3 AF2-FFA Bounded Refinement
 
-Status: frozen before bounded training  
-Date: 2026-08-22  
+Status: frozen before bounded training
+Date: 2026-08-22
 Test status: locked; no test access is authorized.
 
 ## Evidence motivating this refinement
