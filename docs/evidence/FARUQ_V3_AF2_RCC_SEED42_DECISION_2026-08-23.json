@@ -1,0 +1,33 @@
+{
+  "format": "coffee_detector.af2_rcc.seed42_decision.v1",
+  "baseline": {
+    "macro_map50_95": 0.8819734111428803,
+    "bottom3_class_map50_95": 0.8004276546678737,
+    "worst_class_map50_95": 0.7934699749241949
+  },
+  "candidate": {
+    "macro_map50_95": 0.8819396171088346,
+    "bottom3_class_map50_95": 0.8004276546678737,
+    "worst_class_map50_95": 0.7934699749241949
+  },
+  "deltas": {
+    "macro_map50_95": -3.3794034045686594e-05,
+    "bottom3_class_map50_95": 0.0,
+    "worst_class_map50_95": 0.0
+  },
+  "target_class": "kulit_tanduk_ukuran_kecil",
+  "target_class_delta": 0.0,
+  "improved_headline_metrics": 0,
+  "criteria": {
+    "macro_drop_no_more_than_0_1_point": true,
+    "bottom3_not_lower": true,
+    "worst_drop_no_more_than_0_5_point": true,
+    "at_least_two_headline_metrics_improve": false,
+    "target_class_drop_no_more_than_0_5_point": true,
+    "all_21_classes_present": true,
+    "test_not_opened": true
+  },
+  "decision": "FAIL",
+  "next": "STOP_AF2_RCC",
+  "test_opened": false
+}
