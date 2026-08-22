@@ -617,13 +617,30 @@ Bottom-3/Worst by +1.27/+2.96 points. It also exceeded AF2FFA1 by
 
 ## AF2FFAB2 paired three-seed confirmation
 
-**Status: protocol frozen before seed 123/2026 training on 2026-08-22; four
-new paired runs authorized; test remains locked.** For each new seed,
-AF2FFA0 and AF2FFAB2 start from the same seed-matched AF2 checkpoint. This
-explicit continuation control prevents attributing an extra 30-epoch
-optimization effect to the frequency adapter. The two seeds may run in
-parallel, but their arms run sequentially within each account. The aggregate
-gate tests Macro non-inferiority and repeatable Bottom-3/Worst improvement.
+**Status: completed -- PASS across seeds 42/123/2026; retain AF2FFAB2 as a
+validated Pareto refinement; test remained locked.** For each seed, AF2FFA0
+and AF2FFAB2 started from the same seed-matched AF2 checkpoint and used the
+same 30-epoch continuation schedule. This explicit control prevents
+attributing continuation optimization to the frequency adapter.
+
+| Metric | AF2FFA0 mean | AF2FFAB2 mean | Mean delta | Minimum delta | Improved seeds |
+|---|---:|---:|---:|---:|---:|
+| Macro | 87.10% | **88.54%** | **+1.44 points** | +0.003 | 3/3 |
+| Bottom-3 | 77.68% | **80.52%** | **+2.83 points** | +1.27 | 3/3 |
+| Worst class | 74.69% | **76.96%** | **+2.27 points** | +0.89 | 3/3 |
+
+All frozen criteria passed. The decision is `PASS` and the recorded next
+action is `RETAIN_AF2FFAB2_AS_VALIDATED_PARETO_REFINEMENT`. This result proves
+repeatable benefit against the matched continuation control, not universal
+superiority over original AF2. Descriptively, AF2FFAB2 exceeds original AF2
+on Macro/Bottom-3 by about +0.60/+1.15 points but is about 1.19 points lower
+on Worst class.
 
 Protocol:
 `docs/FARUQ_V3_AF2_FFA_GRADIENT_MATCHED_PAIRED_PROTOCOL_2026-08-22.md`.
+
+Result:
+`docs/FARUQ_V3_AF2_FFA_B2_PAIRED_CONFIRMATION_RESULT_2026-08-22.md`.
+
+Evidence:
+`docs/evidence/FARUQ_V3_AF2_FFA_B2_PAIRED_CONFIRMATION_2026-08-22.json`.
