@@ -1,0 +1,16 @@
+code: CLAHE_LAB
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+clahe:
+  clip_limit: 3.0
+  tile_grid_size: [8, 8]
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500
