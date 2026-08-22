@@ -673,3 +673,17 @@ Protocol:
 
 Notebook:
 `notebooks/Faruq_V3_AF2_Recovered_Cue_Calibration_Colab.ipynb`.
+
+Seed-42 result: **completed -- FAIL; direction closed without test or extra
+seeds.** AF2RCC1 achieved 88.1940% Macro, 80.0428% Bottom-3, and 79.3470%
+Worst, compared with original AF2 at 88.1973%, 80.0428%, and 79.3470%.
+The deltas were -0.0034/0.0000/0.0000 point, the target class delta was zero,
+and zero of three headline metrics improved. All dataset and test-lock gates
+passed, but the frozen improvement gate failed. Decision: `FAIL`; next:
+`STOP_AF2_RCC`.
+
+Result:
+`docs/FARUQ_V3_AF2_RCC_SEED42_RESULT_2026-08-23.md`.
+
+Evidence:
+`docs/evidence/FARUQ_V3_AF2_RCC_SEED42_DECISION_2026-08-23.json`.
