@@ -17,8 +17,8 @@ from .model import AF2FFAConfig, AF2FFADetectHead, AF2FFADetectionModel, load_af
 REPO_ROOT = Path(__file__).resolve().parents[3]
 AF2_CONFIG = REPO_ROOT / "configs/afab/AF2_yolo26n_chaotic_amplitude.yaml"
 FFA_CONFIGS = {
-    "AF2FFAB2FS": REPO_ROOT / "configs/af2_ffa/AF2FFAB2FS_yolo26n_from_start.yaml",
-    "AF2FFADCTFS": REPO_ROOT / "configs/af2_ffa/AF2FFADCTFS_yolo26n_from_start.yaml",
+    "AF2FFAB2FS": REPO_ROOT / "configs/af2_ffa_from_start/AF2FFAB2FS_yolo26n_from_start.yaml",
+    "AF2FFADCTFS": REPO_ROOT / "configs/af2_ffa_from_start/AF2FFADCTFS_yolo26n_from_start.yaml",
 }
 
 
