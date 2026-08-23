@@ -65,8 +65,8 @@ def test_dct_and_rfft_adapters_have_identical_parameter_count() -> None:
 
 def test_from_start_train_schedule_exactly_matches_original_af2() -> None:
     af2 = yaml.safe_load((REPO_ROOT / "configs/afab/AF2_yolo26n_chaotic_amplitude.yaml").read_text())
-    ffab2 = yaml.safe_load((REPO_ROOT / "configs/af2_ffa/AF2FFAB2FS_yolo26n_from_start.yaml").read_text())
-    dct = yaml.safe_load((REPO_ROOT / "configs/af2_ffa/AF2FFADCTFS_yolo26n_from_start.yaml").read_text())
+    ffab2 = yaml.safe_load((REPO_ROOT / "configs/af2_ffa_from_start/AF2FFAB2FS_yolo26n_from_start.yaml").read_text())
+    dct = yaml.safe_load((REPO_ROOT / "configs/af2_ffa_from_start/AF2FFADCTFS_yolo26n_from_start.yaml").read_text())
     assert af2["model"] == ffab2["model"] == dct["model"]
     assert af2["afab"] == ffab2["afab"] == dct["afab"]
     assert af2["train"] == ffab2["train"] == dct["train"]
