@@ -35,10 +35,27 @@ def _source_nc(source: torch.nn.Module) -> int:
     raise RuntimeError("Tidak dapat menentukan nc dari checkpoint AF2")
 
 
+def _torch_device(device: str | torch.device) -> torch.device:
+    """Normalize Ultralytics-style device strings for direct PyTorch tensor/module use.
+
+    Ultralytics accepts ``device='0'`` for the first CUDA device, while
+    ``torch.nn.Module.to`` and tensor constructors require ``cuda:0``.
+    """
+    if isinstance(device, torch.device):
+        return device
+    text = str(device).strip()
+    if text.isdigit():
+        if not torch.cuda.is_available():
+            raise RuntimeError(f"CUDA device {text} diminta tetapi torch.cuda.is_available() == False")
+        return torch.device(f"cuda:{text}")
+    return torch.device(text)
+
+
 def run_static_audit(checkpoint: str | Path, output: str | Path, *, device: str = "cpu") -> dict:
     checkpoint, output = Path(checkpoint).resolve(), Path(output).resolve()
+    torch_device = _torch_device(device)
     print(f"[STATIC] checkpoint={checkpoint}", flush=True)
-    print(f"[STATIC] device={device}", flush=True)
+    print(f"[STATIC] device={device} -> torch_device={torch_device}", flush=True)
 
     configs = []
     for arm in ("AF2CPE0", "AF2CPE5"):
@@ -63,7 +80,7 @@ def run_static_audit(checkpoint: str | Path, output: str | Path, *, device: str 
         model = AF2CPEDetectionModel(
             str(ROOT / payload["model"]), nc=nc, verbose=False,
             afab=payload["afab"], cpe=payload["cpe"],
-        ).to(device)
+        ).to(torch_device)
         print(f"[STATIC] transfer AF2 weights into wrapped model {index}", flush=True)
         transfer = load_fsce_cpe_detector_weights(model, source)
         print(f"[STATIC] transfer {index}: {transfer}", flush=True)
@@ -85,7 +102,7 @@ def run_static_audit(checkpoint: str | Path, output: str | Path, *, device: str 
         model.eval()
 
     print("[STATIC] inference identity check", flush=True)
-    sample = torch.rand(1, 3, 64, 64, device=device)
+    sample = torch.rand(1, 3, 64, 64, device=torch_device)
     with torch.no_grad():
         a, b = models[0](sample), models[1](sample)
     for hook in hooks:
@@ -108,9 +125,9 @@ def run_static_audit(checkpoint: str | Path, output: str | Path, *, device: str 
     print("[STATIC] projection gradient check", flush=True)
     projection = models[0].model[-1].cpe_projection
     projection.train()
-    features = [torch.randn(2, layer.in_channels, 2, 2, device=device) for layer in projection.projections]
+    features = [torch.randn(2, layer.in_channels, 2, 2, device=torch_device) for layer in projection.projections]
     embeddings = projection(features).reshape(-1, projection.config.embedding_dim)
-    labels = torch.tensor([0, 0, 1, 1] * 6, device=device, dtype=torch.long)[: embeddings.shape[0]]
+    labels = torch.tensor([0, 0, 1, 1] * 6, device=torch_device, dtype=torch.long)[: embeddings.shape[0]]
     if labels.shape[0] != embeddings.shape[0]:
         raise RuntimeError(
             f"Static synthetic labels tidak sejajar: labels={labels.shape[0]} embeddings={embeddings.shape[0]}"
@@ -140,6 +157,8 @@ def run_static_audit(checkpoint: str | Path, output: str | Path, *, device: str 
         "format": "coffee_detector.af2_cpe.static_audit.v1",
         "checkpoint_sha256": _sha256(checkpoint),
         "checkpoint_nc": nc,
+        "requested_device": str(device),
+        "torch_device": str(torch_device),
         "checks": checks,
         "gradient": grad,
         "projection_inference_calls": calls,
