@@ -1,12 +1,15 @@
 code: AF2_ORIENT_CMC0
 model: configs/coffee_fg/models/yolo26n-p3.yaml
 af2_iso:
+  arm: AF2_ORIENT
   patch_size: 32
-  stride: 16
-  gamma: 0.1
-  radial_bands: 1
+  overlap: 0.50
+  gamma: 0.10
   angular_bins: 180
-  orientation_period: 180
+  orientation_period: 180.0
+  radial_boundaries: []
+  chunk_size: 128
+  eps: 1.0e-8
 stb:
   window_size: 4
   num_heads: 4
@@ -18,7 +21,8 @@ train:
   workers: 2
   patience: 15
   optimizer: auto
-  pretrained: true
+  pretrained: false
   cache: false
   close_mosaic: 10
   max_det: 500
+  save_period: 1
