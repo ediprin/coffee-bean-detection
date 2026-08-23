@@ -12,6 +12,7 @@ on:
       - "tests/test_af2_ffa.py"
       - "tests/test_af2_ffa_from_start_*.py"
       - "notebooks/Faruq_V3_AF2_FFAB2_*_Colab.ipynb"
+      - "notebooks/Faruq_V3_AF2_FFAB2_*_Kaggle.ipynb"
       - "docs/FARUQ_V3_AF2_FFAB2_FROM_START_DCT_PROTOCOL_2026-08-23.md"
       - ".github/workflows/af2-ffab2-from-start-dct-ci.yml"
       - "pyproject.toml"
@@ -24,6 +25,7 @@ on:
       - "tests/test_af2_ffa.py"
       - "tests/test_af2_ffa_from_start_*.py"
       - "notebooks/Faruq_V3_AF2_FFAB2_*_Colab.ipynb"
+      - "notebooks/Faruq_V3_AF2_FFAB2_*_Kaggle.ipynb"
       - "docs/FARUQ_V3_AF2_FFAB2_FROM_START_DCT_PROTOCOL_2026-08-23.md"
       - ".github/workflows/af2-ffab2-from-start-dct-ci.yml"
       - "pyproject.toml"
@@ -95,15 +97,24 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          for path in (
+          paths = (
               Path('notebooks/Faruq_V3_AF2_FFAB2_From_Start_Paired_Colab.ipynb'),
               Path('notebooks/Faruq_V3_AF2_FFAB2_DCT_Efficiency_Colab.ipynb'),
-          ):
+              Path('notebooks/Faruq_V3_AF2_FFAB2_From_Start_Kaggle.ipynb'),
+              Path('notebooks/Faruq_V3_AF2_FFAB2_From_Start_Decision_Kaggle.ipynb'),
+              Path('notebooks/Faruq_V3_AF2_FFAB2_DCT_Kaggle.ipynb'),
+              Path('notebooks/Faruq_V3_AF2_FFAB2_DCT_Decision_Kaggle.ipynb'),
+          )
+          for path in paths:
               payload = json.loads(path.read_text(encoding='utf-8'))
               assert payload['nbformat'] == 4
               assert payload['cells']
               source = '\n'.join(''.join(cell.get('source', [])) for cell in payload['cells'])
               assert "BRANCH='codex/af2-ffab2-from-start-dct'" in source
               assert 'split=test' not in source.lower()
+              if path.name.endswith('_Kaggle.ipynb'):
+                  assert '/kaggle/input' in source
+                  assert '/kaggle/working' in source
+                  assert 'google.colab' not in source
               print(path, 'valid')
           PY
