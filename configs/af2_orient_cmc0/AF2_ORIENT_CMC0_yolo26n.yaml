@@ -25,4 +25,4 @@ train:
   cache: false
   close_mosaic: 10
   max_det: 500
-  save_period: 1
+  save_period: -1
