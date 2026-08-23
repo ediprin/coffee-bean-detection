@@ -248,8 +248,7 @@ def run_faruq_v3_af2_ffa_from_start_arm(
         "evaluation_split": "val",
         "test_images_accessed": False,
     }
-    result_path = reports / "val_reports" / f"{arm}_seed{seed}_result.json"
-    result_path.parent.mkdir(parents=True, exist_ok=True)
+    result_path = reports / f"{arm}_seed{seed}_result.json"
     result_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2), flush=True)
     return result
