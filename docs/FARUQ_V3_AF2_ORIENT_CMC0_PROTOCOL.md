@@ -1,7 +1,7 @@
 # Faruq-v3 AF2_ORIENT + CMC0 Composition Screening Protocol
 
 Date: 2026-08-23
-Status: **FROZEN AFTER IMPLEMENTATION REPAIR — NO RESULT YET**
+Status: **COMPLETED — RAW SCREEN FAIL; STOP NO TUNING / NO MULTI-SEED**
 
 ## Question
 
@@ -104,7 +104,7 @@ The candidate passes through either of two pre-frozen routes.
 All 21 validation classes must be present. No hyperparameter tuning is allowed
 after this screen.
 
-## Decision
+## Decision rule
 
 - `PASS` -> authorize seed-matched 123/2026 confirmation of the composition.
 - `FAIL` -> stop this composition; do not tune AF2 orientation, CMC0 depth,
@@ -113,3 +113,26 @@ after this screen.
 A `PASS` would mean only that the **composition is worth confirmation**. It
 would not retroactively validate AF2_ORIENT as superior to original AF2, nor
 validate the STB spatial-causal claim.
+
+## Observed result — 2026-08-23
+
+The completed seed-42 checkpoint was postprocessed on grouped validation after
+a resume-boundary logging anomaly. Canonical metrics were:
+
+| Model | Macro mAP50-95 | Bottom-3 | Worst |
+|---|---:|---:|---:|
+| AF2_ORIENT | 88.3260% | 81.3806% | 80.1357% |
+| AF2_ORIENT + CMC0 | 87.2293% | 79.7854% | 76.4616% |
+| Delta | **-1.0967 pp** | **-1.5952 pp** | **-3.6741 pp** |
+
+Both frozen acceptance routes fail. The raw screening decision is **FAIL**.
+
+The execution history contains duplicate `epoch 35` after resume, so the run is
+not `decision_clean` and must not be represented as a clean confirmation.
+However, the negative deltas are far outside every frozen acceptance boundary;
+therefore no seeds 123/2026 are authorized and no tuning of this composition is
+permitted on the same validation evidence.
+
+Canonical result record:
+
+`docs/FARUQ_V3_AF2_ORIENT_CMC0_RESULT_2026-08-23.md`
