@@ -162,17 +162,20 @@ def run_af2_orient_cmc0(
         raise RuntimeError("Model YAML drift")
 
     frozen_af2 = frozen_arm_config("AF2_ORIENT")
-    yaml_af2 = dict(payload.get("af2_iso") or {})
-    yaml_af2.setdefault("arm", "AF2_ORIENT")
-    yaml_af2.setdefault("overlap", 0.50)
-    yaml_af2.setdefault("chunk_size", 128)
-    yaml_af2.setdefault("eps", 1.0e-8)
-    yaml_af2.setdefault("radial_boundaries", [])
-    # Historical config stores stride rather than overlap. Enforce the frozen
-    # operator semantically, not by YAML key spelling.
-    yaml_af2.pop("stride", None)
-    if yaml_af2 != frozen_af2.to_dict():
-        raise RuntimeError(f"AF2_ORIENT config drift: {yaml_af2!r} != {frozen_af2.to_dict()!r}")
+    raw_af2 = dict(payload.get("af2_iso") or {})
+    if int(raw_af2.get("stride", frozen_af2.stride)) != frozen_af2.stride:
+        raise RuntimeError("AF2_ORIENT stride drift")
+    if int(raw_af2.get("radial_bands", frozen_af2.radial_bands)) != frozen_af2.radial_bands:
+        raise RuntimeError("AF2_ORIENT radial_bands drift")
+    raw_af2.pop("stride", None)
+    raw_af2.pop("radial_bands", None)
+    raw_af2.setdefault("arm", "AF2_ORIENT")
+    raw_af2.setdefault("overlap", 0.50)
+    raw_af2.setdefault("chunk_size", 128)
+    raw_af2.setdefault("eps", 1.0e-8)
+    raw_af2.setdefault("radial_boundaries", [])
+    if raw_af2 != frozen_af2.to_dict():
+        raise RuntimeError(f"AF2_ORIENT config drift: {raw_af2!r} != {frozen_af2.to_dict()!r}")
 
     frozen_cmc0 = STBConfig.from_mapping(payload.get("stb"))
     if frozen_cmc0 != STBConfig():
