@@ -23,14 +23,16 @@ def static_af2_orient_cmc0_audit(
     *,
     nc: int = 21,
     image_size: int = 128,
-    tolerance: float = 1e-6,
+    tolerance: float = 1e-4,
 ) -> dict:
     """Verify AF2_ORIENT + CMC0 before any training.
 
     The relevant identity is conditional on AF2_ORIENT: with all CMC0 residual
     gates at zero, the combined model must reproduce AF2_ORIENT initialized from
     the same seed-matched D0 checkpoint. Activating only CMC0 must preserve the
-    localization tensors while changing classification scores.
+    localization tensors while changing classification scores. Full-model
+    comparisons use a small numerical tolerance because AF2 includes FFT/IFFT
+    operations; this mirrors the repository's established AF2 composition audits.
     """
 
     from ultralytics import YOLO
