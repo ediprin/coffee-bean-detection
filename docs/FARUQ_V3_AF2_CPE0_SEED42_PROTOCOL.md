@@ -17,7 +17,20 @@ Training is frozen at seed 42, 50 epochs, image size 640, batch 16, workers 2, p
 
 ## Mandatory static gate
 
-Before training, the audit must establish: identical native outputs for wrappers with shared weights; zero projection gradient at weight 0 and finite nonzero projection gradient at weight 0.5; and zero CPE-projection calls during evaluation/inference. Training is unauthorized unless the audit records `PASS` and the exact AF2 checkpoint hash.
+The static audit follows the established AF2-FFA precedent. Because separate full AF2 CUDA forwards include FFT kernels, bitwise equality is not required across separate end-to-end forwards. Instead, before training the audit must establish:
+
+- the AF2 native Detect-head state is transferred bitwise into each CPE wrapper;
+- wrapper-versus-native Detect output is bitwise identical when the same head receives the same feature tensors;
+- separate full-model AF2 versus AF2+CPE evaluation is numerically consistent with maximum box/score absolute difference no larger than `1e-4`;
+- the CPE projection is not called during evaluation/inference;
+- projection gradient is exactly zero for `AF2CPE0` (`loss_weight=0`) and finite/nonzero for `AF2CPE5` (`loss_weight=0.5`);
+- model YAML, AF2 config, training schedule, parameter count, and state schema are matched, with only CPE loss weight intentionally different.
+
+Training is unauthorized unless the audit records `PASS` and the exact AF2 checkpoint hash.
+
+## Execution pattern
+
+The Colab notebook follows the established AF2-FFA/STB experiment pattern: frozen setup, static audit as a separate cell, then each arm is trained/resumed separately with `run_faruq_v3_af2_cpe_arm`, logging directly to Drive. A completed result JSON is reused; a partial run resumes from `last.pt`. The notebook does not use an additional all-in-one worker layer.
 
 ## Validation decision gates
 
