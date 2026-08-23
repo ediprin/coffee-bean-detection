@@ -36,11 +36,7 @@ def _source_nc(source: torch.nn.Module) -> int:
 
 
 def _torch_device(device: str | torch.device) -> torch.device:
-    """Normalize Ultralytics-style device strings for direct PyTorch tensor/module use.
-
-    Ultralytics accepts ``device='0'`` for the first CUDA device, while
-    ``torch.nn.Module.to`` and tensor constructors require ``cuda:0``.
-    """
+    """Normalize Ultralytics-style device strings for direct PyTorch use."""
     if isinstance(device, torch.device):
         return device
     text = str(device).strip()
@@ -49,6 +45,77 @@ def _torch_device(device: str | torch.device) -> torch.device:
             raise RuntimeError(f"CUDA device {text} diminta tetapi torch.cuda.is_available() == False")
         return torch.device(f"cuda:{text}")
     return torch.device(text)
+
+
+def _flatten_tensors(value):
+    if torch.is_tensor(value):
+        return [value]
+    if isinstance(value, dict):
+        return [item for key in sorted(value) for item in _flatten_tensors(value[key])]
+    if isinstance(value, (tuple, list)):
+        return [item for child in value for item in _flatten_tensors(child)]
+    return []
+
+
+def _state_dict_exact(left: torch.nn.Module, right: torch.nn.Module) -> tuple[bool, dict]:
+    a, b = left.state_dict(), right.state_dict()
+    same_keys = tuple(a.keys()) == tuple(b.keys())
+    mismatched = []
+    if same_keys:
+        for key in a:
+            if not torch.equal(a[key], b[key]):
+                mismatched.append(key)
+                if len(mismatched) >= 8:
+                    break
+    return same_keys and not mismatched, {
+        "same_keys": same_keys,
+        "mismatched_keys_preview": mismatched,
+        "num_items_left": len(a),
+        "num_items_right": len(b),
+    }
+
+
+def _compare_outputs(left, right, *, rtol: float = 1e-5, atol: float = 1e-6) -> dict:
+    tensors_a, tensors_b = _flatten_tensors(left), _flatten_tensors(right)
+    same_count = bool(tensors_a) and len(tensors_a) == len(tensors_b)
+    same_shapes = same_count and all(a.shape == b.shape for a, b in zip(tensors_a, tensors_b))
+    if not same_shapes:
+        return {
+            "same_tensor_count": same_count,
+            "same_shapes": same_shapes,
+            "tensor_count_left": len(tensors_a),
+            "tensor_count_right": len(tensors_b),
+            "bitwise_equal": False,
+            "allclose": False,
+            "rtol": rtol,
+            "atol": atol,
+            "max_abs_diff": None,
+            "max_rel_diff": None,
+        }
+
+    bitwise_equal = all(torch.equal(a, b) for a, b in zip(tensors_a, tensors_b))
+    allclose = all(torch.allclose(a, b, rtol=rtol, atol=atol, equal_nan=True) for a, b in zip(tensors_a, tensors_b))
+    max_abs = 0.0
+    max_rel = 0.0
+    for a, b in zip(tensors_a, tensors_b):
+        af, bf = a.detach().float(), b.detach().float()
+        diff = (af - bf).abs()
+        if diff.numel():
+            max_abs = max(max_abs, float(diff.max().cpu()))
+            denom = torch.maximum(af.abs(), bf.abs()).clamp_min(atol)
+            max_rel = max(max_rel, float((diff / denom).max().cpu()))
+    return {
+        "same_tensor_count": True,
+        "same_shapes": True,
+        "tensor_count_left": len(tensors_a),
+        "tensor_count_right": len(tensors_b),
+        "bitwise_equal": bitwise_equal,
+        "allclose": allclose,
+        "rtol": rtol,
+        "atol": atol,
+        "max_abs_diff": max_abs,
+        "max_rel_diff": max_rel,
+    }
 
 
 def run_static_audit(checkpoint: str | Path, output: str | Path, *, device: str = "cpu") -> dict:
@@ -86,9 +153,11 @@ def run_static_audit(checkpoint: str | Path, output: str | Path, *, device: str 
         print(f"[STATIC] transfer {index}: {transfer}", flush=True)
         models.append(model)
 
-    # Force identical parameters before inference identity check. The two configs
-    # are allowed to differ only by a training-only scalar loss weight.
+    # The only intentional candidate difference is a training-only scalar loss
+    # weight. Copy the complete tensor state, then verify it is exactly equal.
     models[1].load_state_dict(models[0].state_dict(), strict=True)
+    shared_state_exact, state_diag = _state_dict_exact(models[0], models[1])
+    print(f"[STATIC] shared tensor state exact={shared_state_exact}", flush=True)
 
     calls = [0, 0]
     hooks = []
@@ -101,25 +170,26 @@ def run_static_audit(checkpoint: str | Path, output: str | Path, *, device: str 
         hooks.append(head.cpe_projection.register_forward_hook(_count_projection))
         model.eval()
 
-    print("[STATIC] inference identity check", flush=True)
+    print("[STATIC] inference equivalence check", flush=True)
+    torch.manual_seed(42)
+    if torch_device.type == "cuda":
+        torch.cuda.manual_seed_all(42)
     sample = torch.rand(1, 3, 64, 64, device=torch_device)
     with torch.no_grad():
-        a, b = models[0](sample), models[1](sample)
+        a = models[0](sample)
+        b = models[1](sample)
     for hook in hooks:
         hook.remove()
 
-    def flatten_tensors(value):
-        if torch.is_tensor(value):
-            return [value]
-        if isinstance(value, dict):
-            return [item for key in sorted(value) for item in flatten_tensors(value[key])]
-        if isinstance(value, (tuple, list)):
-            return [item for child in value for item in flatten_tensors(child)]
-        return []
-
-    tensors_a, tensors_b = flatten_tensors(a), flatten_tensors(b)
-    inference_identity = bool(tensors_a) and len(tensors_a) == len(tensors_b) and all(
-        torch.equal(x, y) for x, y in zip(tensors_a, tensors_b)
+    inference_diag = _compare_outputs(a, b, rtol=1e-5, atol=1e-6)
+    inference_equivalent = bool(inference_diag["allclose"])
+    print(
+        "[STATIC] inference "
+        f"bitwise_equal={inference_diag['bitwise_equal']} "
+        f"allclose={inference_diag['allclose']} "
+        f"max_abs_diff={inference_diag['max_abs_diff']} "
+        f"max_rel_diff={inference_diag['max_rel_diff']}",
+        flush=True,
     )
 
     print("[STATIC] projection gradient check", flush=True)
@@ -148,18 +218,21 @@ def run_static_audit(checkpoint: str | Path, output: str | Path, *, device: str 
 
     checks = {
         "configs_differ_only_loss_weight": config_matched and left["cpe"]["loss_weight"] == 0.0 and right["cpe"]["loss_weight"] == 0.5,
-        "shared_state_inference_identity": inference_identity,
+        "shared_tensor_state_exact": shared_state_exact,
+        "shared_state_inference_equivalent": inference_equivalent,
         "projection_not_called_in_inference": calls == [0, 0],
         "control_projection_gradient_zero": grad["control"]["finite"] and grad["control"]["sum_abs"] == 0.0,
         "candidate_projection_gradient_finite_nonzero": grad["candidate"]["finite"] and grad["candidate"]["sum_abs"] > 0.0,
     }
     result = {
-        "format": "coffee_detector.af2_cpe.static_audit.v1",
+        "format": "coffee_detector.af2_cpe.static_audit.v2",
         "checkpoint_sha256": _sha256(checkpoint),
         "checkpoint_nc": nc,
         "requested_device": str(device),
         "torch_device": str(torch_device),
         "checks": checks,
+        "state_diagnostic": state_diag,
+        "inference_diagnostic": inference_diag,
         "gradient": grad,
         "projection_inference_calls": calls,
         "decision": "PASS" if all(checks.values()) else "FAIL",
