@@ -24,12 +24,12 @@ def static_af2_orient_cmc0_audit(
     image_size: int = 128,
     tolerance: float = 1e-6,
 ) -> dict:
-    """Verify the AF2_ORIENT + CMC0 composition before training.
+    """Verify AF2_ORIENT + CMC0 before any training.
 
-    The causal contract is conditional on AF2_ORIENT: with all CMC0 residual
-    gates at zero, the combined model must reproduce the AF2_ORIENT model from
-    the same D0 checkpoint. Activating only CMC0 must preserve the localization
-    tensors while changing classification scores.
+    The relevant identity is conditional on AF2_ORIENT: with all CMC0 residual
+    gates at zero, the combined model must reproduce AF2_ORIENT initialized from
+    the same seed-matched D0 checkpoint. Activating only CMC0 must preserve the
+    localization tensors while changing classification scores.
     """
 
     from ultralytics import YOLO
@@ -72,7 +72,6 @@ def static_af2_orient_cmc0_audit(
     af2_scores = af2_zero[1]["one2one"]["scores"]
     combined_boxes = combined_zero[1]["one2one"]["boxes"]
     combined_scores = combined_zero[1]["one2one"]["scores"]
-
     zero_box_diff = _max_abs(af2_boxes, combined_boxes)
     zero_score_diff = _max_abs(af2_scores, combined_scores)
 
@@ -96,10 +95,7 @@ def static_af2_orient_cmc0_audit(
         "cmc0_active_preserves_boxes": active_box_diff <= tolerance,
         "cmc0_active_changes_scores": active_score_diff > tolerance,
         "three_classification_levels": len(combined.model[-1].blocks) == 3,
-        "test_images_accessed": True,
     }
-    # The last entry records the proposition "test images were not accessed".
-    checks["test_images_accessed"] = False
 
     payload = {
         "format": "coffee_detector.af2_orient_cmc0.static_audit.v1",
@@ -116,7 +112,7 @@ def static_af2_orient_cmc0_audit(
             "tolerance": tolerance,
         },
         "checks": checks,
-        "decision": "PASS" if all(value is True for key, value in checks.items() if key != "test_images_accessed") and checks["test_images_accessed"] is False else "FAIL",
+        "decision": "PASS" if all(checks.values()) else "FAIL",
         "training_executed": False,
         "test_images_accessed": False,
     }
