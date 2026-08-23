@@ -1,20 +1,21 @@
 """Classification-only feature-frequency adapter on top of AF2.
 
-The AF2 image frontend remains unchanged.  This module changes only the
-classification inputs of the native YOLO26 Detect head.  Regression always
+The AF2 image frontend remains unchanged. This module changes only the
+classification inputs of the native YOLO26 Detect head. Regression always
 receives the original P3/P4/P5 tensors.
 """
 
 from __future__ import annotations
 
+import copy
 from dataclasses import asdict, dataclass
 from typing import Any, Mapping
-import copy
 
 import torch
 from torch import nn
 
 from coffee_detector.afab.model import AFABDetectionModel
+from .dct import selected_dct_descriptor
 
 
 @dataclass(frozen=True)
@@ -22,6 +23,7 @@ class AF2FFAConfig:
     """Frozen capacity-matched control/candidate settings."""
 
     conditioning: str = "spectral"  # zero | spectral
+    descriptor_type: str = "rfft_ratio"  # rfft_ratio | dct_selected
     radial_cutoff: float = 0.35
     eps: float = 1.0e-6
     max_added_fraction: float = 0.01
@@ -35,6 +37,8 @@ class AF2FFAConfig:
         result = payload if isinstance(payload, cls) else cls(**dict(payload or {}))
         if result.conditioning not in {"zero", "spectral"}:
             raise ValueError("conditioning harus zero atau spectral")
+        if result.descriptor_type not in {"rfft_ratio", "dct_selected"}:
+            raise ValueError("descriptor_type harus rfft_ratio atau dct_selected")
         if not 0.0 < result.radial_cutoff < 1.0:
             raise ValueError("radial_cutoff harus berada di (0, 1)")
         if result.eps <= 0 or not 0.0 < result.max_added_fraction <= 0.05:
@@ -59,11 +63,11 @@ def _first_conv_channels(module: nn.Module) -> int:
 
 
 class FeatureFrequencyAdapter(nn.Module):
-    """Channel-wise residual gate driven by fixed radial spectral energy.
+    """Channel-wise residual gate driven by fixed frequency evidence.
 
     ``alpha`` starts at zero, therefore the adapter is an exact identity at
-    initialization.  The zero control has the same parameters and computation
-    schema but receives an all-zero spectral descriptor.
+    initialization. The zero control has the same parameters and computation
+    schema but receives an all-zero descriptor.
     """
 
     def __init__(self, channels: int, config: AF2FFAConfig) -> None:
@@ -74,7 +78,7 @@ class FeatureFrequencyAdapter(nn.Module):
         self.bias = nn.Parameter(torch.zeros(self.channels))
         self.alpha = nn.Parameter(torch.zeros(self.channels))
 
-    def spectral_descriptor(self, value: torch.Tensor) -> torch.Tensor:
+    def _rfft_descriptor(self, value: torch.Tensor) -> torch.Tensor:
         original_dtype = value.dtype
         work = value.float()
         spectrum = torch.fft.rfft2(work, norm="ortho")
@@ -88,10 +92,18 @@ class FeatureFrequencyAdapter(nn.Module):
         high = (radius >= float(self.config.radial_cutoff)).to(power.dtype)
         high_energy = (power * high).sum(dim=(-2, -1))
         total_energy = power.sum(dim=(-2, -1)).clamp_min(self.config.eps)
-        descriptor = high_energy / total_energy
+        return (high_energy / total_energy).to(original_dtype)
+
+    def spectral_descriptor(self, value: torch.Tensor) -> torch.Tensor:
+        if self.config.descriptor_type == "rfft_ratio":
+            descriptor = self._rfft_descriptor(value)
+        elif self.config.descriptor_type == "dct_selected":
+            descriptor = selected_dct_descriptor(value, eps=self.config.eps)
+        else:  # guarded by config validation; keep fail-closed for checkpoints.
+            raise RuntimeError(f"Unknown descriptor_type={self.config.descriptor_type!r}")
         if self.config.conditioning == "zero":
             descriptor = torch.zeros_like(descriptor)
-        return descriptor.to(original_dtype)
+        return descriptor
 
     def forward(self, value: torch.Tensor) -> torch.Tensor:
         descriptor = self.spectral_descriptor(value)
@@ -218,7 +230,7 @@ class AF2FFADetectionModel(AFABDetectionModel):
 
 
 def load_af2_ffa_weights(model: nn.Module, weights: Any) -> dict[str, int]:
-    """Load an AF2 source or resume a complete AF2-FFA checkpoint."""
+    """Load a native/AF2 source or resume a complete AF2-FFA checkpoint."""
 
     model.load(weights)
     source_model = getattr(weights, "model", None)
@@ -240,7 +252,7 @@ def load_af2_ffa_weights(model: nn.Module, weights: Any) -> dict[str, int]:
     target_head.base_head.stride = target_head.stride
     for name in ("max_det", "export", "format", "dynamic", "agnostic_nms"):
         if hasattr(source_head, name):
-            value = getattr(source_head, name)
-            setattr(target_head, name, value)
-            setattr(target_head.base_head, name, value)
+            runtime_value = getattr(source_head, name)
+            setattr(target_head, name, runtime_value)
+            setattr(target_head.base_head, name, runtime_value)
     return {"native_head_items": len(source_head.state_dict()), "resume": 0}
