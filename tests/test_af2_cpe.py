@@ -7,6 +7,7 @@ import torch
 import yaml
 
 from coffee_detector.experiments.run_faruq_v3_af2_cpe_decision import decide
+from coffee_detector.experiments.run_faruq_v3_af2_cpe_static import _source_nc
 from coffee_detector.fsce_cpe.loss import cpe_supervised_contrastive_loss
 from coffee_detector.fsce_cpe.model import CPEProjectionHead, FSCECPEConfig
 
@@ -43,6 +44,20 @@ def test_projection_gradient_control_zero_candidate_nonzero():
     assert sums[0] == 0.0 and sums[1] > 0.0
 
 
+def test_static_source_nc_reads_native_detect_head_without_model_nc():
+    class Head(torch.nn.Module):
+        def __init__(self):
+            super().__init__(); self.nc = 21
+
+    class Source(torch.nn.Module):
+        def __init__(self):
+            super().__init__(); self.model = torch.nn.ModuleList([torch.nn.Identity(), Head()])
+
+    source = Source()
+    assert not hasattr(source, "nc")
+    assert _source_nc(source) == 21
+
+
 def _result(macro, b3, worst):
     return {"metrics": {"macro_map50_95": macro, "bottom3_class_map50_95": b3,
                         "worst_class_map50_95": worst}}
@@ -66,5 +81,7 @@ def test_protocol_and_notebook_freeze_scope():
     notebook = json.loads((ROOT / "notebooks/Faruq_V3_AF2_CPE0_Seed42_Colab.ipynb").read_text(encoding="utf-8"))
     source = "".join("".join(cell.get("source", [])) for cell in notebook["cells"])
     assert "codex/af2-cpe0-seed42" in source
-    assert "run_faruq_v3_af2_cpe_static" in source and "AF2CPE0" in source and "AF2CPE5" in source
+    assert "run_faruq_v3_af2_cpe_seed42_worker" in source
+    assert "AF2CPE0" in source and "AF2CPE5" in source
     assert "--authorize-training" in source and "split='test'" not in source
+    assert "WORKER LOG TAIL" in source and "subprocess.Popen" in source
