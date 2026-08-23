@@ -12,3 +12,4 @@ __pycache__/
 docs/*.pdf
 docs/*.xlsx
 /tmp/
+/docs/other/*.pdf
