@@ -28,8 +28,8 @@ ARMS = ("AF2FS", "AF2FFAB2FS", "AF2FFADCTFS")
 ALLOWED_SEEDS = (42, 123, 2026)
 CONFIGS = {
     "AF2FS": REPO_ROOT / "configs/afab/AF2_yolo26n_chaotic_amplitude.yaml",
-    "AF2FFAB2FS": REPO_ROOT / "configs/af2_ffa/AF2FFAB2FS_yolo26n_from_start.yaml",
-    "AF2FFADCTFS": REPO_ROOT / "configs/af2_ffa/AF2FFADCTFS_yolo26n_from_start.yaml",
+    "AF2FFAB2FS": REPO_ROOT / "configs/af2_ffa_from_start/AF2FFAB2FS_yolo26n_from_start.yaml",
+    "AF2FFADCTFS": REPO_ROOT / "configs/af2_ffa_from_start/AF2FFADCTFS_yolo26n_from_start.yaml",
 }
 EXPECTED_CODES = {"AF2FS": "AF2", "AF2FFAB2FS": "AF2FFAB2FS", "AF2FFADCTFS": "AF2FFADCTFS"}
 
@@ -248,7 +248,8 @@ def run_faruq_v3_af2_ffa_from_start_arm(
         "evaluation_split": "val",
         "test_images_accessed": False,
     }
-    result_path = reports / f"{arm}_seed{seed}_result.json"
+    result_path = reports / "val_reports" / f"{arm}_seed{seed}_result.json"
+    result_path.parent.mkdir(parents=True, exist_ok=True)
     result_path.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2), flush=True)
     return result
