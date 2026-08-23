@@ -226,6 +226,8 @@ def test_arm_notebooks_are_separate_resumable_sparse_and_test_locked():
             if cell.get("cell_type") == "code":
                 compile("".join(cell["source"]), str(notebook), "exec")
         assert f"ARM='AF2{arm}'" in source
+        assert "torch.cuda.is_available()" in source
+        assert "T4 GPU" in source
         assert "run_faruq_v3_af2_parent_residual_arm" in source
         assert "--authorize-training" in source
         assert "time.sleep(60)" in source
