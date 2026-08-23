@@ -75,13 +75,16 @@ def test_decision_tail_pareto_route_and_safety_rejection():
     assert rejected["decision"] == "REJECT"
 
 
-def test_protocol_and_notebook_freeze_scope():
+def test_protocol_and_notebook_follow_prior_experiment_pattern():
     protocol = (ROOT / "docs/FARUQ_V3_AF2_CPE0_SEED42_PROTOCOL.md").read_text(encoding="utf-8")
     assert "GDS+STB remains blocked" in protocol and "GDSC1" in protocol
+    assert "AF2-FFA precedent" in protocol
     notebook = json.loads((ROOT / "notebooks/Faruq_V3_AF2_CPE0_Seed42_Colab.ipynb").read_text(encoding="utf-8"))
     source = "".join("".join(cell.get("source", [])) for cell in notebook["cells"])
     assert "codex/af2-cpe0-seed42" in source
-    assert "run_faruq_v3_af2_cpe_seed42_worker" in source
+    assert "run_static_audit(AF2,STATIC,device='cuda:0')" in source
+    assert "run_faruq_v3_af2_cpe_arm" in source
+    assert "run_faruq_v3_af2_cpe_seed42_worker" not in source
     assert "AF2CPE0" in source and "AF2CPE5" in source
     assert "--authorize-training" in source and "split='test'" not in source
-    assert "WORKER LOG TAIL" in source and "subprocess.Popen" in source
+    assert "subprocess.Popen" in source and "results.csv" in source
