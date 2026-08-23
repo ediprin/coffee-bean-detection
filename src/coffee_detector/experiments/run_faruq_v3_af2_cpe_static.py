@@ -16,44 +16,81 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 def _sha256(path: Path) -> str:
-    digest = hashlib.sha256(path.read_bytes()).hexdigest()
-    return digest
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _source_nc(source: torch.nn.Module) -> int:
+    """Read class count from the actual Detect head instead of assuming model.nc exists."""
+    detector = getattr(source, "model", None)
+    if isinstance(detector, (torch.nn.Sequential, torch.nn.ModuleList)) and len(detector):
+        head = detector[-1]
+        if hasattr(head, "nc"):
+            return int(head.nc)
+    yaml_payload = getattr(source, "yaml", None)
+    if isinstance(yaml_payload, dict) and "nc" in yaml_payload:
+        return int(yaml_payload["nc"])
+    names = getattr(source, "names", None)
+    if isinstance(names, (dict, list, tuple)):
+        return len(names)
+    raise RuntimeError("Tidak dapat menentukan nc dari checkpoint AF2")
 
 
 def run_static_audit(checkpoint: str | Path, output: str | Path, *, device: str = "cpu") -> dict:
     checkpoint, output = Path(checkpoint).resolve(), Path(output).resolve()
+    print(f"[STATIC] checkpoint={checkpoint}", flush=True)
+    print(f"[STATIC] device={device}", flush=True)
+
     configs = []
     for arm in ("AF2CPE0", "AF2CPE5"):
         path = ROOT / f"configs/af2_cpe/{arm}_yolo26n.yaml"
+        print(f"[STATIC] read config {path}", flush=True)
         configs.append(yaml.safe_load(path.read_text(encoding="utf-8")))
     left, right = configs
     left_same = {k: v for k, v in left["cpe"].items() if k != "loss_weight"}
     right_same = {k: v for k, v in right["cpe"].items() if k != "loss_weight"}
     config_matched = left["afab"] == right["afab"] and left["train"] == right["train"] and left_same == right_same
 
+    print("[STATIC] load AF2 checkpoint", flush=True)
     from ultralytics import YOLO
 
     source = YOLO(str(checkpoint)).model
+    nc = _source_nc(source)
+    print(f"[STATIC] checkpoint class count nc={nc}", flush=True)
+
     models = []
-    for payload in configs:
+    for index, payload in enumerate(configs):
+        print(f"[STATIC] build wrapped model {index}", flush=True)
         model = AF2CPEDetectionModel(
-            str(ROOT / payload["model"]), nc=int(source.nc), verbose=False,
+            str(ROOT / payload["model"]), nc=nc, verbose=False,
             afab=payload["afab"], cpe=payload["cpe"],
         ).to(device)
-        load_fsce_cpe_detector_weights(model, source)
+        print(f"[STATIC] transfer AF2 weights into wrapped model {index}", flush=True)
+        transfer = load_fsce_cpe_detector_weights(model, source)
+        print(f"[STATIC] transfer {index}: {transfer}", flush=True)
         models.append(model)
+
+    # Force identical parameters before inference identity check. The two configs
+    # are allowed to differ only by a training-only scalar loss weight.
     models[1].load_state_dict(models[0].state_dict(), strict=True)
+
     calls = [0, 0]
     hooks = []
     for index, model in enumerate(models):
         head = model.model[-1]
-        hooks.append(head.cpe_projection.register_forward_hook(lambda *_args, i=index: calls.__setitem__(i, calls[i] + 1)))
+
+        def _count_projection(_module, _inputs, _output, *, i=index):
+            calls[i] += 1
+
+        hooks.append(head.cpe_projection.register_forward_hook(_count_projection))
         model.eval()
+
+    print("[STATIC] inference identity check", flush=True)
     sample = torch.rand(1, 3, 64, 64, device=device)
     with torch.no_grad():
         a, b = models[0](sample), models[1](sample)
     for hook in hooks:
         hook.remove()
+
     def flatten_tensors(value):
         if torch.is_tensor(value):
             return [value]
@@ -68,13 +105,20 @@ def run_static_audit(checkpoint: str | Path, output: str | Path, *, device: str 
         torch.equal(x, y) for x, y in zip(tensors_a, tensors_b)
     )
 
+    print("[STATIC] projection gradient check", flush=True)
     projection = models[0].model[-1].cpe_projection
     projection.train()
     features = [torch.randn(2, layer.in_channels, 2, 2, device=device) for layer in projection.projections]
-    labels = torch.tensor([0, 0, 1, 1] * 6, device=device)[: sum(x.shape[2] * x.shape[3] for x in features) * 2]
     embeddings = projection(features).reshape(-1, projection.config.embedding_dim)
-    labels = labels[: embeddings.shape[0]]
-    base = cpe_supervised_contrastive_loss(embeddings, labels, temperature=0.2)
+    labels = torch.tensor([0, 0, 1, 1] * 6, device=device, dtype=torch.long)[: embeddings.shape[0]]
+    if labels.shape[0] != embeddings.shape[0]:
+        raise RuntimeError(
+            f"Static synthetic labels tidak sejajar: labels={labels.shape[0]} embeddings={embeddings.shape[0]}"
+        )
+    base = cpe_supervised_contrastive_loss(embeddings, labels, temperature=projection.config.temperature)
+    if not bool(torch.isfinite(base)):
+        raise RuntimeError(f"CPE static loss tidak finite: {float(base.detach().cpu())}")
+
     grad = {}
     for name, weight in (("control", 0.0), ("candidate", 0.5)):
         projection.zero_grad(set_to_none=True)
@@ -82,8 +126,9 @@ def run_static_audit(checkpoint: str | Path, output: str | Path, *, device: str 
         values = [p.grad for p in projection.parameters()]
         grad[name] = {
             "finite": all(g is not None and bool(torch.isfinite(g).all()) for g in values),
-            "sum_abs": sum(float(g.abs().sum()) for g in values if g is not None),
+            "sum_abs": sum(float(g.abs().sum().detach().cpu()) for g in values if g is not None),
         }
+
     checks = {
         "configs_differ_only_loss_weight": config_matched and left["cpe"]["loss_weight"] == 0.0 and right["cpe"]["loss_weight"] == 0.5,
         "shared_state_inference_identity": inference_identity,
@@ -94,6 +139,7 @@ def run_static_audit(checkpoint: str | Path, output: str | Path, *, device: str 
     result = {
         "format": "coffee_detector.af2_cpe.static_audit.v1",
         "checkpoint_sha256": _sha256(checkpoint),
+        "checkpoint_nc": nc,
         "checks": checks,
         "gradient": grad,
         "projection_inference_calls": calls,
@@ -103,6 +149,7 @@ def run_static_audit(checkpoint: str | Path, output: str | Path, *, device: str 
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    print(f"[STATIC] decision={result['decision']} output={output}", flush=True)
     return result
 
 
