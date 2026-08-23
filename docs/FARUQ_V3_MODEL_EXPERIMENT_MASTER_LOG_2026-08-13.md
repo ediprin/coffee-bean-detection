@@ -687,3 +687,41 @@ Result:
 
 Evidence:
 `docs/evidence/FARUQ_V3_AF2_RCC_SEED42_DECISION_2026-08-23.json`.
+
+## Retained-candidate limitation consolidation and next analysis
+
+**Status: completed on 2026-08-23; no training and no new test access.** The
+retained candidates were reclassified by evidence level rather than ranked by
+a mixture of seed-42 screens, multi-seed confirmations, and optimization
+controls. Original AF2 remains the best-supported overall method; IGEM1 is the
+confirmed non-frequency alternative; AF2FFAB2 is a validated Pareto refinement
+against its matched continuation control but does not dominate original AF2 on
+Worst-class AP. STB1, SAF1, AF1, CPE0/CPE7, HVIP1, PW1, LPS1, and FTIF arms
+remain discovery-only unless separately confirmed. FCT0, AF2R0, AF2FT30/
+AF2CT30, and AF2FFA0 are controls and must not be presented as architectural
+methods.
+
+The direct joint-from-D0 combinations also closed without a clean win:
+AF2STB1 lost 1.45/4.78/4.99 Macro/Bottom-3/Worst points to STB1; AF2IGEM1 lost
+0.55/1.76/1.93 points to IGEM1; AF2SAF1 gained 0.75 Macro point but lost
+0.48/0.67 Bottom-3/Worst points to SAF1. These results reject naive joint
+stacking, not every parent-preserving or routing strategy.
+
+### 2026-08-23 — AF2 parent-preserving SAF/IGEM protocol frozen
+
+The direct-pair evidence above was reclassified as a joint-from-D0 test rather
+than a test of whether SAF or IGEM can improve a completed AF2 parent. Protocol
+`FARUQ_V3_AF2_PARENT_RESIDUAL_PROTOCOL_2026-08-23.md` freezes four new seed-42
+arms: `AF2SAF0/1` and `AF2IGEM0/1`. In every arm, the completed AF2 frontend,
+backbone, neck, box path, and native class path remain frozen. Only a
+zero-initialized classification residual is trainable. Each feature candidate
+has an identical zero-information capacity/optimization control. Static audit,
+per-arm resumable runners, and separate Colab notebooks were added before any
+training result. Test remains locked. No numerical result is recorded yet.
+
+The earlier analysis-only restriction was subsequently superseded for exactly
+the four AF2 parent-residual seed-42 arms recorded above. It remains active for
+all other new fusion ideas, additional seeds, and all test access.
+
+Full consolidation:
+`docs/FARUQ_V3_RETAINED_CANDIDATE_LIMITATIONS_2026-08-23.md`.
