@@ -1,0 +1,109 @@
+name: AF2 FFAB2 From-Start DCT CI
+
+on:
+  push:
+    branches:
+      - codex/af2-ffab2-from-start-dct
+    paths:
+      - "src/coffee_detector/af2_ffa/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_af2_ffa_from_start_*.py"
+      - "src/coffee_detector/experiments/run_faruq_v3_af2_ffa_dct_decision.py"
+      - "configs/af2_ffa_from_start/**"
+      - "tests/test_af2_ffa.py"
+      - "tests/test_af2_ffa_from_start_*.py"
+      - "notebooks/Faruq_V3_AF2_FFAB2_*_Colab.ipynb"
+      - "docs/FARUQ_V3_AF2_FFAB2_FROM_START_DCT_PROTOCOL_2026-08-23.md"
+      - ".github/workflows/af2-ffab2-from-start-dct-ci.yml"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - "src/coffee_detector/af2_ffa/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_af2_ffa_from_start_*.py"
+      - "src/coffee_detector/experiments/run_faruq_v3_af2_ffa_dct_decision.py"
+      - "configs/af2_ffa_from_start/**"
+      - "tests/test_af2_ffa.py"
+      - "tests/test_af2_ffa_from_start_*.py"
+      - "notebooks/Faruq_V3_AF2_FFAB2_*_Colab.ipynb"
+      - "docs/FARUQ_V3_AF2_FFAB2_FROM_START_DCT_PROTOCOL_2026-08-23.md"
+      - ".github/workflows/af2-ffab2-from-start-dct-ci.yml"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: af2-ffab2-from-start-dct-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-contract-notebook:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Runtime version
+        run: |
+          python - <<'PY'
+          import ultralytics
+          print('ultralytics:', ultralytics.__version__)
+          assert ultralytics.__version__ == '8.4.96'
+          PY
+      - name: AF2 FFA regression and new tests
+        run: |
+          python -m pytest -q \
+            tests/test_af2_ffa.py \
+            tests/test_af2_ffa_from_start_dct.py \
+            tests/test_af2_ffa_from_start_decision.py
+      - name: CLI smoke checks
+        run: |
+          python -m coffee_detector.experiments.run_faruq_v3_af2_ffa_from_start_arm --help
+          python -m coffee_detector.experiments.run_faruq_v3_af2_ffa_from_start_decision --help
+          python -m coffee_detector.experiments.run_faruq_v3_af2_ffa_dct_decision --help
+      - name: DCT descriptor smoke check
+        run: |
+          python - <<'PY'
+          import torch
+          from coffee_detector.af2_ffa import AF2FFAConfig, FeatureFrequencyAdapter
+          x = torch.rand(2, 16, 20, 20)
+          module = FeatureFrequencyAdapter(
+              16,
+              AF2FFAConfig(
+                  descriptor_type='dct_selected',
+                  residual_gain_cap=0.10,
+                  gradient_matched_cap=True,
+              ),
+          )
+          d = module.spectral_descriptor(x)
+          y = module(x)
+          assert d.shape == (2, 16)
+          assert torch.isfinite(d).all()
+          assert torch.equal(x, y)
+          print('selected-DCT descriptor smoke check passed')
+          PY
+      - name: Notebook JSON smoke check
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for path in (
+              Path('notebooks/Faruq_V3_AF2_FFAB2_From_Start_Paired_Colab.ipynb'),
+              Path('notebooks/Faruq_V3_AF2_FFAB2_DCT_Efficiency_Colab.ipynb'),
+          ):
+              payload = json.loads(path.read_text(encoding='utf-8'))
+              assert payload['nbformat'] == 4
+              assert payload['cells']
+              source = '\n'.join(''.join(cell.get('source', [])) for cell in payload['cells'])
+              assert "BRANCH='codex/af2-ffab2-from-start-dct'" in source
+              assert 'split=test' not in source.lower()
+              print(path, 'valid')
+          PY
