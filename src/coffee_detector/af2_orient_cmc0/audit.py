@@ -5,7 +5,8 @@ from pathlib import Path
 
 import torch
 
-from coffee_detector.af2_iso import AF2IsolatedDetectionModel, frozen_arm_config, load_af2_iso_weights
+from coffee_detector.af2_iso import frozen_arm_config
+from coffee_detector.af2_iso.model import AF2IsolatedDetectionModel, load_af2_iso_weights
 from coffee_detector.stb import STBConfig
 
 from .model import AF2OrientCMC0DetectionModel, load_af2_orient_cmc0_weights
