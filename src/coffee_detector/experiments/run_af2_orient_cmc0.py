@@ -44,9 +44,6 @@ def main():
         d0_checkpoint=d0_checkpoint,
     )
 
-    # The trainer constructs AF2_ORIENT+CMC0 and strictly transfers the matched
-    # D0FT checkpoint into the native detector state. Do not initialize the
-    # experiment scientifically from generic yolo26n.pt.
     model = YOLO("yolo26n.pt")
     model.TrainerClass = trainer_cls
 
