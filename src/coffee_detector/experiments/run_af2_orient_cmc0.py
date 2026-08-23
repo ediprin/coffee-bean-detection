@@ -12,12 +12,7 @@ def main():
     parser.add_argument("--output-root", type=str, required=True)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--device", type=str, default="0")
-    parser.add_argument(
-        "--d0-checkpoint",
-        type=str,
-        required=True,
-        help="Matched D0FT seed checkpoint used as the only initialization source.",
-    )
+    parser.add_argument("--d0-checkpoint", type=str, required=True)
     parser.add_argument(
         "--config",
         type=str,
@@ -31,9 +26,9 @@ def main():
     d0_checkpoint = Path(args.d0_checkpoint).expanduser().resolve()
 
     if not (data_root / "data.yaml").exists():
-        raise FileNotFoundError(f"Missing grouped dataset yaml: {data_root / 'data.yaml'}")
+        raise FileNotFoundError(data_root / "data.yaml")
     if not d0_checkpoint.exists():
-        raise FileNotFoundError(f"Missing D0FT checkpoint: {d0_checkpoint}")
+        raise FileNotFoundError(d0_checkpoint)
 
     with config_path.open() as f:
         cfg = yaml.safe_load(f)
@@ -46,7 +41,6 @@ def main():
 
     model = YOLO("yolo26n.pt")
     model.TrainerClass = trainer_cls
-
     model.train(
         data=str(data_root / "data.yaml"),
         project=str(output_root),
