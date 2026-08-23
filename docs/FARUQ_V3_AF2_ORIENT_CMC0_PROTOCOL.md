@@ -70,10 +70,11 @@ Training is blocked unless `static_audit.json` is `PASS`. The audit checks:
 1. AF2_ORIENT actually changes the input tensor.
 2. All CMC0 residual gates initialize at exactly zero.
 3. At zero CMC0 gate, the combined model reproduces AF2_ORIENT localization
-   and classification tensors from the same D0 checkpoint within the frozen
-   numerical tolerance.
+   and classification tensors from the same D0 checkpoint with full-model
+   numerical tolerance `max_abs_diff <= 1e-4` (the established AF2 FFT/IFFT
+   composition-audit convention).
 4. Activating CMC0 changes classification scores while preserving localization
-   tensors.
+   tensors within the same `1e-4` tolerance.
 5. Three P3/P4/P5 classification levels are wrapped.
 6. No test data is accessed.
 
