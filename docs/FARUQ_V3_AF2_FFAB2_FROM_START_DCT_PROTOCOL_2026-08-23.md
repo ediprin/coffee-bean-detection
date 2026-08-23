@@ -133,8 +133,8 @@ No extra worker layer is introduced.
 - `src/coffee_detector/experiments/run_faruq_v3_af2_ffa_from_start_arm.py`
 - `src/coffee_detector/experiments/run_faruq_v3_af2_ffa_from_start_decision.py`
 - `src/coffee_detector/experiments/run_faruq_v3_af2_ffa_dct_decision.py`
-- `configs/af2_ffa/AF2FFAB2FS_yolo26n_from_start.yaml`
-- `configs/af2_ffa/AF2FFADCTFS_yolo26n_from_start.yaml`
+- `configs/af2_ffa_from_start/AF2FFAB2FS_yolo26n_from_start.yaml`
+- `configs/af2_ffa_from_start/AF2FFADCTFS_yolo26n_from_start.yaml`
 - `tests/test_af2_ffa_from_start_dct.py`
 
 ## Evidence boundary
