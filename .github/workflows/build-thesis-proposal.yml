@@ -46,9 +46,19 @@ jobs:
             --docx build/thesis/Proposal_AF2_USU_Working.docx \
             --image-dir build/thesis/figures
 
+      - name: Apply chapter-based equation numbering
+        run: |
+          python tools/thesis/apply_equation_numbers.py \
+            --docx build/thesis/Proposal_AF2_USU_Working.docx
+
       - name: Apply SPs section-aware pagination
         run: |
           python tools/thesis/apply_sps_pagination.py \
+            --docx build/thesis/Proposal_AF2_USU_Working.docx
+
+      - name: Isolate related-work table in landscape
+        run: |
+          python tools/thesis/apply_landscape_tables.py \
             --docx build/thesis/Proposal_AF2_USU_Working.docx
 
       - name: Render PDF for layout inspection
