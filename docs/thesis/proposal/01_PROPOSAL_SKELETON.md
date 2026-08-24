@@ -4,13 +4,25 @@ Working title:
 
 **Analisis dan Optimasi Preprocessing Citra Berbasis Frekuensi-Angular pada YOLO26 untuk Deteksi Fine-Grained Cacat Biji Kopi**
 
-Status: working title; current methodology now operationalizes both `Analisis` and `Optimasi`.
+Status: working title; current methodology operationalizes both `Analisis` and `Optimasi`.
 
 This file is an index/consistency document. Detailed prose is maintained in the chapter files.
 
 ---
 
 ## Bab I — Pendahuluan
+
+Struktur Bab I mengikuti pola proposal kampus yang telah dijadikan acuan:
+
+```text
+1.1 Latar Belakang
+1.2 Rumusan Masalah
+1.3 Batasan Masalah
+1.4 Tujuan Penelitian
+1.5 Manfaat Penelitian
+```
+
+Bab I **tidak** menggunakan subbab terpisah `Identifikasi Masalah` maupun `Kontribusi yang Diharapkan`.
 
 ### 1.1 Latar Belakang
 
@@ -39,29 +51,47 @@ Causal guardrail:
 coffee fine-grained difficulty != proven frequency bottleneck
 ```
 
-### 1.2–1.6 Identifikasi, Rumusan, Tujuan, Batasan, Kontribusi
+### 1.2 Rumusan Masalah
 
 Authoritative draft: `03_PROBLEM_FORMULATION.md`.
 
 Current research questions:
 
-**RQ1.** Bagaimana pengaruh keputusan desain utama AF2 terhadap kinerja fine-grained coffee-defect detection, dan konfigurasi preprocessing frekuensi-angular seperti apa yang paling layak dipilih melalui analisis terfaktor dan sensitivity analysis?
+1. Bagaimana pengaruh keputusan desain utama AF2 terhadap kinerja deteksi fine-grained cacat biji kopi, dan konfigurasi preprocessing frekuensi-angular seperti apa yang paling layak dipilih berdasarkan analisis terfaktor dan sensitivity analysis pada data pengembangan?
+2. Apakah konfigurasi AF2 yang telah dipilih dapat meningkatkan kinerja YOLO26 dibandingkan native YOLO26 pada eksperimen konfirmatori yang dipasangkan?
+3. Bagaimana pengaruh preprocessing frekuensi-angular terhadap kelas-kelas cacat yang memiliki kinerja rendah atau sulit dibedakan?
+4. Apakah pola perubahan kinerja lebih konsisten dengan peningkatan diskriminasi kelas daripada peningkatan aksesibilitas proposal/lokalisasi mentah?
 
-**RQ2.** Apakah konfigurasi AF2 yang telah dipilih dapat meningkatkan kinerja YOLO26 dibandingkan native YOLO26 pada eksperimen konfirmatori yang dipasangkan?
+Diagnostic guardrail: raw proposal accessibility adalah diagnostic/proxy dan tidak identik dengan full box-regression quality.
 
-**RQ3.** Bagaimana pengaruh preprocessing frekuensi-angular terhadap kelas-kelas cacat yang memiliki kinerja rendah atau sulit dibedakan?
+### 1.3 Batasan Masalah
 
-**RQ4.** Apakah pola perubahan kinerja lebih konsisten dengan peningkatan diskriminasi kelas daripada peningkatan aksesibilitas proposal/lokalisasi mentah?
+Batasan utama:
 
-RQ4 guardrail: raw proposal accessibility adalah diagnostic/proxy dan tidak identik dengan full box-regression quality.
+- 21 kelas pada dataset green-coffee object detection yang digunakan;
+- YOLO26n sebagai detector utama;
+- kontribusi berada pada input-space AF2, bukan modifikasi backbone/neck/head;
+- structural AF2 factorization + limited sensitivity only;
+- locked test tidak digunakan untuk selection/tuning;
+- final confirmation menggunakan matched direct-from-pretrained arms dan paired seeds;
+- mechanism/visual diagnostics tidak diperlakukan sebagai bukti kausal tunggal.
 
-Main objectives:
+### 1.4 Tujuan Penelitian
 
-1. analyze and optimize AF2 design factors;
-2. confirm selected AF2 against matched native YOLO26;
-3. analyze lower-tail/per-class behavior;
-4. diagnose class-discrimination vs proposal-accessibility patterns with visualization/error support;
-5. measure accuracy–efficiency trade-off.
+1. menganalisis dan memilih konfigurasi AF2 melalui factorized analysis dan limited sensitivity;
+2. mengonfirmasi selected AF2 terhadap matched native YOLO26;
+3. menganalisis difficult/lower-tail classes;
+4. mendiagnosis discrimination-vs-proposal-accessibility pattern;
+5. mengevaluasi accuracy-efficiency trade-off.
+
+### 1.5 Manfaat Penelitian
+
+Manfaat diarahkan pada:
+
+1. evidence penggunaan input-space frequency-angular preprocessing untuk fine-grained coffee-defect detection;
+2. kerangka evaluasi aggregate + per-class + lower-tail + paired errors;
+3. informasi kelas yang terbantu maupun mengalami regresi;
+4. informasi accuracy-efficiency trade-off untuk penelitian lanjutan.
 
 ---
 
