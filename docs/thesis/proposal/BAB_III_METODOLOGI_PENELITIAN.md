@@ -304,9 +304,11 @@ Visualisasi ini digunakan untuk menunjukkan bagaimana operasi frekuensi-angular 
 
 ### 3.9.2 Visualisasi Respons Model
 
-Apabila kompatibel secara teknis dengan implementasi YOLO26 yang digunakan, penelitian akan menerapkan metode visualisasi berbasis aktivasi untuk membandingkan wilayah citra yang memberikan respons kuat pada model tanpa *preprocessing* dan model dengan *preprocessing*. Metode visualisasi yang digunakan akan ditetapkan setelah kompatibilitasnya dengan arsitektur YOLO26 diverifikasi dan diterapkan secara sama pada kedua model.
+Visualisasi respons model direncanakan menggunakan metode *class activation mapping* (CAM) yang kompatibel dengan arsitektur YOLO26. **Eigen-CAM** (Muhammad & Yeasin, 2020) ditetapkan sebagai kandidat utama karena membentuk peta aktivasi dari komponen utama representasi fitur dan tidak bergantung pada backpropagation gradient kelas. Sebagai metode alternatif atau pembanding, **Grad-CAM** (Selvaraju et al., 2017) dan **Grad-CAM++** (Chattopadhay et al., 2018) dapat digunakan apabila mekanisme target kelas, layer target, dan aliran gradient pada implementasi YOLO26 dapat didefinisikan secara konsisten.
 
-Visualisasi respons model digunakan sebagai alat interpretasi untuk melihat apakah terdapat perubahan pola perhatian atau aktivasi pada area objek dan karakteristik cacat. Hasil visualisasi tidak digunakan sebagai pengganti metrik deteksi dan tidak ditafsirkan sebagai bukti kausal bahwa model menggunakan fitur tertentu secara eksklusif.
+Pemilihan metode visualisasi akhir dilakukan setelah kompatibilitas teknis terhadap YOLO26 diverifikasi. Metode, layer target, ukuran input, dan prosedur normalisasi visualisasi yang dipilih diterapkan secara sama pada YOLO26 tanpa *preprocessing* dan YOLO26 dengan *preprocessing* agar perbandingan respons model tidak dipengaruhi oleh prosedur visualisasi yang berbeda.
+
+Visualisasi respons model digunakan sebagai alat interpretasi untuk melihat apakah terdapat perubahan pola aktivasi pada area objek dan karakteristik cacat. Hasil Eigen-CAM, Grad-CAM, atau variannya tidak digunakan sebagai pengganti metrik deteksi dan tidak ditafsirkan sebagai bukti kausal bahwa model menggunakan fitur tertentu secara eksklusif.
 
 ### 3.9.3 Visualisasi Prediksi Deteksi
 
