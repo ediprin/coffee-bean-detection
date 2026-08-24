@@ -109,9 +109,25 @@ It inserts:
 
 Working figure captions are centered below the figure, TNR 12, title case, and have no terminal period. Because the official-guide excerpt does not explicitly settle punctuation immediately after the figure number, the current separator follows the supplied campus scaffold (`Gambar 3.1. Judul`).
 
-## 5. Section-aware pagination
+## 5. Equation numbering
 
-Pagination is now applied after figures are inserted:
+Display-equation numbering is a dedicated pass:
+
+`tools/thesis/apply_equation_numbers.py`
+
+The pass detects Pandoc-generated Office Math display paragraphs (`m:oMathPara`). It deliberately ignores inline mathematics. For each display equation it creates a borderless three-column row with:
+
+```text
+balancing gutter | centered native Word equation | (bab.nomor)
+```
+
+The portrait body width is fixed to the SPs text area of 14 cm, and the equation number is positioned in a dedicated right-aligned column near the right text boundary. Numbering restarts by chapter, e.g. `(2.1)`, `(2.2)`, `(3.1)`.
+
+The mechanism was tested on a native-OMML synthetic DOCX and rendered successfully with same-line labels `(3.1)` and `(3.2)`.
+
+## 6. Section-aware pagination
+
+Pagination is applied after figures and equation numbering:
 
 `tools/thesis/apply_sps_pagination.py`
 
@@ -132,7 +148,25 @@ It also normalizes every section to A4 with official 4/3/3/3 cm margins and sets
 
 The pagination mechanism was prototyped on a synthetic multi-page DOCX and rendered before being committed. That test confirmed Roman front numbering and distinct chapter-opening/ordinary body placement. The **actual proposal** still requires full rendered-page verification.
 
-## 6. GitHub Actions working build
+## 7. Landscape isolation for Tabel 2.1
+
+The long six-column related-work table is isolated after chapter pagination:
+
+`tools/thesis/apply_landscape_tables.py`
+
+The pass:
+
+1. finds the unique `Tabel 2.1` caption and the immediately following table;
+2. inserts next-page section breaks before the caption and after the table;
+3. sets the table section to A4 landscape with the same 4/3/3/3 cm margins;
+4. continues Arabic page numbering with a top-right header;
+5. returns the following Bab II content to portrait orientation;
+6. assigns an explicit 22.7 cm column-width budget across the six columns;
+7. repeats the header row for multi-page continuation.
+
+This mixed-orientation mechanism was tested on a synthetic multi-chapter DOCX **after** SPs pagination. The render confirmed continuous Arabic numbering across portrait → landscape → portrait pages and preserved the bottom-right first-page number on the following chapter opening. The real table still needs page-by-page inspection because its row heights and wrapping depend on actual prose.
+
+## 8. GitHub Actions working build
 
 Workflow:
 
@@ -151,7 +185,11 @@ SVG → PNG
   ↓
 insert Figures 3.1–3.4
   ↓
+apply_equation_numbers.py
+  ↓
 apply_sps_pagination.py
+  ↓
+apply_landscape_tables.py
   ↓
 DOCX → PDF
   ↓
@@ -170,24 +208,23 @@ The PDF exists for layout inspection; the DOCX remains the editable review artif
 
 CI currently does **not** possess the uploaded binary campus template, so it intentionally builds without `--reference-doc`. A template-faithful release must be generated in an environment where the supplied DOCX is available.
 
-## 7. Working-release boundary
+## 9. Working-release boundary
 
 The automated build is **not yet the final submission release**.
 
-Current release blockers:
+Current release blockers are now concentrated in actual-document QA rather than missing static layout mechanisms:
 
 1. run the actual proposal through the supplied Word scaffold using `--reference-doc`;
-2. visually verify the implemented Roman/Arabic pagination on the actual proposal;
-3. inspect Table 2.1 and isolate it in a landscape section if the expected width problem is confirmed;
-4. add chapter-based equation numbering at the right boundary;
-5. verify table continuation behavior where tables span pages;
+2. render the actual proposal and inspect every page;
+3. verify real Tabel 2.1 row heights, wrapping, repeated headers, and page breaks;
+4. verify all real equation widths and `(bab.nomor)` alignment;
+5. verify Roman/Arabic page-number continuity on the real assembled document;
 6. normalize final APA bibliography metadata and narrative-vs-parenthetical citations;
-7. refresh TOC/list fields;
-8. visually inspect every rendered page before delivery.
+7. refresh TOC/list fields and verify their rendered page numbers.
 
 No artifact may be labeled `submission`, `sempro-final`, or equivalent until those gates close.
 
-## 8. Content boundary
+## 10. Content boundary
 
 The build process must never silently:
 
@@ -201,7 +238,7 @@ The build process must never silently:
 
 Content changes happen in the Markdown source first, are reviewed/committed, and only then regenerate the document.
 
-## 9. Revision workflow
+## 11. Revision workflow
 
 ```text
 advisor feedback / content correction
