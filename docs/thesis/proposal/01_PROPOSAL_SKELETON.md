@@ -4,28 +4,22 @@ Working title:
 
 **Analisis dan Optimasi Preprocessing Citra Berbasis Frekuensi-Angular pada YOLO26 untuk Deteksi Fine-Grained Cacat Biji Kopi**
 
-Dokumen pada direktori ini diperlakukan sebagai **artefak proposal tesis**, bukan laporan hasil eksperimen repository. Naskah formal harus dapat dibaca oleh pembaca akademik yang tidak mengetahui struktur kode, nama konfigurasi internal, riwayat eksperimen, atau hasil pilot penelitian.
-
----
+Direktori `docs/thesis/proposal/` diperlakukan sebagai **artefak proposal tesis**, bukan laporan hasil eksperimen repository. Naskah formal harus dapat dibaca oleh pembaca akademik yang tidak mengetahui struktur kode, nama konfigurasi internal, riwayat eksperimen, atau hasil pilot penelitian.
 
 ## Artefak formal utama
 
 ```text
 BAB_I_PENDAHULUAN.md
-BAB_II_TINJAUAN_PUSTAKA.md        # akan menjadi authority Bab II setelah rewrite formal
-BAB_III_METODOLOGI_PENELITIAN.md # akan menjadi authority Bab III setelah rewrite formal
-DAFTAR_PUSTAKA.md                 # akan dibangun dari sumber yang benar-benar disitasi
+BAB_II_TINJAUAN_PUSTAKA.md
+BAB_III_METODOLOGI_PENELITIAN.md
+DAFTAR_PUSTAKA.md                 # belum dibangun
 ```
 
-File lama seperti `02_BACKGROUND.md`, `03_PROBLEM_FORMULATION.md`, `04_LITERATURE_REVIEW.md`, `05_METHODOLOGY.md`, `05_05_AF2_PRIMARY_SOURCE_HARDENED.md`, dan `06_RESEARCH_FLOW.md` diperlakukan sebagai **bahan kerja / sumber teknis internal** sampai kontennya dipindahkan ke artefak formal yang sesuai.
-
----
+File lama seperti `02_BACKGROUND.md`, `03_PROBLEM_FORMULATION.md`, `04_LITERATURE_REVIEW.md`, `05_METHODOLOGY.md`, `05_05_AF2_PRIMARY_SOURCE_HARDENED.md`, dan `06_RESEARCH_FLOW.md` adalah bahan kerja/backend teknis, bukan authority naskah formal.
 
 ## BAB I — Pendahuluan
 
 Authority: `BAB_I_PENDAHULUAN.md`.
-
-Struktur mengikuti proposal kampus acuan:
 
 ```text
 1.1 Latar Belakang
@@ -35,70 +29,62 @@ Struktur mengikuti proposal kampus acuan:
 1.5 Manfaat Penelitian
 ```
 
-Bab I formal tidak menggunakan subbab `Identifikasi Masalah`, daftar `RQ1–RQ4`, `Kontribusi yang Diharapkan`, maupun `Sistematika Penulisan` kecuali kemudian diwajibkan secara eksplisit oleh program studi.
-
-Aturan keras Bab I:
-
-- tidak memuat hasil eksperimen penelitian sendiri;
-- tidak memuat seed, D0/D0FT, hasil pilot, promotion gate, proposal accessibility, atau diagnosis hasil internal;
-- tidak mengasumsikan pembaca mengetahui istilah `AF2`;
-- menggunakan istilah deskriptif **preprocessing citra berbasis frekuensi-angular**;
-- tidak menyatakan bahwa informasi frekuensi merupakan bottleneck cacat kopi yang sudah terbukti;
-- hasil penelitian terdahulu boleh dipakai sebagai landasan masalah dan precedent metode.
-
----
+Bab I tidak memuat hasil eksperimen penelitian sendiri, RQ1–RQ4, nama konfigurasi internal, maupun istilah `AF2` yang belum diperkenalkan. Istilah yang digunakan adalah **preprocessing citra berbasis frekuensi-angular**.
 
 ## BAB II — Tinjauan Pustaka
 
-Target authority: `BAB_II_TINJAUAN_PUSTAKA.md`.
-
-Struktur kerja:
+Authority: `BAB_II_TINJAUAN_PUSTAKA.md`.
 
 ```text
 2.1 Biji Kopi Hijau dan Cacat Fisik Biji Kopi
-2.2 Inspeksi Mutu Biji Kopi: Metode Konvensional dan Tantangannya
+2.2 Inspeksi Mutu Biji Kopi
 2.3 Object Detection
-2.4 YOLO
+2.4 You Only Look Once (YOLO)
 2.5 YOLO26
 2.6 Fine-Grained Object Detection
 2.7 Preprocessing Citra untuk Object Detection
 2.8 Representasi Citra pada Domain Frekuensi
+    2.8.1 Discrete Fourier Transform dan Fast Fourier Transform
+    2.8.2 Amplitudo dan Fase
+    2.8.3 Representasi Radial dan Angular
+    2.8.4 Pemrosesan Frekuensi pada Computer Vision
 2.9 Penelitian Terkait
 ```
 
-Bab II boleh memuat hasil **penelitian terdahulu** yang telah diverifikasi. Bab II formal tidak memuat status audit, citation key internal (`COF-01`, `FG-01`, dan sebagainya), path repository, atau hasil eksperimen penelitian sendiri.
-
-Nama implementasi internal `AF2` tidak digunakan sebagai konsep teori umum. Jika mekanisme Xu et al. dibahas, gunakan terminologi sumber seperti AFAB/AFAB-2. Penelitian yang diusulkan dijelaskan secara deskriptif sebagai preprocessing citra berbasis frekuensi-angular sebelum YOLO26.
-
----
+Bab II boleh memuat hasil penelitian terdahulu yang telah diverifikasi. Citation key internal (`COF-01`, `FG-01`, dan sebagainya), status audit, path repository, dan hasil eksperimen penelitian sendiri tidak masuk naskah formal. AFAB/AFAB-2 disebut hanya sebagai terminologi metode sumber Xu et al.
 
 ## BAB III — Metodologi Penelitian
 
-Target authority: `BAB_III_METODOLOGI_PENELITIAN.md`.
+Authority: `BAB_III_METODOLOGI_PENELITIAN.md`.
 
-`05_METHODOLOGY.md`, `05_05_AF2_PRIMARY_SOURCE_HARDENED.md`, protokol eksperimen, konfigurasi, dan kode operator berfungsi sebagai **backend teknis** untuk memastikan metode yang ditulis benar dan reproducible. File tersebut bukan naskah yang ditempel mentah ke proposal.
-
-Bab III formal harus menjelaskan metode dari sudut pandang pembaca akademik, dengan urutan konseptual:
+Struktur formal:
 
 ```text
-arsitektur / alur umum penelitian
--> dataset
--> preprocessing citra yang diusulkan
--> transformasi Fourier dan analisis angular
--> rekonstruksi citra
--> optimasi faktor/parameter preprocessing
--> YOLO26 sebagai detector
--> proses pelatihan
--> rancangan perbandingan
--> metrik evaluasi
--> evaluasi efisiensi
+3.1 Arsitektur Umum Penelitian
+3.2 Dataset Penelitian
+    3.2.1 Sumber dan Karakteristik Dataset
+    3.2.2 Pembagian Dataset dan Pencegahan Kebocoran Data
+    3.2.3 Augmentasi Data
+3.3 Model Dasar YOLO26n
+3.4 Preprocessing Citra Berbasis Frekuensi-Angular
+    3.4.1 Pembentukan Patch Lokal
+    3.4.2 Transformasi Fourier
+    3.4.3 Distribusi Angular
+    3.4.4 Ambang Adaptif Berdasarkan Entropi
+    3.4.5 Pembobotan Respons Spektral
+    3.4.6 Inverse Fourier Transform dan Rekonstruksi Citra
+3.5 Analisis dan Optimasi Preprocessing
+3.6 Rancangan Eksperimen
+3.7 Konfigurasi Pelatihan
+3.8 Evaluasi Kinerja Deteksi
+3.9 Analisis Kesalahan dan Kinerja Per Kelas
+3.10 Evaluasi Efisiensi Komputasi
+3.11 Lingkungan Implementasi
 ```
 
-Detail internal seperti commit SHA, checkpoint hash, `D0`, `D0FT`, historical factorization genealogy, `PROMOTE_TO_3_SEED`, RNG fork, dan hasil pilot tidak dimasukkan ke naskah utama proposal.
+Bab III menjelaskan apa yang **akan dilakukan**. Detail seperti checkpoint hash, commit SHA, D0/D0FT, historical factorization genealogy, promotion gate, RNG fork, dan hasil pilot tidak dimasukkan ke naskah formal. Rancangan eksperimen, parameter pelatihan, formula metode, dan rencana evaluasi boleh dicantumkan karena merupakan bagian dari metodologi proposal.
 
-Jika nama pendek untuk metode adaptasi ingin digunakan, istilah tersebut hanya boleh diperkenalkan setelah asal mekanisme dan perbedaannya dengan AFAB-2 dijelaskan secara eksplisit. Nama config repository tidak otomatis menjadi nama akademik metode.
-
----
+Nama konfigurasi internal seperti `AF2C`, `AF2WIN`, `AF2ORI`, `AF2POL`, `AF2SOFT`, dan `AF2LUM` tidak digunakan. Variasi dijelaskan berdasarkan faktor akademiknya: windowing, representasi arah, struktur radial-angular, fungsi ambang, dan strategi pemrosesan warna.
 
 ## Temporal guardrail proposal
 
@@ -120,10 +106,6 @@ TIDAK BOLEH SEBAGAI HASIL PROPOSAL
 - klaim bahwa metode usulan sudah meningkatkan performa
 ```
 
-Eksperimen yang sudah pernah dilakukan tetap dipertahankan di backend repository sebagai catatan pengembangan, tetapi tidak diubah menjadi narasi hasil proposal.
-
----
-
 ## Prinsip source-of-truth
 
 ```text
@@ -131,7 +113,7 @@ proposal/*.md formal artifact
     = apa yang dibaca dosen/penguji
 
 foundation/ + sources/ + protocol/config/code
-    = alasan dan bukti internal bahwa proposal tersebut benar
+    = alasan, bukti, dan detail teknis internal
 ```
 
 Setiap revisi substansial pada percakapan harus dipindahkan ke artefak formal yang sesuai agar keputusan tidak hanya hidup di chat.
