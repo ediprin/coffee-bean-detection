@@ -46,6 +46,11 @@ jobs:
             --docx build/thesis/Proposal_AF2_USU_Working.docx \
             --image-dir build/thesis/figures
 
+      - name: Apply SPs section-aware pagination
+        run: |
+          python tools/thesis/apply_sps_pagination.py \
+            --docx build/thesis/Proposal_AF2_USU_Working.docx
+
       - name: Render PDF for layout inspection
         run: |
           mkdir -p build/thesis/rendered
