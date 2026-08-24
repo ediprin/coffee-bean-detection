@@ -5,7 +5,7 @@ Branch: `codex/af2-igem-parent-confirmation`
 Status: **FROZEN BEFORE TRAINING**  
 Evaluation: Faruq-v3 grouped development validation only  
 Locked test: **closed**  
-Current pre-training audit revision: `2026-08-24c`
+Current pre-training audit revision: `2026-08-24d`
 
 ## Research question
 
@@ -59,7 +59,7 @@ For the control and candidate:
 
 The native box branch consumes the original frozen AF2 features and receives no IGEM correction.
 
-## Dedicated IGEM static authorization — revision 2026-08-24c
+## Dedicated IGEM static authorization — revision 2026-08-24d
 
 Training is forbidden unless a dedicated IGEM-only static audit passes for the exact seed-matched parent SHA. The legacy shared SAF/IGEM audit is deliberately left unchanged and is no longer used to authorize this experiment.
 
@@ -71,22 +71,26 @@ The dedicated audit must establish all of the following before training:
 4. transfer of the frozen parent backbone/neck and native Detect head is **bitwise exact in state**;
 5. both arms reproduce the parent output numerically at zero-output initialization;
 6. repeated-forward box outputs remain within the pre-existing `ATOL=5e-5`, `RTOL=1e-5` numerical envelope;
-7. after activating the final IGEM correction projection, zero-control absolute score displacement must remain `<= 5e-5`;
-8. after the same activation, feature-conditioned absolute score displacement must be `> 5e-5`;
+7. after activating the final IGEM correction projection, the zero-information control must produce an **exactly zero residual correction tensor before native-logit addition**;
+8. under the same artificial activation, the feature-conditioned candidate must produce a **finite, nonzero residual correction tensor before native-logit addition**;
 9. only residual parameters are trainable;
 10. parent BatchNorm modules remain in `eval()` while residual BatchNorm modules are trainable;
 11. residual gradients are finite/live, parent parameters receive no gradients, and a residual optimizer step leaves all parent parameters/buffers unchanged;
 12. test access remains false.
 
-### Why revisions a, b, and c exist
+Whole-model score displacement after the artificial projection activation is retained as a diagnostic only. It is not an authorization threshold because its observed magnitude depends on native-logit scale, floating-point ULP size, and repeat-forward numerical realization. Parent and box preservation continue to use the predeclared `ATOL/RTOL` tolerance; residual-path activity is instead tested directly at the residual correction tensor where zero-information versus feature-conditioned routing is the actual invariant of interest.
+
+### Why revisions a, b, c, and d exist
 
 The first seed-42 CUDA audit stopped before training because the earlier audit required bitwise equality between separate CUDA forwards. The observed control score jitter was `1.52587890625e-05`, while the feature-conditioned score change was `2.23699951171875`. The audit already used `ATOL=5e-5`, `RTOL=1e-5` for parent identity before these values were observed.
 
 Revision `2026-08-24a` first applied that existing numerical tolerance consistently. A later repo audit found that changing the **shared** SAF/IGEM legacy audit could disturb unrelated regression contracts, so revision `2026-08-24b` isolated this study in a dedicated IGEM audit and restored the shared audit.
 
-CPU CI on revision b then exposed a different issue: `torch.allclose` is appropriate for identity/preservation, but its relative term scales with large-magnitude logits and can classify a deterministic residual correction as numerically close. Revision `2026-08-24c` therefore keeps `allclose(ATOL=5e-5, RTOL=1e-5)` for parent/box preservation, but defines residual **activity** using the already predeclared absolute tolerance: zero-control displacement `<= ATOL`, feature-conditioned displacement `> ATOL`. No performance result was used to set a new threshold.
+CPU CI on revision b then exposed a different issue: `torch.allclose` is appropriate for identity/preservation, but its relative term scales with large-magnitude logits and can classify a deterministic residual correction as numerically close. Revision `2026-08-24c` therefore kept `allclose(ATOL=5e-5, RTOL=1e-5)` for parent/box preservation and temporarily defined residual activity using absolute whole-score displacement.
 
-No IGEM training epoch had run before revisions a, b, or c. Model architecture, dataset, optimizer, arm definitions, parent checkpoints, training schedule, decision thresholds, and test lock are unchanged.
+The revision-c CI fixture then exposed that whole-score displacement is still not an invariant activity test: on a serialized synthetic AF2 parent, the feature-conditioned route produced a nonzero displacement of `2.956390380859375e-05`, below `ATOL`, while zero-control displacement remained exactly zero. That fixture result is not model-performance evidence; it only demonstrates scale dependence of the audit criterion. Revision `2026-08-24d` therefore moves the activity test to the residual correction tensor itself, before addition to native AF2 logits. Zero conditioning must give exactly zero correction; feature conditioning must give a finite nonzero correction. This removes the arbitrary coupling between pathway liveness and the preservation tolerance without relaxing any performance, parent-safety, training, dataset, or test-access gate.
+
+No IGEM training epoch had run before revisions a, b, c, or d. Model architecture, dataset, optimizer, arm definitions, parent checkpoints, training schedule, decision thresholds, and test lock are unchanged.
 
 ## Training and resume contract
 
