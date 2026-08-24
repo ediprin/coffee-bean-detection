@@ -50,6 +50,14 @@ def _max_abs_diff(left: torch.Tensor, right: torch.Tensor) -> float:
     return float((left - right).abs().max())
 
 
+def _zero_information_identity(max_abs_diff: float) -> bool:
+    return float(max_abs_diff) <= ATOL
+
+
+def _material_score_change(max_abs_diff: float) -> bool:
+    return float(max_abs_diff) > ATOL
+
+
 def _activate_last_projection(model: AF2ParentResidualDetectionModel) -> None:
     with torch.no_grad():
         for level in model.model[-1].residual:
@@ -235,8 +243,8 @@ def run_af2_igem_parent_static_audit(
         "candidate_initial_identity": candidate["initial_af2_numerically_preserved"],
         "control_boxes_preserved": control["active_boxes_numerically_preserved"],
         "candidate_boxes_preserved": candidate["active_boxes_numerically_preserved"],
-        "control_zero_information_identity": control["active_score_max_abs_diff"] <= ATOL,
-        "candidate_changes_scores": candidate["active_score_max_abs_diff"] > ATOL,
+        "control_zero_information_identity": _zero_information_identity(control["active_score_max_abs_diff"]),
+        "candidate_changes_scores": _material_score_change(candidate["active_score_max_abs_diff"]),
         "control_only_residual_trainable": control["only_residual_trainable"],
         "candidate_only_residual_trainable": candidate["only_residual_trainable"],
         "control_parent_bn_frozen": control["parent_batchnorm_frozen"],
