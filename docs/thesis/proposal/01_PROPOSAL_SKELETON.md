@@ -77,10 +77,16 @@ Struktur formal:
 3.6 Rancangan Eksperimen
 3.7 Konfigurasi Pelatihan
 3.8 Evaluasi Kinerja Deteksi
-3.9 Analisis Kesalahan dan Kinerja Per Kelas
-3.10 Evaluasi Efisiensi Komputasi
-3.11 Lingkungan Implementasi
+3.9 Analisis Visual
+    3.9.1 Visualisasi Tahapan Preprocessing
+    3.9.2 Visualisasi Respons Model
+    3.9.3 Visualisasi Prediksi Deteksi
+3.10 Analisis Kesalahan dan Kinerja Per Kelas
+3.11 Evaluasi Efisiensi Komputasi
+3.12 Lingkungan Implementasi
 ```
+
+Analisis visual digunakan sebagai **analisis pendukung**, bukan sebagai bukti kausal tunggal. Visualisasi yang direncanakan mencakup tahapan preprocessing, respons/aktivasi model jika kompatibel secara teknis dengan YOLO26, serta perbandingan prediksi deteksi pada citra yang sama. Pemilihan contoh visual harus mengikuti kriteria yang konsisten agar tidak hanya menampilkan kasus yang menguntungkan metode yang diusulkan.
 
 Bab III menjelaskan apa yang **akan dilakukan**. Detail seperti checkpoint hash, commit SHA, D0/D0FT, historical factorization genealogy, promotion gate, RNG fork, dan hasil pilot tidak dimasukkan ke naskah formal. Rancangan eksperimen, parameter pelatihan, formula metode, dan rencana evaluasi boleh dicantumkan karena merupakan bagian dari metodologi proposal.
 
@@ -96,6 +102,7 @@ BOLEH
 - rancangan optimasi
 - rancangan eksperimen
 - parameter/metrik yang akan digunakan
+- analisis visual yang akan dilakukan
 - evaluasi yang akan dilakukan
 
 TIDAK BOLEH SEBAGAI HASIL PROPOSAL
