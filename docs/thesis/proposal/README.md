@@ -1,46 +1,47 @@
-# Proposal Draft Workspace
+# Proposal Artifact Workspace
 
-Direktori ini berisi bahan dan naskah proposal tesis. Mulai revisi Bab I 2026-08-25, **naskah proposal formal dipisahkan tegas dari evidence eksperimen internal repository**.
+Direktori ini sekarang diperlakukan sebagai **artefak proposal tesis yang dapat diedit dan direvisi langsung**. Tujuannya adalah agar keputusan yang sudah disepakati tidak hanya tersimpan di percakapan, tetapi selalu dipindahkan ke naskah proposal di repository.
 
-## Aturan utama
+## Prinsip utama
 
-Proposal adalah **rencana penelitian**. Karena itu, Bab I–III formal tidak memuat hasil eksperimen penelitian sendiri yang sudah pernah dijalankan di repository, termasuk hasil seed tunggal, D0/D0FT, historical factorization, nilai pilot, promotion gate, atau diagnosis hasil eksperimen.
+Proposal adalah **rencana penelitian**, bukan laporan hasil penelitian yang telah dijalankan. Karena itu, naskah formal Bab I–III tidak memuat hasil eksperimen penelitian sendiri, termasuk hasil pilot satu seed, D0/D0FT, historical factorization results, promotion gate, atau diagnosis hasil eksperimen.
 
-Hasil penelitian terdahulu tetap boleh digunakan sebagai landasan masalah, teori, dan precedent metode selama sumber primernya terverifikasi.
+Hasil penelitian terdahulu tetap boleh digunakan sebagai landasan masalah, teori, dan precedent metode selama sumbernya dapat diverifikasi.
 
-## Active files
+## Artefak formal
 
 ```text
-01_PROPOSAL_SKELETON.md
-    struktur proposal formal + proposal-only guardrails
+BAB_I_PENDAHULUAN.md
+    authority Bab I saat ini
 
-02_BACKGROUND.md
-    authoritative proposal-facing §1.1 Latar Belakang
-    tanpa hasil eksperimen penelitian sendiri dan tanpa istilah AF2 yang belum diperkenalkan
+BAB_II_TINJAUAN_PUSTAKA.md
+    akan menjadi authority Bab II setelah formal rewrite
 
-03_PROBLEM_FORMULATION.md
-    authoritative proposal-facing §1.2–1.5:
-    Rumusan Masalah, Batasan Masalah, Tujuan Penelitian, Manfaat Penelitian
+BAB_III_METODOLOGI_PENELITIAN.md
+    akan menjadi authority Bab III setelah formal rewrite
 
-04_LITERATURE_REVIEW.md
-    source-grounded Bab II working draft; masih perlu formal-language cleanup saat assembly
-
-04_02_INSPECTION_QUALITY_NORMALIZED.md
-    normalized replacement untuk §2.2
-
-04_09_RELATED_WORK_TABLE.md
-    working related-work table; masih perlu proposal-facing rewrite sebelum DOCX
-
-05_METHODOLOGY.md
-    technical methodology source; bukan teks formal yang ditempel mentah
-
-05_05_AF2_PRIMARY_SOURCE_HARDENED.md
-    technical provenance source untuk mekanisme frequency-angular;
-    bukan teks formal yang ditempel mentah
-
-06_RESEARCH_FLOW.md
-    technical research-flow source; perlu proposal-facing redraw/rewrite
+DAFTAR_PUSTAKA.md
+    akan berisi hanya referensi yang benar-benar disitasi dalam proposal
 ```
+
+`01_PROPOSAL_SKELETON.md` adalah kontrak struktur dan batas penulisan, bukan bagian yang dicetak sebagai bab.
+
+## File kerja / backend yang masih dipertahankan
+
+File berikut **bukan** authority naskah formal dan tidak boleh dicopy-paste mentah ke DOCX:
+
+```text
+02_BACKGROUND.md
+03_PROBLEM_FORMULATION.md
+04_LITERATURE_REVIEW.md
+04_02_INSPECTION_QUALITY_NORMALIZED.md
+04_09_RELATED_WORK_TABLE.md
+05_METHODOLOGY.md
+05_05_AF2_PRIMARY_SOURCE_HARDENED.md
+06_RESEARCH_FLOW.md
+```
+
+Fungsinya adalah menyimpan history drafting, evidence synthesis, detail metode, dan bahan untuk formal rewrite. Git history tetap mempertahankan versi-versi sebelumnya.
 
 ## Struktur Bab I formal
 
@@ -58,11 +59,11 @@ Tidak ada `Identifikasi Masalah`, daftar `RQ1–RQ4`, `Kontribusi yang Diharapka
 
 ## Terminologi metode
 
-Pada Bab I gunakan istilah:
+Bab I menggunakan istilah:
 
 > preprocessing citra berbasis frekuensi-angular
 
-Jangan mengasumsikan pembaca mengetahui istilah `AF2`. Nama/adaptasi teknis baru boleh diperkenalkan di Bab III setelah mekanisme sumber dan definisi istilah dijelaskan secara akademik.
+Pembaca tidak diasumsikan mengetahui `AF2`, nama config, branch, atau istilah internal repository. AFAB/AFAB-2 hanya disebut ketika membahas metode sumber Xu et al. Nama adaptasi penelitian, jika nantinya digunakan, harus diperkenalkan secara akademik di Bab III setelah mekanismenya dijelaskan.
 
 ## Temporal guardrail
 
@@ -73,38 +74,36 @@ BOLEH DALAM PROPOSAL
 - metode yang diusulkan
 - rancangan optimasi
 - rancangan eksperimen
-- metrik yang akan digunakan
+- parameter dan metrik yang akan digunakan
 - evaluasi yang akan dilakukan
 
 TIDAK BOLEH SEBAGAI HASIL PROPOSAL
-- seed-42 pilot result
-- D0 / D0FT / AF2 staged result
-- historical candidate result
+- hasil seed 42
+- D0 / D0FT / staged/direct results
+- historical candidate results
 - PROMOTE_TO_3_SEED
 - classification-dominant diagnosis dari eksperimen sendiri
-- nilai Macro/Bottom-3/Worst milik eksperimen sendiri
-- klaim bahwa metode usulan sudah meningkatkan kinerja
+- nilai performa eksperimen sendiri
+- klaim bahwa metode usulan telah terbukti meningkatkan kinerja
 ```
-
-Evidence tersebut tetap dipertahankan di foundation/protocol/result files sebagai catatan pengembangan penelitian, tetapi tidak disalin sebagai hasil ke proposal formal.
 
 ## Source discipline
 
-Sebelum menulis naskah formal:
+Sebelum mengubah artefak formal:
 
-1. gunakan primary paper untuk klaim literatur;
-2. gunakan repository hanya untuk mendefinisikan metode/rancangan yang akan dilakukan;
-3. bedakan fakta paper, sintesis literatur, dan rencana penelitian;
-4. jangan mengubah hasil eksperimen internal menjadi narasi hasil proposal;
-5. jangan menggunakan nama internal repository tanpa definisi bagi pembaca akademik.
+1. klaim literatur harus berasal dari sumber paper/standar yang mendukungnya;
+2. repository digunakan untuk memastikan rancangan metode yang akan dilakukan benar secara teknis;
+3. fakta paper, sintesis literatur, dan rencana penelitian harus dibedakan;
+4. nama internal repository tidak digunakan tanpa definisi akademik;
+5. revisi penting dari percakapan harus dipindahkan ke file artefak proposal.
 
 ## Current state
 
 ```text
-Bab I   = proposal-facing rewrite selesai pada source Markdown
-Bab II  = working source; formal cleanup belum selesai
-Bab III = technical source tersedia; formal proposal rewrite belum selesai
-DOCX    = generate manual per bab setelah teks bab disetujui
+BAB I   = formal proposal artifact tersedia dan menjadi authority
+BAB II  = scientific working source tersedia; formal proposal rewrite berikutnya
+BAB III = technical source tersedia; formal proposal rewrite setelah Bab II
+DOCX    = generate manual per bab setelah artefak Markdown disetujui
 ```
 
 Current working title:
