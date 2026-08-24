@@ -1,5 +1,22 @@
 # Thesis Proposal Changelog
 
+## v0.4.0 — 2026-08-24
+
+Reference-diversity and anti-recycling policy added for Bab II.
+
+### Added
+
+- `sources/REFERENCE_ALLOCATION_MATRIX.md`: subsection-by-subsection reference routing, diversity targets, source-role separation, and citation audit rules.
+
+### Strengthened rules
+
+- Hong remains the literature pivot but must not become a universal citation for unrelated concepts;
+- each Bab II subsection receives its own source pool instead of recycling the same small set of papers;
+- non-foundational empirical papers should normally have one primary argumentative role and at most one secondary role in Bab II;
+- foundational sources may recur where technically necessary;
+- final Bab II should aim for broad coverage (roughly 35–50 distinct authoritative/primary references as a planning target), without padding citations;
+- final export requires an audit for unique-reference count, overused papers, unsupported technical paragraphs, source-group domination, numerical claim verification, and index/quartile verification.
+
 ## v0.3.0 — 2026-08-24
 
 Bab II aligned to the uploaded USU/campus proposal convention.
