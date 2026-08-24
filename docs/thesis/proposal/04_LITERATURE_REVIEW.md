@@ -1,30 +1,32 @@
 # BAB II — TINJAUAN PUSTAKA
 
-Status: structural draft following the adopted USU/campus proposal pattern.
+Status: citation-ready rewrite in progress following the adopted USU/campus proposal pattern. Sections 2.1–2.2 have been rewritten from verified source material; later sections remain working prose until their own source-level audit is closed.
 
-Do not finalize bibliography wording until each citation key has been resolved to the verified primary source.
+All bracketed citation keys must resolve through `docs/thesis/sources/CANONICAL_SOURCE_KEYS.md` or the master reference workbook. Numerical and methodological claims remain paper-scoped and must be traceable to the primary source.
 
 ---
 
 ## 2.1 Biji Kopi Hijau dan Cacat Fisik Biji Kopi
 
-Biji kopi hijau (*green coffee bean*) merupakan biji kopi yang telah melalui proses pascapanen tertentu tetapi belum mengalami proses penyangraian. Pada tahap ini, kondisi fisik biji menjadi salah satu aspek penting dalam penilaian mutu karena berbagai jenis cacat dapat dikenali melalui karakteristik warna, bentuk, permukaan, kerusakan lokal, atau keberadaan material asing.
+Menurut SNI 01-2907-2008, kopi didefinisikan sebagai biji dari tanaman *Coffea* spp. dalam bentuk bugil dan belum disangrai. Standar tersebut mencakup biji kopi Robusta dan Arabika serta menetapkan penggolongan, persyaratan mutu, cara pengujian, penandaan, dan pengemasan. Dengan demikian, konteks biji kopi hijau pada penelitian ini merujuk pada biji yang belum mengalami penyangraian dan masih dinilai berdasarkan kondisi fisiknya sebelum proses hilir berikutnya [STD-01].
 
-Dalam penelitian ini, istilah cacat fisik digunakan untuk merujuk pada kategori kondisi biji yang menjadi target inspeksi visual pada dataset penelitian. Konteks standar mutu seperti SNI dan SCA digunakan untuk menjelaskan relevansi kategori cacat, tetapi penelitian tidak melakukan rekonstruksi penuh proses grading manual berbasis nilai cacat.
+SNI 01-2907-2008 mendefinisikan sejumlah kondisi fisik yang menjadi dasar inspeksi mutu, antara lain biji hitam, biji hitam sebagian, biji hitam pecah, kopi gelondong, biji coklat, kulit kopi dan kulit tanduk dalam beberapa ukuran, biji pecah, biji muda, biji berlubang akibat serangga, serta ranting, tanah, atau batu sebagai kotoran. Standar tersebut juga menggunakan sistem nilai cacat untuk menggolongkan mutu kopi; berdasarkan jumlah nilai cacat, kopi dikelompokkan ke dalam enam tingkat mutu, dengan pembagian tambahan mutu 4a dan 4b pada kopi Robusta [STD-01]. Oleh sebab itu, istilah *cacat fisik* dalam tesis ini dipakai untuk menunjuk karakteristik kondisi biji atau material asing yang dapat diamati secara visual, bukan untuk menyatakan bahwa sistem computer vision yang dibangun merekonstruksi seluruh prosedur grading SNI.
 
-**Evidence to insert:** coffee standards / taxonomy sources; verified dataset taxonomy; direct coffee-defect literature.
+Implementasi taxonomy cacat pada penelitian computer vision tidak selalu identik satu sama lain. Kesiman et al. membangun dataset yang mengacu pada SNI 01-2907-2008. Pada tahap pengumpulan, ahli mengidentifikasi sampel berdasarkan 20 jenis cacat yang tercantum dalam standar, tetapi subset akhir untuk klasifikasi cacat terdiri atas 17 kelas karena satu jenis cacat tidak ditemukan pada korpus dan tiga ukuran material asing digabungkan menjadi satu kelas [COF-07]. Secara independen, Arwatchananukul et al. membangun dataset Thai Arabica yang juga terdiri atas 17 jenis cacat, yaitu *broken, cut, dry cherry, fade, floater, full black, full sour, fungus damage, husk, immature, parchment, partial black, partial sour, severe insect damage, shell, slight insect damage,* dan *withered* [COF-08]. Pada sisi object detection, Bahy dan Rifai menggunakan 20 kategori cacat fisik yang disejajarkan dengan SNI 01-2907-2008 [COF-02].
 
-**Do not overclaim:** taxonomy in the thesis must match the actual dataset labels used in the experiment.
+Perbedaan tersebut penting secara metodologis. Standar mutu menyediakan vocabulary dan konteks penilaian, sedangkan label yang benar-benar dipelajari model ditentukan oleh taxonomy dataset dan protokol anotasi penelitian. Karena itu, kelas pada eksperimen tesis harus dijelaskan berdasarkan dataset yang digunakan dan tidak boleh disamakan secara otomatis dengan keseluruhan sistem nilai cacat atau proses grading manual pada SNI [STD-01][COF-07][COF-08][COF-02].
 
 ---
 
 ## 2.2 Inspeksi Mutu Biji Kopi: Metode Konvensional dan Tantangannya
 
-Inspeksi fisik biji kopi secara konvensional dilakukan melalui pengamatan visual untuk membedakan biji normal, cacat, dan material asing berdasarkan karakteristik yang tampak. Pendekatan manual memiliki keunggulan berupa kemudahan implementasi, tetapi dapat dipengaruhi pengalaman operator, konsistensi pengamatan, kelelahan, kondisi pencahayaan, dan jumlah sampel yang harus diperiksa.
+Identifikasi cacat biji kopi secara konvensional masih bergantung pada pengamatan manusia. Dalam pengembangan dataset berbasis SNI, Kesiman et al. menjelaskan bahwa identifikasi biji cacat dan jenis cacat pada umumnya dilakukan secara manual; kendala yang mereka soroti adalah keterbatasan waktu dan tenaga serta sulitnya memperoleh pekerja berpengalaman untuk melakukan identifikasi tersebut [COF-07]. Arwatchananukul et al. juga menempatkan ketergantungan pada tenaga manual sebagai persoalan pada proses pemilahan green coffee bean, sedangkan Muchtar et al. menekankan bahwa sortasi manual memerlukan waktu, rentan terhadap kesalahan akibat kelelahan, dan dapat menghasilkan kualitas yang tidak konsisten [COF-08][COF-14]. Pernyataan ini mendukung kebutuhan otomasi inspeksi, tetapi tidak berarti seluruh kesalahan grading manual dapat direplikasi atau diselesaikan hanya dengan model vision.
 
-Literatur coffee-defect recognition menunjukkan bahwa kesulitan menjadi semakin nyata ketika kategori cacat diperinci. Beberapa kelas dapat memiliki perbedaan visual yang kecil, sedangkan kategori lain mempunyai ciri yang lebih jelas. Hal ini menyebabkan performa antarkelas dapat sangat berbeda walaupun metrik agregat model terlihat tinggi. [COF-01][COF-02][COF-03][COF-04][COF-05][COF-07]
+Sebelum dominasi deep learning, otomasi inspeksi kopi telah dikembangkan melalui pengolahan citra dan *computational intelligence*. De Oliveira et al. menggunakan ruang pengambilan gambar terkontrol, sistem pencahayaan, kalibrasi warna, serta pemetaan dari RGB ke CIE L*a*b* untuk memperoleh pengukuran warna green coffee bean yang konsisten. Pada kondisi eksperimen mereka, karakteristik warna kemudian digunakan untuk klasifikasi berbasis *Naive Bayes* dan dibandingkan dengan inspeksi visual oleh ahli [COF-10]. Studi tersebut menunjukkan bahwa informasi visual biji kopi telah lama dimanfaatkan secara komputasional, tetapi juga memperlihatkan bahwa pipeline klasik bergantung pada rekayasa kondisi akuisisi dan representasi fitur yang ditentukan sebelumnya.
 
-Kondisi tersebut mendorong penggunaan computer vision dan deep learning untuk menghasilkan inspeksi yang lebih konsisten, terukur, dan dapat diotomatisasi.
+Perkembangan berikutnya memperluas solusi dari fitur buatan menuju CNN, Transformer, serta sistem yang dirancang untuk deployment. Tinjauan Motta et al. memetakan penggunaan beragam teknik machine learning dan computer vision untuk klasifikasi kopi, sementara studi Muchtar et al. menunjukkan contoh implementasi modern dengan membandingkan beberapa arsitektur CNN dan Transformer serta menjalankan sistem pada perangkat edge untuk klasifikasi green coffee bean [REV-01][COF-14]. Perubahan ini menunjukkan bahwa otomasi inspeksi tidak lagi terbatas pada satu jenis fitur atau satu model, tetapi mencakup keseluruhan pipeline akuisisi, representasi, klasifikasi, dan deployment.
+
+Namun, keberadaan sistem otomatis tidak dengan sendirinya menyelesaikan persoalan pembedaan kelas yang sangat mirip. Ketika taxonomy diperinci, kebutuhan terhadap representasi yang mampu mempertahankan perbedaan visual antarkelas menjadi lebih besar. Persoalan tersebut dibahas secara khusus pada Subbab 2.6 agar bukti tentang *fine-grained discrimination* tidak tercampur dengan pembahasan umum mengenai keterbatasan inspeksi manual.
 
 ---
 
@@ -141,13 +143,13 @@ E_\theta(\theta_1,\theta_2)=
 \sum_{\theta_1\le \theta(u,v)\le \theta_2}|F(u,v)|^2.
 \]
 
-Literatur texture analysis menunjukkan bahwa radial spectrum dapat berkaitan dengan periodisitas/skala tekstur, sedangkan angular spectrum dapat menggambarkan directionality dan orientasi pola [FREQ-01][FREQ-02].
+Literatur texture analysis menunjukkan bahwa radial spectrum dapat berkaitan dengan periodisitas/skala tekstur, sedangkan angular spectrum dapat menggambarkan directionality dan orientasi pola [SPEC-01][SPEC-02].
 
 Inilah dasar teoritis penggunaan istilah **frekuensi-angular** pada penelitian, bukan bukti bahwa operator AF2 telah terbukti efektif pada kopi.
 
 ### 2.8.4 Pemrosesan Frekuensi untuk Object Detection
 
-Pemrosesan frekuensi telah digunakan pada object detection dalam beberapa bentuk. FE-YOLO melakukan Fourier enhancement pada citra sebelum YOLO [PRE-03]. Pendekatan wavelet dan Fourier lain memasukkan informasi frekuensi ke feature space detector [AGR-01][AGR-02][FREQ-03][FREQ-04]. Pada fine-grained object detection, Xu et al. mengeksplorasi integrasi representasi frekuensi untuk membedakan kategori yang memiliki perbedaan visual subtil [FG-01].
+Pemrosesan frekuensi telah digunakan pada object detection dalam beberapa bentuk. FE-YOLO melakukan Fourier enhancement pada citra sebelum YOLO [PRE-03]. Pendekatan wavelet dan Fourier lain memasukkan informasi frekuensi ke feature space detector [AGR-01][AGR-02][WAVE-01][FREQ-03]. Pada fine-grained object detection, Xu et al. mengeksplorasi integrasi representasi frekuensi untuk membedakan kategori yang memiliki perbedaan visual subtil [FG-01].
 
 Dari literatur tersebut dapat ditarik satu posisi yang aman: informasi frekuensi dan arah merupakan ruang representasi yang secara teknis dapat membawa informasi komplementer untuk detection dan texture discrimination. Efektivitas **preprocessing input parameter-free berbasis frekuensi-angular pada fine-grained coffee defect detection** masih harus dibuktikan melalui eksperimen penelitian ini.
 
