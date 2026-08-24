@@ -10,25 +10,27 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt
 
-# SPs guide convention used here:
+# Figure rules supported directly by the SPs guide:
 # - caption below figure;
-# - centered;
-# - no period after the figure number;
+# - centered/symmetric;
 # - no terminal period;
 # - title case;
-# - TNR 12 unless a verified exception is introduced later.
+# - TNR 12 working size.
+# The official guide excerpt does not explicitly settle separator punctuation after
+# the figure number. The supplied campus template shows `Gambar 2.1. Grafik X`, so
+# the working proposal follows that template convention until a stronger rule is found.
 FIGURES = {
     "Gambar 3.1 pada dokumen final:": (
         "fig_3_1_research_framework.png",
-        "Gambar 3.1  Kerangka Penelitian",
+        "Gambar 3.1. Kerangka Penelitian",
     ),
     "Gambar 3.2 pada dokumen final:": (
         "fig_3_2_native_vs_af2.png",
-        "Gambar 3.2  Arsitektur Native YOLO26 dan AF2–YOLO26",
+        "Gambar 3.2. Arsitektur Native YOLO26 dan AF2–YOLO26",
     ),
     "Gambar 3.3 pada dokumen final:": (
         "fig_3_3_af2_operator.png",
-        "Gambar 3.3  Alur Preprocessing Frekuensi-Angular AF2",
+        "Gambar 3.3. Alur Preprocessing Frekuensi-Angular AF2",
     ),
 }
 
@@ -85,7 +87,7 @@ def insert_fig_34(doc: Document, image_dir: Path):
             cap = insert_paragraph_after(img_p)
             style_caption(
                 cap,
-                "Gambar 3.4  Genealogi Optimasi AF2 dan Eksperimen Konfirmatori",
+                "Gambar 3.4. Genealogi Optimasi AF2 dan Eksperimen Konfirmatori",
             )
             return True
     return False
