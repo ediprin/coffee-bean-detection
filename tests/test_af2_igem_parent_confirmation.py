@@ -1,13 +1,20 @@
+import copy
 import hashlib
 import json
 from pathlib import Path
 
 import torch
 
+from coffee_detector.af2_parent_residual import (
+    AF2ParentResidualConfig,
+    AF2ParentResidualDetectionModel,
+    load_af2_parent_residual_weights,
+)
 from coffee_detector.af2_parent_residual.igem_confirmation import (
     AUDIT_REVISION,
     run_af2_igem_parent_static_audit,
 )
+from coffee_detector.af2_parent_residual.igem_trainer import _sync_frozen_parent_to_ema
 from coffee_detector.afab import AFABConfig
 from coffee_detector.afab.model import AFABDetectionModel
 from coffee_detector.experiments.run_faruq_v3_af2_igem_parent_arm import (
@@ -56,6 +63,7 @@ def _arm(arm: str, conditioning: str, seed: int, parent_payload, parent_result_s
         "initial_af2_checkpoint_sha256": parent_payload["checkpoint_sha256"],
         "parent_result_sha256": parent_result_sha,
         "parent_frozen": True,
+        "final_parent_state_bitwise_exact": True,
         "trainable_scope": "igem_residual_only",
         "evaluation_split": "val",
         "run_contract_sha256": f"contract-{arm}-{seed}",
@@ -80,6 +88,39 @@ def _write_case(tmp_path: Path, parent_values, control_values, candidate_values)
     return parent_paths, control_paths, candidate_paths
 
 
+def _igem_model():
+    afab = AFABConfig(mode="af2")
+    source = AFABDetectionModel(str(MODEL_YAML), nc=21, verbose=False, afab=afab).eval()
+    target = AF2ParentResidualDetectionModel(
+        str(MODEL_YAML),
+        nc=21,
+        verbose=False,
+        afab=afab,
+        parent_residual=AF2ParentResidualConfig(family="igem", conditioning="feature"),
+    ).eval()
+    load_af2_parent_residual_weights(target, source)
+    return target
+
+
+def test_ema_sync_restores_parent_exact_without_overwriting_residual_ema():
+    live = _igem_model()
+    ema = copy.deepcopy(live)
+    with torch.no_grad():
+        live.model[0].conv.weight.add_(0.25)
+        first_ema_residual = next(ema.model[-1].residual.parameters())
+        first_ema_residual.add_(0.5)
+    residual_before = {
+        key: value.detach().clone() for key, value in ema.model[-1].residual.state_dict().items()
+    }
+    _sync_frozen_parent_to_ema(live, ema)
+    live_state, ema_state = live.state_dict(), ema.state_dict()
+    for key in live_state:
+        if ".residual." not in key:
+            assert torch.equal(live_state[key], ema_state[key])
+    for key, value in residual_before.items():
+        assert torch.equal(value, ema.model[-1].residual.state_dict()[key])
+
+
 def test_three_seed_decision_accepts_tail_pareto_route(tmp_path: Path):
     parent = dict(macro_map50_95=0.880, bottom3_class_map50_95=0.790, worst_class_map50_95=0.770)
     control = dict(macro_map50_95=0.880, bottom3_class_map50_95=0.790, worst_class_map50_95=0.770)
@@ -89,6 +130,7 @@ def test_three_seed_decision_accepts_tail_pareto_route(tmp_path: Path):
     assert result["decision"] == "RETAIN"
     assert result["criteria"]["tail_pareto_route_pass"] is True
     assert result["criteria"]["canonical_parent_binding_verified"] is True
+    assert result["criteria"]["serialized_parent_state_verified"] is True
     assert result["test_opened"] is False
 
 
@@ -113,6 +155,20 @@ def test_decision_rejects_wrong_parent_binding(tmp_path: Path):
         assert "canonical" in str(error)
     else:
         raise AssertionError("Decision menerima parent yang salah")
+
+
+def test_decision_rejects_result_without_exact_serialized_parent(tmp_path: Path):
+    values = dict(macro_map50_95=0.880, bottom3_class_map50_95=0.790, worst_class_map50_95=0.770)
+    parents, controls, candidates = _write_case(tmp_path, values, values, values)
+    payload = json.loads(candidates[0].read_text(encoding="utf-8"))
+    payload["final_parent_state_bitwise_exact"] = False
+    candidates[0].write_text(json.dumps(payload), encoding="utf-8")
+    try:
+        run_igem_parent_decision(parents, controls, candidates, tmp_path / "decision.json")
+    except RuntimeError as error:
+        assert "parent exact" in str(error)
+    else:
+        raise AssertionError("Decision menerima best.pt tanpa exact parent")
 
 
 def test_runner_rejects_unapproved_training_before_artifact_access(tmp_path: Path):
@@ -161,6 +217,7 @@ def test_protocol_and_kaggle_notebook_are_frozen_and_test_locked():
     assert "FROZEN BEFORE TRAINING" in protocol
     assert "AF2IGEM0/1 x seeds 42,123,2026" in protocol
     assert "Locked test: **closed**" in protocol
+    assert "EMA" in protocol
 
     notebook = ROOT / "notebooks/Faruq_V3_AF2FS_IGEM_Parent_Confirmation_All_Seeds_Kaggle.ipynb"
     payload = json.loads(notebook.read_text(encoding="utf-8"))
@@ -175,6 +232,7 @@ def test_protocol_and_kaggle_notebook_are_frozen_and_test_locked():
     assert "run_igem_parent_decision" in source
     assert "--parent-result" in source
     assert "AUDIT_REVISION" in source
+    assert "final_parent_state_bitwise_exact" in source
     assert "os.chdir(WORK)" in source
     assert source.index("os.chdir(WORK)") < source.index("shutil.rmtree(REPO)")
     assert "split=test" not in source.lower()
