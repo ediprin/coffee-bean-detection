@@ -1,0 +1,33 @@
+name: AF2FS IGEM Parent Confirmation CI
+
+on:
+  push:
+    branches:
+      - codex/af2-igem-parent-confirmation
+  pull_request:
+    paths:
+      - 'src/coffee_detector/af2_parent_residual/**'
+      - 'src/coffee_detector/experiments/run_faruq_v3_af2_igem_parent_*.py'
+      - 'configs/af2_parent_residual/**'
+      - 'notebooks/Faruq_V3_AF2FS_IGEM_Parent_Confirmation_All_Seeds_Kaggle.ipynb'
+      - 'tests/test_af2_parent_residual.py'
+      - 'tests/test_af2_igem_parent_confirmation.py'
+      - 'docs/FARUQ_V3_AF2FS_IGEM_PARENT_CONFIRMATION_PROTOCOL_2026-08-24.md'
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install runtime
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ultralytics==8.4.96
+          python -m pip install --no-deps -e .
+      - name: Run frozen-parent contract tests
+        run: |
+          python -m pytest -q tests/test_af2_parent_residual.py tests/test_af2_igem_parent_confirmation.py
