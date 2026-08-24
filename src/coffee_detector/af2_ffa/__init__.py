@@ -11,6 +11,13 @@ from .trainer import make_af2_ffa_trainer
 from .audit import run_af2_ffa_static_audit
 from .from_start_audit import run_af2_ffa_from_start_static_audit
 from .dct import DCT_HIGH_FREQUENCY_PAIRS, selected_dct_descriptor
+from .parent_preserving import (
+    AF2FFAParentPreservingModel,
+    adapter_parameter_names,
+    make_af2_ffa_parent_trainer,
+    parent_parameter_names,
+)
+from .parent_preserving_audit import run_af2_ffa_parent_preserving_audit
 
 # Backward-compatibility defaults for complete AF2FFAB2 checkpoints serialized
 # before the selective-refinement runtime attributes existed. Old nn.Module
@@ -36,4 +43,9 @@ __all__ = [
     "run_af2_ffa_from_start_static_audit",
     "DCT_HIGH_FREQUENCY_PAIRS",
     "selected_dct_descriptor",
+    "AF2FFAParentPreservingModel",
+    "adapter_parameter_names",
+    "parent_parameter_names",
+    "make_af2_ffa_parent_trainer",
+    "run_af2_ffa_parent_preserving_audit",
 ]
