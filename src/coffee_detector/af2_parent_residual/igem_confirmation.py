@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .audit import run_af2_parent_residual_static_audit
+from .audit import AUDIT_REVISION, run_af2_parent_residual_static_audit
 
 
 def run_af2_igem_parent_static_audit(
@@ -16,12 +16,7 @@ def run_af2_igem_parent_static_audit(
     device: str = "cpu",
     image_size: int = 64,
 ) -> dict[str, Any]:
-    """Run the established audit machinery but authorize only the IGEM pair.
-
-    The legacy audit also materializes SAF records. They are deliberately not
-    part of this confirmation decision: a SAF-specific gate cannot block or
-    authorize the IGEM hypothesis.
-    """
+    """Run established audit machinery but authorize only the IGEM pair."""
 
     destination = Path(output).expanduser().resolve()
     raw_path = destination.with_name(destination.stem + ".raw_all_families.json")
@@ -64,6 +59,8 @@ def run_af2_igem_parent_static_audit(
 
     result = {
         "format": "coffee_detector.af2_parent_residual.igem_static_audit.v1",
+        "audit_revision": raw.get("audit_revision", AUDIT_REVISION),
+        "numerical_tolerance": raw.get("numerical_tolerance"),
         "decision": decision,
         "checkpoint": raw["checkpoint"],
         "checkpoint_sha256": raw["checkpoint_sha256"],
