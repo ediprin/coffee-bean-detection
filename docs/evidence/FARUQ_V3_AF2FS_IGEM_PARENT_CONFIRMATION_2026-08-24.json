@@ -1,0 +1,159 @@
+{
+  "format": "coffee_detector.af2_parent_residual.igem_three_seed_decision.v2",
+  "comparison": "AF2IGEM1_vs_AF2IGEM0_with_canonical_seed_matched_frozen_AF2FS_parents",
+  "date": "2026-08-24",
+  "seeds": [42, 123, 2026],
+  "gate": {
+    "parent_macro_mean_delta_min": -0.002,
+    "parent_bottom3_mean_delta_min": -0.01,
+    "parent_worst_mean_delta_min": -0.01,
+    "superiority_macro_mean_gain_min": 0.002,
+    "superiority_macro_improved_seeds_min": 2,
+    "superiority_bottom3_mean_delta_min": -0.005,
+    "superiority_worst_mean_delta_min": -0.01,
+    "tail_macro_mean_delta_min": -0.001,
+    "tail_bottom3_mean_gain_min": 0.005,
+    "tail_bottom3_improved_seeds_min": 2,
+    "tail_worst_mean_gain_min": 0.01,
+    "tail_worst_improved_seeds_min": 2
+  },
+  "aggregate": {
+    "macro_map50_95": {
+      "parent_mean": 0.876195325268303,
+      "control_mean": 0.8761954722097501,
+      "candidate_mean": 0.8764268745096656,
+      "parent_sd": 0.005078999249274697,
+      "control_sd": 0.00507924999973503,
+      "candidate_sd": 0.004780354641435113,
+      "candidate_minus_control_mean": 0.000231402299915436,
+      "candidate_minus_parent_mean": 0.00023154924136255714,
+      "candidate_minus_control_improved_seeds": 2,
+      "candidate_minus_parent_improved_seeds": 2,
+      "candidate_minus_control": {
+        "42": -0.00008758076395831704,
+        "123": 0.000226822077251998,
+        "2026": 0.0005549655864526271
+      },
+      "parent_values": {
+        "42": 0.8819734111428803,
+        "123": 0.8741760674157575,
+        "2026": 0.8724364972462715
+      },
+      "control_values": {
+        "42": 0.8819738519672217,
+        "123": 0.8741760674157575,
+        "2026": 0.8724364972462715
+      },
+      "candidate_values": {
+        "42": 0.8818862712032633,
+        "123": 0.8744028894930095,
+        "2026": 0.8729914628327241
+      }
+    },
+    "bottom3_class_map50_95": {
+      "parent_mean": 0.782930761917877,
+      "control_mean": 0.782930761917877,
+      "candidate_mean": 0.7814172841530422,
+      "parent_sd": 0.021207059078358806,
+      "control_sd": 0.021207059078358806,
+      "candidate_sd": 0.019747532775500905,
+      "candidate_minus_control_mean": -0.001513477764834607,
+      "candidate_minus_parent_mean": -0.001513477764834607,
+      "candidate_minus_control_improved_seeds": 0,
+      "candidate_minus_parent_improved_seeds": 0,
+      "candidate_minus_control": {
+        "42": -0.003142691900479888,
+        "123": -0.00004392446633827429,
+        "2026": -0.0013538169276856582
+      },
+      "parent_values": {
+        "42": 0.8004276546678737,
+        "123": 0.7593454219049119,
+        "2026": 0.7890192091808451
+      },
+      "control_values": {
+        "42": 0.8004276546678737,
+        "123": 0.7593454219049119,
+        "2026": 0.7890192091808451
+      },
+      "candidate_values": {
+        "42": 0.7972849627673938,
+        "123": 0.7593014974385737,
+        "2026": 0.7876653922531595
+      }
+    },
+    "worst_class_map50_95": {
+      "parent_mean": 0.7513283677199197,
+      "control_mean": 0.7513283677199197,
+      "candidate_mean": 0.7475464838469766,
+      "parent_sd": 0.0365409401192167,
+      "control_sd": 0.0365409401192167,
+      "candidate_sd": 0.030670392352935644,
+      "candidate_minus_control_mean": -0.0037818838729431667,
+      "candidate_minus_parent_mean": -0.0037818838729431667,
+      "candidate_minus_control_improved_seeds": 1,
+      "candidate_minus_parent_improved_seeds": 1,
+      "candidate_minus_control": {
+        "42": -0.010635294117646965,
+        "123": -0.0011317733990146017,
+        "2026": 0.000421415897832067
+      },
+      "parent_values": {
+        "42": 0.7934699749241949,
+        "123": 0.7284398701180617,
+        "2026": 0.7320752581175027
+      },
+      "control_values": {
+        "42": 0.7934699749241949,
+        "123": 0.7284398701180617,
+        "2026": 0.7320752581175027
+      },
+      "candidate_values": {
+        "42": 0.782834680806548,
+        "123": 0.7273080967190471,
+        "2026": 0.7324966740153348
+      }
+    }
+  },
+  "criteria": {
+    "parent_safety": {
+      "macro_mean_not_below_parent_by_more_than_0_2pp": true,
+      "bottom3_mean_not_below_parent_by_more_than_1pp": true,
+      "worst_mean_not_below_parent_by_more_than_1pp": true
+    },
+    "superiority_route": {
+      "macro_mean_gain_at_least_0_2pp": false,
+      "macro_improves_at_least_2_of_3": true,
+      "bottom3_mean_loss_at_most_0_5pp": true,
+      "worst_mean_loss_at_most_1pp": true
+    },
+    "tail_pareto_route": {
+      "macro_mean_loss_at_most_0_1pp": true,
+      "bottom3_mean_gain_at_least_0_5pp": false,
+      "bottom3_improves_at_least_2_of_3": false,
+      "worst_mean_gain_at_least_1pp": false,
+      "worst_improves_at_least_2_of_3": false
+    },
+    "parent_safety_pass": true,
+    "superiority_route_pass": false,
+    "tail_pareto_route_pass": false,
+    "all_21_classes_present": true,
+    "canonical_parent_binding_verified": true,
+    "serialized_parent_state_verified": true,
+    "test_not_opened": true
+  },
+  "decision": "REJECT",
+  "next": "STOP_AF2FS_IGEM_RESIDUAL_ROUTE",
+  "interpretation_boundary": "Development-validation evidence only. REJECT closes only the frozen AF2FS plus IGEM residual formulation; standalone AF2 and standalone IGEM evidence remain separate. The locked test stays closed.",
+  "reported_kaggle_artifacts": {
+    "state_zip": {
+      "name": "af2-igem-parent-confirmation-state.zip",
+      "bytes": 266782
+    },
+    "final_evidence_zip": {
+      "name": "af2-igem-parent-confirmation-output.zip",
+      "bytes": 260570
+    }
+  },
+  "test_opened": false
+}
