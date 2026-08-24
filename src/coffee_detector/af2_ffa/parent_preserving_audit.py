@@ -33,7 +33,7 @@ FULL_FORWARD_SANITY_MAX_ABS = 1.0e-3
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024, b""), b""):
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
 
