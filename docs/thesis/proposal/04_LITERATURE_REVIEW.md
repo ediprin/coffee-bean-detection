@@ -1,6 +1,6 @@
 # BAB II — TINJAUAN PUSTAKA
 
-Status: citation-ready rewrite in progress following the adopted USU/campus proposal pattern. Sections 2.1–2.6 have been rewritten from verified primary/source-level evidence; Sections 2.7–2.9 remain working prose until their own source-level audit is closed.
+Status: citation-ready rewrite in progress following the adopted USU/campus proposal pattern. Sections 2.1–2.7 have been rewritten from verified primary/source-level evidence; Sections 2.8–2.9 remain working prose until their own source-level audit is closed.
 
 All bracketed citation keys must resolve through `docs/thesis/sources/CANONICAL_SOURCE_KEYS.md` or the master reference workbook. Numerical and methodological claims remain paper-scoped and must be traceable to the primary source.
 
@@ -98,13 +98,35 @@ Berdasarkan rangkaian bukti tersebut, penelitian ini menempatkan **fine-grained 
 
 ## 2.7 Preprocessing Citra untuk Object Detection
 
-Preprocessing citra merupakan transformasi yang dilakukan sebelum citra diproses oleh model utama. Tujuannya dapat berupa normalisasi data, peningkatan kontras, pengurangan noise, penajaman detail, atau transformasi representasi agar informasi yang relevan lebih mudah dimanfaatkan oleh detector.
+Preprocessing citra pada konteks object detection adalah transformasi terhadap citra **sebelum** citra tersebut diterima detector. Transformasi dapat bertujuan memperbaiki kontras, menekan noise, mempertahankan detail, atau mengubah representasi sinyal agar informasi tertentu lebih mudah dimanfaatkan oleh model. Posisi preprocessing perlu dibedakan dari modifikasi backbone, neck, atau detection head karena perlakuan dilakukan pada ruang input dan dapat dievaluasi sebagai treatment tersendiri terhadap detector yang sama.
 
-Pendekatan preprocessing dapat dibedakan secara sederhana menjadi dua kelompok. Pertama, preprocessing tetap (*fixed preprocessing*) seperti CLAHE, filtering, denoising, dan sharpening. Kedua, preprocessing yang parameter atau transformasinya dipelajari secara *task-driven* bersama detector.
+Literatur menunjukkan sedikitnya dua strategi besar. Strategi pertama menggunakan operator yang ditentukan tanpa jaringan enhancement yang dipelajari, misalnya kombinasi contrast enhancement, denoising, sharpening, atau transform-domain processing. Pada white-pepper defect detection, Syauqi et al. membandingkan YOLOv8m yang dilatih pada citra asli dengan citra yang telah melalui pipeline preprocessing. Walaupun paper menyebutnya *CLAHE-based preprocessing*, pipeline aktualnya bersifat komposit: gamma correction, CLAHE, bilinear blending, non-local means denoising, dan unsharp masking [PRE-04]. Kedua kondisi menggunakan 50 epoch, batch size 16, dan learning rate 0.0001; mAP50–95 yang dilaporkan meningkat dari 79% menjadi 82% pada kondisi enhanced [PRE-04]. Karena task tersebut hanya memiliki dua kelas, hasilnya digunakan sebagai bukti bahwa preprocessing input dapat memengaruhi downstream detection pada komoditas berbentuk biji, bukan sebagai bukti bahwa preprocessing yang sama akan menyelesaikan fine-grained coffee detection.
 
-Syauqi et al. menggunakan pipeline preprocessing berbasis CLAHE sebelum YOLOv8m pada white pepper dan membandingkannya dengan data tanpa preprocessing [PRE-04]. Chen et al. menggunakan kombinasi wavelet denoising dan image enhancement sebelum YOLOv8 pada maize seed crack detection [PRE-05]. IA-YOLO menunjukkan bahwa transformasi citra dapat dipelajari dengan tujuan meningkatkan downstream detection [PRE-01], sedangkan DENet menggunakan dekomposisi multiskala/frekuensi untuk menghasilkan enhancement yang diarahkan oleh kebutuhan deteksi [PRE-02].
+Contoh lain diberikan Chen et al. pada deteksi retak internal biji jagung menggunakan soft X-ray. Pipeline mereka menggabungkan wavelet-threshold denoising, image standardization, bilateral filtering, dan Laplacian sharpening sebelum YOLOv8 [PRE-05]. Paper tersebut menarik karena memisahkan kontribusi image enhancement dari optimasi arsitektur: optimized YOLOv8 dilaporkan meningkatkan AP sebesar 3.1 percentage points terhadap model asli, sedangkan penerapan image enhancement memberi tambahan 1.8 percentage points dalam setup mereka [PRE-05]. Sekali lagi, domain soft X-ray maize crack berbeda dari RGB green coffee sehingga angka tersebut hanya menjadi precedent desain eksperimen, bukan estimasi gain yang diharapkan pada tesis ini.
 
-Literatur ini mendukung penggunaan preprocessing sebagai ruang solusi yang sah, tetapi tidak membuktikan bahwa satu jenis preprocessing tertentu akan efektif pada cacat biji kopi.
+Transform-domain preprocessing juga telah digunakan sebagai operator pra-deteksi. Tu et al. mengusulkan WCTE pada low-contrast tablet defect detection dengan alur Haar-wavelet decomposition, frequency-band treatment, reconstruction, quadtree-guided CLAHE, dan bilinear fusion sebelum YOLOv11 [PRE-06]. Mereka melaporkan peningkatan overall mAP sebesar 2.5 percentage points dan penurunan false-detection rate sebesar 9% pada setup tersebut [PRE-06]. Studi ini memperluas ruang preprocessing dari transformasi intensitas murni menuju pemrosesan multiresolusi/transform-domain, tetapi target dan mekanismenya tetap berbeda dari frequency-angular preprocessing yang diuji pada kopi.
+
+Strategi kedua adalah **task-driven learned preprocessing**, yaitu transformasi citra dipelajari bersama detector agar tujuan enhancement selaras dengan objective deteksi. IA-YOLO secara eksplisit mengingatkan bahwa peningkatan kualitas visual citra tidak otomatis meningkatkan detection performance [PRE-01]. Dalam IA-YOLO, CNN-PP memprediksi parameter untuk differentiable image-processing filters—termasuk defog, white balance, gamma, contrast, tone, dan sharpen—kemudian citra hasil filtering diberikan ke YOLOv3. CNN-PP dan detector dilatih end-to-end menggunakan detection loss sehingga parameter preprocessing dipelajari untuk downstream detection, bukan hanya untuk menghasilkan citra yang tampak lebih baik bagi manusia [PRE-01].
+
+DENet mengambil pendekatan task-driven yang berbeda. Input diuraikan dengan Laplacian pyramid menjadi satu komponen low-frequency dan beberapa high-frequency residual components. Low-frequency branch digunakan untuk menangani informasi global seperti illumination/contrast, sedangkan high-frequency components mempertahankan detail seperti edges dan textures. Enhanced image kemudian diberikan ke YOLOv3 dan keseluruhan DE-YOLO dilatih end-to-end menggunakan detection loss tanpa membutuhkan clean-image ground truth [PRE-02]. Dengan demikian, IA-YOLO dan DENet memberi precedent bahwa preprocessing dapat ditempatkan sebelum detector tetapi tetap dioptimalkan berdasarkan utility deteksi.
+
+Perbedaan antara *visual enhancement* dan *detection-oriented enhancement* juga terlihat pada literatur low-light. Retinexformer mengembangkan enhancement berbasis Retinex dan Transformer dan turut mengevaluasi nilai praktis enhancement pada downstream low-light detection [PRE-07]. FE-YOLO melangkah lebih jauh dengan menggabungkan Fourier Enhanced Network dan YOLO dalam satu training objective: amplitude/phase diproses di domain Fourier, kemudian enhancement loss dan detection loss dioptimalkan bersama [PRE-03]. FE-YOLO juga menunjukkan bahwa beberapa enhancement terpisah yang memperbaiki brightness belum tentu menghasilkan deteksi terbaik karena noise atau artifacts yang diperkenalkan preprocessing dapat merugikan detector [PRE-03]. Temuan ini penting sebagai batas interpretasi: citra yang terlihat lebih kontras atau lebih tajam tidak boleh dianggap otomatis lebih informatif bagi YOLO.
+
+Di sisi lain, tidak semua manipulasi input-space harus memiliki jaringan preprocessing yang dipelajari. Fourier Domain Adaptation (FDA) melakukan manipulasi amplitude pada domain Fourier dan inverse transform kembali ke ruang citra tanpa image-translation network; task aslinya adalah unsupervised domain adaptation untuk semantic segmentation, bukan object detection [PRE-08]. FDA karena itu hanya memberi precedent bahwa operasi Fourier non-learned dapat digunakan untuk mengubah statistik citra sambil mempertahankan struktur task, bukan bukti efektivitas AF2 pada kopi.
+
+Berdasarkan spektrum pendekatan tersebut, preprocessing dalam tesis ini ditempatkan sebagai **parameter-free, input-space, content-adaptive spectral preprocessing**. AF2 tidak memiliki CNN-PP seperti IA-YOLO, enhancement network seperti DENet/FE-YOLO, atau parameter trainable lain pada frontend. Namun AF2 juga bukan sekadar filter global dengan konstanta tunggal, karena respons angularnya dihitung dari statistik spektral citra/patch yang sedang diproses. Secara konseptual:
+
+\[
+I' = \mathcal{P}_{FA}(I), \qquad \Theta_{\mathcal{P}_{FA}}^{\mathrm{trainable}} = \varnothing,
+\]
+
+kemudian
+
+\[
+\hat{Y}=\operatorname{YOLO26}(I').
+\]
+
+Posisi ini menghasilkan pertanyaan eksperimen yang lebih bersih: apakah transformasi input tanpa parameter trainable tambahan dapat memperbaiki utility citra bagi YOLO26 pada fine-grained coffee-defect detection? Literatur preprocessing di atas membuat pertanyaan tersebut **layak diuji**, tetapi tidak menetapkan jawabannya. Dasar matematis mengapa preprocessing yang diusulkan disebut *frekuensi-angular* dibahas pada Subbab 2.8.
 
 ---
 
