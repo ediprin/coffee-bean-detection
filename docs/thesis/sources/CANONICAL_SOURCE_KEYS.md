@@ -35,6 +35,7 @@ No new proposal draft may invent a key that collides with an existing canonical 
 | COF-14 | Muchtar et al. 2025 — edge AI defective coffee beans |
 | COF-15 | Hsia et al. 2022 — explainable/lightweight green-coffee quality detection |
 | COF-16 | Gope et al. 2025 — cross-family coffee benchmark |
+| COF-17 | García, Candelo-Becerra & Hoyos 2019 — computer-vision quality/defect inspection of green coffee beans |
 | COF-SUP-01 | Kesiman et al. 2024 — Coffection web-based SNI grading application |
 
 ## Detector / evaluation keys
