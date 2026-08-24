@@ -10,10 +10,26 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt
 
+# SPs guide convention used here:
+# - caption below figure;
+# - centered;
+# - no period after the figure number;
+# - no terminal period;
+# - title case;
+# - TNR 12 unless a verified exception is introduced later.
 FIGURES = {
-    "Gambar 3.1 pada dokumen final:": ("fig_3_1_research_framework.png", "Gambar 3.1. Kerangka penelitian"),
-    "Gambar 3.2 pada dokumen final:": ("fig_3_2_native_vs_af2.png", "Gambar 3.2. Arsitektur native YOLO26 dan AF2–YOLO26"),
-    "Gambar 3.3 pada dokumen final:": ("fig_3_3_af2_operator.png", "Gambar 3.3. Alur preprocessing frekuensi-angular AF2"),
+    "Gambar 3.1 pada dokumen final:": (
+        "fig_3_1_research_framework.png",
+        "Gambar 3.1  Kerangka Penelitian",
+    ),
+    "Gambar 3.2 pada dokumen final:": (
+        "fig_3_2_native_vs_af2.png",
+        "Gambar 3.2  Arsitektur Native YOLO26 dan AF2–YOLO26",
+    ),
+    "Gambar 3.3 pada dokumen final:": (
+        "fig_3_3_af2_operator.png",
+        "Gambar 3.3  Alur Preprocessing Frekuensi-Angular AF2",
+    ),
 }
 
 
@@ -28,6 +44,7 @@ def insert_paragraph_after(paragraph, text=""):
     new_p = OxmlElement("w:p")
     paragraph._p.addnext(new_p)
     from docx.text.paragraph import Paragraph
+
     p = Paragraph(new_p, paragraph._parent)
     if text:
         p.add_run(text)
@@ -45,13 +62,14 @@ def style_caption(p, text: str):
         r.font.name = "Times New Roman"
         r._element.get_or_add_rPr().rFonts.set(qn("w:ascii"), "Times New Roman")
         r._element.get_or_add_rPr().rFonts.set(qn("w:hAnsi"), "Times New Roman")
-        r.font.size = Pt(10)
+        r.font.size = Pt(12)
 
 
 def add_picture_in_paragraph(p, image: Path, width_cm: float):
     clear_paragraph(p)
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.first_line_indent = Cm(0)
+    p.paragraph_format.keep_with_next = True
     run = p.add_run()
     run.add_picture(str(image), width=Cm(width_cm))
 
@@ -63,9 +81,12 @@ def insert_fig_34(doc: Document, image_dir: Path):
     for p in doc.paragraphs:
         if p.text.strip().startswith("3.6 Analisis dan Optimasi AF2"):
             img_p = insert_paragraph_after(p)
-            add_picture_in_paragraph(img_p, image, 14.0)
+            add_picture_in_paragraph(img_p, image, 13.5)
             cap = insert_paragraph_after(img_p)
-            style_caption(cap, "Gambar 3.4. Genealogi optimasi AF2 dan eksperimen konfirmatori")
+            style_caption(
+                cap,
+                "Gambar 3.4  Genealogi Optimasi AF2 dan Eksperimen Konfirmatori",
+            )
             return True
     return False
 
@@ -86,7 +107,7 @@ def main():
                 image = args.image_dir / filename
                 if not image.exists():
                     raise FileNotFoundError(image)
-                add_picture_in_paragraph(p, image, 14.0)
+                add_picture_in_paragraph(p, image, 13.5)
                 cap = insert_paragraph_after(p)
                 style_caption(cap, caption)
                 found[marker] = True
