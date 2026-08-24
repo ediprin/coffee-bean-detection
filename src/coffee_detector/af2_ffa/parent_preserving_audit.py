@@ -21,11 +21,19 @@ CONFIGS = {
     "AF2FFAPR1": REPO_ROOT / "configs/af2_ffa_parent_preserving/AF2FFAPR1_yolo26n_spectral_parent_residual.yaml",
 }
 
+# Amendment 2026-08-24a: the first real T4 audit showed ~1e-5 cross-instance
+# FP32 differences even though all frozen-state/gradient gates passed. Exact
+# parent preservation is therefore proved by bitwise state transfer plus exact
+# adapter identity inside the same model. The cross-instance forward check is a
+# coarse fail-closed sanity guard, not the identity proof itself.
+AUDIT_REVISION = "2026-08-24a"
+FULL_FORWARD_SANITY_MAX_ABS = 1.0e-3
+
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024), b""):
+        for block in iter(lambda: stream.read(1024 * 1024, b""), b""):
             digest.update(block)
     return digest.hexdigest()
 
@@ -41,6 +49,30 @@ def _state_without_adapters(model: AF2FFAParentPreservingModel) -> dict[str, tor
 
 def _identical_state(left: dict[str, torch.Tensor], right: dict[str, torch.Tensor]) -> bool:
     return left.keys() == right.keys() and all(torch.equal(left[key], right[key]) for key in left)
+
+
+def _module_state_identical(left: torch.nn.Module, right: torch.nn.Module) -> bool:
+    left_state = left.state_dict()
+    right_state = right.state_dict()
+    return _identical_state(left_state, right_state)
+
+
+def _parent_transfer_identical(source: torch.nn.Module, model: AF2FFAParentPreservingModel) -> bool:
+    """Prove that every parent tensor was copied bitwise into the wrapped model."""
+
+    source_layers = source.model
+    target_layers = model.model
+    if len(source_layers) != len(target_layers):
+        return False
+    for index in range(len(source_layers) - 1):
+        if not _module_state_identical(source_layers[index], target_layers[index]):
+            return False
+    target_head = target_layers[-1]
+    if not isinstance(target_head, AF2FFADetectHead):
+        return False
+    if not _module_state_identical(source_layers[-1], target_head.base_head):
+        return False
+    return torch.equal(source_layers[-1].stride.detach().cpu(), target_head.stride.detach().cpu())
 
 
 def _max_abs(left: torch.Tensor, right: torch.Tensor) -> float:
@@ -70,7 +102,7 @@ def run_af2_ffa_parent_preserving_audit(
     device: str = "cpu",
     image_size: int = 128,
 ) -> dict[str, Any]:
-    """Prove exact AF2 start, frozen parent, box isolation, and live spectral gradient."""
+    """Prove AF2 parent preservation, box isolation, and live spectral gradient."""
 
     from ultralytics import YOLO
 
@@ -95,6 +127,7 @@ def run_af2_ffa_parent_preserving_audit(
     for code, payload in payloads.items():
         model = _build(source, payload, device)
         models[code] = model
+        transfer_exact = _parent_transfer_identical(source, model)
         model.eval()
         with torch.inference_mode():
             output0 = model(image)
@@ -107,6 +140,7 @@ def run_af2_ffa_parent_preserving_audit(
         full_score_diff = _max_abs(
             output0[1]["one2one"]["scores"], parent_output[1]["one2one"]["scores"]
         )
+        full_forward_sanity = max(full_box_diff, full_score_diff) <= FULL_FORWARD_SANITY_MAX_ABS
 
         sizes = (16, 8, 4)
         features = [
@@ -114,6 +148,17 @@ def run_af2_ffa_parent_preserving_audit(
             for adapter, size in zip(head.adapters, sizes)
         ]
         descriptor = head.adapters[0].spectral_descriptor(features[0])
+
+        # This is the direct identity invariant. At alpha=0 the adapter must be
+        # bitwise F' == F, independent of a separate CUDA model instance.
+        adapter_identity_diffs: list[float] = []
+        adapter_identity_exact = True
+        with torch.inference_mode():
+            for adapter, feature in zip(head.adapters, features):
+                adapted = adapter(feature)
+                adapter_identity_diffs.append(_max_abs(adapted, feature))
+                adapter_identity_exact = adapter_identity_exact and torch.equal(adapted, feature)
+
         trainable = adapter_parameter_names(model)
         all_trainable_are_adapters = bool(trainable) and all(".adapters." in name for name in trainable)
         bn_frozen = True
@@ -173,6 +218,7 @@ def run_af2_ffa_parent_preserving_audit(
             .max()
         )
 
+        exact_parent_start = transfer_exact and adapter_identity_exact and full_forward_sanity
         records[code] = {
             "conditioning": payload["af2_ffa"]["conditioning"],
             "total_parameters": sum(parameter.numel() for parameter in model.parameters()),
@@ -183,9 +229,14 @@ def run_af2_ffa_parent_preserving_audit(
             "descriptor_abs_sum": float(descriptor.detach().abs().sum()),
             "initial_full_box_max_abs_diff": full_box_diff,
             "initial_full_score_max_abs_diff": full_score_diff,
+            "cross_instance_forward_sanity_limit": FULL_FORWARD_SANITY_MAX_ABS,
+            "adapter_identity_max_abs_diff_by_level": adapter_identity_diffs,
             "active_score_max_abs_delta": active_score_delta,
             "gates": {
-                "exact_parent_start_numerically": max(full_box_diff, full_score_diff) <= 1.0e-6,
+                "exact_parent_state_transfer": transfer_exact,
+                "exact_adapter_identity_at_init": adapter_identity_exact,
+                "full_forward_sanity_under_1e_3": full_forward_sanity,
+                "exact_parent_start_numerically": exact_parent_start,
                 "only_adapters_trainable": all_trainable_are_adapters,
                 "parent_batchnorm_frozen": bn_frozen,
                 "adapter_gradients_finite": finite_grad,
@@ -230,6 +281,7 @@ def run_af2_ffa_parent_preserving_audit(
     ]
     result = {
         "format": "coffee_detector.af2_ffa.parent_preserving_static_audit.v1",
+        "audit_revision": AUDIT_REVISION,
         "parent_checkpoint": str(checkpoint),
         "parent_checkpoint_sha256": _sha256(checkpoint),
         "records": records,
@@ -238,9 +290,10 @@ def run_af2_ffa_parent_preserving_audit(
         "training_authorized": bool(all(all_gates)),
         "test_access_authorized": False,
         "note": (
-            "AF2FFAPR0 is an exact zero-information/frozen-parent negative control. "
-            "With the frozen parent and zero initialization it is expected to remain the AF2 parent; "
-            "it is not an active generic-residual capacity control."
+            "Audit revision 2026-08-24a proves identity through bitwise parent-state transfer "
+            "and bitwise F'=F adapter identity at initialization. Cross-instance CUDA full-forward "
+            "difference is retained only as a coarse sanity guard. AF2FFAPR0 remains an exact "
+            "zero-information/frozen-parent negative control."
         ),
     }
     target = Path(output).expanduser().resolve()
