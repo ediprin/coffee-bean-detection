@@ -2,9 +2,9 @@
 
 Date: 2026-08-24
 
-Status: **completed through selective-refinement diagnosis; parent-preserving follow-up is implemented/frozen but has not been run yet. Test remained locked in the experiments recorded here.**
+Status: **completed through parent-preserving follow-up. Test remained locked in every experiment recorded here.**
 
-This ledger consolidates the AF2+FFAB2 experiments that were discussed and completed across three distinct training/evaluation regimes. It intentionally keeps their comparators separate.
+This ledger consolidates the AF2+FFAB2 experiments that were discussed and completed across four distinct training/evaluation regimes. It intentionally keeps their comparators separate.
 
 ## Executive result
 
@@ -13,9 +13,9 @@ This ledger consolidates the AF2+FFAB2 experiments that were discussed and compl
 | Staged continuation AF2FFAB2 | AF2FFA0 continuation control | +1.44 pp | +2.83 pp | +2.27 pp | **PASS** |
 | Matched from-start AF2FFAB2FS | AF2FS | -0.0687 pp | +1.4151 pp | +2.1082 pp | **REJECT** (Macro gate) |
 | Selective runtime diagnosis (best Macro: `beta_0.25`) | AF2FS | -0.0605 pp | +1.3914 pp | +2.1180 pp | **NO_RUNTIME_CANDIDATE_PASSES_GATE** |
-| AF2 parent-preserving FFAB2 | frozen completed AF2 parent + matched zero/spectral residual study | — | — | — | **NOT RUN YET** |
+| AF2 parent-preserving FFAB2 | frozen completed AF2FS parent | +0.0057 pp | -0.0223 pp | -0.0216 pp | **REJECT** |
 
-The continuation PASS does **not** mean FFAB2 universally improves the original AF2 checkpoint. Its causal comparator was the equally continued zero-information control. The matched from-start experiment is the direct test of AF2+FFAB2 versus AF2 under the same from-start schedule, and it failed the frozen Macro-improvement gate.
+The continuation PASS does **not** mean FFAB2 universally improves the original AF2 checkpoint. Its causal comparator was the equally continued zero-information control. The matched from-start experiment is the direct test of AF2+FFAB2 versus AF2 under the same from-start schedule, and it failed the frozen Macro-improvement gate. The parent-preserving follow-up then tested whether FFAB2 alone can add value without allowing the AF2 parent to move; it also failed.
 
 ## 1. Staged continuation: AF2FFAB2 vs AF2FFA0
 
@@ -118,19 +118,59 @@ Only two classes improved in all 3/3 seeds: **`biji_berlubang_satu` (+2.6165 pp)
 - Therefore the earlier hypothesis that *inference-time FFAB2 strength alone* was the main cause of Macro loss is not supported.
 - A plausible explanation is training co-adaptation: the AF2FFAB2FS backbone/neck/classifier trajectory changed during joint optimization, so setting the adapter residual to zero after training does not recreate the AF2FS checkpoint. This is a **mechanistic hypothesis consistent with the ablation**, not causal proof.
 
-## 5. Follow-up status: AF2 parent-preserving FFAB2
+## 5. Parent-preserving FFAB2: AF2FFAPR1 vs frozen AF2FS
 
-A separate follow-up has now been implemented and frozen on branch `codex/af2-ffab2-parent-preserving`. It starts from the completed seed-matched AF2FS checkpoint, freezes the AF2 parent (including BatchNorm state), and trains only the FFAB2 adapters through an explicit parent-residual classification path. A matched zero-information/spectral residual design is used to distinguish generic residual optimization from frequency evidence.
+This follow-up started from the completed seed-matched AF2FS checkpoint, froze the AF2 frontend, backbone, neck, native regression/classification paths, and BatchNorm state, and trained only the FFAB2 adapters. The research question was whether frequency-conditioned residual adaptation can add value without allowing the mature AF2 parent to co-adapt.
 
-**No result is recorded yet for this follow-up. Do not report it as PASS/FAIL until the parent-preserving Kaggle run completes.**
+Frozen decision gate: Macro mean gain >= +0.50 pp with >=2/3 improved seeds; Bottom-3 mean gain >= +0.50 pp with >=2/3 improved seeds; Worst mean delta >= 0 with >=2/3 improved seeds.
 
-Protocol: `docs/FARUQ_V3_AF2_FFAB2_PARENT_PRESERVING_PROTOCOL_2026-08-24.md`.
+| Metric | Frozen AF2FS parent | AF2FFAPR1 | Mean Δ | Improved seeds |
+|---|---:|---:|---:|---:|
+| Macro mAP50-95 | 87.6195% | 87.6252% | **+0.0057 pp** | 2/3 |
+| Bottom-3 class mAP50-95 | 78.2931% | 78.2708% | **-0.0223 pp** | 0/3 |
+| Worst-class mAP50-95 | 75.1328% | 75.1112% | **-0.0216 pp** | 0/3 |
 
-Notebook: `notebooks/Faruq_V3_AF2_FFAB2_Parent_Preserving_All_Seeds_Kaggle.ipynb`.
+Per-seed deltas:
+
+- seed 42: Macro +0.0044 pp, Bottom-3 0.0000 pp, Worst 0.0000 pp;
+- seed 123: Macro -0.0003 pp, Bottom-3 0.0000 pp, Worst 0.0000 pp;
+- seed 2026: Macro +0.0130 pp, Bottom-3 -0.0668 pp, Worst -0.0648 pp.
+
+Frozen criteria:
+
+- `macro_mean_gain_at_least_0_5pp=false`
+- `macro_improves_at_least_2_of_3=true`
+- `bottom3_mean_gain_at_least_0_5pp=false`
+- `bottom3_improves_at_least_2_of_3=false`
+- `worst_mean_not_lower=false`
+- `worst_improves_at_least_2_of_3=false`
+
+Final decision: **`REJECT`**.
+
+Next: **`STOP_PARENT_PRESERVING_FFAB2_ROUTE`**.
+
+The result shows that FFAB2 alone did not provide meaningful incremental headroom on a frozen mature AF2 representation. Macro was effectively unchanged and the lower-tail metrics were slightly lower. This is consistent with the broader observation that the FFAB2 tail gains seen during joint adaptation are not reproduced when only the FFAB2 residual is allowed to learn. This interpretation is consistent with the experiment chain but is not proof of a unique causal mechanism.
+
+Important provenance note: the completed decision artifact recorded `zero_control: null`, so this final parent-preserving run is a direct AF2FFAPR1-versus-frozen-AF2FS test, not a completed spectral-versus-zero-information residual comparison. This does not change the REJECT decision because the spectral candidate itself failed the preregistered parent-improvement gate.
+
+Detailed result: `docs/FARUQ_V3_AF2_FFAB2_PARENT_PRESERVING_RESULT_2026-08-24.md`.
+
+## 6. Experiment-chain conclusion
+
+The evidence across the four regimes is now:
+
+1. **Continuation:** FFAB2 beats an equally continued zero-information control and improves Macro/Bottom-3/Worst under that matched continuation regime.
+2. **From-start:** the lower-tail benefit persists, but the global Macro-upgrade criterion does not replicate.
+3. **Selective runtime diagnosis:** changing adapter strength, level routing, parent mixing, or ambiguity gating at inference does not recover a positive Macro mean delta.
+4. **Frozen parent:** FFAB2 alone is effectively neutral on Macro and slightly negative on Bottom-3/Worst, so it does not provide a parent-preserving upgrade.
+
+The disciplined conclusion is therefore: **FFAB2 is not retained as a global or parent-preserving upgrade of AF2. Its strongest evidence remains a regime-dependent lower-tail benefit when optimized jointly/continuationally with the network.**
 
 ## Evidence / provenance
 
 - Continuation result: `docs/FARUQ_V3_AF2_FFA_B2_PAIRED_CONFIRMATION_RESULT_2026-08-22.md`.
 - From-start runner/decision: `run_faruq_v3_af2_ffa_from_start_decision.py`; result values reproduced by the completed `AF2FFAB2FS` checkpoint under `beta_1.00` in `selectivity_analysis.json`.
-- Selective-refinement raw artifact supplied after the Kaggle run: `selectivity_analysis.json`, format `coffee_detector.af2_ffa.selectivity_analysis.v1`.
+- Selective-refinement raw artifact: `selectivity_analysis.json`, format `coffee_detector.af2_ffa.selectivity_analysis.v1`.
+- Parent-preserving final result: `docs/FARUQ_V3_AF2_FFAB2_PARENT_PRESERVING_RESULT_2026-08-24.md`.
+- Parent-preserving decision artifact format: `coffee_detector.af2_ffa.parent_preserving_decision.v1`.
 - Test remained locked for all experiments summarized in this ledger.
