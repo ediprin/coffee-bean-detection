@@ -1,0 +1,44 @@
+{
+  "date": "2026-08-24",
+  "branch": "codex/af2-direct-from-pretrained",
+  "experiment": "AF2 direct-from-pretrained seed-42 promotion screen",
+  "capture_status": "partial_numeric_capture",
+  "decision": "PROMOTE_TO_3_SEED",
+  "screen": {
+    "localization_safe": true,
+    "route_a_direct_overall_gain": true,
+    "route_b_lower_tail_pareto": true
+  },
+  "epochs_recorded": {
+    "D0DIRECT": 50,
+    "AF2DIRECT": 50
+  },
+  "pretrained_sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+  "common_initial_detector_sha256": "f21cfa9fd1e23624494ad57a48bb3fdd878f46a742f57f0d490bee3ac0d08e1a",
+  "test_opened": false,
+  "D0DIRECT": {
+    "primary": {
+      "macro_map50_95": 0.7990236487299918,
+      "bottom3_class_map50_95": 0.6456923842347432,
+      "worst_class_map50_95": 0.6176885884935709
+    },
+    "mechanism": {
+      "raw_top500_proposal_accessibility": 0.9980988593155894,
+      "localization_conditioned_top1": 0.5702917771883289,
+      "correct_decision_recall": 0.40874524714828897
+    }
+  },
+  "AF2DIRECT": {
+    "primary": null,
+    "mechanism": null,
+    "paired_deltas": null,
+    "note": "Exact AF2DIRECT numeric metrics were not present in the supplied completion excerpt. They must be imported from the saved Kaggle state/output artifact; no values are inferred here."
+  },
+  "state_snapshot": {
+    "path": "/kaggle/working/af2-direct-from-pretrained-seed42-state.zip",
+    "final_reported_size_bytes": 19489440,
+    "earlier_control_snapshot_size_bytes": 47178545
+  },
+  "protocol": "docs/FARUQ_V3_AF2_DIRECT_FROM_PRETRAINED_PROTOCOL_2026-08-24.md",
+  "claim_boundary": "Seed-42 promotion only. Three-seed confirmation is required before any final direct-AF2 superiority claim. Locked test remains closed."
+}
