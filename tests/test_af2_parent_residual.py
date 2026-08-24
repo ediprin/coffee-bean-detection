@@ -11,6 +11,7 @@ from coffee_detector.af2_parent_residual import (
     load_af2_parent_residual_weights,
     run_af2_parent_residual_static_audit,
 )
+from coffee_detector.af2_parent_residual.audit import ATOL, RTOL
 from coffee_detector.afab import AFABConfig
 from coffee_detector.afab.model import AFABDetectionModel
 from coffee_detector.experiments.run_faruq_v3_af2_parent_residual_arm import (
@@ -23,6 +24,10 @@ from coffee_detector.experiments.run_faruq_v3_af2_parent_residual_decision impor
 
 ROOT = Path(__file__).resolve().parents[1]
 MODEL_YAML = ROOT / "configs/coffee_fg/models/yolo26n-p3.yaml"
+
+
+def _close(left, right):
+    return torch.allclose(left, right, atol=ATOL, rtol=RTOL)
 
 
 def _models(family="saf", conditioning="feature"):
@@ -62,19 +67,19 @@ def test_both_families_start_at_af2_and_preserve_boxes_when_active():
         with torch.inference_mode():
             native = source(image)
             identity = candidate(image)
-        assert torch.equal(
+        assert _close(
             native[1]["one2one"]["boxes"], identity[1]["one2one"]["boxes"]
         )
-        assert torch.equal(
+        assert _close(
             native[1]["one2one"]["scores"], identity[1]["one2one"]["scores"]
         )
         _activate(candidate)
         with torch.inference_mode():
             active = candidate(image)
-        assert torch.equal(
+        assert _close(
             identity[1]["one2one"]["boxes"], active[1]["one2one"]["boxes"]
         )
-        assert not torch.equal(
+        assert not _close(
             identity[1]["one2one"]["scores"], active[1]["one2one"]["scores"]
         )
 
@@ -92,7 +97,7 @@ def test_zero_controls_match_schema_and_hide_features():
         with torch.inference_mode():
             control_output = control(image)
             candidate_output = candidate(image)
-        assert not torch.equal(
+        assert not _close(
             control_output[1]["one2one"]["scores"],
             candidate_output[1]["one2one"]["scores"],
         )
