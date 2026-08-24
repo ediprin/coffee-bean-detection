@@ -1,4 +1,4 @@
-# Proposal Skeleton
+# Proposal Skeleton — Synchronized
 
 Working title:
 
@@ -6,240 +6,259 @@ Working title:
 
 Status: working title; terminology may be refined after advisor feedback.
 
+This skeleton is an index/consistency document. Detailed prose is maintained in the chapter files.
+
+---
+
 ## Bab I — Pendahuluan
 
 ### 1.1 Latar Belakang
 
-Required evidence chain:
+Authoritative draft: `02_BACKGROUND.md`.
 
-1. coffee quality / physical defect inspection matters;
-2. manual inspection has consistency and throughput limitations;
-3. computer vision and deep learning have been adopted;
-4. YOLO-family methods are viable for coffee detection;
-5. strong few/coarse-class results do not resolve detailed multi-class detection;
-6. fine-grained taxonomies expose visually similar and difficult classes;
-7. current coffee solutions mostly alter internal model representation;
-8. image preprocessing is an alternative route to improve input utility;
-9. task-driven and frequency-aware preprocessing has precedent outside coffee;
-10. frequency-angular processing is therefore a testable hypothesis, not an assumed solution;
-11. AF2 is positioned as parameter-free input-space preprocessing before YOLO26;
-12. one-seed pilot evidence supports feasibility but is not a final conclusion.
+Required argument chain:
 
-### 1.2 Identifikasi Masalah
+```text
+coffee quality / physical inspection
+-> limitations of manual selection
+-> computer vision and deep learning
+-> YOLO viability in coffee
+-> finer taxonomy exposes class-wise disparity / visual similarity
+-> discriminative representation problem
+-> coffee literature mostly modifies model internally
+-> preprocessing is an alternative solution space
+-> frequency/angular evidence makes AF2 technically testable
+-> matched AF2 + YOLO26 experiment
+-> pilot evidence = feasibility only
+```
 
-Draft problems:
+Causal guardrail:
 
-- detailed coffee-defect taxonomies show substantial class-wise performance disparity;
-- visually similar defect classes are difficult to discriminate;
-- aggregate detector metrics can hide weak lower-tail classes;
-- most coffee approaches improve discriminative representation internally, while parameter-free frequency-angular input preprocessing remains insufficiently studied in the audited coffee corpus;
-- classification/discrimination and localization effects should be distinguished when interpreting gains.
+```text
+coffee fine-grained difficulty != proven frequency bottleneck
+```
 
-### 1.3 Rumusan Masalah
+### 1.2–1.6 Identifikasi, Rumusan, Tujuan, Batasan, Kontribusi
 
-RQ1. Apakah preprocessing citra berbasis frekuensi-angular dapat meningkatkan kinerja YOLO26 dalam mendeteksi cacat biji kopi secara fine-grained dibandingkan YOLO26 tanpa preprocessing tersebut?
+Authoritative draft: `03_PROBLEM_FORMULATION.md`.
 
-RQ2. Bagaimana pengaruh preprocessing frekuensi-angular terhadap kelas-kelas cacat yang memiliki kinerja rendah atau sulit dibedakan?
+Current research questions:
 
-RQ3. Apakah perubahan kinerja yang dihasilkan lebih berkaitan dengan kemampuan diskriminasi kelas daripada perubahan kemampuan lokalisasi objek?
+**RQ1.** Apakah preprocessing citra berbasis frekuensi-angular dapat meningkatkan kinerja YOLO26 dalam mendeteksi cacat biji kopi secara fine-grained dibandingkan YOLO26 tanpa preprocessing tersebut?
 
-### 1.4 Tujuan Penelitian
+**RQ2.** Bagaimana pengaruh preprocessing frekuensi-angular terhadap kelas-kelas cacat yang memiliki kinerja rendah atau sulit dibedakan?
 
-1. Mengimplementasikan dan mengevaluasi preprocessing frekuensi-angular sebagai front-end input YOLO26 untuk deteksi cacat biji kopi.
-2. Menganalisis dampaknya terhadap kinerja agregat dan lower-tail class performance.
-3. Menganalisis perubahan pada aspek diskriminasi kelas dan lokalisasi secara terpisah sejauh dapat diukur.
-4. Mengevaluasi trade-off akurasi dan efisiensi karena AF2 tidak menambah learned parameters tetapi menambah komputasi input processing.
+**RQ3.** Apakah pola perubahan kinerja yang dihasilkan lebih konsisten dengan peningkatan diskriminasi kelas daripada peningkatan aksesibilitas proposal/lokalisasi mentah?
 
-### 1.5 Batasan Penelitian
+RQ3 guardrail: raw proposal accessibility adalah diagnostic/proxy dan tidak identik dengan full box-regression quality.
 
-- task utama adalah object detection pada green coffee beans;
-- detector utama YOLO26, dengan baseline native yang matched;
-- AF2 bekerja pada input image, bukan sebagai neck/head/backbone module;
-- proposal tidak mengklaim AF2 sebagai penyebab universal peningkatan seluruh kelas;
-- novelty global / first-ever claim tidak digunakan tanpa systematic verification;
-- pilot seed-42 hanya bukti kelayakan awal;
-- final thesis validation should use repeated seeds / paired protocol as defined in the experiment protocol;
-- test split remains locked according to repository protocol.
+Main objectives:
 
-### 1.6 Manfaat / Kontribusi yang Diharapkan
+1. evaluate native YOLO26 vs AF2-YOLO26 under matched conditions;
+2. analyze aggregate and lower-tail class behavior;
+3. compare discrimination-oriented and proposal-accessibility diagnostics without causal overclaim;
+4. measure accuracy–efficiency trade-off.
 
-Scientific contribution:
-
-- controlled evaluation of parameter-free frequency-angular input preprocessing for fine-grained coffee-defect detection;
-- class-wise and tail-oriented analysis rather than aggregate mAP only;
-- diagnostic interpretation separating discrimination from localization where possible.
-
-Engineering contribution:
-
-- preprocessing can be attached to an existing detector without increasing detector learned-parameter count;
-- explicit efficiency measurement prevents the misleading claim that parameter-free means compute-free.
+---
 
 ## Bab II — Tinjauan Pustaka
 
-**Structural convention:** follow the uploaded USU proposal pattern: application/domain foundation → conventional process/challenge → core technical foundations → method-specific theory → `Penelitian Terkait` comparison table → final `Penelitian yang Diusulkan` row.
+Campus convention source: `../foundation/06_USU_BAB2_PATTERN.md`.
 
-Detailed rationale: `docs/thesis/foundation/06_USU_BAB2_PATTERN.md`.
+Main draft: `04_LITERATURE_REVIEW.md`.
+
+Normalized assembly modules:
+
+- `04_02_INSPECTION_QUALITY_NORMALIZED.md` — authoritative replacement for §2.2;
+- `04_09_RELATED_WORK_TABLE.md` — authoritative §2.9 table.
 
 ### 2.1 Biji Kopi Hijau dan Cacat Fisik Biji Kopi
 
-- green coffee bean as inspection object;
-- physical defect concept and relevant taxonomy;
-- normal / defect / contaminant distinction where required;
-- concise standards context (SNI/SCA only to support the thesis scope).
+Standard + taxonomy context. Do not equate dataset labels with the complete SNI grading procedure.
 
 ### 2.2 Inspeksi Mutu Biji Kopi: Metode Konvensional dan Tantangannya
 
-- manual visual grading / sorting;
-- subjectivity, consistency, throughput;
-- subtle visual similarity and detailed taxonomy;
-- transition to automated computer vision.
+Use normalized module. Primary routing:
+
+```text
+COF-17 Garcia 2019 -> manual/mechanical inspection + classical machine vision
+COF-10 de Oliveira -> traditional controlled feature engineering
+REV-01 -> landscape only
+COF-14 -> modern DL/edge transition
+```
+
+Do not recycle `COF-07/08` here; reserve them for taxonomy/fine-grained roles.
 
 ### 2.3 Object Detection
 
-- classification + localization;
-- bounding box and class prediction;
-- confidence / IoU basics;
-- conceptual distinction between classification quality and localization quality.
+Use canonical detector sources plus classification/localization diagnostics.
 
-### 2.4 YOLO (You Only Look Once)
+### 2.4 YOLO
 
-- one-stage detection concept;
-- brief YOLO-family development only as necessary;
-- relevance to real-time agricultural inspection;
-- coffee-domain viability evidence.
+Original YOLO is the theory source; coffee studies only show domain adoption.
 
 ### 2.5 YOLO26
 
-- detector used in the thesis;
-- architecture/training properties relevant to the controlled comparison;
-- original YOLO26 source + repository/config evidence;
-- AF2 is not discussed as part of YOLO26.
+YOLO26 primary source is a 2026 preprint. AF2 is not part of YOLO26 backbone/neck/head.
 
 ### 2.6 Fine-Grained Object Detection
 
-- small inter-class vs relatively larger intra-class variations;
-- visually similar coffee defects;
-- discriminative representation requirement;
-- aggregate metric vs difficult-class / lower-tail behavior.
+General FG/FGOD theory + independent coffee classification/detection evidence. Hong is not required as the dominant source here.
 
 ### 2.7 Preprocessing Citra untuk Object Detection
 
-- preprocessing before detector;
-- fixed vs learned/task-driven preprocessing;
-- CLAHE / contrast enhancement as conventional precedent;
-- detection-driven enhancement such as IA-YOLO and DENet;
-- preprocessing quality must be judged by downstream detection, not visual aesthetics alone.
+Separate fixed/composite, learned task-driven, transform-domain, and Fourier preprocessing. Downstream detector utility is the evaluation criterion.
 
 ### 2.8 Representasi Citra pada Domain Frekuensi
 
-#### 2.8.1 Discrete Fourier Transform dan Fast Fourier Transform
+Subsections:
 
-- spatial-to-frequency representation;
-- core notation and reconstruction.
+1. DFT/FFT;
+2. amplitude/phase;
+3. radial/angular representation;
+4. frequency-aware processing in input space vs feature space.
 
-#### 2.8.2 Magnitudo/Amplitudo dan Fase Spektrum
-
-- magnitude/amplitude and phase definitions;
-- role in image representation;
-- no claim that either is the proven coffee bottleneck.
-
-#### 2.8.3 Representasi Radial dan Angular pada Spektrum Fourier
-
-- polar frequency coordinates;
-- radial energy / periodicity;
-- angular energy / directional texture;
-- theoretical basis for the term `frequency-angular`.
-
-#### 2.8.4 Pemrosesan Frekuensi untuk Object Detection
-
-- Fourier/wavelet preprocessing and frequency-aware feature methods;
-- FE-YOLO as close Fourier-input comparator;
-- frequency-aware fine-grained detection bridge such as Xu et al.;
-- transfer to coffee remains an empirical research question.
+Canonical angular theory keys are `SPEC-01/SPEC-02`; do not reuse deprecated `FREQ-*` meanings.
 
 ### 2.9 Penelitian Terkait
 
-Use the campus-style table:
+Use `04_09_RELATED_WORK_TABLE.md` with 18 prior studies + proposed research.
 
-| No | Penulis & Tahun | Indeks | Fokus Penelitian | Metode / Model | Kontribusi dan Pengisian Gap Penelitian |
-|---:|---|---|---|---|---|
+The table is a synthesis, not a ranking across incomparable datasets.
 
-Recommended evidence mix:
+---
 
-1. Hong et al. — coffee YOLO pivot;
-2. Bahy & Rifai — 20-class SNI coffee detection;
-3. Jundullah et al. — 20-class coffee detection / class disparity;
-4. Hebert & Alamsyah — subtle difficult coffee classes;
-5. Kesiman et al. or Arwatchananukul et al. — fine-grained coffee taxonomy evidence;
-6. Syauqi et al. — fixed CLAHE-based preprocessing + YOLO on white pepper;
-7. Chen et al. — image enhancement + YOLO on maize seed cracks;
-8. IA-YOLO / DENet — detection-driven input preprocessing;
-9. FE-YOLO — learned Fourier enhancement before YOLO;
-10. Xu et al. — frequency representation for fine-grained detection;
-11. **Penelitian yang Diusulkan** — parameter-free frequency-angular preprocessing + YOLO26 for fine-grained coffee-defect detection.
+## Bab III — Metodologi Penelitian
 
-Index/quartile values must be verified before final submission. `TBD - verify` is preferable to an inferred Q1/Q2 label.
+Campus convention source: `../foundation/07_USU_BAB3_PATTERN.md`.
 
-## Bab III — Metodologi
+Authoritative proposal draft: `05_METHODOLOGY.md`.
 
-### Core model comparison
+Protocol audit: `../sources/BAB3_PROTOCOL_AUDIT.md`.
 
-Baseline:
+### 3.1 Arsitektur Umum Penelitian
 
 ```text
-RGB image → native YOLO26
+D0DIRECT:
+RGB -> YOLO26n
+
+AF2DIRECT:
+RGB -> AF2 -> same YOLO26n
 ```
 
-Proposed:
+### 3.2 Dataset Penelitian
+
+Frozen development contract:
 
 ```text
-RGB image → AF2 frequency-angular preprocessing → YOLO26
+train      1,665 images / 2,986 annotations
+validation   294 images /   526 annotations
+classes       21
 ```
 
-### AF2 conceptual pipeline
+### 3.3 Persiapan dan Audit Dataset
+
+Grouped split, parent/hash leakage gates, locked test, no test access during screening.
+
+### 3.4 Preprocessing Frekuensi-Angular AF2
+
+Active `mode=af2`:
 
 ```text
-image
-  ↓
-patch extraction
-  ↓
-FFT
-  ↓
-angular spectral analysis / weighting
-  ↓
-IFFT
-  ↓
-normalized residual enhancement
-  ↓
-enhanced image
-  ↓
-YOLO26
+patch_size   = 32
+overlap      = 0.50 -> stride 16
+gamma        = 0.10
+angular_bins = 360
+chunk_size   = 128
+eps          = 1e-8
 ```
 
-### Fair-comparison principles
+Implementation choices:
 
-- same starting pretrained checkpoint;
-- same train/validation split;
-- same seed pairing;
-- same training budget;
-- same augmentation and optimizer settings unless explicitly studied;
-- no access to locked test set during method selection.
+- RGB channels independent;
+- floor-to-angle-bin discretization;
+- fold/overlap averaging;
+- residual output `I' = I + I * minmax(recovered)`.
 
-### Main evaluation
+Important: shared config `radius_ratio=0.05` is inactive in pure `mode=af2`; it belongs to AF1/AF12 radial masking.
 
-- mAP50;
-- mAP50–95;
+### 3.5 YOLO26 Detector
+
+Same exact official pretrained source and matched 21-class target-head initialization for both arms.
+
+### 3.6 Skenario Eksperimen
+
+Primary paired delta:
+
+\[
+\Delta M=M_{AF2DIRECT}-M_{D0DIRECT}.
+\]
+
+Seed 42 = completed pilot screen.
+
+Seeds 123 and 2026 = planned confirmation, not completed proposal results.
+
+### 3.7 Konfigurasi Pelatihan
+
+Direct protocol authority:
+
+```text
+max epochs   = 50
+imgsz        = 640
+batch        = 16
+workers      = 2
+patience     = 15
+optimizer    = auto
+pretrained   = true
+cache        = false
+close_mosaic = 10
+max_det      = 500
+deterministic= true
+```
+
+Do not import the conflicting old 100-epoch D0 schedule into this thesis design.
+
+### 3.8 Evaluasi Performa
+
+Primary / tail:
+
+- mAP50 and mAP50–95;
 - Macro mAP50–95;
 - Bottom-3 class mAP50–95;
 - Worst-class mAP50–95;
-- per-class AP / confusion where available;
-- proposal/localization accessibility;
-- localization-conditioned classification;
-- correct-decision recall;
-- parameters, latency, throughput, VRAM.
+- per-class AP.
 
-## Proposal-safe preliminary-result wording
+Diagnostic:
+
+- raw top-500 proposal accessibility;
+- localization-conditioned Top-1;
+- correct-decision recall.
+
+Efficiency:
+
+- parameter count;
+- latency;
+- throughput;
+- peak memory/VRAM.
+
+Bottom-3 and Worst-class are study-defined summary metrics, not official COCO metrics.
+
+### 3.9 Analisis Kesalahan dan Per-Class Behavior
+
+Report per-seed and per-class behavior; use `consistent with`, not causal mechanism claims.
+
+### 3.10 Perangkat dan Lingkungan Eksperimen
+
+Record hardware, runtime, library versions, pretrained hash, repo commit, and seed.
+
+### 3.11 Batas Pilot vs Tesis
+
+Pilot seed 42 demonstrates feasibility only. Final direct-AF2 superiority, locked-test generalization, and final efficiency claims remain unestablished until confirmatory work is completed.
+
+---
+
+## Proposal-safe result wording
 
 > Studi pendahuluan pada satu seed digunakan untuk menilai kelayakan awal rancangan. Hasil tersebut tidak diperlakukan sebagai kesimpulan final dan akan divalidasi menggunakan protokol eksperimen berulang pada penelitian tesis.
 
-Never change this to a superiority claim until the final repeated-seed protocol is complete.
+Never change this into a superiority claim before the repeated-seed confirmation is complete.
