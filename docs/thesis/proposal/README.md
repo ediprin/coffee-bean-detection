@@ -1,108 +1,112 @@
 # Proposal Draft Workspace
 
-This directory contains proposal chapters generated from `../foundation/` and source/audit files in `../sources/`.
+Direktori ini berisi bahan dan naskah proposal tesis. Mulai revisi Bab I 2026-08-25, **naskah proposal formal dipisahkan tegas dari evidence eksperimen internal repository**.
 
-Do **not** treat prose drafts as the only source of truth. The thesis direction is controlled by the versioned foundation; numerical/methodological details must also agree with repository protocols and primary-paper evidence.
+## Aturan utama
+
+Proposal adalah **rencana penelitian**. Karena itu, Bab I–III formal tidak memuat hasil eksperimen penelitian sendiri yang sudah pernah dijalankan di repository, termasuk hasil seed tunggal, D0/D0FT, historical factorization, nilai pilot, promotion gate, atau diagnosis hasil eksperimen.
+
+Hasil penelitian terdahulu tetap boleh digunakan sebagai landasan masalah, teori, dan precedent metode selama sumber primernya terverifikasi.
 
 ## Active files
 
 ```text
 01_PROPOSAL_SKELETON.md
-    synchronized Bab I–III structure and scope
+    struktur proposal formal + proposal-only guardrails
 
 02_BACKGROUND.md
-    evidence-grounded Bab I background draft
+    authoritative proposal-facing §1.1 Latar Belakang
+    tanpa hasil eksperimen penelitian sendiri dan tanpa istilah AF2 yang belum diperkenalkan
 
 03_PROBLEM_FORMULATION.md
-    identification, RQ1–RQ4, objectives, scope, contribution
+    authoritative proposal-facing §1.2–1.5:
+    Rumusan Masalah, Batasan Masalah, Tujuan Penelitian, Manfaat Penelitian
 
 04_LITERATURE_REVIEW.md
-    campus-style Bab II main draft
+    source-grounded Bab II working draft; masih perlu formal-language cleanup saat assembly
 
 04_02_INSPECTION_QUALITY_NORMALIZED.md
-    normalized replacement for §2.2 to remove citation recycling
+    normalized replacement untuk §2.2
 
 04_09_RELATED_WORK_TABLE.md
-    campus-style related-work table from the verified shortlist
+    working related-work table; masih perlu proposal-facing rewrite sebelum DOCX
 
 05_METHODOLOGY.md
-    full Bab III methodology draft with factorized AF2 optimization,
-    direct confirmation, diagnostics, visualization, error and efficiency analysis
+    technical methodology source; bukan teks formal yang ditempel mentah
 
 05_05_AF2_PRIMARY_SOURCE_HARDENED.md
-    authoritative assembly replacement for §3.5;
-    separates Xu et al. parent-method facts from repository transfer choices
+    technical provenance source untuk mekanisme frequency-angular;
+    bukan teks formal yang ditempel mentah
 
 06_RESEARCH_FLOW.md
-    synchronized specifications for Figures 3.1–3.4:
-    research framework, native-vs-AF2 architecture, AF2 operator,
-    and factorized optimization/method-freeze genealogy
+    technical research-flow source; perlu proposal-facing redraw/rewrite
 ```
 
-## Source/audit files that control Bab III
+## Struktur Bab I formal
+
+Mengikuti proposal kampus acuan:
 
 ```text
-../sources/BAB3_PRIMARY_SOURCE_HARDENING_2026-08-25.md
-    primary-source provenance audit for AF2 and YOLO26
-
-../sources/BAB3_AF2_PAGE_LOCATOR_RECERTIFICATION_2026-08-25.md
-    superseding locator addendum: Xu AFAB-2 Eq. (9)–(13) spans pp. 5–6;
-    latter Eq. (10)–(13) block and post-equation gating/residual text are on p. 6
-
-../sources/BAB3_FINAL_AUDIT_2026-08-25.md
-    final chapter-level PASS audit before campus-document assembly
-
-../../FARUQ_V3_AF2_DIRECT_FROM_PRETRAINED_PROTOCOL_2026-08-24.md
-    frozen direct confirmatory fairness/training/test-lock protocol
-
-../../FARUQ_V3_AF2_SPECTRAL_FACTORIZATION_PROTOCOL.md
-    frozen historical factorization/optimization genealogy
-
-../../../src/coffee_detector/afab/operator.py
-    executable AF2 operator and implementation-level transfer decisions
-
-../../../configs/afab/AF2_yolo26n_chaotic_amplitude.yaml
-    frozen AF2 reference configuration
+1.1 Latar Belakang
+1.2 Rumusan Masalah
+1.3 Batasan Masalah
+1.4 Tujuan Penelitian
+1.5 Manfaat Penelitian
 ```
 
-## Assembly rule
+Tidak ada `Identifikasi Masalah`, daftar `RQ1–RQ4`, `Kontribusi yang Diharapkan`, maupun `Sistematika Penulisan` pada Bab I formal saat ini.
 
-When generating the final proposal document:
+## Terminologi metode
 
-1. use `04_02_INSPECTION_QUALITY_NORMALIZED.md` in place of the older §2.2 block embedded in `04_LITERATURE_REVIEW.md`;
-2. use `04_09_RELATED_WORK_TABLE.md` as the authoritative related-work table;
-3. use `05_METHODOLOGY.md` as the Bab III base;
-4. replace the embedded §3.5 of `05_METHODOLOGY.md` with `05_05_AF2_PRIMARY_SOURCE_HARDENED.md`;
-5. apply the superseding page-locator correction from `../sources/BAB3_AF2_PAGE_LOCATOR_RECERTIFICATION_2026-08-25.md`;
-6. redraw Figures 3.1–3.4 from `06_RESEARCH_FLOW.md` into the campus document style;
-7. resolve citation keys through `../sources/CANONICAL_SOURCE_KEYS.md`;
-8. run `../sources/BAB3_FINAL_AUDIT_2026-08-25.md` and the cross-chapter audit before export.
+Pada Bab I gunakan istilah:
 
-## Drafting rule
+> preprocessing citra berbasis frekuensi-angular
 
-Before creating or changing a chapter:
+Jangan mengasumsikan pembaca mengetahui istilah `AF2`. Nama/adaptasi teknis baru boleh diperkenalkan di Bab III setelah mekanisme sumber dan definisi istilah dijelaskan secara akademik.
 
-1. read the relevant foundation files;
-2. retrieve the primary papers or repository protocols needed for the chapter;
-3. verify numerical and methodological claims against full text / frozen artifacts;
-4. distinguish source facts, cross-paper synthesis, research hypotheses, and repository evidence;
-5. preserve temporal status: historical factorization, completed pilot, and planned confirmation are different evidence layers;
-6. preserve experiment genealogy: historical D0-parent factorization must not be drawn as the final direct-from-pretrained training path;
-7. commit meaningful argument changes separately so the proposal remains versionable.
+## Temporal guardrail
+
+```text
+BOLEH DALAM PROPOSAL
+- masalah penelitian
+- hasil penelitian terdahulu yang terverifikasi
+- metode yang diusulkan
+- rancangan optimasi
+- rancangan eksperimen
+- metrik yang akan digunakan
+- evaluasi yang akan dilakukan
+
+TIDAK BOLEH SEBAGAI HASIL PROPOSAL
+- seed-42 pilot result
+- D0 / D0FT / AF2 staged result
+- historical candidate result
+- PROMOTE_TO_3_SEED
+- classification-dominant diagnosis dari eksperimen sendiri
+- nilai Macro/Bottom-3/Worst milik eksperimen sendiri
+- klaim bahwa metode usulan sudah meningkatkan kinerja
+```
+
+Evidence tersebut tetap dipertahankan di foundation/protocol/result files sebagai catatan pengembangan penelitian, tetapi tidak disalin sebagai hasil ke proposal formal.
+
+## Source discipline
+
+Sebelum menulis naskah formal:
+
+1. gunakan primary paper untuk klaim literatur;
+2. gunakan repository hanya untuk mendefinisikan metode/rancangan yang akan dilakukan;
+3. bedakan fakta paper, sintesis literatur, dan rencana penelitian;
+4. jangan mengubah hasil eksperimen internal menjadi narasi hasil proposal;
+5. jangan menggunakan nama internal repository tanpa definisi bagi pembaca akademik.
 
 ## Current state
 
 ```text
-Bab I   = evidence-grounded working draft; RQ1–RQ4 synchronized with Optimasi scope
-Bab II  = source-grounded campus-style draft with modular normalization
-Bab III = optimization-centered methodology draft completed;
-          AF2/YOLO26 primary-source provenance hardened;
-          Xu AFAB-2 page locator recertified
-Flow    = Figures 3.1–3.4 specification synchronized with Bab III
-Audit   = Bab III final methodology/source audit PASS
-Title   = 'Analisis dan Optimasi ...' methodologically supported by factorized optimization
+Bab I   = proposal-facing rewrite selesai pada source Markdown
+Bab II  = working source; formal cleanup belum selesai
+Bab III = technical source tersedia; formal proposal rewrite belum selesai
+DOCX    = generate manual per bab setelah teks bab disetujui
 ```
 
-The earlier open locator note in the first hardening pass is superseded: the Xu et al. AFAB-2 equation family is now located at **pp. 5–6, §3.3.3, Eq. (9)–(13)**, with the latter Eq. (10)–(13) block and immediately following min–max/gating/residual explanation on printed p. 6. Exact repository transfer formulas remain sourced from `operator.py` and the frozen AF2 config rather than being silently attributed to the parent paper.
+Current working title:
 
-Next major task: formal proposal assembly into the campus DOCX template when requested. No additional training run is required for the current documentation milestone.
+**Analisis dan Optimasi Preprocessing Citra Berbasis Frekuensi-Angular pada YOLO26 untuk Deteksi Fine-Grained Cacat Biji Kopi**
