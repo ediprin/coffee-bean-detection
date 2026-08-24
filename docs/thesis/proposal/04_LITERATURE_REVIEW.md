@@ -1,6 +1,6 @@
 # BAB II — TINJAUAN PUSTAKA
 
-Status: citation-ready rewrite in progress following the adopted USU/campus proposal pattern. Sections 2.1–2.2 have been rewritten from verified source material; later sections remain working prose until their own source-level audit is closed.
+Status: citation-ready rewrite in progress following the adopted USU/campus proposal pattern. Sections 2.1–2.5 have been rewritten from verified primary/source-level evidence; Sections 2.6–2.9 remain working prose until their own source-level audit is closed.
 
 All bracketed citation keys must resolve through `docs/thesis/sources/CANONICAL_SOURCE_KEYS.md` or the master reference workbook. Numerical and methodological claims remain paper-scoped and must be traceable to the primary source.
 
@@ -32,39 +32,51 @@ Namun, keberadaan sistem otomatis tidak dengan sendirinya menyelesaikan persoala
 
 ## 2.3 Object Detection
 
-Object detection merupakan tugas computer vision yang bertujuan menentukan **kelas objek** sekaligus **lokasi objek** pada citra. Secara umum, keluaran detector mencakup bounding box, skor kepercayaan, dan prediksi kelas.
+*Object detection* merupakan tugas computer vision yang memprediksi **kategori objek** sekaligus **lokasinya** pada sebuah citra. Dua keluarga historis yang penting untuk memahami rancangan detector modern adalah pendekatan *two-stage* dan *one-stage*. Faster R-CNN, misalnya, menggunakan *Region Proposal Network* (RPN) yang berbagi fitur konvolusional dengan jaringan deteksi untuk menghasilkan kandidat lokasi objek sebelum kandidat tersebut diproses oleh tahap deteksi berikutnya [DET-02]. Sebaliknya, YOLO merumuskan deteksi sebagai persoalan regresi langsung dari citra penuh menuju koordinat bounding box dan probabilitas kelas dalam satu jaringan [DET-03]. Pembagian ini digunakan sebagai konteks arsitektural; penelitian ini sendiri berfokus pada keluarga YOLO.
 
-Untuk suatu objek dengan bounding box prediksi \(B_p\) dan ground-truth \(B_g\), kualitas tumpang tindih dapat dinilai menggunakan *Intersection over Union* (IoU):
+Untuk suatu bounding box prediksi \(B_p\) dan ground-truth \(B_g\), kesesuaian spasial keduanya dapat dinyatakan melalui *Intersection over Union* (IoU):
 
 \[
-IoU = \frac{|B_p \cap B_g|}{|B_p \cup B_g|}.
+IoU(B_p,B_g)=\frac{|B_p \cap B_g|}{|B_p \cup B_g|}.
 \]
 
-Object detection memuat dua submasalah yang saling berhubungan tetapi tidak identik, yaitu klasifikasi dan lokalisasi. Literatur menunjukkan bahwa kualitas skor klasifikasi tidak selalu ekuivalen dengan kualitas lokalisasi, dan kedua tugas dapat membutuhkan representasi fitur yang berbeda. [DIAG-01][DIAG-02][DIAG-03]
+Nilai IoU meningkat ketika area irisan prediksi dan ground-truth semakin besar relatif terhadap area gabungannya. Dalam evaluasi detector, informasi lokalisasi ini kemudian berinteraksi dengan prediksi kelas dan confidence untuk menentukan apakah suatu prediksi dianggap benar pada threshold evaluasi tertentu.
 
-Pemisahan konseptual ini penting dalam penelitian karena peningkatan metrik deteksi tidak langsung diasumsikan sebagai peningkatan kemampuan lokalisasi.
+Walaupun classification dan localization dilatih dalam satu sistem deteksi, kedua tugas tersebut tidak identik. TOOD menunjukkan adanya *task misalignment* antara classification dan localization pada one-stage detectors dan secara eksplisit merancang head serta proses pembelajaran untuk menyelaraskan keduanya [DIAG-01]. Wu et al. menunjukkan melalui eksperimen head bahwa representasi yang menguntungkan classification tidak selalu identik dengan representasi yang paling sesuai untuk bounding-box regression [DIAG-02]. IoU-Net selanjutnya memisahkan *classification confidence* dari estimasi *localization confidence* dan menggunakan prediksi IoU sebagai ukuran kualitas lokalisasi [DIAG-03].
+
+Pemisahan konseptual tersebut menjadi penting pada tesis ini. Apabila sebuah perlakuan preprocessing menaikkan mAP, kenaikan tersebut tidak langsung ditafsirkan sebagai perbaikan lokalisasi. Analisis tambahan perlu melihat apakah perubahan lebih konsisten dengan peningkatan akses terhadap objek, kualitas lokalisasi, atau kemampuan model memberi kelas dan confidence yang benar pada proposal yang sudah dapat dilokalisasi.
 
 ---
 
 ## 2.4 YOLO (You Only Look Once)
 
-YOLO merupakan keluarga *one-stage object detector* yang melakukan prediksi kelas dan bounding box dalam satu alur inferensi. Pendekatan ini banyak digunakan pada aplikasi yang memerlukan kecepatan dan efisiensi, termasuk inspeksi pertanian dan deteksi cacat visual.
+Redmon et al. memperkenalkan YOLO dengan merumuskan object detection sebagai satu masalah regresi dari citra penuh menuju bounding box dan probabilitas kelas. Satu jaringan konvolusional melakukan prediksi tersebut secara langsung dalam satu evaluasi, sehingga pipeline dapat dioptimalkan secara end-to-end dan dirancang untuk inferensi real-time [DET-03]. Gagasan utama ini membedakan YOLO dari pipeline region-based yang memisahkan pembentukan proposal dan klasifikasi objek ke beberapa tahap.
 
-Berbagai penelitian kopi telah menggunakan keluarga YOLO untuk mendeteksi biji dan cacat kopi. Studi dengan taxonomy relatif kecil menunjukkan bahwa YOLO dapat mencapai performa tinggi pada domain green coffee bean, sedangkan studi dengan 15–20 kelas menunjukkan variasi performa antarkelas yang lebih besar. [COF-01][COF-02][COF-04][COF-05][COF-06]
+Dalam perkembangan berikutnya, keluarga YOLO mengalami perubahan besar pada backbone, feature aggregation, detection head, assignment strategy, loss, serta prosedur inferensi. Karena tesis ini tidak meneliti evolusi historis tiap versi YOLO, pembahasan dibatasi pada dua hal yang relevan: YOLO sebagai keluarga *one-stage / real-time detector* dan bukti penggunaannya pada inspeksi green coffee bean. Dengan batas tersebut, performa YOLO versi lama tidak dipakai untuk menyimpulkan karakteristik YOLO26.
 
-**Drafting note:** historical YOLO timeline should remain concise. This thesis does not need a version-by-version encyclopedia.
+Pada domain kopi, Gope et al. membandingkan beberapa generasi YOLO pada deteksi green coffee bean dan menunjukkan bahwa keluarga YOLO dapat digunakan secara efektif pada taxonomy empat kelas di dataset mereka [COF-06]. Hong et al. kemudian menggunakan YOLOv10 sebagai basis deteksi cacat kopi dan memodifikasi representasi internal untuk menghadapi kategori cacat yang memiliki perbedaan visual subtil [COF-01]. Pada taxonomy yang lebih besar, Bahy dan Rifai menerapkan YOLOv5s pada 20 kategori fisik berbasis SNI dan melaporkan heterogenitas performa yang cukup besar antar kelas [COF-02]. Ketiga studi tersebut tidak dapat dibandingkan angka performanya secara langsung karena dataset, jumlah kelas, dan protokolnya berbeda, tetapi bersama-sama menunjukkan bahwa YOLO merupakan keluarga detector yang relevan untuk domain green coffee sekaligus bahwa meningkatnya granularitas kelas tetap menuntut analisis per kelas.
 
 ---
 
 ## 2.5 YOLO26
 
-YOLO26 digunakan sebagai detector utama dalam penelitian ini. Subbab ini akan menjelaskan arsitektur dan karakteristik YOLO26 hanya sejauh diperlukan untuk memahami rancangan eksperimen, meliputi komponen backbone, feature aggregation/neck, detection head, proses prediksi, dan karakteristik pelatihan yang relevan terhadap perbandingan baseline dan metode usulan.
+YOLO26 merupakan keluarga model real-time vision yang diperkenalkan Jocher et al. melalui preprint arXiv tahun 2026; karena status sumber utamanya masih **preprint**, penelitian ini tidak memberinya label quartile jurnal [DET-01]. Untuk object detection, salah satu perubahan utamanya adalah desain *dual-head* yang mendukung inferensi end-to-end tanpa NMS sebagai jalur native, disertai penghapusan Distribution Focal Loss (DFL) dari regression head. Paper tersebut juga memperkenalkan MuSGD untuk optimisasi, Progressive Loss untuk menggeser supervisi menuju head yang digunakan saat inferensi, serta STAL untuk assignment yang dirancang menjamin positive coverage bagi objek kecil [DET-01].
 
-Rancangan penelitian tidak mengubah YOLO26 sebagai bagian utama kontribusi. Perbandingan dikendalikan dengan menggunakan detector, inisialisasi, dataset, dan budget pelatihan yang sama, sedangkan perbedaan utama terletak pada kondisi input sebelum detector.
+Secara arsitektural, diagram resmi YOLO26 menunjukkan alur backbone–neck–detect head dengan feature pyramid P3/P4/P5. Backbone menggunakan blok konvolusional dan C3k2, dilanjutkan SPPF dan C2PSA pada tingkat fitur dalam; neck melakukan upsampling, concatenation, dan downsampling untuk menggabungkan fitur lintas skala sebelum tiga detect head menghasilkan prediksi pada resolusi yang berbeda [DET-01]. Keluarga YOLO26 tersedia dalam skala n/s/m/l/x dan paper melaporkan dukungan untuk beberapa tugas vision, tetapi tesis ini menggunakan varian detection yang telah ditentukan dalam protokol eksperimen, bukan seluruh keluarga model.
 
-**Sources required before final prose:** original YOLO26 paper/documentation + repository configuration used in the experiment.
+Posisi YOLO26 dalam penelitian ini adalah **detector terkontrol**, bukan objek utama modifikasi arsitektur. Kontribusi yang diuji ditempatkan sebelum detector, yaitu pada citra input. Secara konseptual perbandingan utama ditulis sebagai:
 
-**Boundary:** AF2 must not be described as an internal YOLO26 module.
+\[
+I \xrightarrow{\text{YOLO26}} \hat{Y}_{\text{native}}
+\]
+
+berhadapan dengan
+
+\[
+I \xrightarrow{\text{AF2}} I' \xrightarrow{\text{YOLO26}} \hat{Y}_{\text{AF2}}.
+\]
+
+Dengan rancangan ini, struktur internal YOLO26 dipertahankan sama pada baseline dan treatment. Perbedaan yang hendak diisolasi adalah representasi citra yang diterima detector, sehingga AF2 tidak boleh disebut sebagai modul backbone, neck, atau detection head YOLO26.
 
 ---
 
