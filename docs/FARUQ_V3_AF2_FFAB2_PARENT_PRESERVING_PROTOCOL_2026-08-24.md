@@ -23,6 +23,10 @@ that AF2 parent to move?**
 The rejected from-start decision remains rejected. No earlier threshold is
 changed.
 
+The completed continuation, matched from-start, and 19-condition selective
+refinement results are consolidated in:
+`docs/FARUQ_V3_AF2_FFAB2_EXPERIMENT_CHAIN_RESULT_2026-08-24.md`.
+
 ## Parent and candidate
 
 For each seed 42, 123, and 2026:
