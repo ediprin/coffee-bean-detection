@@ -141,7 +141,19 @@ Pada ruang fitur, Chi et al. (2020) melalui *Fast Fourier Convolution* menggabun
 
 Berdasarkan literatur tersebut, domain frekuensi menyediakan mekanisme untuk mengolah informasi citra dari perspektif yang berbeda dengan domain spasial. Namun, literatur yang ditinjau belum memberikan dasar untuk menyimpulkan bahwa cacat biji kopi secara khusus memiliki *frequency signature* tertentu. Oleh sebab itu, penerapan pemrosesan frekuensi-angular pada penelitian ini diposisikan sebagai pendekatan yang perlu diuji secara empiris pada deteksi cacat biji kopi.
 
-## 2.9 Penelitian Terkait
+## 2.9 Visualisasi Aktivasi Model
+
+Visualisasi aktivasi digunakan untuk membantu menginterpretasikan bagian representasi internal jaringan yang memberikan respons kuat terhadap suatu prediksi. Pada penelitian ini, visualisasi tersebut diposisikan sebagai analisis pendukung untuk membandingkan respons model YOLO26 tanpa *preprocessing* dan YOLO26 dengan *preprocessing* frekuensi-angular. Visualisasi tidak menggantikan evaluasi kuantitatif dan tidak digunakan sebagai bukti kausal tunggal mengenai fitur yang digunakan model.
+
+Selvaraju et al. (2017) memperkenalkan *Gradient-weighted Class Activation Mapping* (Grad-CAM), yaitu metode yang menggunakan gradient dari target prediksi terhadap feature map pada layer konvolusional untuk membentuk peta aktivasi yang bersifat *class-discriminative*. Metode tersebut dapat digunakan tanpa mengubah arsitektur atau melakukan pelatihan ulang, tetapi penerapannya memerlukan target dan layer yang dapat didefinisikan dengan benar.
+
+Chattopadhay et al. (2018) mengembangkan Grad-CAM++ dengan menggunakan kombinasi berbobot dari gradient positif untuk menghasilkan visualisasi yang lebih rinci pada kondisi tertentu, termasuk ketika terdapat beberapa kemunculan objek dari kelas yang sama. Seperti Grad-CAM, metode ini tetap membutuhkan aliran gradient terhadap target yang dipilih.
+
+Muhammad dan Yeasin (2020) memperkenalkan *Eigen-CAM*, yang menghasilkan *class activation map* menggunakan komponen utama dari representasi fitur pada layer konvolusional. Berbeda dengan Grad-CAM, Eigen-CAM tidak bergantung pada backpropagation gradient atau *class relevance score*. Karakteristik tersebut menjadikan Eigen-CAM kandidat utama untuk visualisasi respons pada penelitian ini, sedangkan Grad-CAM dan Grad-CAM++ dipertimbangkan sebagai alternatif apabila target kelas, layer target, dan aliran gradient pada YOLO26 dapat didefinisikan secara konsisten.
+
+Metode visualisasi akhir akan ditentukan setelah kompatibilitas teknis dengan implementasi YOLO26 diverifikasi. Agar perbandingan dapat ditafsirkan secara adil, metode visualisasi, layer target, ukuran input, dan prosedur normalisasi yang dipilih akan diterapkan secara sama pada model pembanding.
+
+## 2.10 Penelitian Terkait
 
 Penelitian yang relevan dapat dikelompokkan menjadi tiga bagian, yaitu penelitian deteksi cacat biji kopi, penelitian *preprocessing* sebelum detector, dan penelitian yang menggunakan pemrosesan frekuensi pada tugas *fine-grained* atau *object detection*. Ringkasan penelitian yang menjadi dasar posisi penelitian ditunjukkan pada Tabel 2.1.
 
