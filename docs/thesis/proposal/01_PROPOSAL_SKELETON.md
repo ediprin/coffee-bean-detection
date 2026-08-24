@@ -48,10 +48,13 @@ Authority: `BAB_II_TINJAUAN_PUSTAKA.md`.
     2.8.2 Amplitudo dan Fase
     2.8.3 Representasi Radial dan Angular
     2.8.4 Pemrosesan Frekuensi pada Computer Vision
-2.9 Penelitian Terkait
+2.9 Visualisasi Aktivasi Model
+2.10 Penelitian Terkait
 ```
 
 Bab II boleh memuat hasil penelitian terdahulu yang telah diverifikasi. Citation key internal (`COF-01`, `FG-01`, dan sebagainya), status audit, path repository, dan hasil eksperimen penelitian sendiri tidak masuk naskah formal. AFAB/AFAB-2 disebut hanya sebagai terminologi metode sumber Xu et al.
+
+Subbab 2.9 menjadi landasan untuk rencana analisis visual pada Bab III. Eigen-CAM menjadi kandidat utama visualisasi respons model, sedangkan Grad-CAM dan Grad-CAM++ menjadi alternatif apabila target kelas, layer target, dan aliran gradient pada YOLO26 dapat didefinisikan secara konsisten. Visualisasi diposisikan sebagai analisis interpretatif pendukung dan bukan bukti kausal tunggal.
 
 ## BAB III — Metodologi Penelitian
 
@@ -86,7 +89,7 @@ Struktur formal:
 3.12 Lingkungan Implementasi
 ```
 
-Analisis visual digunakan sebagai **analisis pendukung**, bukan sebagai bukti kausal tunggal. Visualisasi yang direncanakan mencakup tahapan preprocessing, respons/aktivasi model jika kompatibel secara teknis dengan YOLO26, serta perbandingan prediksi deteksi pada citra yang sama. Pemilihan contoh visual harus mengikuti kriteria yang konsisten agar tidak hanya menampilkan kasus yang menguntungkan metode yang diusulkan.
+Analisis visual digunakan sebagai **analisis pendukung**, bukan sebagai bukti kausal tunggal. Visualisasi yang direncanakan mencakup tahapan preprocessing, respons/aktivasi model menggunakan Eigen-CAM atau metode CAM lain yang kompatibel dengan YOLO26, serta perbandingan prediksi deteksi pada citra yang sama. Pemilihan contoh visual harus mengikuti kriteria yang konsisten agar tidak hanya menampilkan kasus yang menguntungkan metode yang diusulkan.
 
 Bab III menjelaskan apa yang **akan dilakukan**. Detail seperti checkpoint hash, commit SHA, D0/D0FT, historical factorization genealogy, promotion gate, RNG fork, dan hasil pilot tidak dimasukkan ke naskah formal. Rancangan eksperimen, parameter pelatihan, formula metode, dan rencana evaluasi boleh dicantumkan karena merupakan bagian dari metodologi proposal.
 
