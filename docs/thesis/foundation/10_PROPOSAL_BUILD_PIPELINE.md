@@ -2,21 +2,24 @@
 
 Date: 2026-08-25
 
-Status: **ACTIVE WORKING-ASSEMBLY PIPELINE**
+Status: **ACTIVE QA-HARDENED WORKING-ASSEMBLY PIPELINE**
 
-This document records the first executable Git-driven proposal assembly path. It implements the previously frozen rule:
+This document records the executable Git-driven proposal assembly path. It implements the frozen rule:
 
 ```text
 Git = scientific/content source of truth
-USU guideline/template = formatting authority
+SPs official guide = normative formatting authority
+supplied DOCX = structural/style scaffold
 DOCX/PDF = generated review/release artifacts
 ```
 
-## 1. Builder
+## 1. Authoritative working builder
 
-Executable:
+Current executable:
 
-`tools/thesis/build_proposal_docx.py`
+`tools/thesis/build_proposal_docx_v2.py`
+
+The earlier `tools/thesis/build_proposal_docx.py` remains as the first-generation assembly implementation and a dependency imported by v2. New workflow changes should target **v2** unless an explicit migration is being made.
 
 The builder reads the active proposal sources directly from the repository and assembles:
 
@@ -27,25 +30,39 @@ The builder reads the active proposal sources directly from the repository and a
 
 The source-hardened §3.5 is therefore the assembly authority, not the stale embedded copy.
 
-## 2. Working citation conversion
+## 2. Working citation conversion and build-time guards
 
-The builder converts internal keys such as:
+Internal keys such as:
 
 ```text
 [COF-01]
 [FG-01, pp. 5–6, §3.3.3, Eq. (9)–(13)]
 ```
 
-into working author-year prose such as:
+are converted to working author-year forms such as:
 
 ```text
 (Hong et al., 2026)
 (Xu et al., 2025, pp. 5–6, §3.3.3, Eq. (9)–(13))
 ```
 
-This conversion exists so internal repository keys do not leak into the Word review artifact.
+V2 additionally:
 
-Important: the current bibliography block is a **working metadata layer**, not the final APA-author-metadata authority. Full author ordering, initials, volume/issue/pages, DOI formatting, and the final minimum-reference audit must still be certified before submission release.
+1. merges adjacent parenthetical groups generated from adjacent internal citation keys;
+2. fails if a used citation key has no bibliography record;
+3. fails if internal citation tokens survive assembly;
+4. warns when the number of genuinely cited keyed sources remains below 50 instead of padding the bibliography;
+5. strips working Markdown separators and fence delimiters;
+6. converts unordered Markdown bullet markers to ordered-list syntax for formal assembly.
+
+Important: the current bibliography block is still a **working metadata layer**, not the final APA authority. Final author ordering, initials, volume/issue/pages, DOI formatting, hanging indents, and the final reference-count/journal-percentage audit remain separate release gates.
+
+Primary-source corrections already enforced by v2 include:
+
+- de Oliveira et al. DOI `10.1016/j.jfoodeng.2015.10.009`;
+- García et al. 2019 record with DOI `10.3390/app9194195`.
+
+The de Oliveira `.009` value intentionally overrides older master-map rows containing a conflicting DOI and should later be propagated back to the canonical registry.
 
 ## 3. Word generation path
 
@@ -53,28 +70,95 @@ The build uses Pandoc for Markdown → DOCX conversion so that:
 
 - headings become Word heading styles;
 - Markdown tables become editable Word tables;
-- TeX display equations are converted into native Word equation objects where supported;
+- TeX display equations become native Word equation objects where supported;
 - a Word TOC field is generated from heading levels.
 
-A post-processing pass using `python-docx` then applies the campus working layout:
+V2 supports:
+
+```text
+--reference-doc <campus-template.docx>
+```
+
+for a formal local build using the supplied campus scaffold. When `--reference-doc` is omitted, the builder prints an explicit warning and the result remains a **working build**, not a template-faithful release.
+
+Post-processing then applies/normalizes:
 
 - A4;
-- Times New Roman 12 pt body;
+- Times New Roman 12 pt main text;
 - 1.5 line spacing body;
 - 1.27 cm first-line paragraph indent;
-- 4 cm left margin;
-- 3 cm top/right/bottom margins;
-- bold 12 pt heading hierarchy;
-- compact table typography;
-- page numbering in the working review file.
+- left margin 4 cm;
+- top/right/bottom margins 3 cm;
+- two-line centered chapter headings (`BAB I` / `PENDAHULUAN`);
+- ordinary table-caption paragraphs outside the TOC;
+- table-title punctuation consistent with the official table rule;
+- less aggressive table compaction than the first-generation builder.
 
-## 4. GitHub Actions build
+## 4. Figures 3.1–3.4
+
+Figure insertion is a separate deterministic pass:
+
+`tools/thesis/insert_proposal_figures.py`
+
+It inserts:
+
+- Figure 3.1 — research framework;
+- Figure 3.2 — Native YOLO26 vs AF2–YOLO26;
+- Figure 3.3 — AF2 operator;
+- Figure 3.4 — AF2 optimization genealogy and confirmatory experiment.
+
+Working figure captions are centered below the figure, TNR 12, title case, and have no terminal period. Because the official-guide excerpt does not explicitly settle punctuation immediately after the figure number, the current separator follows the supplied campus scaffold (`Gambar 3.1. Judul`).
+
+## 5. Section-aware pagination
+
+Pagination is now applied after figures are inserted:
+
+`tools/thesis/apply_sps_pagination.py`
+
+The pass inserts a next-page section break before each chapter and implements:
+
+```text
+front matter
+    -> lowercase Roman
+    -> center bottom
+
+Bab I onward
+    -> Arabic
+    -> normal pages: top-right
+    -> chapter-opening page: bottom-right
+```
+
+It also normalizes every section to A4 with official 4/3/3/3 cm margins and sets header/footer distance to 1.5 cm.
+
+The pagination mechanism was prototyped on a synthetic multi-page DOCX and rendered before being committed. That test confirmed Roman front numbering and distinct chapter-opening/ordinary body placement. The **actual proposal** still requires full rendered-page verification.
+
+## 6. GitHub Actions working build
 
 Workflow:
 
 `.github/workflows/build-thesis-proposal.yml`
 
-It builds three synchronized artifacts:
+Current sequence:
+
+```text
+checkout
+  ↓
+install Pandoc / LibreOffice / SVG tools / python-docx
+  ↓
+build_proposal_docx_v2.py
+  ↓
+SVG → PNG
+  ↓
+insert Figures 3.1–3.4
+  ↓
+apply_sps_pagination.py
+  ↓
+DOCX → PDF
+  ↓
+upload working artifacts
+```
+
+Artifacts:
 
 ```text
 Proposal_AF2_USU_Working.docx
@@ -84,25 +168,26 @@ Proposal_AF2_USU_Working.pdf
 
 The PDF exists for layout inspection; the DOCX remains the editable review artifact.
 
-## 5. Working-release boundary
+CI currently does **not** possess the uploaded binary campus template, so it intentionally builds without `--reference-doc`. A template-faithful release must be generated in an environment where the supplied DOCX is available.
 
-The current automated build is **not yet the final submission release**.
+## 7. Working-release boundary
 
-Open formatting tasks before final release:
+The automated build is **not yet the final submission release**.
 
-1. reproduce the exact cover/front-matter composition from the supplied USU DOCX template;
-2. implement Roman front-matter numbering and chapter-first-page numbering exactly according to the official guideline;
-3. redraw and insert Figures 3.1–3.4;
-4. verify table continuation/landscape behavior, especially the long related-work table;
-5. verify every native Word equation and add chapter-based equation numbering;
-6. finalize Table/Figure captions and automatic lists;
-7. replace the working bibliography metadata with fully normalized APA records;
-8. run the ≥50-reference / journal-percentage requirement audit if the same requirement is enforced for the proposal release;
-9. visually inspect every rendered page before delivery.
+Current release blockers:
 
-No final artifact may be labeled `submission`, `sempro-final`, or equivalent until those gates close.
+1. run the actual proposal through the supplied Word scaffold using `--reference-doc`;
+2. visually verify the implemented Roman/Arabic pagination on the actual proposal;
+3. inspect Table 2.1 and isolate it in a landscape section if the expected width problem is confirmed;
+4. add chapter-based equation numbering at the right boundary;
+5. verify table continuation behavior where tables span pages;
+6. normalize final APA bibliography metadata and narrative-vs-parenthetical citations;
+7. refresh TOC/list fields;
+8. visually inspect every rendered page before delivery.
 
-## 6. Content boundary
+No artifact may be labeled `submission`, `sempro-final`, or equivalent until those gates close.
+
+## 8. Content boundary
 
 The build process must never silently:
 
@@ -116,7 +201,7 @@ The build process must never silently:
 
 Content changes happen in the Markdown source first, are reviewed/committed, and only then regenerate the document.
 
-## 7. Revision workflow
+## 9. Revision workflow
 
 ```text
 advisor feedback / content correction
@@ -125,7 +210,7 @@ edit canonical Markdown / audit source
         ↓
 commit
         ↓
-automated working DOCX/PDF build
+QA-hardened working DOCX/PDF build
         ↓
 render / visual QA
         ↓
