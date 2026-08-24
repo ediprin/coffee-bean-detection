@@ -11,6 +11,7 @@ from coffee_detector.af2_parent_residual import (
     AF2ParentResidualConfig,
     make_af2_parent_residual_trainer,
 )
+from coffee_detector.af2_parent_residual.igem_confirmation import AUDIT_REVISION
 from coffee_detector.afab import AFABConfig
 from coffee_detector.evaluate import evaluate
 from coffee_detector.experiments.run_faruq_v3_stb_capacity_control import _exclusive_training_lock
@@ -20,6 +21,8 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 SEEDS = (42, 123, 2026)
 ARMS = ("AF2IGEM0", "AF2IGEM1")
 CONFIGS = {code: REPO_ROOT / f"configs/af2_parent_residual/{code}.yaml" for code in ARMS}
+PROTOCOL = "faruq-v3-af2fs-igem-parent-confirmation-v1"
+RUN_CONTRACT_FORMAT = "coffee_detector.af2_parent_residual.igem_run_contract.v2"
 
 
 def _sha256(path: Path) -> str:
@@ -42,22 +45,47 @@ def _checkpoint_seed(path: Path) -> int:
     payload = torch_load(path, map_location="cpu")
     args = payload.get("train_args") if isinstance(payload, dict) else None
     if not isinstance(args, dict) or "seed" not in args:
-        raise RuntimeError(f"Checkpoint AF2FS tidak merekam seed: {path}")
+        raise RuntimeError(f"Checkpoint tidak merekam seed: {path}")
     return int(args["seed"])
 
 
-def _complete(run_dir: Path, epochs: int, source_sha: str, arm: str, seed: int) -> bool:
+def _canonical_parent_result(path: Path, seed: int, checkpoint_sha: str) -> dict:
+    payload = _read(path, "AF2FS parent result")
+    if (
+        payload.get("format") != "coffee_detector.af2_ffa.from_start_arm_result.v1"
+        or payload.get("arm") != "AF2FS"
+        or int(payload.get("seed", -1)) != seed
+        or payload.get("checkpoint_sha256") != checkpoint_sha
+        or payload.get("test_images_accessed") is not False
+    ):
+        raise RuntimeError(f"AF2FS parent result seed {seed} tidak cocok dengan checkpoint resmi")
+    metrics = payload.get("metrics", {})
+    if len(metrics.get("map50_95_by_class", {})) != 21:
+        raise RuntimeError(f"AF2FS parent seed {seed} tidak memuat 21 kelas")
+    return payload
+
+
+def _epochs_recorded(run_dir: Path) -> int:
+    csv = run_dir / "results.csv"
+    if not csv.is_file():
+        return 0
+    return max(0, len(csv.read_text(encoding="utf-8", errors="replace").splitlines()) - 1)
+
+
+def _complete(run_dir: Path, contract: dict, arm: str, seed: int) -> bool:
     marker = run_dir / "training_complete.json"
     best = run_dir / "weights/best.pt"
-    if not marker.is_file() or not best.is_file():
+    contract_path = run_dir / "run_contract.json"
+    if not marker.is_file() or not best.is_file() or not contract_path.is_file():
+        return False
+    if _read(contract_path, "Run contract") != contract:
         return False
     payload = _read(marker, "Training marker")
     return (
         payload.get("trainer_returned") is True
         and payload.get("arm") == arm
         and int(payload.get("seed", -1)) == seed
-        and int(payload.get("epochs_requested", -1)) == epochs
-        and payload.get("initial_checkpoint_sha256") == source_sha
+        and payload.get("run_contract_sha256") == _sha256(contract_path)
     )
 
 
@@ -66,6 +94,7 @@ def run_faruq_v3_af2_igem_parent_arm(
     data_root: str | Path,
     grouped_summary: str | Path,
     af2_checkpoint: str | Path,
+    parent_result: str | Path,
     static_audit: str | Path,
     output_root: str | Path,
     *,
@@ -83,6 +112,7 @@ def run_faruq_v3_af2_igem_parent_arm(
     data_root = Path(data_root).expanduser().resolve()
     grouped_path = Path(grouped_summary).expanduser().resolve()
     checkpoint = Path(af2_checkpoint).expanduser().resolve()
+    parent_result_path = Path(parent_result).expanduser().resolve()
     audit_path = Path(static_audit).expanduser().resolve()
     output_root = Path(output_root).expanduser().resolve()
 
@@ -98,17 +128,20 @@ def run_faruq_v3_af2_igem_parent_arm(
         raise RuntimeError("Grouped summary tidak mempertahankan test lock")
 
     source_sha = _sha256(checkpoint)
+    parent = _canonical_parent_result(parent_result_path, seed, source_sha)
     audit = _read(audit_path, "IGEM static audit")
     if (
         audit.get("format") != "coffee_detector.af2_parent_residual.igem_static_audit.v1"
+        or audit.get("audit_revision") != AUDIT_REVISION
         or audit.get("decision") != "PASS"
         or audit.get("training_authorized") is not True
         or audit.get("checkpoint_sha256") != source_sha
         or audit.get("test_access_authorized") is not False
     ):
-        raise RuntimeError("Static audit tidak mengotorisasi checkpoint AF2FS ini")
+        raise RuntimeError("Static audit audited-revision tidak mengotorisasi checkpoint AF2FS ini")
 
-    payload = yaml.safe_load(CONFIGS[arm].read_text(encoding="utf-8")) or {}
+    config_path = CONFIGS[arm]
+    payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     if payload.get("code") != arm:
         raise RuntimeError(f"Config {arm} tidak konsisten")
     afab = AFABConfig.from_mapping(payload["afab"])
@@ -117,12 +150,43 @@ def run_faruq_v3_af2_igem_parent_arm(
         raise RuntimeError("Runner ini hanya untuk family IGEM")
 
     epochs = int(payload["train"]["epochs"])
+    if epochs != 20:
+        raise RuntimeError("IGEM frozen-parent confirmation dibekukan pada maksimum 20 epoch")
     run_dir = output_root / arm / f"{arm}_seed{seed}"
     best = run_dir / "weights/best.pt"
     last = run_dir / "weights/last.pt"
-    training_executed = False
+    contract = {
+        "format": RUN_CONTRACT_FORMAT,
+        "protocol": PROTOCOL,
+        "arm": arm,
+        "conditioning": residual.conditioning,
+        "seed": seed,
+        "initial_af2_checkpoint_sha256": source_sha,
+        "parent_result_sha256": _sha256(parent_result_path),
+        "config_sha256": _sha256(config_path),
+        "static_audit_revision": AUDIT_REVISION,
+        "static_audit_checkpoint_sha256": audit["checkpoint_sha256"],
+        "epochs_requested": epochs,
+        "trainable_scope": "igem_residual_only",
+        "evaluation_split": "val",
+        "test_images_accessed": False,
+    }
+    contract_path = run_dir / "run_contract.json"
+    stale_training_artifacts = any(
+        path.exists()
+        for path in (last, best, run_dir / "results.csv", run_dir / "training_complete.json")
+    )
+    if contract_path.is_file():
+        if _read(contract_path, "Run contract") != contract:
+            raise RuntimeError(f"Run directory memiliki kontrak berbeda: {run_dir}")
+    elif stale_training_artifacts:
+        raise RuntimeError(f"Menolak resume artifact tanpa run_contract: {run_dir}")
+    else:
+        run_dir.mkdir(parents=True, exist_ok=True)
+        contract_path.write_text(json.dumps(contract, indent=2) + "\n", encoding="utf-8")
 
-    if not _complete(run_dir, epochs, source_sha, arm, seed):
+    training_executed = False
+    if not _complete(run_dir, contract, arm, seed):
         from ultralytics import YOLO
 
         trainer = make_af2_parent_residual_trainer(
@@ -132,7 +196,9 @@ def run_faruq_v3_af2_igem_parent_arm(
             output_root, lock_name=f"{arm}_seed{seed}.training.lock"
         ):
             if last.is_file():
-                print(f"RESUME {arm} seed {seed} dari last.pt", flush=True)
+                if _checkpoint_seed(last) != seed:
+                    raise RuntimeError(f"last.pt bukan seed {seed}: {last}")
+                print(f"RESUME {arm} seed {seed} dari audited last.pt", flush=True)
                 model = YOLO(str(last))
                 args = {"resume": True, "device": device}
             else:
@@ -155,15 +221,20 @@ def run_faruq_v3_af2_igem_parent_arm(
             model.train(trainer=trainer, **args)
 
         training_executed = True
-        run_dir.mkdir(parents=True, exist_ok=True)
+        actual_epochs = _epochs_recorded(run_dir)
+        if actual_epochs < 1 or not best.is_file():
+            raise RuntimeError(f"Trainer kembali tanpa epoch/best checkpoint: {run_dir}")
         (run_dir / "training_complete.json").write_text(
             json.dumps(
                 {
                     "trainer_returned": True,
                     "epochs_requested": epochs,
+                    "epochs_recorded": actual_epochs,
+                    "early_stopped": actual_epochs < epochs,
                     "seed": seed,
                     "arm": arm,
                     "initial_checkpoint_sha256": source_sha,
+                    "run_contract_sha256": _sha256(contract_path),
                 },
                 indent=2,
             )
@@ -171,40 +242,44 @@ def run_faruq_v3_af2_igem_parent_arm(
             encoding="utf-8",
         )
 
-    if not _complete(run_dir, epochs, source_sha, arm, seed):
+    if not _complete(run_dir, contract, arm, seed):
         raise RuntimeError(f"Run {arm} seed {seed} belum lengkap; last.pt={last}")
 
     reports = output_root / "val_reports"
-    parent_report_path = reports / f"AF2FS_seed{seed}_parent_reference_val.json"
     arm_report_path = reports / f"{arm}_seed{seed}_val.json"
-    baseline = evaluate(checkpoint, data_root, parent_report_path, split="val", device=device)
     candidate = evaluate(best, data_root, arm_report_path, split="val", device=device)
-
-    for label, report in (("AF2FS", baseline), (arm, candidate)):
-        if report["metrics"].get("classes_without_ground_truth"):
-            raise RuntimeError(f"Validation {label} seed {seed} kehilangan kelas")
-        if len(report["metrics"].get("map50_95_by_class", {})) != 21:
-            raise RuntimeError(f"Validation {label} seed {seed} tidak memuat 21 kelas")
+    if candidate["metrics"].get("classes_without_ground_truth"):
+        raise RuntimeError(f"Validation {arm} seed {seed} kehilangan kelas")
+    if len(candidate["metrics"].get("map50_95_by_class", {})) != 21:
+        raise RuntimeError(f"Validation {arm} seed {seed} tidak memuat 21 kelas")
 
     result = {
-        "format": "coffee_detector.af2_parent_residual.igem_arm_result.v1",
-        "protocol": "faruq-v3-af2fs-igem-parent-confirmation-v1",
+        "format": "coffee_detector.af2_parent_residual.igem_arm_result.v2",
+        "protocol": PROTOCOL,
         "arm": arm,
         "family": "igem",
         "conditioning": residual.conditioning,
         "seed": seed,
-        "baseline_metrics": baseline["metrics"],
+        "baseline_metrics": parent["metrics"],
+        "baseline_source": "canonical_AF2FS_parent_result",
         "metrics": candidate["metrics"],
         "checkpoint": str(best),
         "checkpoint_sha256": _sha256(best),
         "initial_af2_checkpoint": str(checkpoint),
         "initial_af2_checkpoint_sha256": source_sha,
+        "parent_result": str(parent_result_path),
+        "parent_result_sha256": _sha256(parent_result_path),
         "parent_frozen": True,
         "trainable_scope": "igem_residual_only",
         "evaluation_split": "val",
         "static_audit": str(audit_path),
-        "config": str(CONFIGS[arm]),
+        "static_audit_revision": AUDIT_REVISION,
+        "run_contract": str(contract_path),
+        "run_contract_sha256": _sha256(contract_path),
+        "config": str(config_path),
+        "config_sha256": _sha256(config_path),
         "training_executed_this_call": training_executed,
+        "epochs_recorded": _epochs_recorded(run_dir),
         "test_images_accessed": False,
     }
     destination = reports / f"{arm}_seed{seed}_result.json"
@@ -220,6 +295,7 @@ def main() -> None:
     parser.add_argument("--data-root", required=True)
     parser.add_argument("--grouped-summary", required=True)
     parser.add_argument("--af2-checkpoint", required=True)
+    parser.add_argument("--parent-result", required=True)
     parser.add_argument("--static-audit", required=True)
     parser.add_argument("--output-root", required=True)
     parser.add_argument("--seed", type=int, choices=SEEDS, required=True)
@@ -231,6 +307,7 @@ def main() -> None:
         args.data_root,
         args.grouped_summary,
         args.af2_checkpoint,
+        args.parent_result,
         args.static_audit,
         args.output_root,
         seed=args.seed,
