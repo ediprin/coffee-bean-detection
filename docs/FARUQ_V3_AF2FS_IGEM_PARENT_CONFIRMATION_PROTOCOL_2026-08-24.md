@@ -4,134 +4,137 @@ Date frozen: 2026-08-24
 Branch: `codex/af2-igem-parent-confirmation`  
 Status: **FROZEN BEFORE TRAINING**  
 Evaluation: Faruq-v3 grouped development validation only  
-Locked test: **closed**
+Locked test: **closed**  
+Current pre-training audit revision: `2026-08-24b`
 
 ## Research question
 
-The earlier `AF2IGEM1` direct combination was trained jointly from D0, so it did not answer whether IGEM can add useful classification evidence to an already trained AF2 without changing the AF2 representation. The older parent-residual protocol answered this only as a seed-42 screen using a historical AF2 parent.
+The prior `AF2+IGEM1` direct combination was trained jointly from D0 and therefore did not answer whether IGEM provides information complementary to an already trained AF2 while the AF2 representation is preserved.
 
-This confirmation asks a narrower and stronger question:
+This confirmation asks:
 
-> With each completed AF2FS parent frozen, does a classification-only IGEM residual receiving the real frozen AF2 P3/P4/P5 features outperform an architecture-, capacity-, schedule-, and optimization-matched zero-information residual across seeds 42/123/2026?
+> With each completed AF2FS parent frozen, does a classification-only IGEM residual receiving real frozen AF2 P3/P4/P5 features outperform an architecture-, capacity-, schedule-, initialization-, and optimization-matched zero-information residual across seeds 42/123/2026?
 
-This is a new preregistered study. It does not revise the 2026-08-23 seed-42 protocol and does not retroactively reinterpret any previous result.
+No result from this new confirmation has been observed yet. The implementation corrections documented below happened before the first IGEM training epoch.
 
-## Frozen parents
+## Canonical frozen parents
 
-The parent for each seed is the completed `AF2FS` best checkpoint from the already completed AF2FFAB2 from-start state:
+Each arm is bound to the completed `AF2FS` parent of the same seed from the completed AF2FFAB2 from-start state:
 
-- seed 42 candidate/control -> AF2FS seed 42 `best.pt`;
-- seed 123 candidate/control -> AF2FS seed 123 `best.pt`;
-- seed 2026 candidate/control -> AF2FS seed 2026 `best.pt`.
+- seed 42 -> AF2FS seed 42 `best.pt`;
+- seed 123 -> AF2FS seed 123 `best.pt`;
+- seed 2026 -> AF2FS seed 2026 `best.pt`.
 
-The notebook must resolve each checkpoint by the SHA-256 recorded in the corresponding `AF2FS_seed{seed}_result.json`; stale absolute paths are not accepted.
+The checkpoint must match the SHA-256 in `AF2FS_seed{seed}_result.json`. The runner also requires that canonical result file and copies its already-recorded validation metrics as the parent baseline. The parent is therefore **not re-evaluated once per arm**, avoiding redundant GPU validation and avoiding a second numerical realization of the same baseline.
 
-For every run, the AF2 frontend, YOLO backbone, neck, native localization path, and native classification path are frozen. Frozen parent modules stay in evaluation mode during residual training. Only IGEM residual parameters are optimized.
+For every arm the AF2 input enhancer, YOLO backbone, neck, native classification heads, native localization heads, and parent BatchNorm statistics are frozen. Only `model.23.residual.*` is trainable.
 
 ## Matched arms
 
-| Arm | Conditioning entering IGEM residual | Purpose |
+| Arm | Residual input | Purpose |
 |---|---|---|
-| `AF2IGEM0` | zeros shaped like P3/P4/P5 | matched capacity/optimization control |
-| `AF2IGEM1` | real frozen AF2 P3/P4/P5 | spectral-parent IGEM candidate |
+| `AF2IGEM0` | zeros shaped like frozen P3/P4/P5 | zero-information capacity/optimization control |
+| `AF2IGEM1` | real frozen P3/P4/P5 | feature-conditioned candidate |
 
-The two arms use the existing `configs/af2_parent_residual/AF2IGEM0.yaml` and `AF2IGEM1.yaml`. Their only intended residual difference is `conditioning: zero` versus `conditioning: feature`.
+Both use the same architecture and settings. The only intended config difference is `conditioning: zero` versus `conditioning: feature`.
 
-The existing IGEM settings remain frozen: reference depth 3, mask-loss weight 0.05, kernel size 3, four attention heads, channel reduction 4, correction scale 1.0. Training remains 20 epochs, image size 640, batch 16, workers 2, patience 7, optimizer `auto`, no cache, close-mosaic 10, and max-det 500.
+Frozen IGEM settings: reference depth 3, mask-loss weight 0.05, kernel size 3, attention heads 4, channel reduction 4, correction scale 1.0. Training: maximum 20 epochs, imgsz 640, batch 16, workers 2, patience 7, optimizer `auto`, cache false, close-mosaic 10, max-det 500. Early stopping is allowed; the requested maximum remains 20 epochs.
 
-The IGEM coarse bbox-derived mask objective remains present in **both** arms. Therefore the comparison isolates information entering the residual rather than auxiliary-loss presence.
+The coarse bbox-derived IGEM mask objective is present in both arms. Thus the candidate-control comparison isolates information entering the residual rather than merely the presence of the auxiliary objective.
 
 ## Forward contract
 
-For level `l`, native AF2 classification logits are preserved and the residual contributes only an additive correction:
+For each level `l`, native AF2 classification logits remain intact and the residual adds only a classification correction:
 
 \[
 z_l = z_l^{AF2} + \Delta z_l^{IGEM}.
 \]
 
-For the matched control, the residual receives `0` instead of `F_l`:
+For the control and candidate:
 
 \[
 \Delta z_l^{IGEM0}=R_l(0), \qquad
 \Delta z_l^{IGEM1}=R_l(F_l).
 \]
 
-The box branch always consumes the native frozen AF2 features and cannot be modified by the residual.
+The native box branch consumes the original frozen AF2 features and receives no IGEM correction.
 
-At zero-output initialization both arms must reproduce the frozen AF2 parent numerically before training.
+## Dedicated IGEM static authorization — revision 2026-08-24b
 
-## Static authorization gate
+Training is forbidden unless a dedicated IGEM-only static audit passes for the exact seed-matched parent SHA. The legacy shared SAF/IGEM audit is deliberately left unchanged and is no longer used to authorize this experiment.
 
-Training for a seed is forbidden unless the IGEM-only static audit records `PASS` and binds itself to that seed's exact AF2FS checkpoint SHA. The audit must establish:
+The dedicated audit must establish all of the following before training:
 
-1. `AF2IGEM0` and `AF2IGEM1` have identical model YAML, AF2 config, training schedule, parameter count, trainable count, and state schema;
-2. the only intended residual-config difference is zero versus feature conditioning;
-3. both arms numerically reproduce the AF2FS parent at zero initialization;
-4. activating the feature-conditioned residual changes class scores while preserving the native box path;
-5. activating the zero-conditioned residual cannot extract P3/P4/P5 information;
-6. gradients are finite/nonzero in the residual and absent from every parent parameter;
-7. the optimizer contains exactly the residual trainable parameters;
-8. no test data are exposed.
+1. control and candidate have the same model YAML, AF2 config, training schedule, parameter count, trainable count, and state schema;
+2. their residual modules have **identical initialized state** when constructed from the same fixed audit seed;
+3. only conditioning differs in the residual config;
+4. transfer of the frozen parent backbone/neck and native Detect head is **bitwise exact in state**;
+5. both arms reproduce the parent output numerically at zero-output initialization;
+6. repeated-forward box outputs remain within the pre-existing `ATOL=5e-5`, `RTOL=1e-5` numerical envelope;
+7. the zero-information arm remains within that same score envelope after its final correction projection is activated;
+8. the feature-conditioned arm changes scores beyond that numerical envelope;
+9. only residual parameters are trainable;
+10. parent BatchNorm modules remain in `eval()` while residual BatchNorm modules are trainable;
+11. residual gradients are finite/live, parent parameters receive no gradients, and a residual optimizer step leaves all parent parameters/buffers unchanged;
+12. test access remains false.
 
-## Execution
+### Why revision b exists
 
-All six validation-development runs are authorized by this frozen protocol after their per-seed static audits pass:
+The first seed-42 CUDA audit stopped before training because the earlier audit required bitwise equality between separate CUDA forwards. The observed control score jitter was `1.52587890625e-05`, while the feature-conditioned score change was `2.23699951171875`. The audit already used `ATOL=5e-5`, `RTOL=1e-5` for parent identity before these values were observed.
+
+Revision `2026-08-24a` first applied that existing tolerance consistently. A later repo audit found that changing the **shared** SAF/IGEM legacy audit could break unrelated regression tests. Revision `2026-08-24b` therefore restores the shared audit exactly and implements the numerical rule only in a dedicated IGEM confirmation audit. This is an implementation-isolation correction, not a performance-threshold change.
+
+No IGEM training epoch had run before revisions a or b. Model architecture, dataset, optimizer, arm definitions, parent checkpoints, training schedule, decision thresholds, and test lock are unchanged.
+
+## Training and resume contract
+
+All six development-validation runs are authorized only after all three seed-specific static audits pass:
 
 `AF2IGEM0/1 x seeds 42,123,2026`.
 
-Runs may resume from their own `last.pt`; resume does not change the requested 20-epoch budget. A completion marker must bind arm, seed, requested epochs, and parent checkpoint SHA.
+Every run writes `run_contract.json` binding:
 
-The notebook follows the current Kaggle pattern: index `/kaggle/input` once, restore only required AF2FS result/checkpoint members from prior state, prepare the leakage-safe development core, run audits, run/resume paired arms, snapshot state, aggregate validation results, and keep test locked.
+- arm and conditioning;
+- seed;
+- canonical AF2FS checkpoint SHA;
+- canonical AF2FS result-file SHA;
+- config SHA;
+- static-audit revision and parent SHA;
+- requested epochs;
+- trainable scope;
+- validation-only/test-locked status.
+
+A `last.pt` is resumable only inside a directory with the matching contract. Stale weights without a contract are rejected. Ultralytics 8.4.96 is pinned. Its trainer may temporarily re-enable frozen floating-point parameters during generic setup, but the custom trainer re-applies the residual-only freeze **before optimizer construction**, filters optimizer groups to the residual set exactly, and the custom model keeps parent BatchNorm modules in evaluation mode during training.
 
 ## Frozen three-seed decision
 
-Let `d_m(s)` be candidate minus matched zero-control for metric `m` at seed `s`, and `p_m(s)` be candidate minus its frozen AF2FS parent.
+Let `d_m(s)` be candidate minus zero-control and `p_m(s)` candidate minus canonical AF2FS parent.
 
-### Parent safety gate
+Parent safety, all required:
 
-Using the three-seed mean candidate-minus-parent deltas:
+- mean Macro `p >= -0.20 pp`;
+- mean Bottom-3 `p >= -1.00 pp`;
+- mean Worst `p >= -1.00 pp`.
 
-- Macro >= -0.20 pp;
-- Bottom-3 >= -1.00 pp;
-- Worst >= -1.00 pp.
+Route A — aggregate superiority over matched control, all required:
 
-All 21 validation classes must be present for every parent/control/candidate report and test must remain unopened.
-
-### Route A — aggregate superiority over matched control
-
-All must hold:
-
-- mean Macro `AF2IGEM1 - AF2IGEM0` >= +0.20 pp;
+- mean Macro `d >= +0.20 pp`;
 - Macro improves in at least 2/3 seeds;
-- mean Bottom-3 delta >= -0.50 pp;
-- mean Worst delta >= -1.00 pp.
+- mean Bottom-3 `d >= -0.50 pp`;
+- mean Worst `d >= -1.00 pp`.
 
-### Route B — lower-tail Pareto improvement over matched control
+Route B — lower-tail Pareto improvement over matched control, all required:
 
-All must hold:
+- mean Macro `d >= -0.10 pp`;
+- mean Bottom-3 `d >= +0.50 pp` and improves in at least 2/3 seeds;
+- mean Worst `d >= +1.00 pp` and improves in at least 2/3 seeds.
 
-- mean Macro delta >= -0.10 pp;
-- mean Bottom-3 delta >= +0.50 pp and improves in at least 2/3 seeds;
-- mean Worst delta >= +1.00 pp and improves in at least 2/3 seeds.
+`RETAIN` requires parent safety plus Route A or Route B. Otherwise `REJECT`.
 
-`RETAIN` requires the parent safety gate plus Route A or Route B. Otherwise the decision is `REJECT`.
-
-These thresholds preserve the numerical tolerances of the older parent-residual screen while adding three-seed directional consistency. They are frozen here before the new AF2FS paired runs.
+All 21 validation classes must be present. The locked test remains unopened regardless of decision.
 
 ## Claim boundary
 
-A `RETAIN` supports only:
+A `RETAIN` supports only that, under matched three-seed development-validation training with canonical AF2FS parents frozen, real P3/P4/P5 conditioning gives the IGEM residual useful classification information beyond its zero-information matched control. It does not establish independent test generalization, does not prove generic module stacking, and does not authorize SAF or STB in the same run.
 
-> Under matched three-seed development-validation training with completed AF2FS parents frozen, real P3/P4/P5 conditioning gives the IGEM residual useful classification information beyond its zero-information capacity/optimization control.
-
-It does **not** establish independent test generalization, does not prove that arbitrary module stacking is beneficial, and does not authorize adding SAF/STB in the same training run. SAF and STB-vs-CMC remain separate later hypotheses.
-
-A `REJECT` closes this AF2FS+IGEM frozen-parent route under the frozen formulation; it does not invalidate standalone AF2 or standalone IGEM evidence.
-
-## Pre-training static-audit amendment 2026-08-24a
-
-Before any IGEM confirmation training epoch was run, the first seed-42 CUDA static audit stopped with three false-negative gates. The architectural and gradient invariants passed: both arms reproduced the AF2 parent numerically at initialization, only the IGEM residual was trainable, the frozen parent received no gradients, and the feature-conditioned candidate produced a large score change. The failed checks were caused by requiring exact/bitwise equality across two separate CUDA forward passes.
-
-Observed pre-training diagnostics included an `AF2IGEM0` active score maximum absolute difference of `1.52587890625e-05`, while `AF2IGEM1` changed scores by `2.23699951171875`. The audit had already defined `ATOL=5e-5` and `RTOL=1e-5` for parent identity before these values were observed.
-
-Audit revision `2026-08-24a` therefore applies that **pre-existing** numerical tolerance consistently to repeated-forward box preservation and zero-information score identity. Bitwise equality remains recorded as a diagnostic but is no longer an authorization requirement across separate CUDA forwards. A feature-conditioned residual must change scores beyond the same numerical tolerance envelope. No model, dataset, training schedule, optimizer, decision threshold, parent checkpoint, or test-access rule is changed by this amendment.
+A `REJECT` closes only this AF2FS+IGEM frozen-parent formulation. It does not invalidate standalone AF2 or standalone IGEM evidence.
