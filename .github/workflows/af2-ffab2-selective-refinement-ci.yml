@@ -1,0 +1,81 @@
+name: AF2 FFAB2 Selective Refinement CI
+
+on:
+  push:
+    branches:
+      - codex/af2-ffab2-selective-refinement
+    paths:
+      - "src/coffee_detector/af2_ffa/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_af2_ffab2_select*.py"
+      - "tests/test_af2_ffab2_selective_refinement.py"
+      - "notebooks/Faruq_V3_AF2_FFAB2_Selectivity_All_Stages_Kaggle.ipynb"
+      - "docs/FARUQ_V3_AF2_FFAB2_SELECTIVE_REFINEMENT_PROTOCOL_2026-08-24.md"
+      - ".github/workflows/af2-ffab2-selective-refinement-ci.yml"
+  pull_request:
+    paths:
+      - "src/coffee_detector/af2_ffa/**"
+      - "src/coffee_detector/experiments/run_faruq_v3_af2_ffab2_select*.py"
+      - "tests/test_af2_ffab2_selective_refinement.py"
+      - "notebooks/Faruq_V3_AF2_FFAB2_Selectivity_All_Stages_Kaggle.ipynb"
+      - "docs/FARUQ_V3_AF2_FFAB2_SELECTIVE_REFINEMENT_PROTOCOL_2026-08-24.md"
+      - ".github/workflows/af2-ffab2-selective-refinement-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: af2-ffab2-selective-refinement-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-and-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Version lock
+        run: |
+          python - <<'PY'
+          import ultralytics
+          print('ultralytics:', ultralytics.__version__)
+          assert ultralytics.__version__ == '8.4.96'
+          PY
+      - name: Regression and selective tests
+        run: |
+          python -m pytest -q \
+            tests/test_af2_ffa.py \
+            tests/test_af2_ffa_from_start_dct.py \
+            tests/test_af2_ffa_from_start_decision.py \
+            tests/test_af2_ffab2_selective_refinement.py
+      - name: CLI smoke checks
+        run: |
+          python -m coffee_detector.experiments.run_faruq_v3_af2_ffab2_selectivity_analysis --help
+          python -m coffee_detector.experiments.run_faruq_v3_af2_ffab2_selective_arm --help
+          python -m coffee_detector.experiments.run_faruq_v3_af2_ffab2_selective_decision --help
+      - name: Notebook contract smoke check
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path('notebooks/Faruq_V3_AF2_FFAB2_Selectivity_All_Stages_Kaggle.ipynb')
+          payload=json.loads(path.read_text(encoding='utf-8'))
+          assert payload['nbformat']==4 and payload['cells']
+          source='\n'.join(''.join(cell.get('source',[])) for cell in payload['cells'])
+          assert "BRANCH='codex/af2-ffab2-selective-refinement'" in source
+          assert '/kaggle/input' in source and '/kaggle/working' in source
+          assert 'google.colab' not in source
+          assert "(DATA/'test').exists()" in source
+          assert 'run_faruq_v3_af2_ffab2_selectivity_analysis' in source
+          assert 'run_faruq_v3_af2_ffab2_selective_arm' in source
+          print(path,'valid')
+          PY
