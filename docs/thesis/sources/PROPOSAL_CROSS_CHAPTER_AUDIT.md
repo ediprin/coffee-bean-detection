@@ -2,138 +2,198 @@
 
 Date: 2026-08-25
 
-Scope: Bab I–III proposal foundation after Bab II normalization and first Bab III methodology draft.
+Scope: Bab I–III after Hong-adapted AF2 optimization rewrite.
 
-Status: **CORE LOGIC CONSISTENT; several final-submission gates remain open**.
+Status: **CORE LOGIC SYNCHRONIZED; final citation/artifact/format gates remain open**.
 
 ## 1. Core problem-method chain
 
-Current chapters agree on the following logic:
+Current chapters now agree on:
 
 ```text
 coffee literature
 -> detailed / visually similar defect classes can be difficult
 -> aggregate metrics can hide tail classes
--> need discriminative representation / input utility
+-> need stronger discriminative input / representation
 
 non-coffee preprocessing + spectral literature
 -> image-space transformation can affect downstream detection
 -> frequency/angular processing is technically plausible
 
-research hypothesis
--> test parameter-free AF2 before YOLO26
-
-experimental design
--> same detector / source / split / schedule
--> native vs AF2 input treatment
--> aggregate + tail + diagnostic + efficiency evaluation
+research design
+-> AF2 contains multiple design choices
+-> factorized AF2 analysis / limited sensitivity
+-> select AF2*
+-> method freeze
+-> matched native YOLO26 vs AF2*-YOLO26 confirmation
+-> aggregate + tail + mechanism + visualization/error + efficiency analysis
 ```
 
-PASS: no chapter currently requires the unsupported causal claim `coffee difficulty -> frequency bottleneck`.
+PASS: no chapter requires the unsupported causal claim `coffee difficulty -> frequency bottleneck`.
 
-## 2. Research-question alignment
+## 2. Working-title alignment
 
-### RQ1 — overall effectiveness
+Current title:
+
+**Analisis dan Optimasi Preprocessing Citra Berbasis Frekuensi-Angular pada YOLO26 untuk Deteksi Fine-Grained Cacat Biji Kopi**
+
+The two key title terms are now operational:
+
+```text
+Optimasi
+= factorized AF2 structural analysis
++ limited parameter sensitivity
++ method freeze
+
+Analisis
+= overall performance
++ lower-tail behavior
++ mechanism diagnostics
++ visualization
++ error analysis
++ efficiency
+```
+
+Status: **TITLE-METHOD ALIGNMENT PASS**.
+
+The previous risk that `Optimasi` was decorative has been closed at methodology-design level.
+
+## 3. Research-question alignment
+
+### RQ1 — AF2 optimization
 
 Question:
 
 ```text
-Does frequency-angular preprocessing improve YOLO26 fine-grained coffee-defect detection?
+How do AF2 design factors affect performance,
+and which configuration is most defensible for selection?
 ```
 
 Matched methodology:
 
-- D0DIRECT vs AF2DIRECT;
+- AF2C reference;
+- AF2WIN;
+- AF2ORI;
+- AF2POL;
+- AF2SOFT;
+- AF2LUM;
+- one-factor-at-a-time screening;
+- Macro mAP50-95 primary selection;
+- Bottom-3 / Worst-class constraints;
+- latency as engineering trade-off;
+- optional limited parameter sensitivity;
+- method freeze before confirmatory evaluation.
+
+Status: **ALIGNED**.
+
+### RQ2 — confirmatory effectiveness
+
+Question:
+
+```text
+Does selected AF2 improve matched YOLO26 detection?
+```
+
+Matched methodology:
+
+- native YOLO26n vs selected AF2*-YOLO26n;
 - same official `yolo26n.pt` source;
-- matched target-head initialization;
-- same training schedule;
-- Macro mAP50–95 + mAP50 / per-class AP.
+- matched 21-class head initialization;
+- same grouped split and schedule;
+- paired seeds 42 / 123 / 2026;
+- Macro mAP50-95 primary.
 
 Status: **ALIGNED**.
 
-### RQ2 — difficult / lower-tail classes
-
-Question:
-
-```text
-What is the effect on low-performing / difficult classes?
-```
+### RQ3 — lower-tail / difficult classes
 
 Matched methodology:
 
+- Bottom-3;
+- Worst-class;
 - per-class AP;
-- Bottom-3 mAP50–95;
-- Worst-class mAP50–95;
-- per-seed class behavior.
+- confusion/error analysis;
+- rescue-regression transition analysis.
 
 Status: **ALIGNED**.
 
-### RQ3 — discrimination vs proposal-accessibility pattern
-
-Current normalized wording:
-
-```text
-Is the observed performance pattern more consistent with improved class discrimination
-than improved raw proposal/localization accessibility?
-```
+### RQ4 — discrimination vs proposal-accessibility pattern
 
 Matched diagnostics:
 
 - raw top-500 proposal accessibility;
 - localization-conditioned Top-1;
-- correct-decision recall.
+- correct-decision recall;
+- input/spectral visualization;
+- activation visualization only if YOLO26 compatibility is verified.
 
 Status: **ALIGNED WITH DIAGNOSTIC BOUNDARY**.
 
-Important: raw proposal accessibility is not a complete box-regression/localization-quality metric. The proposal must not silently return to the older wording that implies full localization causality.
+Raw proposal accessibility is not complete box-regression/localization quality.
 
-## 3. Objective alignment
+## 4. Objective alignment
 
 | Objective | Method / output | Status |
 |---|---|---|
-| Evaluate AF2 effectiveness | paired D0DIRECT/AF2DIRECT | PASS |
-| Analyze lower tail | Bottom-3/Worst/per-class | PASS |
-| Diagnose class-vs-proposal pattern | mechanism diagnostics | PASS |
-| Evaluate efficiency | params/latency/throughput/VRAM | METHOD DEFINED, FINAL ENVIRONMENT OPEN |
+| Optimize AF2 design | factorized structural analysis + limited sensitivity | PASS |
+| Confirm selected AF2 | native vs AF2* paired direct protocol | PASS |
+| Analyze lower tail | Bottom-3/Worst/per-class/errors | PASS |
+| Diagnose mechanism pattern | proposal + class diagnostics + visualization | PASS |
+| Evaluate efficiency | params/latency/throughput/VRAM | METHOD DEFINED; FINAL ENVIRONMENT OPEN |
 
-Efficiency does not need its own main RQ unless the campus/advisor requires one; it currently functions as a secondary engineering objective.
-
-## 4. AF2 terminology audit
+## 5. AF2 terminology audit
 
 ### `parameter-free`
 
-PASS. Current `operator.py` contains no trainable AF2 parameters.
+PASS. AF2 has no learned preprocessing parameters.
 
 ### `frequency-angular`
 
-PASS with a precise meaning:
+PASS with precise meaning:
 
 - `frequency` = local patch Fourier representation;
 - `angular` = amplitude density grouped by Fourier direction;
-- it does **not** mean bounding-box angle / oriented detection.
+- not bounding-box angle or oriented detection.
 
 ### radial terminology
 
-Important correction already locked:
-
-```text
-radius_ratio=0.05 is present in shared AFAB config
-but is inactive in pure mode=af2.
-```
-
-Therefore the thesis must not describe AF2 as simultaneously applying AF1 radial high-pass filtering unless a different mode is explicitly tested.
+`radius_ratio=0.05` exists in shared config but is inactive in pure `mode=af2`. Do not describe AF2 reference as simultaneously applying AF1 radial high-pass filtering.
 
 ### `content-adaptive`
 
-PASS. Threshold depends on patch/channel angular entropy even though no weights are learned.
+PASS. Threshold depends on patch/channel entropy.
 
 ### `lightweight`
 
-Do not use as a default AF2 label. Parameter-free does not imply low latency or low memory.
+Do not use as default AF2 label. Parameter-free does not imply low latency or memory.
 
-## 5. Dataset consistency audit
+## 6. Optimization-provenance audit
 
-Current methodology and direct protocol agree:
+Two evidence layers are intentionally separated.
+
+### Historical factorization genealogy
+
+Uses seed-matched D0 coffee checkpoint for candidate screening.
+
+Role:
+
+```text
+development / structural-selection evidence
+```
+
+### Final confirmatory thesis protocol
+
+Uses official YOLO26n pretrained source directly with matched target head.
+
+Role:
+
+```text
+main native-vs-AF2 confirmatory evidence
+```
+
+PASS: proposal Bab III now states this mismatch explicitly rather than silently merging the two protocols.
+
+## 7. Dataset consistency audit
 
 ```text
 train      = 1,665 images / 2,986 annotations
@@ -141,13 +201,16 @@ validation =   294 images /   526 annotations
 classes    = 21
 ```
 
-PASS: Bab I/II use SNI only as standards/taxonomy context and do not claim the detector reconstructs the full SNI defect-value grading procedure.
+PASS:
 
-PASS: locked test is not used for method selection in the proposal/pilot.
+- grouped split retained;
+- parent/hash leakage gates retained;
+- test not used for selection;
+- SNI remains standards/taxonomy context rather than full grading reconstruction.
 
-## 6. Training-protocol consistency audit
+## 8. Training-protocol consistency audit
 
-Direct thesis protocol:
+Final direct confirmatory authority:
 
 ```text
 max epochs   50
@@ -161,102 +224,72 @@ max_det      500
 deterministic true
 ```
 
-Conflict found in older `configs/D0_yolo26n.yaml`:
+Older conflicting 100-epoch D0 config is not authoritative for final direct confirmation.
+
+## 9. Visualization/error-analysis audit
+
+Current Bab III now includes:
 
 ```text
-epochs   100
-workers  4
-patience 20
+Original RGB
+-> local patch
+-> FFT magnitude
+-> angular density
+-> adaptive threshold
+-> retained angular response
+-> reconstructed cue
+-> AF2-enhanced RGB
+-> prediction / activation visualization
 ```
 
-Resolution: **direct-from-pretrained frozen protocol wins** for Bab III.
+Guardrails:
 
-## 7. Pilot-result consistency audit
+- visualization is qualitative support, not causal proof;
+- CAM/EigenCAM is not frozen until YOLO26 compatibility is verified;
+- qualitative examples should use deterministic/fixed-seed sampling from predefined outcome groups;
+- rescue/regression statistic is thesis-defined, not attributed to Hong or COCO.
 
-Proposal narrative correctly treats seed 42 as feasibility evidence.
+Status: **METHOD DEFINED; IMPLEMENTATION AUDIT OPEN**.
 
-However, provenance is split:
+## 10. Pilot-result provenance
 
-- machine-capture result record contains D0DIRECT metrics + Boolean promotion result, but lacks exact AF2DIRECT numeric fields;
-- `foundation/04_PILOT_EVIDENCE.md` contains user-verified exact AF2DIRECT metrics and paired deltas.
+Seed-42 direct result remains feasibility evidence only.
 
-Current Bab I uses the user-verified pilot numbers. This is acceptable for a preliminary proposal draft if labelled as preliminary, but before final thesis/result-table archival the exact AF2DIRECT values should be imported from the saved run artifact into the machine evidence record.
+Exact AF2DIRECT numeric provenance still requires reconciliation into the machine evidence record before final result-table archival.
 
-Do not describe the machine JSON as containing those exact AF2 numbers until that reconciliation occurs.
+Do not describe seed 42 as final superiority evidence.
 
-## 8. Literature-routing consistency audit
+## 11. Bab II / citation-key consistency
 
-Bab II now has a normalized modular assembly:
+PASS:
 
-- `04_02_INSPECTION_QUALITY_NORMALIZED.md` replaces the older embedded §2.2;
-- `04_09_RELATED_WORK_TABLE.md` replaces the older embedded §2.9 table.
+- normalized §2.2 and §2.9 modules retained;
+- `SPEC-01/SPEC-02` remain canonical angular-theory keys;
+- old FREQ key collision must not be reintroduced.
 
-`COF-17` García 2019 now handles manual/classical coffee inspection evidence.
+## 12. Open gates before formatted DOCX export
 
-Result:
-
-```text
-COF-07 Kesiman -> §2.1 taxonomy + §2.6 fine-grained difficulty
-COF-08 Arwatchananukul -> §2.1 taxonomy + §2.6 unseen/fine-grained evidence
-```
-
-This closes the most obvious citation-recycling hotspot.
-
-## 9. Citation-key consistency audit
-
-Background has been normalized from deprecated spectral aliases to:
-
-```text
-SPEC-01 = Cao et al. radial/angular spectral analysis
-SPEC-02 = Zhang & Tan orientation spectrum
-```
-
-Do not reintroduce the old collision where `FREQ-01/FREQ-02` referred to those papers.
-
-## 10. Working-title risk
-
-Current title:
-
-**Analisis dan Optimasi Preprocessing Citra Berbasis Frekuensi-Angular pada YOLO26 untuk Deteksi Fine-Grained Cacat Biji Kopi**
-
-`Analisis` is clearly supported by the design.
-
-`Optimasi` is **not yet automatically guaranteed by the current confirmatory design**, because the thesis method currently freezes one retained AF2 operator/configuration and compares it against native YOLO26.
-
-Two defensible routes remain:
-
-### Route A — retain `Analisis dan Optimasi`
-
-The final methodology must include a clearly scoped optimization/ablation question, e.g. controlled operator-factor selection or retained parameter/configuration analysis, without reopening uncontrolled module stacking.
-
-### Route B — use a safer title if final work remains comparison-only
-
-Example direction:
-
-`Analisis Pengaruh Preprocessing Citra Berbasis Frekuensi-Angular pada YOLO26 untuk Deteksi Fine-Grained Cacat Biji Kopi`.
-
-No title change is made automatically; this is an advisor/proposal decision.
-
-## 11. Open gates before formatted proposal export
-
-- [x] core problem-method chain consistent;
-- [x] RQ1–RQ3 map to metrics/experiments;
-- [x] AF2 implementation and config audited;
-- [x] Bab II citation recycling normalized;
-- [x] direct protocol conflict resolved;
-- [ ] decide whether title retains `Optimasi` and what experiment operationalizes it;
-- [ ] pair DFT/FFT fundamentals with final textbook edition/page references;
+- [x] title-method alignment closed;
+- [x] RQ1–RQ4 synchronized with Bab III;
+- [x] factorized optimization design defined;
+- [x] direct-vs-factorization provenance distinction explicit;
+- [x] mechanism / visualization / error-analysis structure defined;
+- [ ] exact page/equation citations for AFAB/LFDet-derived formulas;
+- [ ] exact page/equation citations for YOLO26 details used in Bab III;
+- [ ] decide/freeze exact parameter-sensitivity values if that stage is retained;
+- [ ] verify YOLO26-compatible activation visualization;
 - [ ] reconcile AF2DIRECT exact numeric artifact provenance;
 - [ ] freeze final locked-test procedure before any test access;
-- [ ] record actual confirmatory hardware/runtime for efficiency comparison;
-- [ ] run final citation/index/numeric recertification during DOCX generation;
-- [ ] create the final research-flow figure from the synchronized Bab III design.
+- [ ] record confirmatory hardware/runtime for efficiency comparison;
+- [ ] final APA citation conversion and 50-reference requirement audit;
+- [ ] generate Bab III figures;
+- [ ] assemble into official USU DOCX template and render visual QA.
 
-## 12. Source-of-truth map for future generation
+## 13. Source-of-truth map
 
 ```text
 Thesis logic
-  -> foundation/00-07
+  -> foundation/00-09
 
 Bab I
   -> proposal/02_BACKGROUND.md
@@ -270,6 +303,12 @@ Bab II
 Bab III
   -> proposal/05_METHODOLOGY.md
 
+Bab III design
+  -> foundation/08_BAB3_HONG_ADAPTED_OPTIMIZATION_DESIGN.md
+
+Document generation
+  -> foundation/09_USU_DOCUMENT_GENERATION_CONTRACT.md
+
 Citation namespace
   -> sources/CANONICAL_SOURCE_KEYS.md
 
@@ -279,6 +318,7 @@ Bab II QA
 
 Bab III QA
   -> sources/BAB3_PROTOCOL_AUDIT.md
+  -> sources/BAB3_HONG_REWRITE_AUDIT_2026-08-25.md
 
 Cross-chapter QA
   -> sources/PROPOSAL_CROSS_CHAPTER_AUDIT.md
