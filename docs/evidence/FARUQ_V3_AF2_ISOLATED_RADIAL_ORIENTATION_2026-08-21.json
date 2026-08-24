@@ -1,0 +1,56 @@
+{
+  "format": "coffee_detector.af2_iso.seed42_evidence.v1",
+  "date": "2026-08-21",
+  "protocol": "docs/AF2_ISOLATED_RADIAL_ORIENTATION_PROTOCOL_2026-08-21.md",
+  "seed": 42,
+  "evaluation_split": "val",
+  "reference": {
+    "AF2": {
+      "macro_map50_95": 0.8819734111428803,
+      "bottom3_class_map50_95": 0.8004276546678737,
+      "worst_class_map50_95": 0.7934699749241949
+    }
+  },
+  "values": {
+    "AF2_RADIAL": {
+      "macro_map50_95": 0.8657459070641406,
+      "bottom3_class_map50_95": 0.7821006728733696,
+      "worst_class_map50_95": 0.7541167083049438,
+      "latency_median_ms": 23.026856000797125,
+      "checkpoint_sha256": "41b24b548f8e257e40c8c7104db85c7370f6f92b0e760aeffbf078e02df74077"
+    },
+    "AF2_ORIENT": {
+      "macro_map50_95": 0.883260407517737,
+      "bottom3_class_map50_95": 0.8138060083939754,
+      "worst_class_map50_95": 0.801357408559643,
+      "latency_median_ms": 23.881944999857296,
+      "checkpoint_sha256": "aa57d6304e5acc3aef9933625f5ea51f72bd54d63b49920b847dc4194498227b"
+    }
+  },
+  "deltas_vs_af2": {
+    "AF2_RADIAL": {
+      "macro_map50_95": -0.01622750407873974,
+      "bottom3_class_map50_95": -0.018326981794504092,
+      "worst_class_map50_95": -0.03935326661925109
+    },
+    "AF2_ORIENT": {
+      "macro_map50_95": 0.0012869963748567053,
+      "bottom3_class_map50_95": 0.013378353726101713,
+      "worst_class_map50_95": 0.007887433635448073
+    }
+  },
+  "decisions": {
+    "AF2_RADIAL": "REJECT",
+    "AF2_ORIENT": "RETAIN_FOR_PAIRED_SEED_CONFIRMATION",
+    "AF2_RADIAL_ORIENT_COMBINATION": "NOT_AUTHORIZED"
+  },
+  "decision_basis": "The frozen protocol used a qualitative Pareto-improvement rule and did not freeze a +0.5-point Macro threshold. AF2_ORIENT improved Macro, Bottom-3, and Worst-class AP simultaneously; AF2_RADIAL reduced all three.",
+  "next": "CONFIRM_AF2_ORIENT_ON_SEEDS_123_AND_2026_AGAINST_SEED_MATCHED_AF2",
+  "training_executed": true,
+  "test_images_accessed": false,
+  "test_opened": false,
+  "raw_sources": {
+    "AF2_RADIAL": "experiments/faruq-v3-af2-isolated-seed42-v1/val_reports/AF2_RADIAL_seed42_result.json",
+    "AF2_ORIENT": "experiments/faruq-v3-af2-isolated-seed42-v1/val_reports/AF2_ORIENT_seed42_result.json"
+  }
+}

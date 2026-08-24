@@ -1,0 +1,36 @@
+code: AF2SAF1
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+afab:
+  mode: af2
+  patch_size: 32
+  overlap: 0.50
+  radius_ratio: 0.05
+  gamma: 0.10
+  angular_bins: 360
+  chunk_size: 128
+  eps: 1.0e-8
+parent_residual:
+  family: saf
+  conditioning: feature
+  saf:
+    correction_scale: 1.0
+    offset_init_zero: true
+    sampling_ratio_note: grid_sample_bilinear
+  igem:
+    reference_depth: 3
+    mask_loss_weight: 0.05
+    kernel_size: 3
+    attention_heads: 4
+    channel_reduction: 4
+    correction_scale: 1.0
+train:
+  epochs: 20
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 7
+  optimizer: auto
+  pretrained: false
+  cache: false
+  close_mosaic: 10
+  max_det: 500

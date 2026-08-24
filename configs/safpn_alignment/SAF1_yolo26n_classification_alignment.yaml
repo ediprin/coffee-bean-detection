@@ -1,0 +1,18 @@
+code: SAF1
+variant: safpn_alignment
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+safpn_alignment:
+  correction_scale: 1.0
+  offset_init_zero: true
+  sampling_ratio_note: grid_sample_bilinear
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500

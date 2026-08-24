@@ -1,0 +1,27 @@
+code: AF2STB1
+standalone: STB1
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+af2:
+  mode: af2
+  patch_size: 32
+  overlap: 0.5
+  radius_ratio: 0.05
+  gamma: 0.1
+  angular_bins: 360
+  chunk_size: 128
+  eps: 1.0e-8
+strong:
+  window_size: 4
+  num_heads: 4
+  mlp_ratio: 4.0
+train: &schedule
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500
