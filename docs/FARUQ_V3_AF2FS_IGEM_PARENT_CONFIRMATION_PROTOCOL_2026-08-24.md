@@ -5,7 +5,7 @@ Branch: `codex/af2-igem-parent-confirmation`
 Status: **FROZEN BEFORE TRAINING**  
 Evaluation: Faruq-v3 grouped development validation only  
 Locked test: **closed**  
-Current pre-training audit revision: `2026-08-24b`
+Current pre-training audit revision: `2026-08-24c`
 
 ## Research question
 
@@ -59,7 +59,7 @@ For the control and candidate:
 
 The native box branch consumes the original frozen AF2 features and receives no IGEM correction.
 
-## Dedicated IGEM static authorization — revision 2026-08-24b
+## Dedicated IGEM static authorization — revision 2026-08-24c
 
 Training is forbidden unless a dedicated IGEM-only static audit passes for the exact seed-matched parent SHA. The legacy shared SAF/IGEM audit is deliberately left unchanged and is no longer used to authorize this experiment.
 
@@ -71,20 +71,22 @@ The dedicated audit must establish all of the following before training:
 4. transfer of the frozen parent backbone/neck and native Detect head is **bitwise exact in state**;
 5. both arms reproduce the parent output numerically at zero-output initialization;
 6. repeated-forward box outputs remain within the pre-existing `ATOL=5e-5`, `RTOL=1e-5` numerical envelope;
-7. the zero-information arm remains within that same score envelope after its final correction projection is activated;
-8. the feature-conditioned arm changes scores beyond that numerical envelope;
+7. after activating the final IGEM correction projection, zero-control absolute score displacement must remain `<= 5e-5`;
+8. after the same activation, feature-conditioned absolute score displacement must be `> 5e-5`;
 9. only residual parameters are trainable;
 10. parent BatchNorm modules remain in `eval()` while residual BatchNorm modules are trainable;
 11. residual gradients are finite/live, parent parameters receive no gradients, and a residual optimizer step leaves all parent parameters/buffers unchanged;
 12. test access remains false.
 
-### Why revision b exists
+### Why revisions a, b, and c exist
 
 The first seed-42 CUDA audit stopped before training because the earlier audit required bitwise equality between separate CUDA forwards. The observed control score jitter was `1.52587890625e-05`, while the feature-conditioned score change was `2.23699951171875`. The audit already used `ATOL=5e-5`, `RTOL=1e-5` for parent identity before these values were observed.
 
-Revision `2026-08-24a` first applied that existing tolerance consistently. A later repo audit found that changing the **shared** SAF/IGEM legacy audit could break unrelated regression tests. Revision `2026-08-24b` therefore restores the shared audit exactly and implements the numerical rule only in a dedicated IGEM confirmation audit. This is an implementation-isolation correction, not a performance-threshold change.
+Revision `2026-08-24a` first applied that existing numerical tolerance consistently. A later repo audit found that changing the **shared** SAF/IGEM legacy audit could disturb unrelated regression contracts, so revision `2026-08-24b` isolated this study in a dedicated IGEM audit and restored the shared audit.
 
-No IGEM training epoch had run before revisions a or b. Model architecture, dataset, optimizer, arm definitions, parent checkpoints, training schedule, decision thresholds, and test lock are unchanged.
+CPU CI on revision b then exposed a different issue: `torch.allclose` is appropriate for identity/preservation, but its relative term scales with large-magnitude logits and can classify a deterministic residual correction as numerically close. Revision `2026-08-24c` therefore keeps `allclose(ATOL=5e-5, RTOL=1e-5)` for parent/box preservation, but defines residual **activity** using the already predeclared absolute tolerance: zero-control displacement `<= ATOL`, feature-conditioned displacement `> ATOL`. No performance result was used to set a new threshold.
+
+No IGEM training epoch had run before revisions a, b, or c. Model architecture, dataset, optimizer, arm definitions, parent checkpoints, training schedule, decision thresholds, and test lock are unchanged.
 
 ## Training and resume contract
 
