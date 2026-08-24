@@ -13,6 +13,7 @@ on:
       - "configs/coffee_fg/models/yolo26n-p3.yaml"
       - "tests/test_afab.py"
       - "tests/test_af2_direct_protocol.py"
+      - "tests/test_af2_direct_notebook.py"
       - "notebooks/Faruq_V3_AF2_Direct_From_Pretrained_Seed42_Kaggle.ipynb"
       - "docs/FARUQ_V3_AF2_DIRECT_FROM_PRETRAINED_PROTOCOL_2026-08-24.md"
       - ".github/workflows/af2-direct-ci.yml"
@@ -27,6 +28,7 @@ on:
       - "configs/coffee_fg/models/yolo26n-p3.yaml"
       - "tests/test_afab.py"
       - "tests/test_af2_direct_protocol.py"
+      - "tests/test_af2_direct_notebook.py"
       - "notebooks/Faruq_V3_AF2_Direct_From_Pretrained_Seed42_Kaggle.ipynb"
       - "docs/FARUQ_V3_AF2_DIRECT_FROM_PRETRAINED_PROTOCOL_2026-08-24.md"
       - ".github/workflows/af2-direct-ci.yml"
@@ -63,7 +65,7 @@ jobs:
           assert ultralytics.__version__ == '8.4.96'
           PY
       - name: AF2 direct unit and protocol tests
-        run: python -m pytest -q tests/test_afab.py tests/test_af2_direct_protocol.py
+        run: python -m pytest -q tests/test_afab.py tests/test_af2_direct_protocol.py tests/test_af2_direct_notebook.py
       - name: Runner CLI smoke check
         run: python -m coffee_detector.experiments.run_faruq_v3_af2_direct --help
       - name: Official-pretrained static match smoke check
