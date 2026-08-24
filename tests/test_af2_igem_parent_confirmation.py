@@ -200,12 +200,15 @@ def test_dedicated_igem_static_audit_passes_for_serialized_af2_parent(tmp_path: 
     )
     assert result["decision"] == "PASS"
     assert result["audit_revision"] == AUDIT_REVISION
+    assert result["activity_contract"] == "direct_residual_correction_zero_vs_finite_nonzero"
     assert set(result["records"]) == {"AF2IGEM0", "AF2IGEM1"}
     assert result["gates"]["same_initial_residual_state"]
     assert result["gates"]["control_parent_transfer_exact"]
     assert result["gates"]["candidate_parent_transfer_exact"]
-    assert result["gates"]["control_zero_information_identity"]
-    assert result["gates"]["candidate_changes_scores"]
+    assert result["gates"]["control_zero_information_residual_exact"]
+    assert result["gates"]["candidate_feature_residual_live"]
+    assert result["records"]["AF2IGEM0"]["active_residual_correction_max_abs"] == 0.0
+    assert result["records"]["AF2IGEM1"]["active_residual_correction_max_abs"] > 0.0
     assert result["gates"]["control_parent_state_unchanged"]
     assert result["gates"]["candidate_parent_state_unchanged"]
     assert result["training_authorized"] is True
