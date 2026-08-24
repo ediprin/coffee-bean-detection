@@ -1,5 +1,36 @@
 # Thesis Proposal Changelog
 
+## v0.3.0 — 2026-08-24
+
+Bab II aligned to the uploaded USU/campus proposal convention.
+
+### Added
+
+- `foundation/06_USU_BAB2_PATTERN.md`: structural rules extracted from the uploaded campus proposal;
+- `proposal/04_LITERATURE_REVIEW.md`: first Bab II scaffold using the campus pattern;
+- campus-style `Penelitian Terkait` table with columns `Penulis & Tahun`, `Indeks`, `Fokus Penelitian`, `Metode / Model`, and `Kontribusi dan Pengisian Gap Penelitian`;
+- final table row `Penelitian yang Diusulkan` positioning AF2 + YOLO26.
+
+### Updated
+
+- `proposal/01_PROPOSAL_SKELETON.md`: replaces the former free-form Bab II outline with the campus-aligned sequence.
+
+### Frozen Bab II sequence
+
+1. Biji Kopi Hijau dan Cacat Fisik Biji Kopi;
+2. Inspeksi Mutu Biji Kopi: Metode Konvensional dan Tantangannya;
+3. Object Detection;
+4. YOLO;
+5. YOLO26;
+6. Fine-Grained Object Detection;
+7. Preprocessing Citra untuk Object Detection;
+8. Representasi Citra pada Domain Frekuensi, including FFT, magnitude/phase, radial/angular spectrum, and frequency processing for detection;
+9. Penelitian Terkait with a final proposed-research row.
+
+### Important rule
+
+We imitate the **campus structure and presentation pattern**, not unsupported claims or citation weaknesses in the example. Index/quartile values remain `TBD - verify` until checked against the appropriate bibliometric source and year.
+
 ## v0.2.0 — 2026-08-24
 
 Evidence-to-draft layer added.
