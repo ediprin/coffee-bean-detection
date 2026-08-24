@@ -24,10 +24,10 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install python-docx
 
-      - name: Build working proposal DOCX
+      - name: Build QA-hardened working proposal DOCX
         run: |
           mkdir -p build/thesis
-          python tools/thesis/build_proposal_docx.py \
+          python tools/thesis/build_proposal_docx_v2.py \
             --repo . \
             --out build/thesis/Proposal_AF2_USU_Working.docx \
             --emit-markdown build/thesis/Proposal_AF2_USU_Working.md
