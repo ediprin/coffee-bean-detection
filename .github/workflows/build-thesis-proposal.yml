@@ -1,0 +1,52 @@
+name: Build Thesis Proposal DOCX
+
+on:
+  push:
+    branches:
+      - proposal/thesis-foundation
+    paths:
+      - 'docs/thesis/**'
+      - 'tools/thesis/**'
+      - '.github/workflows/build-thesis-proposal.yml'
+  workflow_dispatch:
+
+jobs:
+  build-proposal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install document tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc libreoffice
+          python -m pip install --upgrade pip
+          python -m pip install python-docx
+
+      - name: Build working proposal DOCX
+        run: |
+          mkdir -p build/thesis
+          python tools/thesis/build_proposal_docx.py \
+            --repo . \
+            --out build/thesis/Proposal_AF2_USU_Working.docx \
+            --emit-markdown build/thesis/Proposal_AF2_USU_Working.md
+
+      - name: Render PDF for layout inspection
+        run: |
+          mkdir -p build/thesis/rendered
+          libreoffice --headless \
+            --convert-to pdf \
+            --outdir build/thesis/rendered \
+            build/thesis/Proposal_AF2_USU_Working.docx
+
+      - name: Upload proposal artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: thesis-proposal-working
+          path: |
+            build/thesis/Proposal_AF2_USU_Working.docx
+            build/thesis/Proposal_AF2_USU_Working.md
+            build/thesis/rendered/Proposal_AF2_USU_Working.pdf
+          if-no-files-found: error
+          retention-days: 30
