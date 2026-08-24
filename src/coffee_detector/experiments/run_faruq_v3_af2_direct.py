@@ -4,7 +4,6 @@ import argparse
 import csv
 import hashlib
 import json
-import statistics
 from pathlib import Path
 
 import torch
@@ -29,6 +28,7 @@ AF2_CONFIG = REPO_ROOT / "configs/afab/AF2_yolo26n_chaotic_amplitude.yaml"
 MODEL_YAML = REPO_ROOT / "configs/coffee_fg/models/yolo26n-p3.yaml"
 ARMS = ("D0DIRECT", "AF2DIRECT")
 SEED = 42
+OFFICIAL_YOLO26N_SHA256 = "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef"
 METRICS = (
     "macro_map50_95",
     "bottom3_class_map50_95",
@@ -61,6 +61,19 @@ def _sha256(path: str | Path) -> str:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def _require_official_pretrained(path: str | Path) -> tuple[Path, str]:
+    source = Path(path).expanduser().resolve()
+    if not source.is_file():
+        raise FileNotFoundError(source)
+    digest = _sha256(source)
+    if digest != OFFICIAL_YOLO26N_SHA256:
+        raise RuntimeError(
+            "Pretrained source bukan official yolo26n.pt yang dibekukan untuk protokol ini: "
+            f"sha256={digest}, expected={OFFICIAL_YOLO26N_SHA256}"
+        )
+    return source, digest
 
 
 def _load_yaml(path: Path) -> dict:
@@ -113,32 +126,24 @@ def _build_initialized_detector(
     from ultralytics import YOLO
     from ultralytics.nn.tasks import DetectionModel
 
-    source = YOLO(str(pretrained_checkpoint)).model
+    checkpoint, _ = _require_official_pretrained(pretrained_checkpoint)
+    source = YOLO(str(checkpoint)).model
     source_nc = _source_class_count(source)
     if source_nc != 80:
-        raise RuntimeError(
-            "Direct protocol hanya menerima pretrained 80-class source; "
-            f"diterima nc={source_nc}. Jangan gunakan D0/D0FT/coffee checkpoint."
-        )
+        raise RuntimeError(f"Official pretrained source harus nc=80; diterima nc={source_nc}")
 
     # The target 21-class head contains tensors that cannot be copied from the
-    # 80-class source. Forking RNG makes those fresh tensors exactly matched
-    # between native and AF2 without perturbing the trainer's augmentation RNG.
+    # 80-class source. Isolated RNG makes those fresh tensors exactly matched
+    # between native and AF2 without perturbing the trainer augmentation RNG.
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(int(seed))
         if use_af2:
             model = AFABDetectionModel(
-                str(MODEL_YAML),
-                ch=3,
-                nc=21,
-                verbose=verbose,
-                afab=af2_config,
+                str(MODEL_YAML), ch=3, nc=21, verbose=verbose, afab=af2_config
             )
             transfer = load_afab_weights(model, source)
         else:
-            model = DetectionModel(
-                str(MODEL_YAML), ch=3, nc=21, verbose=verbose
-            )
+            model = DetectionModel(str(MODEL_YAML), ch=3, nc=21, verbose=verbose)
             model.load(source)
             transfer = None
     return model, transfer
@@ -150,9 +155,7 @@ def run_direct_static_preflight(
     *,
     seed: int = SEED,
 ) -> dict:
-    checkpoint = Path(pretrained_checkpoint).expanduser().resolve()
-    if not checkpoint.is_file():
-        raise FileNotFoundError(checkpoint)
+    checkpoint, pretrained_sha = _require_official_pretrained(pretrained_checkpoint)
     if seed != SEED:
         raise ValueError("Seed-42 screen dikunci pada seed 42")
 
@@ -163,14 +166,12 @@ def run_direct_static_preflight(
     if native_cfg.get("train") != af2_cfg.get("train"):
         raise RuntimeError("Native dan AF2 tidak schedule-matched")
     if af2_cfg.get("afab") != EXPECTED_AF2:
-        raise RuntimeError(
-            f"AF2 config berubah dari frozen protocol: {af2_cfg.get('afab')}"
-        )
+        raise RuntimeError(f"AF2 config berubah dari frozen protocol: {af2_cfg.get('afab')}")
     if int(native_cfg["train"].get("epochs", 0)) != 50:
         raise RuntimeError("Direct screen harus mempertahankan maximum 50 epochs")
 
     frozen = AFABConfig.from_mapping(af2_cfg["afab"])
-    native, native_transfer = _build_initialized_detector(
+    native, _ = _build_initialized_detector(
         use_af2=False,
         pretrained_checkpoint=checkpoint,
         af2_config=frozen,
@@ -205,6 +206,7 @@ def run_direct_static_preflight(
     common_fingerprint = _state_fingerprint(native)
 
     gates = {
+        "official_pretrained_sha256_exact": pretrained_sha == OFFICIAL_YOLO26N_SHA256,
         "same_model_yaml": Path(native_cfg["model"]) == Path(af2_cfg["model"]),
         "training_schedule_exact": native_cfg["train"] == af2_cfg["train"],
         "af2_config_frozen": af2_cfg["afab"] == EXPECTED_AF2,
@@ -225,7 +227,8 @@ def run_direct_static_preflight(
         "training_authorized": decision == "PASS",
         "test_images_accessed": False,
         "pretrained_checkpoint": str(checkpoint),
-        "pretrained_checkpoint_sha256": _sha256(checkpoint),
+        "pretrained_checkpoint_sha256": pretrained_sha,
+        "expected_official_pretrained_sha256": OFFICIAL_YOLO26N_SHA256,
         "pretrained_source_nc": 80,
         "native_config": str(NATIVE_CONFIG),
         "native_config_sha256": _sha256(NATIVE_CONFIG),
@@ -237,7 +240,6 @@ def run_direct_static_preflight(
         "af2_learned_parameter_count": frontend_params,
         "af2_probe_max_abs_change": transform_max_abs,
         "candidate_weight_transfer": candidate_transfer,
-        "native_weight_transfer": native_transfer,
         "gates": gates,
     }
     destination = Path(output).expanduser().resolve()
@@ -263,8 +265,6 @@ def _make_direct_trainer(
         def get_model(self, cfg=None, weights=None, verbose=True):
             resumed = bool(getattr(self.args, "resume", False))
             if resumed:
-                # Resume reconstructs the same model class and then loads the
-                # run-local checkpoint supplied by Ultralytics.
                 if use_af2:
                     model = AFABDetectionModel(
                         str(MODEL_YAML),
@@ -301,11 +301,7 @@ def _make_direct_trainer(
                     "Initial detector state berbeda dari paired static preflight: "
                     f"{fingerprint} != {expected_initial_fingerprint}"
                 )
-            print(
-                "DIRECT INITIALIZATION MATCH:", fingerprint,
-                "| AF2=", use_af2,
-                flush=True,
-            )
+            print("DIRECT INITIALIZATION MATCH:", fingerprint, "| AF2=", use_af2, flush=True)
             return self.set_model_names_for_load(model)
 
         def final_eval(self):
@@ -313,9 +309,7 @@ def _make_direct_trainer(
 
             last = strip_optimizer(self.last) if self.last.exists() else {}
             if self.best.exists():
-                strip_optimizer(
-                    self.best, updates={"train_results": last.get("train_results")}
-                )
+                strip_optimizer(self.best, updates={"train_results": last.get("train_results")})
 
     DirectTrainer.__name__ = "AF2DirectTrainer" if use_af2 else "NativeDirectTrainer"
     return DirectTrainer
@@ -346,7 +340,6 @@ def _load_complete_arm_result(path: Path, contract: dict) -> dict | None:
 def _run_arm(
     arm: str,
     data_root: Path,
-    grouped_summary: Path,
     pretrained_checkpoint: Path,
     static_preflight: dict,
     output_root: Path,
@@ -422,10 +415,7 @@ def _run_arm(
                     raise RuntimeError(
                         f"{arm} memiliki last.pt non-resumable tetapi belum dinilai complete"
                     )
-                print(
-                    f"START {arm} seed {seed} langsung dari official pretrained",
-                    flush=True,
-                )
+                print(f"START {arm} seed {seed} langsung dari official pretrained", flush=True)
                 model = YOLO(str(MODEL_YAML))
                 args = dict(train_args)
                 args.update(
@@ -453,11 +443,7 @@ def _run_arm(
         raise RuntimeError("Validation kehilangan kelas")
     diagnostic_path = reports / f"{arm}_seed{seed}_diagnostic.json"
     diagnostic = run_faruq_v3_diagnostics(
-        best,
-        data_root,
-        diagnostic_path,
-        split="val",
-        device=device,
+        best, data_root, diagnostic_path, split="val", device=device
     )
     result = {
         "format": "coffee_detector.af2_direct.arm_result.v1",
@@ -586,7 +572,7 @@ def run_faruq_v3_af2_direct(
         raise RuntimeError("Training belum diotorisasi")
     root = Path(data_root).expanduser().resolve()
     grouped = Path(grouped_summary).expanduser().resolve()
-    checkpoint = Path(pretrained_checkpoint).expanduser().resolve()
+    checkpoint, pretrained_sha = _require_official_pretrained(pretrained_checkpoint)
     destination = Path(output_root).expanduser().resolve()
     destination.mkdir(parents=True, exist_ok=True)
     if (root / "test").exists():
@@ -601,8 +587,7 @@ def run_faruq_v3_af2_direct(
     static_path = destination / "direct_static_preflight.json"
     if static_path.is_file():
         static = _load_json(static_path, "Static preflight")
-        expected_sha = _sha256(checkpoint)
-        if static.get("pretrained_checkpoint_sha256") != expected_sha:
+        if static.get("pretrained_checkpoint_sha256") != pretrained_sha:
             raise RuntimeError("Pretrained checkpoint berubah dari static preflight")
         if static.get("decision") != "PASS" or not static.get("training_authorized"):
             raise RuntimeError("Static preflight lama bukan PASS")
@@ -610,21 +595,25 @@ def run_faruq_v3_af2_direct(
         static = run_direct_static_preflight(checkpoint, static_path, seed=seed)
 
     control = _run_arm(
-        "D0DIRECT", root, grouped, checkpoint, static, destination, seed=seed, device=device
+        "D0DIRECT", root, checkpoint, static, destination, seed=seed, device=device
     )
     candidate = _run_arm(
-        "AF2DIRECT", root, grouped, checkpoint, static, destination, seed=seed, device=device
+        "AF2DIRECT", root, checkpoint, static, destination, seed=seed, device=device
     )
     summary = build_pair_summary(
-        control,
-        candidate,
-        destination / "af2_direct_seed42_summary.json",
+        control, candidate, destination / "af2_direct_seed42_summary.json"
     )
-    print(json.dumps({
-        "deltas": summary["deltas_af2direct_minus_d0direct"],
-        "screen": summary["screen"],
-        "test_images_accessed": summary["test_images_accessed"],
-    }, indent=2), flush=True)
+    print(
+        json.dumps(
+            {
+                "deltas": summary["deltas_af2direct_minus_d0direct"],
+                "screen": summary["screen"],
+                "test_images_accessed": summary["test_images_accessed"],
+            },
+            indent=2,
+        ),
+        flush=True,
+    )
     return summary
 
 
