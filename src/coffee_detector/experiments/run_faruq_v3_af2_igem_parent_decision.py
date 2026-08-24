@@ -84,6 +84,8 @@ def _normalize_arm(paths, expected_arm: str, conditioning: str) -> dict[int, dic
             raise RuntimeError(f"Result tidak cocok dengan arm {expected_arm}")
         if payload.get("parent_frozen") is not True or payload.get("trainable_scope") != "igem_residual_only":
             raise RuntimeError(f"{expected_arm} tidak membuktikan residual-only training")
+        if payload.get("final_parent_state_bitwise_exact") is not True:
+            raise RuntimeError(f"{expected_arm} tidak membuktikan parent exact di best.pt")
         if payload.get("evaluation_split") != "val" or payload.get("test_images_accessed") is not False:
             raise RuntimeError(f"{expected_arm} harus validation-only dan test terkunci")
         if payload.get("baseline_source") != "canonical_AF2FS_parent_result":
@@ -199,6 +201,7 @@ def run_igem_parent_decision(parent_paths, control_paths, candidate_paths, outpu
             "tail_pareto_route_pass": tail_pass,
             "all_21_classes_present": True,
             "canonical_parent_binding_verified": True,
+            "serialized_parent_state_verified": True,
             "test_not_opened": True,
         },
         "decision": "RETAIN" if passed else "REJECT",
