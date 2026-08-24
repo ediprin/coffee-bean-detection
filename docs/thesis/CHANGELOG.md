@@ -1,5 +1,31 @@
 # Thesis Proposal Changelog
 
+## v0.6.0 — 2026-08-24
+
+Citation-ready Bab II prose rewriting has started from the coffee-domain foundation.
+
+### Rewritten
+
+- `proposal/04_LITERATURE_REVIEW.md` §2.1 now derives its green-coffee definition, physical-defect vocabulary, grading context, and taxonomy boundaries from the official SNI plus verified coffee datasets/studies rather than generic prose;
+- §2.2 now separates manual-inspection limitations, historical handcrafted computer vision, and the transition to deep-learning/edge systems using different source roles instead of recycling the same detector papers;
+- §2.8.3 and §2.8.4 have been normalized to the canonical `SPEC-*`, `WAVE-*`, and `FREQ-*` namespaces while the file was being rewritten.
+
+### Primary evidence used in this pass
+
+- `STD-01` — SNI 01-2907-2008: green-coffee definition, defect definitions, quality grouping, and defect-value context;
+- `COF-07` — Kesiman et al. 2023: SNI-aligned dataset construction, manual expert identification, and the final 17-defect subset;
+- `COF-08` — Arwatchananukul et al. 2024: independent 17-type Thai Arabica defect taxonomy and manual-sorting context;
+- `COF-02` — Bahy & Rifai 2026: 20-category SNI-oriented object-detection taxonomy;
+- `COF-10` — de Oliveira et al. 2016: controlled-image/color-calibration computational-intelligence precedent;
+- `COF-14` — Muchtar et al. 2025: manual-sorting fatigue/inconsistency and modern edge/deep-learning deployment context;
+- `REV-01` — Motta et al. 2024: literature-landscape synthesis only, not a substitute for primary numerical evidence.
+
+### Audit update
+
+`BAB2_CITATION_AUDIT.md` now marks §2.2 as passing its first rewrite and §2.1 as functionally adequate with one official standard plus three independent operational taxonomy sources. The old frequency-key collision is also marked resolved in the active Bab II draft.
+
+Sections §2.3–§2.9 are still working prose and must not yet be described as fully citation-ready.
+
 ## v0.5.0 — 2026-08-24
 
 Concrete Bab II source routing and citation-key normalization added.
