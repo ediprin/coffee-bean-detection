@@ -132,7 +132,6 @@ def run_af2_igem_parent_static_audit(
         if config.family != "igem":
             raise RuntimeError(f"{code} bukan family IGEM")
 
-        # Reset before each arm so matched arms have identical residual initialization.
         torch.manual_seed(INIT_SEED)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(INIT_SEED)
@@ -218,10 +217,6 @@ def run_af2_igem_parent_static_audit(
         initial_residual_states["AF2IGEM0"], initial_residual_states["AF2IGEM1"]
     )
 
-    # Identity and box-preservation are full numerical-equivalence checks.
-    # Residual *activity* is instead measured by absolute output displacement:
-    # using allclose for activity lets rtol grow with large-magnitude logits and
-    # can hide a deterministic correction. ATOL was predeclared before training.
     gates = {
         "source_is_af2": True,
         "same_model_yaml": payloads["AF2IGEM0"]["model"] == payloads["AF2IGEM1"]["model"],
@@ -257,6 +252,16 @@ def run_af2_igem_parent_static_audit(
         "test_accessed": False,
     }
     decision = "PASS" if all(value for key, value in gates.items() if key != "test_accessed") and not gates["test_accessed"] else "FAIL"
+    if decision != "PASS":
+        compact = {
+            "revision": AUDIT_REVISION,
+            "failed_gates": {key: value for key, value in gates.items() if value is False and key != "test_accessed"},
+            "control_box_diff": control["active_box_max_abs_diff"],
+            "control_score_diff": control["active_score_max_abs_diff"],
+            "candidate_box_diff": candidate["active_box_max_abs_diff"],
+            "candidate_score_diff": candidate["active_score_max_abs_diff"],
+        }
+        print("IGEM STATIC AUDIT FAIL:", json.dumps(compact, sort_keys=True), flush=True)
     result = {
         "format": "coffee_detector.af2_parent_residual.igem_static_audit.v1",
         "audit_revision": AUDIT_REVISION,
