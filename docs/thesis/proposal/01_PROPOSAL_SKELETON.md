@@ -76,27 +76,109 @@ Engineering contribution:
 
 ## Bab II — Tinjauan Pustaka
 
-Recommended sequence:
+**Structural convention:** follow the uploaded USU proposal pattern: application/domain foundation → conventional process/challenge → core technical foundations → method-specific theory → `Penelitian Terkait` comparison table → final `Penelitian yang Diusulkan` row.
 
-2.1 Coffee quality standards and defect taxonomy
+Detailed rationale: `docs/thesis/foundation/06_USU_BAB2_PATTERN.md`.
 
-2.2 Computer vision for coffee quality inspection
+### 2.1 Biji Kopi Hijau dan Cacat Fisik Biji Kopi
 
-2.3 Object detection and classification–localization distinction
+- green coffee bean as inspection object;
+- physical defect concept and relevant taxonomy;
+- normal / defect / contaminant distinction where required;
+- concise standards context (SNI/SCA only to support the thesis scope).
 
-2.4 YOLO-family coffee defect detection
+### 2.2 Inspeksi Mutu Biji Kopi: Metode Konvensional dan Tantangannya
 
-2.5 Fine-grained recognition/detection and discriminative representation
+- manual visual grading / sorting;
+- subjectivity, consistency, throughput;
+- subtle visual similarity and detailed taxonomy;
+- transition to automated computer vision.
 
-2.6 Image preprocessing for downstream detection
+### 2.3 Object Detection
 
-2.7 Frequency-domain image representation
+- classification + localization;
+- bounding box and class prediction;
+- confidence / IoU basics;
+- conceptual distinction between classification quality and localization quality.
 
-2.8 Angular / directional Fourier-energy representation
+### 2.4 YOLO (You Only Look Once)
 
-2.9 Frequency-aware detection methods
+- one-stage detection concept;
+- brief YOLO-family development only as necessary;
+- relevance to real-time agricultural inspection;
+- coffee-domain viability evidence.
 
-2.10 Related-work synthesis and research gap
+### 2.5 YOLO26
+
+- detector used in the thesis;
+- architecture/training properties relevant to the controlled comparison;
+- original YOLO26 source + repository/config evidence;
+- AF2 is not discussed as part of YOLO26.
+
+### 2.6 Fine-Grained Object Detection
+
+- small inter-class vs relatively larger intra-class variations;
+- visually similar coffee defects;
+- discriminative representation requirement;
+- aggregate metric vs difficult-class / lower-tail behavior.
+
+### 2.7 Preprocessing Citra untuk Object Detection
+
+- preprocessing before detector;
+- fixed vs learned/task-driven preprocessing;
+- CLAHE / contrast enhancement as conventional precedent;
+- detection-driven enhancement such as IA-YOLO and DENet;
+- preprocessing quality must be judged by downstream detection, not visual aesthetics alone.
+
+### 2.8 Representasi Citra pada Domain Frekuensi
+
+#### 2.8.1 Discrete Fourier Transform dan Fast Fourier Transform
+
+- spatial-to-frequency representation;
+- core notation and reconstruction.
+
+#### 2.8.2 Magnitudo/Amplitudo dan Fase Spektrum
+
+- magnitude/amplitude and phase definitions;
+- role in image representation;
+- no claim that either is the proven coffee bottleneck.
+
+#### 2.8.3 Representasi Radial dan Angular pada Spektrum Fourier
+
+- polar frequency coordinates;
+- radial energy / periodicity;
+- angular energy / directional texture;
+- theoretical basis for the term `frequency-angular`.
+
+#### 2.8.4 Pemrosesan Frekuensi untuk Object Detection
+
+- Fourier/wavelet preprocessing and frequency-aware feature methods;
+- FE-YOLO as close Fourier-input comparator;
+- frequency-aware fine-grained detection bridge such as Xu et al.;
+- transfer to coffee remains an empirical research question.
+
+### 2.9 Penelitian Terkait
+
+Use the campus-style table:
+
+| No | Penulis & Tahun | Indeks | Fokus Penelitian | Metode / Model | Kontribusi dan Pengisian Gap Penelitian |
+|---:|---|---|---|---|---|
+
+Recommended evidence mix:
+
+1. Hong et al. — coffee YOLO pivot;
+2. Bahy & Rifai — 20-class SNI coffee detection;
+3. Jundullah et al. — 20-class coffee detection / class disparity;
+4. Hebert & Alamsyah — subtle difficult coffee classes;
+5. Kesiman et al. or Arwatchananukul et al. — fine-grained coffee taxonomy evidence;
+6. Syauqi et al. — fixed CLAHE-based preprocessing + YOLO on white pepper;
+7. Chen et al. — image enhancement + YOLO on maize seed cracks;
+8. IA-YOLO / DENet — detection-driven input preprocessing;
+9. FE-YOLO — learned Fourier enhancement before YOLO;
+10. Xu et al. — frequency representation for fine-grained detection;
+11. **Penelitian yang Diusulkan** — parameter-free frequency-angular preprocessing + YOLO26 for fine-grained coffee-defect detection.
+
+Index/quartile values must be verified before final submission. `TBD - verify` is preferable to an inferred Q1/Q2 label.
 
 ## Bab III — Metodologi
 
