@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +27,7 @@ ARMS = ("AF2IGEM0", "AF2IGEM1")
 CONFIGS = {code: REPO_ROOT / f"configs/af2_parent_residual/{code}.yaml" for code in ARMS}
 ATOL = 5.0e-5
 RTOL = 1.0e-5
-AUDIT_REVISION = "2026-08-24c"
+AUDIT_REVISION = "2026-08-24d"
 INIT_SEED = 20260824
 
 
@@ -50,18 +51,45 @@ def _max_abs_diff(left: torch.Tensor, right: torch.Tensor) -> float:
     return float((left - right).abs().max())
 
 
-def _zero_information_identity(max_abs_diff: float) -> bool:
-    return float(max_abs_diff) <= ATOL
+def _zero_information_residual(max_abs: float) -> bool:
+    """Zero-conditioned IGEM must emit exactly zero correction under the audit activation."""
+
+    value = float(max_abs)
+    return math.isfinite(value) and value == 0.0
 
 
-def _material_score_change(max_abs_diff: float) -> bool:
-    return float(max_abs_diff) > ATOL
+def _feature_residual_live(max_abs: float) -> bool:
+    """Feature-conditioned IGEM must carry finite nonzero information before logit addition.
+
+    This is deliberately a structural zero/nonzero test on the residual correction
+    tensor itself, not a magnitude threshold on whole-model score displacement.
+    The latter is sensitive to native-logit scale, ULP size, and repeat-forward
+    numerical jitter and therefore is not an invariant authorization criterion.
+    """
+
+    value = float(max_abs)
+    return math.isfinite(value) and value > 0.0
 
 
 def _activate_last_projection(model: AF2ParentResidualDetectionModel) -> None:
     with torch.no_grad():
         for level in model.model[-1].residual:
             level.class_correction.weight.fill_(1.0)
+
+
+def _residual_correction_max_abs(
+    model: AF2ParentResidualDetectionModel,
+    features: list[torch.Tensor],
+) -> float:
+    """Measure the residual before it is added to native AF2 classification logits."""
+
+    head = model.model[-1]
+    with torch.inference_mode():
+        corrections, _ = head._residual_outputs([value.detach() for value in features])
+    if not corrections:
+        return 0.0
+    maxima = [float(value.detach().abs().max()) for value in corrections]
+    return max(maxima)
 
 
 def _state_equal(left: dict[str, torch.Tensor], right: dict[str, torch.Tensor]) -> bool:
@@ -159,11 +187,13 @@ def run_af2_igem_parent_static_audit(
             identity = model(image)
         before_boxes = identity[1]["one2one"]["boxes"].clone()
         before_scores = identity[1]["one2one"]["scores"].clone()
+        identity_features = identity[1]["one2one"]["feats"]
         initial_identity = _numerically_preserved(before_boxes, native_boxes) and _numerically_preserved(
             before_scores, native_scores
         )
 
         _activate_last_projection(model)
+        active_residual_correction_max_abs = _residual_correction_max_abs(model, identity_features)
         with torch.inference_mode():
             active = model(image)
         active_boxes = active[1]["one2one"]["boxes"]
@@ -208,6 +238,7 @@ def run_af2_igem_parent_static_audit(
             "active_box_max_abs_diff": active_box_max_abs_diff,
             "active_scores_numerically_preserved": _numerically_preserved(before_scores, active_scores),
             "active_score_max_abs_diff": active_score_max_abs_diff,
+            "active_residual_correction_max_abs": active_residual_correction_max_abs,
             "only_residual_trainable": only_residual_trainable,
             "parent_batchnorm_frozen": parent_bn_frozen,
             "residual_batchnorm_training": residual_bn_training,
@@ -243,8 +274,12 @@ def run_af2_igem_parent_static_audit(
         "candidate_initial_identity": candidate["initial_af2_numerically_preserved"],
         "control_boxes_preserved": control["active_boxes_numerically_preserved"],
         "candidate_boxes_preserved": candidate["active_boxes_numerically_preserved"],
-        "control_zero_information_identity": _zero_information_identity(control["active_score_max_abs_diff"]),
-        "candidate_changes_scores": _material_score_change(candidate["active_score_max_abs_diff"]),
+        "control_zero_information_residual_exact": _zero_information_residual(
+            control["active_residual_correction_max_abs"]
+        ),
+        "candidate_feature_residual_live": _feature_residual_live(
+            candidate["active_residual_correction_max_abs"]
+        ),
         "control_only_residual_trainable": control["only_residual_trainable"],
         "candidate_only_residual_trainable": candidate["only_residual_trainable"],
         "control_parent_bn_frozen": control["parent_batchnorm_frozen"],
@@ -266,15 +301,17 @@ def run_af2_igem_parent_static_audit(
             "failed_gates": {key: value for key, value in gates.items() if value is False and key != "test_accessed"},
             "control_box_diff": control["active_box_max_abs_diff"],
             "control_score_diff": control["active_score_max_abs_diff"],
+            "control_residual_correction": control["active_residual_correction_max_abs"],
             "candidate_box_diff": candidate["active_box_max_abs_diff"],
             "candidate_score_diff": candidate["active_score_max_abs_diff"],
+            "candidate_residual_correction": candidate["active_residual_correction_max_abs"],
         }
         print("IGEM STATIC AUDIT FAIL:", json.dumps(compact, sort_keys=True), flush=True)
     result = {
         "format": "coffee_detector.af2_parent_residual.igem_static_audit.v1",
         "audit_revision": AUDIT_REVISION,
         "numerical_tolerance": {"atol": ATOL, "rtol": RTOL},
-        "activity_absolute_threshold": ATOL,
+        "activity_contract": "direct_residual_correction_zero_vs_finite_nonzero",
         "initialization_seed": INIT_SEED,
         "decision": decision,
         "checkpoint": str(checkpoint),
@@ -283,7 +320,11 @@ def run_af2_igem_parent_static_audit(
         "gates": gates,
         "training_authorized": decision == "PASS",
         "test_access_authorized": False,
-        "note": "Dedicated IGEM audit; shared SAF/IGEM legacy audit is not used for this confirmation.",
+        "note": (
+            "Dedicated IGEM audit; parent preservation uses ATOL/RTOL, while residual activity is tested "
+            "directly on the correction tensor before native-logit addition. Shared SAF/IGEM legacy audit "
+            "is not used for this confirmation."
+        ),
     }
     destination = Path(output).expanduser().resolve()
     destination.parent.mkdir(parents=True, exist_ok=True)
