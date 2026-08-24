@@ -1,5 +1,23 @@
 # Thesis Proposal Changelog
 
+## v0.8.0 — 2026-08-24
+
+Preprocessing section promoted to first-pass source-grounded prose.
+
+### Rewritten
+
+- §2.7 now distinguishes fixed/composite preprocessing, transform-domain preprocessing, learned task-driven preprocessing, downstream detection-utility cautions, and non-learned spectral input manipulation;
+- `PRE-04` Syauqi and `PRE-05` Chen maize provide agricultural raw-vs-enhanced precedents; `PRE-06` WCTE provides transform-domain preprocessing; `PRE-01` IA-YOLO and `PRE-02` DENet provide task-driven learned preprocessing; `PRE-07` Retinexformer and `PRE-03` FE-YOLO reinforce downstream-utility evaluation; `PRE-08` FDA provides a non-learned Fourier input-space precedent outside detection;
+- Syauqi is explicitly described as a **CLAHE-based composite pipeline** (gamma correction, CLAHE, blending, denoising, sharpening), not CLAHE alone;
+- AF2 is now positioned as **parameter-free, input-space, content-adaptive spectral preprocessing**, rather than being incorrectly grouped as either a learned enhancement network or a fully fixed global filter;
+- the chapter locks the distinction that improved visual appearance is not equivalent to improved detector utility.
+
+### Audit update
+
+- `BAB2_CITATION_AUDIT.md` marks §2.7 `PASS FIRST REWRITE` with eight distinct source keys;
+- first-pass source-grounded prose is now complete through §2.7;
+- next target is §2.8 Fourier/frequency theory, followed by the expanded §2.9 related-work table.
+
 ## v0.7.0 — 2026-08-24
 
 Fine-grained object detection section promoted to first-pass source-grounded prose.
