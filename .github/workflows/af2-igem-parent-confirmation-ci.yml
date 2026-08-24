@@ -27,7 +27,7 @@ jobs:
       - name: Install runtime
         run: |
           python -m pip install --upgrade pip
-          python -m pip install ultralytics==8.4.96
+          python -m pip install 'pytest>=8' ultralytics==8.4.96
           python -m pip install --no-deps -e .
       - name: Run frozen-parent contract tests
         run: |
