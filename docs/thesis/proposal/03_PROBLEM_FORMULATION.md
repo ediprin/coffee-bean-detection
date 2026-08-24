@@ -16,7 +16,7 @@ Berdasarkan kajian literatur dan studi pendahuluan, masalah penelitian diidentif
 
 5. **Literatur di luar domain kopi menunjukkan bahwa preprocessing dan frequency-domain processing dapat diarahkan untuk meningkatkan downstream detection, tetapi efektivitas transfer ke fine-grained coffee-defect detection belum dapat diasumsikan.** Dengan demikian, frequency-angular preprocessing perlu diuji sebagai hipotesis metodologis melalui perbandingan terkontrol.
 
-6. **Peningkatan detection performance perlu dianalisis lebih lanjut untuk membedakan aspek diskriminasi kelas dan lokalisasi.** Literatur object detection menunjukkan bahwa classification confidence dan localization quality tidak identik. Oleh karena itu, peningkatan mAP tidak otomatis dapat disebut sebagai peningkatan kemampuan lokalisasi.
+6. **Peningkatan detection performance perlu dianalisis lebih lanjut untuk membedakan aspek diskriminasi kelas dan aksesibilitas/lokalisasi proposal.** Literatur object detection menunjukkan bahwa classification confidence dan localization quality tidak identik. Oleh karena itu, peningkatan mAP tidak otomatis dapat disebut sebagai peningkatan kemampuan lokalisasi.
 
 ## 1.3 Rumusan Masalah
 
@@ -45,14 +45,16 @@ Operasionalisasi:
 
 ### RQ3
 
-**Apakah perubahan kinerja yang dihasilkan lebih berkaitan dengan kemampuan diskriminasi kelas daripada perubahan kemampuan lokalisasi objek?**
+**Apakah pola perubahan kinerja yang dihasilkan lebih konsisten dengan peningkatan diskriminasi kelas daripada peningkatan aksesibilitas proposal/lokalisasi mentah?**
 
 Operasionalisasi:
 
-- raw proposal accessibility;
-- localization-conditioned Top-1 classification;
+- raw proposal accessibility sebagai proxy ketersediaan proposal/lokalisasi mentah;
+- localization-conditioned Top-1 classification sebagai indikator diskriminasi setelah syarat lokalisasi terpenuhi;
 - correct-decision recall;
-- metrik lokalisasi tambahan jika protokol final menyediakan ukuran yang valid.
+- metrik lokalisasi tambahan hanya jika protokol final menyediakan ukuran yang valid.
+
+Batas interpretasi RQ3: diagnostic tersebut membantu atribusi pola, tetapi tidak membuktikan secara kausal bahwa seluruh perubahan berasal dari classification branch atau bahwa kualitas box regression tidak berubah.
 
 ## 1.4 Tujuan Penelitian
 
@@ -62,7 +64,7 @@ Tujuan penelitian dirancang berpasangan langsung dengan rumusan masalah.
 
 2. **Menganalisis dampak preprocessing terhadap difficult dan lower-tail classes** menggunakan Bottom-3, Worst-class, serta per-class performance.
 
-3. **Menganalisis karakter perubahan detection performance** dengan memisahkan indikator yang berkaitan dengan aksesibilitas/lokalisasi proposal dan indikator yang berkaitan dengan diskriminasi klasifikasi.
+3. **Menganalisis karakter perubahan detection performance** dengan membandingkan indikator aksesibilitas proposal/lokalisasi mentah dan indikator diskriminasi klasifikasi, tanpa mengubah diagnostic tersebut menjadi klaim kausal yang tidak didukung.
 
 4. **Mengevaluasi trade-off akurasi dan efisiensi** melalui parameter count, latency, throughput, dan penggunaan memori, dengan prinsip bahwa parameter-free tidak sama dengan compute-free.
 
@@ -100,7 +102,7 @@ Penelitian tidak hanya mengevaluasi nilai agregat, tetapi juga menganalisis diff
 
 ### Kontribusi diagnostik
 
-Penelitian memisahkan interpretasi perubahan diskriminasi kelas dari perubahan aksesibilitas/lokalisasi proposal sejauh didukung oleh metrik, sehingga peningkatan detection score tidak langsung diasumsikan berasal dari lokalisasi yang lebih baik.
+Penelitian membandingkan indikator diskriminasi kelas dengan indikator aksesibilitas proposal/lokalisasi mentah sejauh didukung oleh metrik. Dengan demikian, peningkatan detection score tidak langsung diasumsikan berasal dari lokalisasi yang lebih baik maupun secara kausal hanya dari klasifikasi.
 
 ### Kontribusi rekayasa
 
@@ -115,7 +117,7 @@ coffee fine-grained difficulty
 → need stronger discriminative input/representation
 → frequency-angular preprocessing is a plausible but unvalidated candidate
 → controlled YOLO26 comparison
-→ aggregate + tail + classification/localization diagnosis
+→ aggregate + tail + classification/proposal-accessibility diagnosis
 ```
 
 ## Guardrail
