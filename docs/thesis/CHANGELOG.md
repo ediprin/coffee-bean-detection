@@ -1,5 +1,27 @@
 # Thesis Proposal Changelog
 
+## v0.9.0 — 2026-08-24
+
+Frequency-domain foundation promoted to first-pass source-grounded prose.
+
+### Rewritten
+
+- §2.8.1 now grounds the 2-D DFT/FFT and inverse-transform pipeline in primary Fourier-method papers, while keeping exact textbook edition/page verification open for the final bibliography;
+- §2.8.2 now distinguishes complex coefficients, amplitude, and phase using FE-YOLO/FDA primary formulations rather than generic unsourced prose;
+- §2.8.3 now grounds radial/angular spectral interpretation in Cao et al. and connects it to the actual angular-density/entropy mechanism of Xu et al. AFAB-2;
+- §2.8.4 now explicitly separates input/data-space spectral processing from internal feature-space frequency methods (FFC, FDADNet, FDConv, WTConv) so they are not collapsed into a generic “high-frequency enhancement” category;
+- Xu/AFAB is identified as the closest parent mechanism, but full LFDet gains are explicitly separated from AFAB-2 component evidence;
+- AF2 is positioned as a standalone parameter-free adaptation of local-frequency + angular-amplitude selection before YOLO26, with coffee-specific residual reconstruction/integration reserved for Bab III.
+
+### Claim boundary strengthened
+
+The chapter now allows only the following bridge: Fourier representations can be manipulated and reconstructed; radial/angular spectra can describe frequency scale and directional structure; and frequency-aware processing has precedents in fine-grained/dense/defect vision. It **does not** allow the conclusion that coffee defects are proven frequency-separable or that AFAB-2 transfer is already validated.
+
+### Audit update
+
+- `BAB2_CITATION_AUDIT.md` marks §2.8.1–§2.8.4 as first-pass source-grounded, with one open item: exact textbook edition/page verification for the final DFT/FFT theory anchor;
+- §2.9 related-work synthesis is now the only major Bab II prose/table section not yet promoted.
+
 ## v0.8.0 — 2026-08-24
 
 Preprocessing section promoted to first-pass source-grounded prose.
