@@ -106,6 +106,14 @@ Every run writes `run_contract.json` binding:
 
 A `last.pt` is resumable only inside a directory with the matching contract. Stale weights without a contract are rejected. Ultralytics 8.4.96 is pinned. Its trainer may temporarily re-enable frozen floating-point parameters during generic setup, but the custom trainer re-applies the residual-only freeze **before optimizer construction**, filters optimizer groups to the residual set exactly, and the custom model keeps parent BatchNorm modules in evaluation mode during training.
 
+### Exact EMA parent preservation
+
+Ultralytics `ModelEMA` normally averages every floating tensor in the model state, including tensors whose optimizer gradients are frozen. That behavior is acceptable for ordinary training but is too weak for a parent-preserving experiment because the serialized `best.pt` is derived from EMA rather than directly from the live model.
+
+Therefore the IGEM confirmation trainer performs ordinary EMA updates for `model.23.residual.*`, then immediately copies every **non-residual** parameter and buffer from the live frozen model into the EMA model exactly. This includes backbone, neck, native Detect head, and frozen BatchNorm state. The runner then reloads `best.pt` and requires the serialized parent portion to be bitwise identical to the canonical AF2FS parent before any validation result is accepted. If this exact check fails, the arm fails closed and cannot enter the three-seed decision.
+
+This EMA hardening was added before the first IGEM training epoch and does not change the residual optimizer, loss, dataset, schedule, decision thresholds, or test lock.
+
 ## Frozen three-seed decision
 
 Let `d_m(s)` be candidate minus zero-control and `p_m(s)` candidate minus canonical AF2FS parent.
