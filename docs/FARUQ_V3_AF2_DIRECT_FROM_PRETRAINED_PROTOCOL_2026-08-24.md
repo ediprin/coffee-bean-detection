@@ -12,14 +12,23 @@ This is intentionally different from the completed staged AF2 evidence, where AF
 
 ## Arms
 
-Both arms start from the **same exact local `yolo26n.pt` file and SHA-256** and the same 21-class target-head initialization.
+Both arms start from the **same exact official `yolo26n.pt` artifact** and the same 21-class target-head initialization.
+
+Frozen pretrained artifact under Ultralytics 8.4.96:
+
+```text
+filename = yolo26n.pt
+source release = ultralytics/assets v8.4.0
+SHA-256 = 9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef
+source classes = 80
+```
 
 | Arm | Detector | Input frontend | Initialization |
 |---|---|---|---|
-| `D0DIRECT` | YOLO26n P3–P5 | none | official `yolo26n.pt` |
-| `AF2DIRECT` | YOLO26n P3–P5 | retained AF2 | same official `yolo26n.pt` |
+| `D0DIRECT` | YOLO26n P3–P5 | none | frozen official `yolo26n.pt` |
+| `AF2DIRECT` | YOLO26n P3–P5 | retained AF2 | exact same frozen `yolo26n.pt` |
 
-No D0, D0FT, AF2, AF2FS, or other coffee-trained checkpoint is accepted as an intermediate parent. The runner also requires the source checkpoint to expose the 80-class pretrained head, which rejects the 21-class coffee checkpoints used by the staged experiments.
+No D0, D0FT, AF2, AF2FS, or other coffee-trained checkpoint is accepted as an intermediate parent. The runner rejects any supplied pretrained file whose SHA-256 differs from the frozen artifact above; the 80-class source-head check is an additional guard.
 
 ## Matched target-head initialization
 
@@ -81,17 +90,18 @@ All model selection, screening, and mechanism diagnostics use validation only. T
 
 Training is authorized only if all of the following pass:
 
-1. native and AF2 configs reference the same YOLO26n P3–P5 model YAML;
-2. the two training schedules are exactly equal;
-3. the AF2 mapping equals the frozen operator above;
-4. the supplied pretrained source is an 80-class YOLO26n checkpoint rather than a 21-class coffee checkpoint;
-5. `D0DIRECT` and `AF2DIRECT` have exactly the same persistent detector-state keys and tensors immediately after matched target-head initialization + source transfer;
-6. detector parameter counts are equal;
-7. AF2 contributes zero learned parameters;
-8. an AF2 probe preserves BCHW shape, remains finite, and produces a nonzero input transformation;
-9. the dataset audit passes and the test split remains absent.
+1. supplied `yolo26n.pt` SHA-256 exactly equals the frozen official artifact;
+2. native and AF2 configs reference the same YOLO26n P3–P5 model YAML;
+3. the two training schedules are exactly equal;
+4. the AF2 mapping equals the frozen operator above;
+5. the supplied pretrained source exposes the expected 80-class pretrained head;
+6. `D0DIRECT` and `AF2DIRECT` have exactly the same persistent detector-state keys and tensors immediately after matched target-head initialization + source transfer;
+7. detector parameter counts are equal;
+8. AF2 contributes zero learned parameters;
+9. an AF2 probe preserves BCHW shape, remains finite, and produces a nonzero input transformation;
+10. the dataset audit passes and the test split remains absent.
 
-The preflight records the pretrained SHA-256 and the common initialized detector-state fingerprint. Resume is allowed only within a run directory whose frozen input contract is unchanged.
+The preflight records the pretrained SHA-256 and the common initialized detector-state fingerprint. The common state fingerprint is compared **within the same runtime** rather than frozen across PyTorch environments; the pretrained artifact SHA is the cross-runtime source lock. Resume is allowed only within a run directory whose frozen input contract is unchanged.
 
 ## Primary validation metrics
 
