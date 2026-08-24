@@ -12,10 +12,24 @@ Direktori `docs/thesis/proposal/` diperlakukan sebagai **artefak proposal tesis*
 BAB_I_PENDAHULUAN.md
 BAB_II_TINJAUAN_PUSTAKA.md
 BAB_III_METODOLOGI_PENELITIAN.md
-DAFTAR_PUSTAKA.md                 # belum dibangun
+DAFTAR_PUSTAKA.md                 # BLOCKED sampai official citation audit selesai
 ```
 
 File lama seperti `02_BACKGROUND.md`, `03_PROBLEM_FORMULATION.md`, `04_LITERATURE_REVIEW.md`, `05_METHODOLOGY.md`, `05_05_AF2_PRIMARY_SOURCE_HARDENED.md`, dan `06_RESEARCH_FLOW.md` adalah bahan kerja/backend teknis, bukan authority naskah formal.
+
+## Official citation gate
+
+Authority audit: `docs/thesis/sources/OFFICIAL_CITATION_AUDIT.md`.
+
+Aturan formal:
+
+- metadata bibliografi final harus diverifikasi dari penerbit/proceedings/badan standar resmi atau primary preprint untuk karya yang memang berupa preprint;
+- master workbook dan `CANONICAL_SOURCE_KEYS.md` adalah locator internal, bukan otoritas final bibliografi;
+- sumber agregator/indeks hanya boleh menjadi corroboration;
+- DOI, author, title, venue, volume, issue, pages/article number, quartile, dan indexing tidak boleh ditebak;
+- klaim metodologis harus tetap ditelusuri ke full text primer, bukan disimpulkan dari metadata/abstract saja;
+- sumber berstatus `PENDING` tidak boleh dianggap citation-ready;
+- `DAFTAR_PUSTAKA.md` baru dibuat setelah semua sumber yang benar-benar dipakai dalam Bab I–III lolos gate atau klaim yang bergantung padanya dihapus/diganti.
 
 ## BAB I — Pendahuluan
 
@@ -54,7 +68,7 @@ Authority: `BAB_II_TINJAUAN_PUSTAKA.md`.
 
 Bab II boleh memuat hasil penelitian terdahulu yang telah diverifikasi. Citation key internal (`COF-01`, `FG-01`, dan sebagainya), status audit, path repository, dan hasil eksperimen penelitian sendiri tidak masuk naskah formal. AFAB/AFAB-2 disebut hanya sebagai terminologi metode sumber Xu et al.
 
-Subbab 2.9 menjadi landasan untuk rencana analisis visual pada Bab III. Eigen-CAM menjadi kandidat utama visualisasi respons model, sedangkan Grad-CAM dan Grad-CAM++ menjadi alternatif apabila target kelas, layer target, dan aliran gradient pada YOLO26 dapat didefinisikan secara konsisten. Visualisasi diposisikan sebagai analisis interpretatif pendukung dan bukan bukti kausal tunggal.
+Subbab 2.9 menjadi landasan untuk rencana analisis visual pada Bab III. Eigen-CAM menjadi kandidat utama visualisasi respons model, sedangkan Grad-CAM dan Grad-CAM++ menjadi alternatif apabila target kelas, layer target, dan aliran gradient pada YOLO26 dapat didefinisikan secara konsisten. Metadata dan klaim masing-masing metode tetap tunduk pada official citation gate. Visualisasi diposisikan sebagai analisis interpretatif pendukung dan bukan bukti kausal tunggal.
 
 ## BAB III — Metodologi Penelitian
 
@@ -100,7 +114,7 @@ Nama konfigurasi internal seperti `AF2C`, `AF2WIN`, `AF2ORI`, `AF2POL`, `AF2SOFT
 ```text
 BOLEH
 - masalah penelitian
-- teori dan hasil penelitian terdahulu
+- teori dan hasil penelitian terdahulu yang terverifikasi
 - metode yang diusulkan
 - rancangan optimasi
 - rancangan eksperimen
