@@ -77,7 +77,7 @@ No new proposal draft may invent a key that collides with an existing canonical 
 | Key | Canonical source |
 |---|---|
 | XAI-01 | Selvaraju et al. 2017 — Grad-CAM: Visual Explanations from Deep Networks via Gradient-Based Localization, ICCV 2017 |
-| XAI-02 | Chattopadhay et al. 2018 — Grad-CAM++: Generalized Gradient-Based Visual Explanations for Deep Convolutional Networks, WACV 2018 |
+| XAI-02 | Chattopadhyay et al. 2018 — Grad-CAM++: Generalized Gradient-Based Visual Explanations for Deep Convolutional Networks, WACV 2018 |
 | XAI-03 | Muhammad & Yeasin 2020 — Eigen-CAM: Class Activation Map using Principal Components, IJCNN 2020 |
 
 ## Fourier / spectral / wavelet keys
