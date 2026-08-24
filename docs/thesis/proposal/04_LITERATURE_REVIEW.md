@@ -1,6 +1,6 @@
 # BAB II — TINJAUAN PUSTAKA
 
-Status: citation-ready rewrite in progress following the adopted USU/campus proposal pattern. Sections 2.1–2.7 have been rewritten from verified primary/source-level evidence; Sections 2.8–2.9 remain working prose until their own source-level audit is closed.
+Status: citation-ready rewrite in progress following the adopted USU/campus proposal pattern. Sections 2.1–2.8 have been rewritten from verified primary/source-level evidence; Section 2.9 remains working prose until its related-work table audit is closed. The final textbook/page-level audit for canonical Fourier foundations also remains open even though the active equations are grounded in primary method papers.
 
 All bracketed citation keys must resolve through `docs/thesis/sources/CANONICAL_SOURCE_KEYS.md` or the master reference workbook. Numerical and methodological claims remain paper-scoped and must be traceable to the primary source.
 
@@ -134,64 +134,125 @@ Posisi ini menghasilkan pertanyaan eksperimen yang lebih bersih: apakah transfor
 
 ### 2.8.1 Discrete Fourier Transform dan Fast Fourier Transform
 
-Transformasi Fourier merepresentasikan citra dari domain spasial ke domain frekuensi. Untuk citra diskrit dua dimensi \(f(x,y)\) berukuran \(M \times N\), *Discrete Fourier Transform* dapat dituliskan sebagai:
+Citra dapat dipandang sebagai sinyal dua dimensi pada domain spasial dan direpresentasikan kembali sebagai kombinasi komponen frekuensi melalui *Discrete Fourier Transform* (DFT). Yang dan Soatto menggunakan formulasi DFT dua dimensi pada citra RGB dalam Fourier Domain Adaptation (FDA), dan juga menegaskan bahwa transformasi tersebut dapat dihitung secara efisien menggunakan FFT [PRE-08]. Untuk satu kanal citra diskrit \(f(x,y)\) berukuran \(M\times N\), bentuk umum DFT dapat dituliskan sebagai:
 
 \[
 F(u,v)=\sum_{x=0}^{M-1}\sum_{y=0}^{N-1}f(x,y)
-\exp\left[-j2\pi\left(\frac{ux}{M}+\frac{vy}{N}\right)\right].
+\exp\left[-j2\pi\left(\frac{ux}{M}+\frac{vy}{N}\right)\right],
+\qquad j^2=-1.
 \]
 
-Transformasi balik merekonstruksi citra spasial dari representasi frekuensi:
+Koefisien \(F(u,v)\) bersifat kompleks dan menyatakan respons citra pada indeks frekuensi \((u,v)\). Rekonstruksi kembali ke domain spasial dilakukan menggunakan inverse DFT:
 
 \[
 f(x,y)=\frac{1}{MN}\sum_{u=0}^{M-1}\sum_{v=0}^{N-1}F(u,v)
 \exp\left[j2\pi\left(\frac{ux}{M}+\frac{vy}{N}\right)\right].
 \]
 
-Fast Fourier Transform (FFT) merupakan algoritma komputasional efisien untuk menghitung DFT dan menjadi dasar implementasi pemrosesan spektral pada penelitian ini.
+Dalam pipeline berbasis Fourier, transformasi maju dan balik memungkinkan suatu operasi dilakukan pada representasi spektral tanpa mengubah definisi koordinat spasial keluaran setelah citra direkonstruksi. FDA, misalnya, memodifikasi sebagian amplitude spectrum lalu menggunakan inverse Fourier transform untuk menghasilkan citra pada ruang spasial [PRE-08]. FE-YOLO juga memakai pola transform–process–reconstruct sebelum citra diteruskan ke detector [PRE-03].
+
+DFT global dan DFT lokal tidak selalu mempunyai fungsi yang sama. Xu et al. pada LFDet secara khusus membandingkan pemrosesan global dengan *patch-wise DFT* untuk fine-grained aircraft detection. Menurut analisis dan ablation mereka, global frequency response mengabaikan variasi frekuensi menurut posisi dan kurang mampu mempertahankan detail lokal; karena itu AFAB membagi citra menjadi patch yang saling overlap, melakukan DFT pada setiap patch, lalu merekonstruksi hasilnya dengan patch-wise inverse DFT [FG-01]. Ini adalah temuan dan pilihan desain pada domain remote sensing mereka, bukan teorema bahwa patch-wise DFT selalu lebih baik pada semua domain. Dalam tesis ini, pilihan patch-wise processing diperlakukan sebagai mekanisme yang ditransfer dan kemudian diuji pada citra kopi.
+
+Catatan sumber: persamaan aktif pada subbab ini telah dicocokkan dengan primary method papers [PRE-08][PRE-03]. Sebelum naskah tesis final, satu sumber textbook image/signal processing yang otoritatif (`THEORY-01` dan/atau `THEORY-02`) tetap akan dipasangkan untuk definisi fundamental DFT/FFT dan dinormalisasi menurut edisi/halaman yang benar.
 
 ### 2.8.2 Magnitudo/Amplitudo dan Fase Spektrum
 
-Representasi kompleks Fourier dapat dinyatakan melalui magnitudo dan fase:
+Karena \(F(u,v)\) bernilai kompleks, koefisien Fourier dapat ditulis dalam bagian real dan imajiner:
 
 \[
-A(u,v)=|F(u,v)|,
+F(u,v)=R(u,v)+jI(u,v).
+\]
+
+FE-YOLO menuliskan amplitude dan phase dari koefisien tersebut sebagai [PRE-03]:
+
+\[
+A(u,v)=\sqrt{R^2(u,v)+I^2(u,v)},
 \]
 
 \[
-\phi(u,v)=\operatorname{atan2}(\Im(F(u,v)),\Re(F(u,v))).
+\phi(u,v)=\operatorname{atan2}(I(u,v),R(u,v)).
 \]
 
-Magnitudo menggambarkan kekuatan komponen frekuensi, sedangkan fase berkaitan dengan susunan spasial informasi pada citra. Literatur Fourier-based enhancement seperti FE-YOLO memanfaatkan pemrosesan amplitude/phase sebelum rekonstruksi citra dan deteksi [PRE-03].
+Dengan demikian, representasi Fourier bukan hanya pemisahan “frekuensi rendah” dan “frekuensi tinggi”, tetapi menyimpan magnitude/amplitude serta phase pada seluruh koordinat spektral. Dua komponen tersebut kemudian dapat diperlakukan berbeda oleh suatu metode. Dalam FDA, low-frequency amplitude dari source image diganti dengan amplitude dari target image sementara source phase dipertahankan sebelum inverse transform [PRE-08]. Pada FE-YOLO, amplitude dan phase diproses dalam Fourier Enhanced Network dan dikendalikan melalui amplitude-difference loss serta phase-similarity loss sebelum hasil enhancement digunakan oleh YOLO [PRE-03].
 
-Penelitian ini tidak mengasumsikan bahwa magnitude atau phase merupakan bottleneck yang telah terbukti pada kopi.
+Kedua studi tersebut menunjukkan bahwa amplitude dan phase dapat dimanipulasi secara terkontrol untuk tujuan downstream yang berbeda. Namun interpretasinya harus dibatasi sesuai paper. FDA membahas domain adaptation untuk semantic segmentation, sedangkan FE-YOLO membahas low-light object detection. Karena itu, tesis ini tidak menggunakan keduanya untuk menyatakan bahwa amplitude atau phase telah terbukti menjadi bottleneck pada cacat kopi.
+
+Pada parent method AFAB, Xu et al. juga memilih memodifikasi amplitude sambil mempertahankan original phase ketika merekonstruksi patch. Penulis menggunakan strategi tersebut agar intensitas respons frekuensi dapat diremodel tanpa mengganti distribusi spasial yang direpresentasikan phase pada formulasi mereka [FG-01]. Konsep inilah yang menghubungkan teori amplitude/phase dengan pemrosesan angular pada subbagian berikutnya.
 
 ### 2.8.3 Representasi Radial dan Angular pada Spektrum Fourier
 
-Spektrum dua dimensi dapat dianalisis menggunakan koordinat polar berdasarkan radius frekuensi \(r\) dan sudut \(\theta\). Distribusi radial digunakan untuk merangkum energi berdasarkan skala/frekuensi, sedangkan distribusi angular digunakan untuk merangkum energi berdasarkan orientasi/directionality.
-
-Secara konseptual, energi pada suatu rentang radial dapat dituliskan sebagai:
+Koordinat frekuensi dua dimensi dapat dianalisis dalam bentuk polar. Jika pusat spektrum dinyatakan sebagai \((u_c,v_c)\), maka secara konseptual radius dan sudut suatu koefisien dapat ditulis sebagai:
 
 \[
-E_r(r_1,r_2)=\sum_{r_1^2\le u^2+v^2\le r_2^2}|F(u,v)|^2,
+r(u,v)=\sqrt{(u-u_c)^2+(v-v_c)^2},
 \]
 
-sementara energi angular dapat diringkas sebagai:
+\[
+\theta(u,v)=\operatorname{atan2}(v-v_c,u-u_c).
+\]
+
+Pemisahan ini memungkinkan spektrum diringkas dari dua sudut pandang yang berbeda. Distribusi radial mengelompokkan energi berdasarkan jarak dari pusat spektrum, sedangkan distribusi angular mengelompokkan energi berdasarkan arah. Untuk suatu magnitude spectrum \(A(u,v)\), contoh ringkasan energi dapat dituliskan secara konseptual sebagai:
+
+\[
+E_r(r_1,r_2)=
+\sum_{r_1\le r(u,v)<r_2} A^2(u,v),
+\]
 
 \[
 E_\theta(\theta_1,\theta_2)=
-\sum_{\theta_1\le \theta(u,v)\le \theta_2}|F(u,v)|^2.
+\sum_{\theta_1\le\theta(u,v)<\theta_2} A^2(u,v).
 \]
 
-Literatur texture analysis menunjukkan bahwa radial spectrum dapat berkaitan dengan periodisitas/skala tekstur, sedangkan angular spectrum dapat menggambarkan directionality dan orientasi pola [SPEC-01][SPEC-02].
+Cao et al. menggunakan radial distribution dan angular distribution dari spectrum energy untuk menganalisis texture pada high-spatial-resolution imagery [SPEC-01]. Dalam eksperimen mereka, perubahan radial spectrum digunakan untuk membaca perubahan frekuensi/periodisitas dan skala texture, sedangkan angular spectrum merepresentasikan directionality texture; puncak distribusi angular berkaitan dengan arah dominan pola spektral [SPEC-01]. Paper tersebut menjadi basis teoritis bahwa “frekuensi” dan “arah” adalah dua dimensi analisis yang berbeda. Ia tidak membuktikan bahwa cacat kopi tertentu harus mempunyai signature angular tertentu.
 
-Inilah dasar teoritis penggunaan istilah **frekuensi-angular** pada penelitian, bukan bukti bahwa operator AF2 telah terbukti efektif pada kopi.
+Parent method Xu et al. kemudian mengoperasionalkan ide arah spektral langsung pada fine-grained detector. Untuk patch \(P_i\), mereka mendefinisikan angular density distribution dengan menjumlahkan amplitude sepanjang radius pada setiap sudut [FG-01]:
 
-### 2.8.4 Pemrosesan Frekuensi untuk Object Detection
+\[
+D_i^P(\theta)
+=
+\sum_r A_i^P(r\cos\theta,r\sin\theta),
+\qquad \theta\in[0,360^\circ).
+\]
 
-Pemrosesan frekuensi telah digunakan pada object detection dalam beberapa bentuk. FE-YOLO melakukan Fourier enhancement pada citra sebelum YOLO [PRE-03]. Pendekatan wavelet dan Fourier lain memasukkan informasi frekuensi ke feature space detector [AGR-01][AGR-02][WAVE-01][FREQ-03]. Pada fine-grained object detection, Xu et al. mengeksplorasi integrasi representasi frekuensi untuk membedakan kategori yang memiliki perbedaan visual subtil [FG-01].
+Pada AFAB-2, distribusi tersebut dinormalisasi, information entropy dihitung untuk memperoleh threshold adaptif per patch, dan arah dengan density rendah disupresi. Adjusted amplitude kemudian dipasangkan dengan original phase dan dikembalikan ke ruang spasial melalui inverse DFT [FG-01]. Penulis menginterpretasikan density angular tinggi sebagai arah yang mengandung struktur edge/texture lebih jelas pada data mereka, sementara respons rendah lebih mungkin memuat informasi yang kurang relevan atau noise. Karena evidence tersebut berasal dari aircraft remote sensing, interpretasi ini tidak boleh langsung diperlakukan sebagai karakteristik fisik cacat biji kopi.
 
-Dari literatur tersebut dapat ditarik satu posisi yang aman: informasi frekuensi dan arah merupakan ruang representasi yang secara teknis dapat membawa informasi komplementer untuk detection dan texture discrimination. Efektivitas **preprocessing input parameter-free berbasis frekuensi-angular pada fine-grained coffee defect detection** masih harus dibuktikan melalui eksperimen penelitian ini.
+Dengan demikian, istilah **frekuensi-angular** pada tesis ini memiliki definisi teknis yang spesifik: *frekuensi* merujuk pada representasi citra melalui respons spektral lokal, sedangkan *angular* merujuk pada distribusi amplitude menurut arah pada domain Fourier. “Angular” tidak merujuk pada rotasi bounding box atau oriented object detection.
+
+### 2.8.4 Pemrosesan Frekuensi untuk Computer Vision dan Object Detection
+
+Literatur frequency-aware vision dapat dibedakan menurut **lokasi operasi**. Pada input/data space, FDA memodifikasi low-frequency amplitude sebelum citra direkonstruksi, walaupun task akhirnya adalah semantic segmentation [PRE-08]. FE-YOLO menempatkan Fourier Enhanced Network sebelum YOLO dan memproses amplitude/phase secara learned untuk low-light detection [PRE-03]. Xu et al. menempatkan AFAB pada data space input dalam LFDet; patch-wise DFT, adaptive filtering, dan angular amplitude suppression menghasilkan ruang data yang telah diremodel sebelum backbone membentuk feature representation [FG-01]. Ketiga contoh ini relevan karena operasi spektralnya terjadi sebelum atau pada sumber data yang diterima feature extractor, tetapi tujuan, supervision, dan mekanismenya berbeda.
+
+Pada feature space, pendekatan yang digunakan juga beragam. Fast Fourier Convolution (FFC) menghubungkan jalur local/spatial dan global/spectral sehingga informasi lokal dan konteks non-local dapat diproses secara komplementer di dalam jaringan [FREQ-01]. FDADNet menggunakan transformasi domain frekuensi bersama jalur spasial untuk low-contrast surface-defect detection pada wood-based panels; paper tersebut secara eksplisit memanfaatkan perbedaan sifat spatial detail dan global frequency representation [FREQ-02]. Frequency Dynamic Convolution (FDConv) memodulasi convolution secara adaptif pada domain frekuensi untuk dense prediction tasks [FREQ-03]. Wavelet-based operators seperti WTConv memisahkan komponen melalui transformasi wavelet di dalam feature-processing pipeline [WAVE-01]. Metode-metode ini tidak boleh disatukan menjadi satu kategori “high-frequency enhancement”, karena masing-masing bekerja pada representasi, lokasi, dan objective yang berbeda.
+
+Dalam rangkaian literatur tersebut, Xu et al. merupakan **parent mechanism yang paling dekat** dengan metode tesis karena AFAB-2 memang menggunakan patch-wise Fourier response dan angular amplitude suppression untuk fine-grained object detection [FG-01]. Namun bahkan pada paper parent, kontribusi AFAB-2 harus dipisahkan dari keseluruhan LFDet. Ablation mereka menunjukkan bahwa AFAB-1 dan AFAB-2 adalah subkomponen yang berbeda, integrasi keduanya tidak selalu aditif pada baseline, dan full LFDet memperoleh kontribusi tambahan dari CGFI dan FTIF [FG-01]. Dengan kata lain, peningkatan full LFDet tidak boleh diklaim sebagai gain AFAB-2 saja.
+
+Posisi penelitian ini adalah mentransfer prinsip **local frequency response + adaptive angular amplitude selection** ke sebuah frontend yang berdiri sendiri sebelum YOLO26. Secara konseptual:
+
+\[
+I
+\xrightarrow{\text{overlapping patches}}
+\{P_i\}
+\xrightarrow{\mathcal{F}}
+\{A_i,\phi_i\}
+\xrightarrow{D_i(\theta),\;\tau_i}
+\{\widetilde{A}_i,\phi_i\}
+\xrightarrow{\mathcal{F}^{-1}}
+R_{FA}
+\xrightarrow{\text{residual image reconstruction}}
+I'
+\xrightarrow{\text{YOLO26}}
+\hat Y.
+\]
+
+Frontend tersebut tidak menambahkan parameter trainable:
+
+\[
+\Theta_{AF2}^{\mathrm{trainable}}=\varnothing.
+\]
+
+Walaupun garis mekanismenya berasal dari AFAB-2, implementasi tesis tidak boleh digambarkan sebagai salinan identik LFDet. Xu et al. mengembangkan AFAB sebagai salah satu branch dalam sistem LFDet pada aircraft detection, sedangkan penelitian ini mengevaluasi adaptasi frequency-angular sebagai preprocessing standalone untuk YOLO26 pada coffee defect detection. Keputusan coffee-specific seperti bentuk residual reconstruction, integration point, training protocol, dan parameter implementasi harus dijelaskan sebagai **adaptasi penelitian ini** pada Bab III, bukan diatribusikan kepada Xu et al.
+
+Rangkaian evidence pada Subbab 2.8 karena itu hanya mendukung tiga proposisi terbatas: (1) representasi Fourier dapat dimanipulasi dan direkonstruksi kembali ke image space [PRE-08][PRE-03]; (2) radial/angular spectrum dapat dipakai untuk menganalisis skala dan directionality texture [SPEC-01]; dan (3) frequency-aware processing telah digunakan pada fine-grained detection dan berbagai dense/defect vision tasks [FG-01][FREQ-01][FREQ-02][FREQ-03]. Tidak satu pun proposisi tersebut membuktikan bahwa coffee defects pasti frequency-separable. Efektivitas transfer tersebut tetap merupakan pertanyaan empiris tesis.
 
 ---
 
