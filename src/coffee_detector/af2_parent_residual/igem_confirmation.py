@@ -26,14 +26,14 @@ ARMS = ("AF2IGEM0", "AF2IGEM1")
 CONFIGS = {code: REPO_ROOT / f"configs/af2_parent_residual/{code}.yaml" for code in ARMS}
 ATOL = 5.0e-5
 RTOL = 1.0e-5
-AUDIT_REVISION = "2026-08-24b"
+AUDIT_REVISION = "2026-08-24c"
 INIT_SEED = 20260824
 
 
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
-        for block in iter(lambda: stream.read(1024 * 1024, ), b""):
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(block)
     return digest.hexdigest()
 
@@ -107,7 +107,10 @@ def run_af2_igem_parent_static_audit(
     checkpoint = Path(af2_checkpoint).expanduser().resolve()
     if not checkpoint.is_file():
         raise FileNotFoundError(checkpoint)
-    payloads = {code: yaml.safe_load(path.read_text(encoding="utf-8")) or {} for code, path in CONFIGS.items()}
+    payloads = {
+        code: yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        for code, path in CONFIGS.items()
+    }
     source = YOLO(str(checkpoint)).model.to(device).eval()
     if getattr(source, "afab", None) is None:
         raise RuntimeError("Checkpoint sumber bukan AF2")
@@ -158,6 +161,8 @@ def run_af2_igem_parent_static_audit(
             active = model(image)
         active_boxes = active[1]["one2one"]["boxes"]
         active_scores = active[1]["one2one"]["scores"]
+        active_box_max_abs_diff = _max_abs_diff(before_boxes, active_boxes)
+        active_score_max_abs_diff = _max_abs_diff(before_scores, active_scores)
 
         freeze = freeze_for_parent_residual(model)
         trainable_names = [name for name, parameter in model.named_parameters() if parameter.requires_grad]
@@ -193,9 +198,9 @@ def run_af2_igem_parent_static_audit(
             "initial_af2_numerically_preserved": initial_identity,
             "active_boxes_bitwise_preserved": bool(torch.equal(before_boxes, active_boxes)),
             "active_boxes_numerically_preserved": _numerically_preserved(before_boxes, active_boxes),
-            "active_box_max_abs_diff": _max_abs_diff(before_boxes, active_boxes),
+            "active_box_max_abs_diff": active_box_max_abs_diff,
             "active_scores_numerically_preserved": _numerically_preserved(before_scores, active_scores),
-            "active_score_max_abs_diff": _max_abs_diff(before_scores, active_scores),
+            "active_score_max_abs_diff": active_score_max_abs_diff,
             "only_residual_trainable": only_residual_trainable,
             "parent_batchnorm_frozen": parent_bn_frozen,
             "residual_batchnorm_training": residual_bn_training,
@@ -213,6 +218,10 @@ def run_af2_igem_parent_static_audit(
         initial_residual_states["AF2IGEM0"], initial_residual_states["AF2IGEM1"]
     )
 
+    # Identity and box-preservation are full numerical-equivalence checks.
+    # Residual *activity* is instead measured by absolute output displacement:
+    # using allclose for activity lets rtol grow with large-magnitude logits and
+    # can hide a deterministic correction. ATOL was predeclared before training.
     gates = {
         "source_is_af2": True,
         "same_model_yaml": payloads["AF2IGEM0"]["model"] == payloads["AF2IGEM1"]["model"],
@@ -231,8 +240,8 @@ def run_af2_igem_parent_static_audit(
         "candidate_initial_identity": candidate["initial_af2_numerically_preserved"],
         "control_boxes_preserved": control["active_boxes_numerically_preserved"],
         "candidate_boxes_preserved": candidate["active_boxes_numerically_preserved"],
-        "control_zero_information_identity": control["active_scores_numerically_preserved"],
-        "candidate_changes_scores": not candidate["active_scores_numerically_preserved"],
+        "control_zero_information_identity": control["active_score_max_abs_diff"] <= ATOL,
+        "candidate_changes_scores": candidate["active_score_max_abs_diff"] > ATOL,
         "control_only_residual_trainable": control["only_residual_trainable"],
         "candidate_only_residual_trainable": candidate["only_residual_trainable"],
         "control_parent_bn_frozen": control["parent_batchnorm_frozen"],
@@ -252,6 +261,7 @@ def run_af2_igem_parent_static_audit(
         "format": "coffee_detector.af2_parent_residual.igem_static_audit.v1",
         "audit_revision": AUDIT_REVISION,
         "numerical_tolerance": {"atol": ATOL, "rtol": RTOL},
+        "activity_absolute_threshold": ATOL,
         "initialization_seed": INIT_SEED,
         "decision": decision,
         "checkpoint": str(checkpoint),
