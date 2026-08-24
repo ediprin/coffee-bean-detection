@@ -8,7 +8,7 @@ Do **not** treat prose drafts as the only source of truth. The thesis direction 
 
 ```text
 01_PROPOSAL_SKELETON.md
-    overall Bab I–III structure and scope
+    synchronized Bab I–III structure and scope
 
 02_BACKGROUND.md
     evidence-grounded Bab I background draft
@@ -27,6 +27,9 @@ Do **not** treat prose drafts as the only source of truth. The thesis direction 
 
 05_METHODOLOGY.md
     campus-style Bab III source-grounded from frozen direct-AF2 protocol
+
+06_RESEARCH_FLOW.md
+    synchronized Figure 3.1/3.2 research-flow and AF2-operator specifications
 ```
 
 ## Assembly rule
@@ -36,8 +39,9 @@ When generating the final proposal document:
 1. use `04_02_INSPECTION_QUALITY_NORMALIZED.md` in place of the older §2.2 block embedded in `04_LITERATURE_REVIEW.md`;
 2. use `04_09_RELATED_WORK_TABLE.md` as the authoritative §2.9 table;
 3. use `05_METHODOLOGY.md` as the Bab III base;
-4. resolve all citation keys through `../sources/CANONICAL_SOURCE_KEYS.md`;
-5. apply the Bab II and Bab III audit files before export.
+4. redraw the figure specification in `06_RESEARCH_FLOW.md` into the campus document style;
+5. resolve all citation keys through `../sources/CANONICAL_SOURCE_KEYS.md`;
+6. apply the Bab II, Bab III, and cross-chapter audit files before export.
 
 ## Drafting rule
 
@@ -53,9 +57,10 @@ Before creating or changing a chapter:
 ## Current state
 
 ```text
-Bab I   = working evidence-grounded draft
-Bab II  = first-pass source-grounded; final assembly/normalization pending
+Bab I   = evidence-grounded working draft; RQ3 normalized to diagnostic scope
+Bab II  = first-pass source-grounded; modular normalization ready
 Bab III = first source-grounded methodology draft completed
+Flow    = figure specification completed
 ```
 
-The next major drafting task after normalization is the proposal-level research-flow diagram and final consistency audit across Bab I–III.
+Next major task: final reference/page recertification and formal proposal assembly (DOCX/PDF) after the title/`Optimasi` scope decision is frozen.
