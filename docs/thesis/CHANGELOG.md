@@ -1,5 +1,21 @@
 # Thesis Proposal Changelog
 
+## v0.7.0 — 2026-08-24
+
+Fine-grained object detection section promoted to first-pass source-grounded prose.
+
+### Rewritten
+
+- §2.6 now separates fine-grained definition/FGOD theory, coffee classification diagnostics, coffee object-detection difficult-class evidence, and model-internal discriminative-representation responses;
+- `FG-03` + `FG-02` ground general theory; `COF-07/08` diagnose coffee granularity/generalization; `COF-03/04/05` provide direct detection similarity/tail evidence; `COF-12/13` show internal representation responses;
+- Hong is intentionally absent from §2.6; Xu/`FG-01` is intentionally deferred to the frequency bridge so the parent AFAB paper does not dominate both problem diagnosis and solution-space justification;
+- causal boundary locked: coffee literature supports fine-grained discrimination difficulty, not a proven frequency bottleneck.
+
+### Audit update
+
+- `BAB2_CITATION_AUDIT.md` marks §2.6 `PASS FIRST REWRITE` with nine distinct source keys;
+- next source-grounded prose target is §2.7 preprocessing.
+
 ## v0.6.1 — 2026-08-24
 
 Object-detection, YOLO, and YOLO26 theory sections have been promoted from scaffold prose to first-pass source-grounded prose.
