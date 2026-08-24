@@ -67,7 +67,7 @@ Training for a seed is forbidden unless the IGEM-only static audit records `PASS
 1. `AF2IGEM0` and `AF2IGEM1` have identical model YAML, AF2 config, training schedule, parameter count, trainable count, and state schema;
 2. the only intended residual-config difference is zero versus feature conditioning;
 3. both arms numerically reproduce the AF2FS parent at zero initialization;
-4. activating the feature-conditioned residual changes class scores while preserving boxes bitwise;
+4. activating the feature-conditioned residual changes class scores while preserving the native box path;
 5. activating the zero-conditioned residual cannot extract P3/P4/P5 information;
 6. gradients are finite/nonzero in the residual and absent from every parent parameter;
 7. the optimizer contains exactly the residual trainable parameters;
@@ -127,3 +127,11 @@ A `RETAIN` supports only:
 It does **not** establish independent test generalization, does not prove that arbitrary module stacking is beneficial, and does not authorize adding SAF/STB in the same training run. SAF and STB-vs-CMC remain separate later hypotheses.
 
 A `REJECT` closes this AF2FS+IGEM frozen-parent route under the frozen formulation; it does not invalidate standalone AF2 or standalone IGEM evidence.
+
+## Pre-training static-audit amendment 2026-08-24a
+
+Before any IGEM confirmation training epoch was run, the first seed-42 CUDA static audit stopped with three false-negative gates. The architectural and gradient invariants passed: both arms reproduced the AF2 parent numerically at initialization, only the IGEM residual was trainable, the frozen parent received no gradients, and the feature-conditioned candidate produced a large score change. The failed checks were caused by requiring exact/bitwise equality across two separate CUDA forward passes.
+
+Observed pre-training diagnostics included an `AF2IGEM0` active score maximum absolute difference of `1.52587890625e-05`, while `AF2IGEM1` changed scores by `2.23699951171875`. The audit had already defined `ATOL=5e-5` and `RTOL=1e-5` for parent identity before these values were observed.
+
+Audit revision `2026-08-24a` therefore applies that **pre-existing** numerical tolerance consistently to repeated-forward box preservation and zero-information score identity. Bitwise equality remains recorded as a diagnostic but is no longer an authorization requirement across separate CUDA forwards. A feature-conditioned residual must change scores beyond the same numerical tolerance envelope. No model, dataset, training schedule, optimizer, decision threshold, parent checkpoint, or test-access rule is changed by this amendment.
