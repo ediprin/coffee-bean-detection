@@ -49,6 +49,17 @@ def merge_adjacent_author_year_citations(text: str) -> str:
     return text
 
 
+def normalize_table_caption(raw: str) -> str:
+    """Normalize `Tabel 2.1. Judul` -> `Tabel 2.1  Judul` with no terminal period."""
+
+    raw = raw.strip().rstrip(".")
+    m = re.match(r"^(Tabel\s+\d+\.\d+)\.?\s*(.*)$", raw)
+    if not m:
+        return raw
+    number, title = m.groups()
+    return f"{number}  {title.strip()}" if title.strip() else number
+
+
 def sanitize_markdown(text: str) -> str:
     # Formal manuscript does not use horizontal-rule separators from the working MD.
     text = re.sub(r"(?m)^\s*---\s*$\n?", "", text)
@@ -57,10 +68,11 @@ def sanitize_markdown(text: str) -> str:
     text = re.sub(r"(?m)^```[^\n]*\n?", "", text)
     text = re.sub(r"(?m)^```\s*$\n?", "", text)
 
-    # Table titles must be captions, not Heading paragraphs/TOC entries.
+    # Table titles must be captions, not Heading paragraphs/TOC entries. The SPs
+    # convention also omits a period after the table number and at line end.
     text = re.sub(
-        r"(?m)^#{2,6}\s+(Tabel\s+\d+\.\d+\s+.+?)\s*$",
-        lambda m: f"**{m.group(1).rstrip('.')}**",
+        r"(?m)^#{2,6}\s+(Tabel\s+\d+\.\d+\.?\s+.+?)\s*$",
+        lambda m: f"**{normalize_table_caption(m.group(1))}**",
         text,
     )
 
