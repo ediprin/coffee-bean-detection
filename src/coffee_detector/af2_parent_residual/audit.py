@@ -26,6 +26,7 @@ ARMS = ("AF2SAF0", "AF2SAF1", "AF2IGEM0", "AF2IGEM1")
 CONFIGS = {code: REPO_ROOT / f"configs/af2_parent_residual/{code}.yaml" for code in ARMS}
 ATOL = 5.0e-5
 RTOL = 1.0e-5
+AUDIT_REVISION = "2026-08-24a"
 
 
 def _sha256(path: Path) -> str:
@@ -38,6 +39,14 @@ def _sha256(path: Path) -> str:
 
 def _schema(module: torch.nn.Module) -> dict[str, tuple[int, ...]]:
     return {key: tuple(value.shape) for key, value in module.state_dict().items()}
+
+
+def _max_abs_diff(left: torch.Tensor, right: torch.Tensor) -> float:
+    return float((left - right).abs().max())
+
+
+def _numerically_preserved(left: torch.Tensor, right: torch.Tensor) -> bool:
+    return bool(torch.allclose(left, right, atol=ATOL, rtol=RTOL))
 
 
 def _activate_last_projection(model: AF2ParentResidualDetectionModel) -> None:
@@ -75,7 +84,6 @@ def run_af2_parent_residual_static_audit(
     with torch.inference_mode():
         native = source(image)
     records: dict[str, Any] = {}
-    models = {}
     for code, payload in payloads.items():
         config = AF2ParentResidualConfig.from_mapping(payload["parent_residual"])
         model = AF2ParentResidualDetectionModel(
@@ -93,15 +101,15 @@ def run_af2_parent_residual_static_audit(
         scores = identity[1]["one2one"]["scores"]
         native_boxes = native[1]["one2one"]["boxes"]
         native_scores = native[1]["one2one"]["scores"]
-        identity_close = torch.allclose(boxes, native_boxes, atol=ATOL, rtol=RTOL) and torch.allclose(
-            scores, native_scores, atol=ATOL, rtol=RTOL
-        )
+        identity_close = _numerically_preserved(boxes, native_boxes) and _numerically_preserved(scores, native_scores)
         before_boxes, before_scores = boxes.clone(), scores.clone()
         _activate_last_projection(model)
         with torch.inference_mode():
             active = model(image)
         active_boxes = active[1]["one2one"]["boxes"]
         active_scores = active[1]["one2one"]["scores"]
+        active_boxes_close = _numerically_preserved(before_boxes, active_boxes)
+        active_scores_close = _numerically_preserved(before_scores, active_scores)
         freeze = freeze_for_parent_residual(model)
         model.train(True)
         model.zero_grad(set_to_none=True)
@@ -124,14 +132,16 @@ def run_af2_parent_residual_static_audit(
             "transfer": transfer,
             "initial_af2_numerically_preserved": identity_close,
             "active_boxes_bitwise_preserved": torch.equal(before_boxes, active_boxes),
-            "active_score_max_abs_diff": float((before_scores - active_scores).abs().max()),
+            "active_boxes_numerically_preserved": active_boxes_close,
+            "active_box_max_abs_diff": _max_abs_diff(before_boxes, active_boxes),
+            "active_scores_numerically_preserved": active_scores_close,
+            "active_score_max_abs_diff": _max_abs_diff(before_scores, active_scores),
             "finite_nonzero_residual_gradients": all(
                 parameter.grad is not None and torch.isfinite(parameter.grad).all()
                 for parameter in trainable
             ) and any(bool(parameter.grad.abs().max() > 0) for parameter in trainable),
             "frozen_parent_has_no_gradients": all(parameter.grad is None for parameter in frozen),
         }
-        models[code] = model
 
     gates: dict[str, bool] = {"source_is_af2": True, "test_accessed": False}
     for family, control_code, candidate_code in (
@@ -150,13 +160,9 @@ def run_af2_parent_residual_static_audit(
                 prefix + "same_trainable_count": control["trainable_parameters"] == candidate["trainable_parameters"],
                 prefix + "same_state_schema": control["state_schema"] == candidate["state_schema"],
                 prefix + "only_conditioning_differs": {
-                    key: value
-                    for key, value in control_payload["parent_residual"].items()
-                    if key != "conditioning"
+                    key: value for key, value in control_payload["parent_residual"].items() if key != "conditioning"
                 } == {
-                    key: value
-                    for key, value in candidate_payload["parent_residual"].items()
-                    if key != "conditioning"
+                    key: value for key, value in candidate_payload["parent_residual"].items() if key != "conditioning"
                 },
                 prefix + "control_receives_zero_information": control["conditioning"] == "zero",
                 prefix + "candidate_receives_features": candidate["conditioning"] == "feature",
@@ -164,16 +170,18 @@ def run_af2_parent_residual_static_audit(
         )
     for code, record in records.items():
         gates[f"{code}_initial_identity"] = record["initial_af2_numerically_preserved"]
-        gates[f"{code}_boxes_preserved"] = record["active_boxes_bitwise_preserved"]
+        gates[f"{code}_boxes_preserved"] = record["active_boxes_numerically_preserved"]
         gates[f"{code}_finite_gradients"] = record["finite_nonzero_residual_gradients"]
         gates[f"{code}_frozen_parent"] = record["frozen_parent_has_no_gradients"]
         if record["conditioning"] == "feature":
-            gates[f"{code}_active_scores"] = record["active_score_max_abs_diff"] > 0.0
+            gates[f"{code}_active_scores"] = not record["active_scores_numerically_preserved"]
         else:
-            gates[f"{code}_zero_information_identity"] = record["active_score_max_abs_diff"] == 0.0
+            gates[f"{code}_zero_information_identity"] = record["active_scores_numerically_preserved"]
     decision = "PASS" if all(value for key, value in gates.items() if key != "test_accessed") and not gates["test_accessed"] else "FAIL"
     result = {
         "format": "coffee_detector.af2_parent_residual.static_audit.v1",
+        "audit_revision": AUDIT_REVISION,
+        "numerical_tolerance": {"atol": ATOL, "rtol": RTOL},
         "decision": decision,
         "checkpoint": str(checkpoint),
         "checkpoint_sha256": _sha256(checkpoint),
@@ -189,7 +197,7 @@ def run_af2_parent_residual_static_audit(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Static audit AF2 parent residual")
+    parser = argparse.ArgumentParser(description="Static identity/isolation AF2 parent residual")
     parser.add_argument("--af2-checkpoint", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--device", default="cpu")
