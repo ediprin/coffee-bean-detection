@@ -4,9 +4,9 @@ Working title:
 
 **Analisis dan Optimasi Preprocessing Citra Berbasis Frekuensi-Angular pada YOLO26 untuk Deteksi Fine-Grained Cacat Biji Kopi**
 
-Status: working title; terminology may be refined after advisor feedback.
+Status: working title; current methodology now operationalizes both `Analisis` and `Optimasi`.
 
-This skeleton is an index/consistency document. Detailed prose is maintained in the chapter files.
+This file is an index/consistency document. Detailed prose is maintained in the chapter files.
 
 ---
 
@@ -28,7 +28,8 @@ coffee quality / physical inspection
 -> coffee literature mostly modifies model internally
 -> preprocessing is an alternative solution space
 -> frequency/angular evidence makes AF2 technically testable
--> matched AF2 + YOLO26 experiment
+-> AF2 contains design choices that require controlled optimization
+-> selected AF2 must be confirmed against matched native YOLO26
 -> pilot evidence = feasibility only
 ```
 
@@ -44,20 +45,23 @@ Authoritative draft: `03_PROBLEM_FORMULATION.md`.
 
 Current research questions:
 
-**RQ1.** Apakah preprocessing citra berbasis frekuensi-angular dapat meningkatkan kinerja YOLO26 dalam mendeteksi cacat biji kopi secara fine-grained dibandingkan YOLO26 tanpa preprocessing tersebut?
+**RQ1.** Bagaimana pengaruh keputusan desain utama AF2 terhadap kinerja fine-grained coffee-defect detection, dan konfigurasi preprocessing frekuensi-angular seperti apa yang paling layak dipilih melalui analisis terfaktor dan sensitivity analysis?
 
-**RQ2.** Bagaimana pengaruh preprocessing frekuensi-angular terhadap kelas-kelas cacat yang memiliki kinerja rendah atau sulit dibedakan?
+**RQ2.** Apakah konfigurasi AF2 yang telah dipilih dapat meningkatkan kinerja YOLO26 dibandingkan native YOLO26 pada eksperimen konfirmatori yang dipasangkan?
 
-**RQ3.** Apakah pola perubahan kinerja yang dihasilkan lebih konsisten dengan peningkatan diskriminasi kelas daripada peningkatan aksesibilitas proposal/lokalisasi mentah?
+**RQ3.** Bagaimana pengaruh preprocessing frekuensi-angular terhadap kelas-kelas cacat yang memiliki kinerja rendah atau sulit dibedakan?
 
-RQ3 guardrail: raw proposal accessibility adalah diagnostic/proxy dan tidak identik dengan full box-regression quality.
+**RQ4.** Apakah pola perubahan kinerja lebih konsisten dengan peningkatan diskriminasi kelas daripada peningkatan aksesibilitas proposal/lokalisasi mentah?
+
+RQ4 guardrail: raw proposal accessibility adalah diagnostic/proxy dan tidak identik dengan full box-regression quality.
 
 Main objectives:
 
-1. evaluate native YOLO26 vs AF2-YOLO26 under matched conditions;
-2. analyze aggregate and lower-tail class behavior;
-3. compare discrimination-oriented and proposal-accessibility diagnostics without causal overclaim;
-4. measure accuracy–efficiency trade-off.
+1. analyze and optimize AF2 design factors;
+2. confirm selected AF2 against matched native YOLO26;
+3. analyze lower-tail/per-class behavior;
+4. diagnose class-discrimination vs proposal-accessibility patterns with visualization/error support;
+5. measure accuracy–efficiency trade-off.
 
 ---
 
@@ -78,7 +82,7 @@ Standard + taxonomy context. Do not equate dataset labels with the complete SNI 
 
 ### 2.2 Inspeksi Mutu Biji Kopi: Metode Konvensional dan Tantangannya
 
-Use normalized module. Primary routing:
+Primary routing:
 
 ```text
 COF-17 Garcia 2019 -> manual/mechanical inspection + classical machine vision
@@ -87,23 +91,21 @@ REV-01 -> landscape only
 COF-14 -> modern DL/edge transition
 ```
 
-Do not recycle `COF-07/08` here; reserve them for taxonomy/fine-grained roles.
-
 ### 2.3 Object Detection
 
 Use canonical detector sources plus classification/localization diagnostics.
 
 ### 2.4 YOLO
 
-Original YOLO is the theory source; coffee studies only show domain adoption.
+Original YOLO is the theory source; coffee studies show domain adoption.
 
 ### 2.5 YOLO26
 
-YOLO26 primary source is a 2026 preprint. AF2 is not part of YOLO26 backbone/neck/head.
+YOLO26 primary source is a 2026 preprint. AF2 is not part of the YOLO26 backbone/neck/head.
 
 ### 2.6 Fine-Grained Object Detection
 
-General FG/FGOD theory + independent coffee classification/detection evidence. Hong is not required as the dominant source here.
+General FG/FGOD theory + independent coffee classification/detection evidence.
 
 ### 2.7 Preprocessing Citra untuk Object Detection
 
@@ -118,32 +120,35 @@ Subsections:
 3. radial/angular representation;
 4. frequency-aware processing in input space vs feature space.
 
-Canonical angular theory keys are `SPEC-01/SPEC-02`; do not reuse deprecated `FREQ-*` meanings.
+Canonical angular theory keys are `SPEC-01/SPEC-02`.
 
 ### 2.9 Penelitian Terkait
 
 Use `04_09_RELATED_WORK_TABLE.md` with 18 prior studies + proposed research.
 
-The table is a synthesis, not a ranking across incomparable datasets.
-
 ---
 
-## Bab III — Metodologi Penelitian
+## Bab III — Metode Penelitian
 
 Campus convention source: `../foundation/07_USU_BAB3_PATTERN.md`.
 
-Authoritative proposal draft: `05_METHODOLOGY.md`.
+Method-design authority: `../foundation/08_BAB3_HONG_ADAPTED_OPTIMIZATION_DESIGN.md`.
 
-Protocol audit: `../sources/BAB3_PROTOCOL_AUDIT.md`.
+Authoritative draft: `05_METHODOLOGY.md`.
 
-### 3.1 Arsitektur Umum Penelitian
+Post-rewrite audit: `../sources/BAB3_HONG_REWRITE_AUDIT_2026-08-25.md`.
+
+### 3.1 Kerangka Penelitian
 
 ```text
-D0DIRECT:
-RGB -> YOLO26n
-
-AF2DIRECT:
-RGB -> AF2 -> same YOLO26n
+problem diagnosis
+-> grouped dataset audit
+-> AF2 reference
+-> factorized AF2 optimization
+-> optional limited parameter sensitivity
+-> AF2* method freeze
+-> matched native-vs-AF2 confirmatory experiment
+-> aggregate + tail + mechanism + visualization/error + efficiency analysis
 ```
 
 ### 3.2 Dataset Penelitian
@@ -156,13 +161,34 @@ validation   294 images /   526 annotations
 classes       21
 ```
 
-### 3.3 Persiapan dan Audit Dataset
+Subsections:
 
-Grouped split, parent/hash leakage gates, locked test, no test access during screening.
+- source/characteristics;
+- taxonomy;
+- grouped split and leakage control;
+- augmentation/input-transform distinction.
 
-### 3.4 Preprocessing Frekuensi-Angular AF2
+### 3.3 Baseline YOLO26
 
-Active `mode=af2`:
+Use YOLO26n P3–P5 as fixed detector family.
+
+Final confirmatory arms use the same exact official `yolo26n.pt` source and matched 21-class target-head initialization.
+
+### 3.4 Arsitektur Metode yang Diusulkan
+
+```text
+Native:
+RGB -> YOLO26n
+
+Proposed:
+RGB -> AF2* -> same YOLO26n
+```
+
+AF2 is an input frontend, not backbone/neck/head modification.
+
+### 3.5 Preprocessing Frekuensi-Angular AF2
+
+Reference settings:
 
 ```text
 patch_size   = 32
@@ -173,60 +199,113 @@ chunk_size   = 128
 eps          = 1e-8
 ```
 
-Implementation choices:
-
-- RGB channels independent;
-- floor-to-angle-bin discretization;
-- fold/overlap averaging;
-- residual output `I' = I + I * minmax(recovered)`.
-
-Important: shared config `radius_ratio=0.05` is inactive in pure `mode=af2`; it belongs to AF1/AF12 radial masking.
-
-### 3.5 YOLO26 Detector
-
-Same exact official pretrained source and matched 21-class target-head initialization for both arms.
-
-### 3.6 Skenario Eksperimen
-
-Primary paired delta:
-
-\[
-\Delta M=M_{AF2DIRECT}-M_{D0DIRECT}.
-\]
-
-Seed 42 = completed pilot screen.
-
-Seeds 123 and 2026 = planned confirmation, not completed proposal results.
-
-### 3.7 Konfigurasi Pelatihan
-
-Direct protocol authority:
+Core chain:
 
 ```text
-max epochs   = 50
-imgsz        = 640
-batch        = 16
-workers      = 2
-patience     = 15
-optimizer    = auto
-pretrained   = true
-cache        = false
-close_mosaic = 10
-max_det      = 500
-deterministic= true
+patch
+-> FFT
+-> angular density
+-> entropy-adaptive threshold
+-> directional weighting
+-> IFFT
+-> overlap reconstruction
+-> residual enhancement
 ```
 
-Do not import the conflicting old 100-epoch D0 schedule into this thesis design.
+Reference residual:
 
-### 3.8 Evaluasi Performa
+\[
+I'=I+I\odot\operatorname{MinMax}(R_{AF2}(I)).
+\]
 
-Primary / tail:
+Important: `radius_ratio=0.05` is inactive in pure `mode=af2`.
 
-- mAP50 and mAP50–95;
-- Macro mAP50–95;
-- Bottom-3 class mAP50–95;
-- Worst-class mAP50–95;
-- per-class AP.
+### 3.6 Analisis dan Optimasi AF2
+
+Main methodological adaptation from Hong:
+
+```text
+systematic factorized ablation
++ sensitivity analysis
++ later visualization/error analysis
+```
+
+Primary structural candidates:
+
+```text
+AF2C   reference
+AF2WIN window/leakage factor
+AF2ORI orientation-factor representation
+AF2POL radial x angular factorization
+AF2SOFT hard -> soft threshold
+AF2LUM RGB-independent -> luminance/shared gate
+```
+
+These are one-factor alternatives, not modules to stack.
+
+Optional mechanistic comparators `PCG1/WAV1` are not AF2 variants.
+
+Parameter-sensitivity candidate set:
+
+\[
+\Theta_{AF2}=\{m,o,\gamma,K\}.
+\]
+
+Priority, if retained: `gamma` and `patch_size`. Exact additional candidate values must be frozen before observing their validation outcomes.
+
+### 3.7 Rancangan Eksperimen Konfirmatori
+
+Final paired comparison:
+
+\[
+\Delta M=M_{AF2^*}-M_{Native}.
+\]
+
+Planned paired seeds:
+
+```text
+42, 123, 2026
+```
+
+Seed 42 direct result = feasibility pilot only.
+
+Important provenance split:
+
+- historical factorization = development/selection evidence, using seed-matched D0 parent;
+- final direct confirmation = official pretrained YOLO26n, matched target head.
+
+Locked test is not used for model selection.
+
+### 3.8 Konfigurasi Pelatihan
+
+Final direct protocol authority:
+
+```text
+max epochs    = 50
+imgsz         = 640
+batch         = 16
+workers       = 2
+patience      = 15
+optimizer     = auto
+pretrained    = true
+cache         = false
+close_mosaic  = 10
+max_det       = 500
+deterministic = true
+```
+
+### 3.9 Metrik Evaluasi
+
+Performance hierarchy:
+
+- Macro mAP50–95 — primary;
+- mAP50 / mAP50–95 — context;
+- Bottom-3 — study-defined tail metric;
+- Worst-class — study-defined safety indicator;
+- per-class AP;
+- Precision/Recall/F1 when useful for descriptive error analysis.
+
+### 3.10 Analisis Mekanisme
 
 Diagnostic:
 
@@ -234,26 +313,52 @@ Diagnostic:
 - localization-conditioned Top-1;
 - correct-decision recall.
 
-Efficiency:
+Use `consistent with`, not causal mechanism claims.
+
+### 3.11 Analisis Visualisasi
+
+AF2-specific qualitative chain:
+
+```text
+Original RGB
+-> patch
+-> FFT magnitude
+-> angular density D(theta)
+-> threshold tau
+-> retained response
+-> reconstructed cue
+-> AF2-enhanced RGB
+-> prediction / activation visualization
+```
+
+CAM/EigenCAM is not named as final until YOLO26 compatibility is verified.
+
+### 3.12 Analisis Kesalahan
+
+- confusion/per-class errors;
+- gain/regression by class;
+- paired native-vs-AF2 outcome transitions;
+- thesis-defined rescue/regression statistic;
+- deterministic/fixed-seed qualitative sample selection to reduce cherry-picking.
+
+### 3.13 Evaluasi Efisiensi
 
 - parameter count;
 - latency;
 - throughput;
 - peak memory/VRAM.
 
-Bottom-3 and Worst-class are study-defined summary metrics, not official COCO metrics.
+`parameter-free != compute-free`.
 
-### 3.9 Analisis Kesalahan dan Per-Class Behavior
+### 3.14 Lingkungan Implementasi dan Reproducibility
 
-Report per-seed and per-class behavior; use `consistent with`, not causal mechanism claims.
+Record hardware, runtime, library versions, pretrained hash, repo commit, seed, dataset contract, and run contract.
 
-### 3.10 Perangkat dan Lingkungan Eksperimen
+### 3.15 Batas Pendahuluan / Optimasi / Bukti Final
 
-Record hardware, runtime, library versions, pretrained hash, repo commit, and seed.
-
-### 3.11 Batas Pilot vs Tesis
-
-Pilot seed 42 demonstrates feasibility only. Final direct-AF2 superiority, locked-test generalization, and final efficiency claims remain unestablished until confirmatory work is completed.
+- direct seed-42 pilot = feasibility only;
+- old factorization results = development/selection evidence;
+- selected AF2* direct paired confirmation = main thesis evidence.
 
 ---
 
@@ -261,4 +366,4 @@ Pilot seed 42 demonstrates feasibility only. Final direct-AF2 superiority, locke
 
 > Studi pendahuluan pada satu seed digunakan untuk menilai kelayakan awal rancangan. Hasil tersebut tidak diperlakukan sebagai kesimpulan final dan akan divalidasi menggunakan protokol eksperimen berulang pada penelitian tesis.
 
-Never change this into a superiority claim before the repeated-seed confirmation is complete.
+Never change this into a superiority claim before repeated-seed confirmation is complete.
