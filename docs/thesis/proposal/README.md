@@ -6,7 +6,20 @@ Direktori ini adalah **source-of-truth naskah proposal tesis**. Setiap revisi su
 
 Proposal adalah **rencana penelitian**, bukan laporan hasil penelitian yang telah dijalankan. Karena itu, Bab I–III formal tidak memuat hasil eksperimen penelitian sendiri, termasuk hasil pilot satu seed, D0/D0FT, historical factorization results, promotion gate, atau diagnosis pasca-eksperimen.
 
-Hasil penelitian terdahulu boleh digunakan sebagai landasan masalah, teori, dan metode selama sumbernya dapat diverifikasi.
+Hasil penelitian terdahulu boleh digunakan sebagai landasan masalah, teori, dan metode **hanya jika klaim dan metadata sumbernya dapat diverifikasi**.
+
+## Hard gate sitasi resmi
+
+Sitasi merupakan **hard gate** proposal. `docs/thesis/sources/OFFICIAL_CITATION_AUDIT.md` menjadi authority untuk menentukan apakah sebuah referensi sudah aman dipromosikan ke daftar pustaka formal.
+
+Aturannya:
+
+1. halaman resmi penerbit/proceedings/badan standar atau primary preprint digunakan sebagai otoritas metadata;
+2. master reference workbook, `CANONICAL_SOURCE_KEYS.md`, DBLP, Crossref, Google Scholar, Semantic Scholar, ResearchGate, dan sumber agregator hanya menjadi locator/corroboration;
+3. DOI, author, title, venue, volume, issue, pages/article number, quartile, dan indexing **tidak boleh ditebak**;
+4. metadata resmi tidak otomatis membuktikan klaim metodologis — klaim teknis tetap harus ditelusuri ke full text primer;
+5. sumber yang masih `PENDING` tidak boleh dianggap citation-ready;
+6. `DAFTAR_PUSTAKA.md` diblokir sampai audit resmi terhadap seluruh sitasi yang dipakai pada Bab I–III selesai.
 
 ## Artefak formal utama
 
@@ -21,7 +34,7 @@ BAB_III_METODOLOGI_PENELITIAN.md
     authority Bab III
 
 DAFTAR_PUSTAKA.md
-    target berikutnya; hanya memuat referensi yang benar-benar disitasi dalam artefak formal
+    BELUM DIBANGUN — blocked by OFFICIAL_CITATION_AUDIT.md
 ```
 
 `01_PROPOSAL_SKELETON.md` adalah kontrak struktur dan batas penulisan, bukan bagian yang dicetak sebagai bab.
@@ -55,7 +68,7 @@ Bab III menjelaskan adaptasi mekanisme secara akademik. Nama pendek implementasi
 BOLEH DALAM PROPOSAL
 - masalah penelitian
 - hasil penelitian terdahulu yang terverifikasi
-- teori dan metode terdahulu
+- teori dan metode terdahulu yang terverifikasi
 - metode yang diusulkan
 - rancangan optimasi
 - rancangan eksperimen
@@ -74,21 +87,22 @@ TIDAK BOLEH SEBAGAI HASIL PROPOSAL
 
 ## Source discipline
 
-1. Klaim literatur harus berasal dari paper/standar yang mendukungnya.
+1. Klaim literatur harus berasal dari paper/standar primer yang benar-benar mendukungnya.
 2. Repository dipakai untuk memastikan rancangan metode yang akan dilakukan benar secara teknis.
 3. Fakta paper, sintesis literatur, dan rencana penelitian harus dibedakan.
 4. Nama internal repository tidak digunakan tanpa definisi akademik.
 5. Artefak formal harus dapat dibaca oleh dosen/penguji tanpa mengetahui repository.
 6. Hasil eksperimen internal tidak diubah menjadi narasi hasil proposal.
+7. Tidak ada entri bibliografi final yang dibuat dari ingatan atau metadata yang belum lolos official-source gate.
 
 ## Current state
 
 ```text
-BAB I   = formal proposal artifact tersedia
-BAB II  = formal proposal-facing rewrite tersedia
-BAB III = formal proposal-facing rewrite tersedia
-REFERENSI = DAFTAR_PUSTAKA.md belum dibangun
-DOCX    = generate manual per bab setelah audit teks formal
+BAB I       = formal proposal artifact tersedia
+BAB II      = formal proposal-facing rewrite tersedia; citation audit berlangsung
+BAB III     = formal proposal-facing rewrite tersedia; citation audit berlangsung
+REFERENSI   = OFFICIAL_CITATION_AUDIT.md aktif; DAFTAR_PUSTAKA.md diblokir
+DOCX        = belum digenerate; tunggu audit teks + sitasi formal
 ```
 
 Current working title:
