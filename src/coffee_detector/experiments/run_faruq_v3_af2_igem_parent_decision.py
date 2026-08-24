@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ import numpy as np
 
 SEEDS = (42, 123, 2026)
 METRICS = ("macro_map50_95", "bottom3_class_map50_95", "worst_class_map50_95")
+PROTOCOL = "faruq-v3-af2fs-igem-parent-confirmation-v1"
 
 # Frozen in docs/FARUQ_V3_AF2FS_IGEM_PARENT_CONFIRMATION_PROTOCOL_2026-08-24.md
 GATE = {
@@ -29,6 +31,14 @@ GATE = {
 }
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def _read(path: str | Path) -> dict[str, Any]:
     source = Path(path).expanduser().resolve()
     if not source.is_file():
@@ -36,13 +46,35 @@ def _read(path: str | Path) -> dict[str, Any]:
     return json.loads(source.read_text(encoding="utf-8"))
 
 
-def _normalize(paths, expected_arm: str, conditioning: str) -> dict[int, dict[str, Any]]:
+def _normalize_parent(paths) -> dict[int, dict[str, Any]]:
+    result: dict[int, dict[str, Any]] = {}
+    for path in paths:
+        source = Path(path).expanduser().resolve()
+        payload = _read(source)
+        if payload.get("format") != "coffee_detector.af2_ffa.from_start_arm_result.v1" or payload.get("arm") != "AF2FS":
+            raise RuntimeError("Parent harus result AF2FS from-start resmi")
+        seed = int(payload.get("seed", -1))
+        if seed not in SEEDS or seed in result:
+            raise RuntimeError(f"Parent seed invalid/duplikat: {seed}")
+        if payload.get("test_images_accessed") is not False:
+            raise RuntimeError("Parent AF2FS harus test-locked")
+        if len(payload.get("metrics", {}).get("map50_95_by_class", {})) != 21:
+            raise RuntimeError(f"Parent AF2FS seed {seed} tidak memuat 21 kelas")
+        payload = dict(payload)
+        payload["_result_sha256"] = _sha256(source)
+        result[seed] = payload
+    if tuple(sorted(result)) != SEEDS:
+        raise RuntimeError(f"Parent harus tepat seeds {SEEDS}")
+    return result
+
+
+def _normalize_arm(paths, expected_arm: str, conditioning: str) -> dict[int, dict[str, Any]]:
     result: dict[int, dict[str, Any]] = {}
     for path in paths:
         payload = _read(path)
-        if payload.get("format") != "coffee_detector.af2_parent_residual.igem_arm_result.v1":
-            raise RuntimeError("Format result IGEM salah")
-        if payload.get("protocol") != "faruq-v3-af2fs-igem-parent-confirmation-v1":
+        if payload.get("format") != "coffee_detector.af2_parent_residual.igem_arm_result.v2":
+            raise RuntimeError("Format result IGEM audited salah")
+        if payload.get("protocol") != PROTOCOL:
             raise RuntimeError("Result berasal dari protokol lain")
         if (
             payload.get("arm") != expected_arm
@@ -54,23 +86,25 @@ def _normalize(paths, expected_arm: str, conditioning: str) -> dict[int, dict[st
             raise RuntimeError(f"{expected_arm} tidak membuktikan residual-only training")
         if payload.get("evaluation_split") != "val" or payload.get("test_images_accessed") is not False:
             raise RuntimeError(f"{expected_arm} harus validation-only dan test terkunci")
+        if payload.get("baseline_source") != "canonical_AF2FS_parent_result":
+            raise RuntimeError(f"{expected_arm} tidak memakai baseline parent canonical")
         seed = int(payload.get("seed", -1))
         if seed not in SEEDS or seed in result:
             raise RuntimeError(f"Seed invalid/duplikat: {seed}")
-        if len(payload["metrics"].get("map50_95_by_class", {})) != 21:
+        if len(payload.get("metrics", {}).get("map50_95_by_class", {})) != 21:
             raise RuntimeError(f"{expected_arm} seed {seed} tidak memuat 21 kelas")
-        if len(payload["baseline_metrics"].get("map50_95_by_class", {})) != 21:
-            raise RuntimeError(f"Parent AF2FS seed {seed} tidak memuat 21 kelas")
+        if len(payload.get("baseline_metrics", {}).get("map50_95_by_class", {})) != 21:
+            raise RuntimeError(f"Parent baseline {expected_arm} seed {seed} tidak memuat 21 kelas")
         result[seed] = payload
     if tuple(sorted(result)) != SEEDS:
         raise RuntimeError(f"Harus tepat seeds {SEEDS}")
     return result
 
 
-def _metric_row(control, candidate, metric: str) -> dict[str, Any]:
+def _metric_row(parent, control, candidate, metric: str) -> dict[str, Any]:
+    parent_values = [float(parent[s]["metrics"][metric]) for s in SEEDS]
     control_values = [float(control[s]["metrics"][metric]) for s in SEEDS]
     candidate_values = [float(candidate[s]["metrics"][metric]) for s in SEEDS]
-    parent_values = [float(candidate[s]["baseline_metrics"][metric]) for s in SEEDS]
     vs_control = [right - left for left, right in zip(control_values, candidate_values)]
     vs_parent = [right - left for left, right in zip(parent_values, candidate_values)]
     return {
@@ -92,17 +126,25 @@ def _metric_row(control, candidate, metric: str) -> dict[str, Any]:
     }
 
 
-def run_igem_parent_decision(control_paths, candidate_paths, output: str | Path) -> dict[str, Any]:
-    control = _normalize(control_paths, "AF2IGEM0", "zero")
-    candidate = _normalize(candidate_paths, "AF2IGEM1", "feature")
+def run_igem_parent_decision(parent_paths, control_paths, candidate_paths, output: str | Path) -> dict[str, Any]:
+    parent = _normalize_parent(parent_paths)
+    control = _normalize_arm(control_paths, "AF2IGEM0", "zero")
+    candidate = _normalize_arm(candidate_paths, "AF2IGEM1", "feature")
 
     for seed in SEEDS:
-        control_sha = control[seed]["initial_af2_checkpoint_sha256"]
-        candidate_sha = candidate[seed]["initial_af2_checkpoint_sha256"]
-        if control_sha != candidate_sha:
-            raise RuntimeError(f"Seed {seed}: control/candidate tidak memakai parent yang sama")
+        canonical_checkpoint_sha = parent[seed]["checkpoint_sha256"]
+        canonical_result_sha = parent[seed]["_result_sha256"]
+        for label, payload in (("control", control[seed]), ("candidate", candidate[seed])):
+            if payload.get("initial_af2_checkpoint_sha256") != canonical_checkpoint_sha:
+                raise RuntimeError(f"Seed {seed}: {label} tidak memakai AF2FS checkpoint canonical")
+            if payload.get("parent_result_sha256") != canonical_result_sha:
+                raise RuntimeError(f"Seed {seed}: {label} tidak terikat ke AF2FS result canonical")
+            if payload.get("baseline_metrics") != parent[seed]["metrics"]:
+                raise RuntimeError(f"Seed {seed}: baseline {label} bukan salinan metric AF2FS canonical")
+        if control[seed].get("run_contract_sha256") is None or candidate[seed].get("run_contract_sha256") is None:
+            raise RuntimeError(f"Seed {seed}: run contract tidak tercatat")
 
-    aggregate = {metric: _metric_row(control, candidate, metric) for metric in METRICS}
+    aggregate = {metric: _metric_row(parent, control, candidate, metric) for metric in METRICS}
     macro = aggregate["macro_map50_95"]
     bottom3 = aggregate["bottom3_class_map50_95"]
     worst = aggregate["worst_class_map50_95"]
@@ -115,7 +157,6 @@ def run_igem_parent_decision(control_paths, candidate_paths, output: str | Path)
         "worst_mean_not_below_parent_by_more_than_1pp":
             worst["candidate_minus_parent_mean"] >= GATE["parent_worst_mean_delta_min"],
     }
-
     superiority = {
         "macro_mean_gain_at_least_0_2pp":
             macro["candidate_minus_control_mean"] >= GATE["superiority_macro_mean_gain_min"],
@@ -126,7 +167,6 @@ def run_igem_parent_decision(control_paths, candidate_paths, output: str | Path)
         "worst_mean_loss_at_most_1pp":
             worst["candidate_minus_control_mean"] >= GATE["superiority_worst_mean_delta_min"],
     }
-
     tail_pareto = {
         "macro_mean_loss_at_most_0_1pp":
             macro["candidate_minus_control_mean"] >= GATE["tail_macro_mean_delta_min"],
@@ -144,10 +184,9 @@ def run_igem_parent_decision(control_paths, candidate_paths, output: str | Path)
     superiority_pass = all(superiority.values())
     tail_pass = all(tail_pareto.values())
     passed = safety_pass and (superiority_pass or tail_pass)
-
     result = {
-        "format": "coffee_detector.af2_parent_residual.igem_three_seed_decision.v1",
-        "comparison": "AF2IGEM1_vs_AF2IGEM0_with_seed_matched_frozen_AF2FS_parents",
+        "format": "coffee_detector.af2_parent_residual.igem_three_seed_decision.v2",
+        "comparison": "AF2IGEM1_vs_AF2IGEM0_with_canonical_seed_matched_frozen_AF2FS_parents",
         "seeds": list(SEEDS),
         "gate": GATE,
         "aggregate": aggregate,
@@ -159,35 +198,36 @@ def run_igem_parent_decision(control_paths, candidate_paths, output: str | Path)
             "superiority_route_pass": superiority_pass,
             "tail_pareto_route_pass": tail_pass,
             "all_21_classes_present": True,
+            "canonical_parent_binding_verified": True,
             "test_not_opened": True,
         },
         "decision": "RETAIN" if passed else "REJECT",
         "next": "PROCEED_TO_SEPARATE_SAF_HYPOTHESIS" if passed else "STOP_AF2FS_IGEM_RESIDUAL_ROUTE",
         "claim_if_retain": (
-            "Under matched three-seed development-validation training with AF2FS frozen, "
-            "real P3/P4/P5 conditioning gives the IGEM residual useful classification "
-            "information beyond its zero-information capacity/optimization control."
+            "Under matched three-seed development-validation training with canonical AF2FS parents frozen, "
+            "real P3/P4/P5 conditioning gives the IGEM residual useful classification information beyond "
+            "its zero-information capacity/optimization control."
         ),
         "interpretation_boundary": (
-            "This is development-validation evidence only. It does not open the locked test, "
-            "does not prove generic module stacking, and does not combine SAF or STB in this run."
+            "Development-validation evidence only. The locked test stays closed and SAF/STB are separate hypotheses."
         ),
         "test_opened": False,
     }
-    destination = Path(output).expanduser().resolve()
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    target = Path(output).expanduser().resolve()
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=2), flush=True)
     return result
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Decide AF2FS + IGEM frozen-parent paired confirmation")
+    parser.add_argument("--parent", nargs=3, required=True)
     parser.add_argument("--control", nargs=3, required=True)
     parser.add_argument("--candidate", nargs=3, required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
-    run_igem_parent_decision(args.control, args.candidate, args.output)
+    run_igem_parent_decision(args.parent, args.control, args.candidate, args.output)
 
 
 if __name__ == "__main__":
