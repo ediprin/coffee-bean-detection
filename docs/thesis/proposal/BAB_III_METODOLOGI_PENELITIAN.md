@@ -5,7 +5,7 @@
 
 Penelitian ini menggunakan pendekatan eksperimental komparatif untuk menganalisis pengaruh *preprocessing* citra berbasis frekuensi-angular terhadap kinerja YOLO26 pada deteksi *fine-grained* cacat biji kopi. Perbandingan dilakukan antara YOLO26n yang menerima citra asli dan YOLO26n yang menerima citra setelah melalui *preprocessing* frekuensi-angular. Arsitektur utama YOLO26 dipertahankan sehingga perubahan kinerja yang diamati dapat dikaitkan dengan perlakuan pada citra masukan.
 
-Secara umum, tahapan penelitian terdiri atas persiapan dataset, pembentukan baseline YOLO26n, penerapan *preprocessing* frekuensi-angular, analisis dan optimasi rancangan *preprocessing*, pelatihan model, evaluasi kinerja deteksi, analisis kinerja per kelas, serta evaluasi efisiensi komputasi.
+Secara umum, tahapan penelitian terdiri atas persiapan dataset, pembentukan baseline YOLO26n, penerapan *preprocessing* frekuensi-angular, analisis dan optimasi rancangan *preprocessing*, pelatihan model, evaluasi kinerja deteksi, analisis visual, analisis kinerja per kelas dan kesalahan, serta evaluasi efisiensi komputasi.
 
 Alur utama penelitian dirangkum sebagai berikut:
 
@@ -24,7 +24,9 @@ Pelatihan YOLO26n
         ↓
 Evaluasi kinerja deteksi
         ↓
-Analisis per kelas dan efisiensi komputasi
+Analisis visual dan analisis per kelas
+        ↓
+Evaluasi efisiensi komputasi
         ↓
 Kesimpulan
 ```
@@ -282,13 +284,43 @@ Selain nilai agregat, penelitian menggunakan rata-rata AP50–95 per kelas sebag
 
 Untuk menggambarkan bagian bawah distribusi performa, digunakan dua ringkasan tambahan, yaitu rata-rata tiga kelas dengan AP50–95 terendah dan nilai AP50–95 kelas terendah. Kedua ukuran ini digunakan sebagai analisis tambahan untuk mengetahui apakah perubahan metode hanya meningkatkan nilai agregat atau juga memengaruhi kelas-kelas yang paling sulit.
 
-## 3.9 Analisis Kesalahan dan Kinerja Per Kelas
+## 3.9 Analisis Visual
+
+Analisis visual dilakukan sebagai pendukung evaluasi kuantitatif untuk membantu menginterpretasikan perubahan yang terjadi pada citra, respons spektral, dan prediksi model setelah *preprocessing*. Pola ini mengadaptasi penggunaan visualisasi sebagai analisis pendukung pada penelitian Hong et al. (2026), tetapi visualisasi dalam penelitian ini tidak diperlakukan sebagai bukti kausal tunggal mengenai alasan peningkatan atau penurunan kinerja model.
+
+### 3.9.1 Visualisasi Tahapan Preprocessing
+
+Visualisasi pertama berfokus pada transformasi citra sebelum masuk ke YOLO26. Untuk contoh citra yang dipilih, panel visual akan menampilkan secara berurutan:
+
+1. citra asli;
+2. patch lokal yang dianalisis;
+3. magnitude spektrum Fourier;
+4. distribusi angular;
+5. ambang adaptif dan respons angular yang dipertahankan;
+6. respons hasil inverse Fourier transform;
+7. citra hasil rekonstruksi dan residual enhancement.
+
+Visualisasi ini digunakan untuk menunjukkan bagaimana operasi frekuensi-angular mengubah representasi citra secara transparan. Perubahan kontras, tekstur, atau respons spektral yang terlihat tidak langsung dianggap sebagai bukti bahwa citra menjadi lebih baik bagi detector; interpretasinya tetap harus dikaitkan dengan hasil evaluasi kuantitatif.
+
+### 3.9.2 Visualisasi Respons Model
+
+Apabila kompatibel secara teknis dengan implementasi YOLO26 yang digunakan, penelitian akan menerapkan metode visualisasi berbasis aktivasi untuk membandingkan wilayah citra yang memberikan respons kuat pada model tanpa *preprocessing* dan model dengan *preprocessing*. Metode visualisasi yang digunakan akan ditetapkan setelah kompatibilitasnya dengan arsitektur YOLO26 diverifikasi dan diterapkan secara sama pada kedua model.
+
+Visualisasi respons model digunakan sebagai alat interpretasi untuk melihat apakah terdapat perubahan pola perhatian atau aktivasi pada area objek dan karakteristik cacat. Hasil visualisasi tidak digunakan sebagai pengganti metrik deteksi dan tidak ditafsirkan sebagai bukti kausal bahwa model menggunakan fitur tertentu secara eksklusif.
+
+### 3.9.3 Visualisasi Prediksi Deteksi
+
+Hasil prediksi YOLO26 tanpa *preprocessing* dan YOLO26 dengan *preprocessing* dibandingkan pada citra yang sama. Visualisasi mencakup *bounding box*, label kelas, dan skor kepercayaan sehingga perubahan prediksi dapat diamati secara langsung.
+
+Contoh visual dipilih berdasarkan kriteria yang telah ditentukan, misalnya kelas dengan kinerja tinggi, kelas dengan kinerja rendah, kasus ketika kedua model benar, kasus ketika kedua model salah, serta kasus ketika hasil prediksi kedua model berbeda. Pemilihan tersebut dilakukan untuk mengurangi kecenderungan hanya menampilkan contoh yang mendukung metode yang diusulkan.
+
+## 3.10 Analisis Kesalahan dan Kinerja Per Kelas
 
 Analisis kesalahan dilakukan menggunakan hasil prediksi per kelas, *confusion matrix*, *false positive*, dan *false negative*. Perbandingan antara baseline dan model dengan *preprocessing* digunakan untuk melihat kelas yang mengalami peningkatan, kelas yang relatif tetap, dan kelas yang mengalami penurunan.
 
-Analisis kualitatif juga dilakukan pada contoh citra yang mewakili beberapa kondisi, seperti prediksi yang benar pada kedua model, kesalahan pada kedua model, serta prediksi yang berubah setelah *preprocessing*. Pemilihan contoh dilakukan secara konsisten agar visualisasi tidak hanya menampilkan kasus yang menguntungkan metode yang diusulkan.
+Hasil analisis kesalahan kemudian dihubungkan dengan visualisasi pada Subbab 3.9 untuk menelaah kasus-kasus yang berubah setelah *preprocessing*. Analisis ini bersifat deskriptif dan digunakan untuk melengkapi hasil metrik agregat maupun per kelas.
 
-## 3.10 Evaluasi Efisiensi Komputasi
+## 3.11 Evaluasi Efisiensi Komputasi
 
 Meskipun *preprocessing* yang digunakan tidak menambahkan parameter trainable, operasi patch, FFT, analisis angular, inverse FFT, dan rekonstruksi tetap menambah biaya komputasi. Oleh karena itu, evaluasi tidak hanya dilakukan terhadap akurasi deteksi.
 
@@ -301,6 +333,6 @@ Efisiensi diukur menggunakan:
 
 Pengukuran baseline dan model dengan *preprocessing* dilakukan pada perangkat, ukuran input, batch size, dan presisi komputasi yang sama agar hasil dapat dibandingkan secara adil.
 
-## 3.11 Lingkungan Implementasi
+## 3.12 Lingkungan Implementasi
 
 Implementasi penelitian menggunakan Python dan framework PyTorch melalui Ultralytics YOLO. Informasi versi library, perangkat GPU, CUDA, sistem operasi, dan konfigurasi perangkat keras dicatat pada saat eksperimen dilakukan. Pencatatan lingkungan implementasi dilakukan untuk menjaga keterulangan eksperimen dan memudahkan verifikasi hasil penelitian.
