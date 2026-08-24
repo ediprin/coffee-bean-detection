@@ -43,7 +43,14 @@ Do **not** treat prose drafts as the only source of truth. The thesis direction 
 
 ```text
 ../sources/BAB3_PRIMARY_SOURCE_HARDENING_2026-08-25.md
-    exact primary-source locator/provenance audit for AF2 and YOLO26
+    primary-source provenance audit for AF2 and YOLO26
+
+../sources/BAB3_AF2_PAGE_LOCATOR_RECERTIFICATION_2026-08-25.md
+    superseding locator addendum: Xu AFAB-2 Eq. (9)–(13) spans pp. 5–6;
+    latter Eq. (10)–(13) block and post-equation gating/residual text are on p. 6
+
+../sources/BAB3_FINAL_AUDIT_2026-08-25.md
+    final chapter-level PASS audit before campus-document assembly
 
 ../../FARUQ_V3_AF2_DIRECT_FROM_PRETRAINED_PROTOCOL_2026-08-24.md
     frozen direct confirmatory fairness/training/test-lock protocol
@@ -66,10 +73,10 @@ When generating the final proposal document:
 2. use `04_09_RELATED_WORK_TABLE.md` as the authoritative related-work table;
 3. use `05_METHODOLOGY.md` as the Bab III base;
 4. replace the embedded §3.5 of `05_METHODOLOGY.md` with `05_05_AF2_PRIMARY_SOURCE_HARDENED.md`;
-5. redraw Figures 3.1–3.4 from `06_RESEARCH_FLOW.md` into the campus document style;
-6. resolve citation keys through `../sources/CANONICAL_SOURCE_KEYS.md`;
-7. apply `../sources/BAB3_PRIMARY_SOURCE_HARDENING_2026-08-25.md` before locking AF2/YOLO26 captions, equations, or page locators;
-8. run the Bab II, Bab III, and cross-chapter audits before export.
+5. apply the superseding page-locator correction from `../sources/BAB3_AF2_PAGE_LOCATOR_RECERTIFICATION_2026-08-25.md`;
+6. redraw Figures 3.1–3.4 from `06_RESEARCH_FLOW.md` into the campus document style;
+7. resolve citation keys through `../sources/CANONICAL_SOURCE_KEYS.md`;
+8. run `../sources/BAB3_FINAL_AUDIT_2026-08-25.md` and the cross-chapter audit before export.
 
 ## Drafting rule
 
@@ -89,11 +96,13 @@ Before creating or changing a chapter:
 Bab I   = evidence-grounded working draft; RQ1–RQ4 synchronized with Optimasi scope
 Bab II  = source-grounded campus-style draft with modular normalization
 Bab III = optimization-centered methodology draft completed;
-          AF2/YOLO26 primary-source provenance hardened
+          AF2/YOLO26 primary-source provenance hardened;
+          Xu AFAB-2 page locator recertified
 Flow    = Figures 3.1–3.4 specification synchronized with Bab III
+Audit   = Bab III final methodology/source audit PASS
 Title   = 'Analisis dan Optimasi ...' methodologically supported by factorized optimization
 ```
 
-One citation-location task remains before page-perfect formal assembly: directly re-capture the printed Xu et al. AFAB-2 Eq. (10)–(13) page block. The algorithm definition is already grounded in the parent section and repository mapping; no page number should be invented until that recertification is complete.
+The earlier open locator note in the first hardening pass is superseded: the Xu et al. AFAB-2 equation family is now located at **pp. 5–6, §3.3.3, Eq. (9)–(13)**, with the latter Eq. (10)–(13) block and immediately following min–max/gating/residual explanation on printed p. 6. Exact repository transfer formulas remain sourced from `operator.py` and the frozen AF2 config rather than being silently attributed to the parent paper.
 
-Next major task: formal proposal assembly into the campus DOCX template, after the remaining page-locator recertification and final chapter-level audit.
+Next major task: formal proposal assembly into the campus DOCX template when requested. No additional training run is required for the current documentation milestone.
