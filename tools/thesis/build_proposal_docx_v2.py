@@ -93,6 +93,58 @@ def set_run_font(run, size: Pt):
     rpr.rFonts.set(qn("w:eastAsia"), "Times New Roman")
 
 
+def find_heading_style(doc: Document, level: int):
+    """Resolve a Word heading by stable styleId before falling back to display name.
+
+    Pandoc/Word can localize the visible style name (for example `Judul 1`) while
+    preserving the built-in styleId `Heading1`. The first-generation builder assumed
+    the English display name and therefore failed on GitHub Actions. This resolver
+    treats styleId as the stable identity and keeps the visible name only as fallback.
+    """
+
+    target_id = f"heading{level}"
+    target_name = f"heading {level}"
+    for style in doc.styles:
+        style_id = (getattr(style, "style_id", "") or "").casefold().replace(" ", "")
+        if style_id == target_id:
+            return style
+    for style in doc.styles:
+        name = (getattr(style, "name", "") or "").casefold().strip()
+        if name == target_name:
+            return style
+    return None
+
+
+def normalize_heading_style_names(path: Path):
+    """Normalize Heading1/2/3 display names before legacy post-processing.
+
+    Existing heading paragraphs remain attached to the same style objects; only the
+    localized display names are normalized so legacy code and subsequent passes that
+    compare `paragraph.style.name` continue to work consistently.
+    """
+
+    doc = Document(path)
+    resolved = []
+    for level in (1, 2, 3):
+        style = find_heading_style(doc, level)
+        if style is None:
+            available = ", ".join(
+                f"{getattr(s, 'style_id', '?')}={getattr(s, 'name', '?')}"
+                for s in doc.styles
+                if "heading" in (getattr(s, "style_id", "") or "").casefold()
+                or "judul" in (getattr(s, "name", "") or "").casefold()
+            )
+            raise RuntimeError(
+                f"cannot resolve built-in heading level {level}; candidates: {available or 'none'}"
+            )
+        expected = f"Heading {level}"
+        if style.name != expected:
+            style.name = expected
+        resolved.append(f"{style.style_id}->{style.name}")
+    doc.save(path)
+    print("normalized Word heading styles: " + ", ".join(resolved))
+
+
 def split_chapter_heading(paragraph):
     text = paragraph.text.strip()
     m = re.fullmatch(r"BAB\s+([IVXLCDM]+)\s+(.+)", text)
@@ -112,11 +164,7 @@ def split_chapter_heading(paragraph):
 
 
 def formal_postprocess(path: Path):
-    """Low-risk formatting corrections before rendered-layout QA.
-
-    Pagination sections, landscape Table 2.1, and equation numbering remain explicit
-    next-pass items and are not claimed solved here.
-    """
+    """Low-risk formatting corrections before rendered-layout QA."""
 
     doc = Document(path)
 
@@ -240,13 +288,21 @@ def main():
         cmd.extend(["-o", str(args.out)])
         subprocess.run(cmd, check=True)
 
+    # Pandoc may localize the visible names of built-in Word heading styles on CI.
+    # Normalize them before invoking the first-generation postprocessor, which still
+    # uses English display names internally.
+    normalize_heading_style_names(args.out)
+
     # Retain the original margin/body styling pass, then apply QA-hardened corrections.
     base.postprocess_docx(args.out)
     formal_postprocess(args.out)
 
     print(f"built: {args.out}")
     print(f"citation keys resolved: {len(used)}")
-    print("OPEN LAYOUT GATES: formal pagination, Table 2.1 landscape decision, equation numbering, rendered-page QA")
+    print(
+        "OPEN LAYOUT GATES: template-faithful build, actual rendered-page QA, "
+        "narrative citations, canonical APA bibliography"
+    )
 
 
 if __name__ == "__main__":
