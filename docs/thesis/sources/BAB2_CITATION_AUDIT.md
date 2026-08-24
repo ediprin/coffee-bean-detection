@@ -4,7 +4,7 @@ Purpose: track whether the current Bab II draft has enough reference breadth, wh
 
 Audit target: `docs/thesis/proposal/04_LITERATURE_REVIEW.md`.
 
-Status: **CITATION-READY REWRITE IN PROGRESS**. Sections 2.1–2.6 have passed their first source-grounded rewrite; Sections 2.7–2.9 still require source-level promotion.
+Status: **CITATION-READY REWRITE IN PROGRESS**. Sections 2.1–2.7 have passed their first source-grounded rewrite; Sections 2.8–2.9 still require source-level promotion.
 
 ## Current draft audit
 
@@ -16,7 +16,7 @@ Status: **CITATION-READY REWRITE IN PROGRESS**. Sections 2.1–2.6 have passed t
 | 2.4 YOLO | DET-03, COF-06, COF-01, COF-02 | 4 distinct | 5–8 planning target | FUNCTIONALLY ADEQUATE | Original YOLO is now the foundation; three coffee studies provide small-, medium-, and larger-taxonomy context without encyclopedia-style version history. |
 | 2.5 YOLO26 | DET-01 | 1 primary + experiment protocol boundary | 2–4 planning target | FUNCTIONALLY ADEQUATE | Primary YOLO26 preprint now grounds architecture/status. Add implementation/repo source only when Bab III protocol is described; do not pad Bab II with duplicate docs. |
 | 2.6 Fine-grained detection | FG-03, FG-02, COF-07, COF-08, COF-05, COF-04, COF-03, COF-12, COF-13 | 9 | 7–10 | PASS FIRST REWRITE | General FG/FGOD theory, direct coffee classification diagnostics, direct 15–20 class detection evidence, and internal-representation responses are separated. `FG-01` is intentionally deferred to the frequency bridge rather than overloaded here. |
-| 2.7 Preprocessing | PRE-04, PRE-05, PRE-01, PRE-02 | 4 | 7–10 | UNDER | Add PRE-06, PRE-07, PRE-08 and use PRE-03 as transition to frequency section. |
+| 2.7 Preprocessing | PRE-04, PRE-05, PRE-06, PRE-01, PRE-02, PRE-07, PRE-03, PRE-08 | 8 | 7–10 | PASS FIRST REWRITE | Fixed/composite agricultural preprocessing, transform-domain preprocessing, task-driven learned preprocessing, downstream enhancement caution, Fourier transition, and non-learned input-space spectral manipulation are all represented. |
 | 2.8.1 DFT/FFT | Equations but no citation key | 0 | 2–3 | FAIL | Add `THEORY-01`, optional `THEORY-02`. |
 | 2.8.2 amplitude/phase | PRE-03 only | 1 | 2–4 | UNDER | Add `THEORY-01`, `THEORY-02`, optional `PRE-08`. |
 | 2.8.3 radial/angular | SPEC-01, SPEC-02 | 2 | 2–4 | KEY CONFLICT RESOLVED | Canonical spectral keys are used; verify exact equation/page support during rewrite. |
@@ -75,6 +75,31 @@ The section explicitly rejects the unsupported causal shortcut `coffee difficult
 
 `FG-01` (Xu/AFAB) is intentionally not needed to define the coffee problem. It remains available for the later methodological bridge so the parent AFAB paper does not dominate both diagnosis and solution sections.
 
+## Preprocessing source grounding now closed for first rewrite
+
+### §2.7
+
+The active draft now uses eight distinct sources with non-overlapping roles:
+
+1. **Agricultural fixed/composite preprocessing** — `PRE-04` Syauqi white pepper and `PRE-05` Chen maize establish controlled raw-vs-enhanced detector comparisons in seed/spice-like domains. The Syauqi treatment is explicitly described as a composite CLAHE-based pipeline, not CLAHE alone.
+2. **Transform-domain preprocessing** — `PRE-06` WCTE extends the precedent to Haar-wavelet + adaptive local enhancement before YOLO.
+3. **Task-driven learned preprocessing** — `PRE-01` IA-YOLO and `PRE-02` DENet show that preprocessing parameters/features can be optimized using downstream detection loss; both are clearly separated from AF2 because they add learned enhancement machinery.
+4. **Detection-utility caution** — `PRE-07` Retinexformer is used only as a downstream enhancement/detection evaluation precedent, while IA-YOLO and FE-YOLO supply the stronger warning that visual-quality improvement is not automatically detector utility.
+5. **Fourier transition** — `PRE-03` FE-YOLO is positioned as the closest learned Fourier input-enhancement comparator and transition into §2.8.
+6. **Non-learned spectral input manipulation** — `PRE-08` FDA shows that Fourier input-space manipulation can be non-learned, but its semantic-segmentation/UDA task is explicitly not treated as object-detection evidence.
+
+AF2 is now positioned more precisely as **parameter-free, input-space, content-adaptive spectral preprocessing**. It is not called simply “fixed preprocessing” because its angular response depends on the statistics of the current patch/image, even though it has no trainable frontend parameters.
+
+The section also locks the key methodological distinction:
+
+```text
+image looks better
+        !=
+detector necessarily performs better
+```
+
+Therefore preprocessing is evaluated by downstream detection metrics under matched detector conditions, not by visual appearance alone.
+
 ## Critical citation-key issue — resolved in active draft
 
 The structural draft and the earlier `METHOD_BRIDGE_MATRIX.md` previously had a citation-key collision:
@@ -112,17 +137,19 @@ The source-normalized rewrite has reduced recycling:
 - §2.2 no longer uses Hong/Bahy/Hebert/Jundullah as a generic detector bundle;
 - §2.3 contains only detector foundations and diagnostic papers;
 - §2.4 uses Hong/Bahy for narrowly defined YOLO-domain roles;
-- §2.6 does not reuse Hong and instead uses Hebert/Jundullah/Samudra plus independent classification studies and general FGOD theory.
+- §2.6 does not reuse Hong and instead uses Hebert/Jundullah/Samudra plus independent classification studies and general FGOD theory;
+- §2.7 uses an almost entirely separate preprocessing corpus rather than recycling coffee evidence.
 
 Remaining routing policy:
 
-- Hong: primary `2.4`, table `2.9`; no substantive need in `2.6`.
+- Hong: primary `2.4`, table `2.9`; no substantive need in `2.6` or `2.7`.
 - Bahy: taxonomy/large-class YOLO context (`2.1` or `2.4`), table `2.9`; avoid unnecessary reuse in `2.6` now that stronger direct difficult-class sources are present.
 - Hebert: primary `2.6` difficult subtle classes + table `2.9`.
 - Jundullah: primary `2.6` 20-class detection + table `2.9`; avoid substantive reuse in `2.4`.
 - Samudra: `2.6` visual-similarity evidence + table `2.9`.
 - Kesiman: `2.1` taxonomy + `2.6` granularity-difficulty evidence + table; its uses support different claims.
 - Muchtar: `2.2` manual-to-edge automation transition; optional efficiency context in Bab III.
+- FE-YOLO: transition/bridge in `2.7`, substantive Fourier comparator in `2.8.4`, table `2.9`; avoid making it the only frequency source.
 
 ## Diversity gates before marking Bab II fully citation-ready
 
@@ -133,7 +160,7 @@ Bab II cannot move to **FULL CITATION-READY** until all of the following hold:
 - [x] §2.4 cites the original YOLO source.
 - [x] §2.5 cites the YOLO26 primary source and clearly labels its preprint status.
 - [x] §2.6 contains at least two general fine-grained/FGOD papers plus at least four independent coffee studies.
-- [ ] §2.7 contains fixed, learned task-driven, transform-domain, and agricultural preprocessing examples.
+- [x] §2.7 contains fixed, learned task-driven, transform-domain, and agricultural preprocessing examples.
 - [ ] §2.8.1–2.8.2 cite canonical Fourier/image-processing foundations.
 - [x] §2.8.3 uses `SPEC-01/SPEC-02`, not the deprecated FREQ aliases.
 - [ ] §2.8.4 clearly distinguishes input preprocessing from internal feature-space frequency processing in final prose.
