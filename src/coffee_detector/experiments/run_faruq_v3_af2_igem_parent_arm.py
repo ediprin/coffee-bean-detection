@@ -7,11 +7,12 @@ from pathlib import Path
 
 import yaml
 
-from coffee_detector.af2_parent_residual import (
-    AF2ParentResidualConfig,
-    make_af2_parent_residual_trainer,
+from coffee_detector.af2_parent_residual import AF2ParentResidualConfig
+from coffee_detector.af2_parent_residual.igem_confirmation import (
+    AUDIT_REVISION,
+    _parent_transfer_exact,
 )
-from coffee_detector.af2_parent_residual.igem_confirmation import AUDIT_REVISION
+from coffee_detector.af2_parent_residual.igem_trainer import make_af2_igem_confirmation_trainer
 from coffee_detector.afab import AFABConfig
 from coffee_detector.evaluate import evaluate
 from coffee_detector.experiments.run_faruq_v3_stb_capacity_control import _exclusive_training_lock
@@ -81,12 +82,41 @@ def _complete(run_dir: Path, contract: dict, arm: str, seed: int) -> bool:
     if _read(contract_path, "Run contract") != contract:
         return False
     payload = _read(marker, "Training marker")
+    recorded = int(payload.get("epochs_recorded", -1))
+    requested = int(contract["epochs_requested"])
     return (
         payload.get("trainer_returned") is True
         and payload.get("arm") == arm
         and int(payload.get("seed", -1)) == seed
+        and int(payload.get("epochs_requested", -1)) == requested
+        and 1 <= recorded <= requested
+        and payload.get("initial_checkpoint_sha256") == contract["initial_af2_checkpoint_sha256"]
         and payload.get("run_contract_sha256") == _sha256(contract_path)
     )
+
+
+def _verify_best_parent_exact(
+    parent_checkpoint: Path,
+    best_checkpoint: Path,
+    *,
+    expected_conditioning: str,
+) -> bool:
+    """Require the serialized EMA checkpoint to preserve every AF2 parent state item exactly."""
+
+    from ultralytics import YOLO
+
+    source = YOLO(str(parent_checkpoint)).model.eval()
+    candidate = YOLO(str(best_checkpoint)).model.eval()
+    head = candidate.model[-1]
+    config = getattr(head, "config", None)
+    if config is None or getattr(config, "family", None) != "igem":
+        raise RuntimeError("best.pt bukan AF2+IGEM parent-residual checkpoint")
+    if getattr(config, "conditioning", None) != expected_conditioning:
+        raise RuntimeError("best.pt conditioning tidak cocok dengan arm")
+    exact = bool(_parent_transfer_exact(source, candidate))
+    if not exact:
+        raise RuntimeError("best.pt gagal parent-preservation: frozen AF2 state tidak bitwise exact")
+    return exact
 
 
 def run_faruq_v3_af2_igem_parent_arm(
@@ -189,7 +219,7 @@ def run_faruq_v3_af2_igem_parent_arm(
     if not _complete(run_dir, contract, arm, seed):
         from ultralytics import YOLO
 
-        trainer = make_af2_parent_residual_trainer(
+        trainer = make_af2_igem_confirmation_trainer(
             afab, residual, initial_checkpoint=checkpoint
         )
         with _exclusive_training_lock(
@@ -222,8 +252,8 @@ def run_faruq_v3_af2_igem_parent_arm(
 
         training_executed = True
         actual_epochs = _epochs_recorded(run_dir)
-        if actual_epochs < 1 or not best.is_file():
-            raise RuntimeError(f"Trainer kembali tanpa epoch/best checkpoint: {run_dir}")
+        if actual_epochs < 1 or actual_epochs > epochs or not best.is_file():
+            raise RuntimeError(f"Trainer kembali tanpa epoch/best checkpoint valid: {run_dir}")
         (run_dir / "training_complete.json").write_text(
             json.dumps(
                 {
@@ -244,6 +274,12 @@ def run_faruq_v3_af2_igem_parent_arm(
 
     if not _complete(run_dir, contract, arm, seed):
         raise RuntimeError(f"Run {arm} seed {seed} belum lengkap; last.pt={last}")
+
+    final_parent_exact = _verify_best_parent_exact(
+        checkpoint,
+        best,
+        expected_conditioning=residual.conditioning,
+    )
 
     reports = output_root / "val_reports"
     arm_report_path = reports / f"{arm}_seed{seed}_val.json"
@@ -270,6 +306,7 @@ def run_faruq_v3_af2_igem_parent_arm(
         "parent_result": str(parent_result_path),
         "parent_result_sha256": _sha256(parent_result_path),
         "parent_frozen": True,
+        "final_parent_state_bitwise_exact": final_parent_exact,
         "trainable_scope": "igem_residual_only",
         "evaluation_split": "val",
         "static_audit": str(audit_path),
