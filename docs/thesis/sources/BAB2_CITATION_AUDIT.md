@@ -4,7 +4,7 @@ Purpose: track whether the current Bab II draft has enough reference breadth, wh
 
 Audit target: `docs/thesis/proposal/04_LITERATURE_REVIEW.md`.
 
-Status: **CITATION-READY REWRITE IN PROGRESS**. Sections 2.1–2.5 have passed their first source-grounded rewrite; Sections 2.6–2.9 still require source-level promotion.
+Status: **CITATION-READY REWRITE IN PROGRESS**. Sections 2.1–2.6 have passed their first source-grounded rewrite; Sections 2.7–2.9 still require source-level promotion.
 
 ## Current draft audit
 
@@ -15,7 +15,7 @@ Status: **CITATION-READY REWRITE IN PROGRESS**. Sections 2.1–2.5 have passed t
 | 2.3 Object detection | DET-02, DET-03, DIAG-01, DIAG-02, DIAG-03 | 5 | 4–6 | PASS FIRST REWRITE | Two-stage/one-stage foundations plus classification-localization diagnosis are now separated from coffee evidence. |
 | 2.4 YOLO | DET-03, COF-06, COF-01, COF-02 | 4 distinct | 5–8 planning target | FUNCTIONALLY ADEQUATE | Original YOLO is now the foundation; three coffee studies provide small-, medium-, and larger-taxonomy context without encyclopedia-style version history. |
 | 2.5 YOLO26 | DET-01 | 1 primary + experiment protocol boundary | 2–4 planning target | FUNCTIONALLY ADEQUATE | Primary YOLO26 preprint now grounds architecture/status. Add implementation/repo source only when Bab III protocol is described; do not pad Bab II with duplicate docs. |
-| 2.6 Fine-grained detection | COF-07, COF-02, COF-04, COF-05, COF-13 | 5 | 7–10 | UNDER | Add `FG-02`, `FG-03`, `FG-01`, plus rotate coffee sources `COF-03/08/12/13`. |
+| 2.6 Fine-grained detection | FG-03, FG-02, COF-07, COF-08, COF-05, COF-04, COF-03, COF-12, COF-13 | 9 | 7–10 | PASS FIRST REWRITE | General FG/FGOD theory, direct coffee classification diagnostics, direct 15–20 class detection evidence, and internal-representation responses are separated. `FG-01` is intentionally deferred to the frequency bridge rather than overloaded here. |
 | 2.7 Preprocessing | PRE-04, PRE-05, PRE-01, PRE-02 | 4 | 7–10 | UNDER | Add PRE-06, PRE-07, PRE-08 and use PRE-03 as transition to frequency section. |
 | 2.8.1 DFT/FFT | Equations but no citation key | 0 | 2–3 | FAIL | Add `THEORY-01`, optional `THEORY-02`. |
 | 2.8.2 amplitude/phase | PRE-03 only | 1 | 2–4 | UNDER | Add `THEORY-01`, `THEORY-02`, optional `PRE-08`. |
@@ -60,6 +60,21 @@ Hebert and Jundullah are deliberately not used here so they remain available as 
 
 The thesis-specific claim that AF2 sits before the detector is a methodological boundary of this project, not a claim attributed to the YOLO26 paper.
 
+## Fine-grained source grounding now closed for first rewrite
+
+### §2.6
+
+The section now separates four evidence roles rather than treating all coffee papers as interchangeable:
+
+1. **Definition / theory** — `FG-03` supports the subtle-difference fine-grained recognition concept; `FG-02` defines FGOD as localization plus subordinate-category classification and documents representation conflict/misalignment.
+2. **Coffee classification diagnostics** — `COF-07` supports the coarse-to-17-class difficulty jump; `COF-08` supports 17-class controlled-vs-unseen behavior. These are explicitly labelled classification evidence, not detector results.
+3. **Coffee detection diagnostics** — `COF-05` supplies 20-class classwise mAP heterogeneity and the authors' visually-similar-class explanation; `COF-04` and `COF-03` independently support subtle/tiny/visually similar defect difficulty.
+4. **How coffee literature responds** — `COF-12` and `COF-13` show internal discriminative-representation strategies (multistage fusion/attention and Siamese similarity learning) rather than input-space frequency preprocessing.
+
+The section explicitly rejects the unsupported causal shortcut `coffee difficulty -> frequency bottleneck`. It only establishes `coffee difficulty -> discriminative representation problem`; frequency remains a candidate solution space for §2.7–§2.8.
+
+`FG-01` (Xu/AFAB) is intentionally not needed to define the coffee problem. It remains available for the later methodological bridge so the parent AFAB paper does not dominate both diagnosis and solution sections.
+
 ## Critical citation-key issue — resolved in active draft
 
 The structural draft and the earlier `METHOD_BRIDGE_MATRIX.md` previously had a citation-key collision:
@@ -97,14 +112,15 @@ The source-normalized rewrite has reduced recycling:
 - §2.2 no longer uses Hong/Bahy/Hebert/Jundullah as a generic detector bundle;
 - §2.3 contains only detector foundations and diagnostic papers;
 - §2.4 uses Hong/Bahy for narrowly defined YOLO-domain roles;
-- Hebert/Jundullah remain reserved for §2.6 fine-grained difficult-class evidence.
+- §2.6 does not reuse Hong and instead uses Hebert/Jundullah/Samudra plus independent classification studies and general FGOD theory.
 
 Remaining routing policy:
 
-- Hong: primary `2.4`, table `2.9`, optional one sentence in `2.6` only if necessary.
-- Bahy: taxonomy/large-class YOLO context (`2.1` or `2.4`), table `2.9`; fine-grained use only for a specific classwise claim.
+- Hong: primary `2.4`, table `2.9`; no substantive need in `2.6`.
+- Bahy: taxonomy/large-class YOLO context (`2.1` or `2.4`), table `2.9`; avoid unnecessary reuse in `2.6` now that stronger direct difficult-class sources are present.
 - Hebert: primary `2.6` difficult subtle classes + table `2.9`.
 - Jundullah: primary `2.6` 20-class detection + table `2.9`; avoid substantive reuse in `2.4`.
+- Samudra: `2.6` visual-similarity evidence + table `2.9`.
 - Kesiman: `2.1` taxonomy + `2.6` granularity-difficulty evidence + table; its uses support different claims.
 - Muchtar: `2.2` manual-to-edge automation transition; optional efficiency context in Bab III.
 
@@ -116,7 +132,7 @@ Bab II cannot move to **FULL CITATION-READY** until all of the following hold:
 - [x] §2.3 cites foundational detector literature, not coffee papers for basic definitions.
 - [x] §2.4 cites the original YOLO source.
 - [x] §2.5 cites the YOLO26 primary source and clearly labels its preprint status.
-- [ ] §2.6 contains at least two general fine-grained/FGOD papers plus at least four independent coffee studies.
+- [x] §2.6 contains at least two general fine-grained/FGOD papers plus at least four independent coffee studies.
 - [ ] §2.7 contains fixed, learned task-driven, transform-domain, and agricultural preprocessing examples.
 - [ ] §2.8.1–2.8.2 cite canonical Fourier/image-processing foundations.
 - [x] §2.8.3 uses `SPEC-01/SPEC-02`, not the deprecated FREQ aliases.
