@@ -10,6 +10,9 @@ on:
       - '.github/workflows/build-thesis-proposal.yml'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-proposal:
     runs-on: ubuntu-latest
@@ -79,3 +82,19 @@ jobs:
             build/thesis/rendered/Proposal_AF2_USU_Working.pdf
           if-no-files-found: error
           retention-days: 30
+
+      - name: Record latest thesis-build run id
+        if: always()
+        continue-on-error: true
+        run: |
+          mkdir -p .ci
+          printf 'run_id=%s\nhead_sha=%s\nrun_attempt=%s\n' \
+            '${{ github.run_id }}' '${{ github.sha }}' '${{ github.run_attempt }}' \
+            > .ci/thesis-latest-run.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .ci/thesis-latest-run.txt
+          if ! git diff --cached --quiet; then
+            git commit -m 'ci(thesis): record latest proposal build run'
+            git push origin HEAD:${{ github.ref_name }}
+          fi
