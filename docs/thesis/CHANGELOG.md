@@ -1,5 +1,41 @@
 # Thesis Proposal Changelog
 
+## v0.5.0 — 2026-08-24
+
+Concrete Bab II source routing and citation-key normalization added.
+
+### Added
+
+- `sources/CANONICAL_SOURCE_KEYS.md`: one stable key namespace across proposal files;
+- `sources/BAB2_REFERENCE_POOL.md`: concrete 40+ source pool routed section-by-section across Bab II;
+- `sources/BAB2_CITATION_AUDIT.md`: live audit of source count, citation recycling, missing foundational citations, key conflicts and promotion gates.
+
+### Corrected
+
+A citation-key collision was detected between the older method bridge and the latest master reference map. Older working files used `FREQ-01/FREQ-02` for Cao et al. and Zhang & Tan, while the master map already used those IDs for Fast Fourier Convolution and FDADNet. Canonical keys are now:
+
+- `SPEC-01` — Cao et al. radial/angular Fourier energy;
+- `SPEC-02` — Zhang & Tan orientation spectrum;
+- `WAVE-01` — WTConv;
+- `FREQ-01` — Fast Fourier Convolution;
+- `FREQ-02` — FDADNet;
+- `FREQ-03` — Frequency Dynamic Convolution.
+
+`METHOD_BRIDGE_MATRIX.md` has been normalized accordingly and broadened to include canonical Fourier theory, additional preprocessing precedents, and explicit separation of input preprocessing from internal feature-space frequency methods.
+
+### Citation-readiness finding
+
+The current `04_LITERATURE_REVIEW.md` remains a structural draft. Its main deficiencies are now explicit rather than hidden:
+
+- §2.1 and §2.5 have no resolved citations yet;
+- §2.3 lacks foundational detector sources;
+- §2.6–§2.8 are under-routed relative to the available corpus;
+- several coffee papers are currently repeated across too many sections;
+- §2.8 contains deprecated frequency-key aliases that must be normalized during rewrite;
+- the related-work table should be promoted from the current working size to the verified 12–18-study campus-style shortlist.
+
+The next drafting stage is therefore **source-normalized prose rewriting**, not additional literature searching by default.
+
 ## v0.4.0 — 2026-08-24
 
 Reference-diversity and anti-recycling policy added for Bab II.
