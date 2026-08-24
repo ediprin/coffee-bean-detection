@@ -1,5 +1,20 @@
 # Thesis Proposal Changelog
 
+## v0.6.1 — 2026-08-24
+
+Object-detection, YOLO, and YOLO26 theory sections have been promoted from scaffold prose to first-pass source-grounded prose.
+
+### Rewritten
+
+- §2.3 now uses Faster R-CNN and the original YOLO paper to distinguish two-stage and one-stage detection, then uses TOOD, Wu et al., and IoU-Net to justify classification/localization diagnosis;
+- §2.4 now uses the original YOLO paper as the conceptual foundation and limits coffee-domain examples to Gope, Hong, and Bahy rather than recycling the entire coffee detector set;
+- §2.5 now explicitly identifies YOLO26 as a 2026 arXiv preprint and grounds its dual-head end-to-end design, DFL removal, MuSGD, Progressive Loss, STAL, and P3/P4/P5 architecture in the primary YOLO26 source;
+- AF2 is explicitly kept outside the YOLO26 backbone/neck/head and represented as an input-space treatment in the comparison equations.
+
+### Audit update
+
+`BAB2_CITATION_AUDIT.md` now marks the foundational-source gates for §2.3, §2.4, and §2.5 as closed for the first rewrite. Remaining major prose work begins at §2.6 fine-grained object detection, followed by preprocessing, Fourier theory, and the expanded related-work table.
+
 ## v0.6.0 — 2026-08-24
 
 Citation-ready Bab II prose rewriting has started from the coffee-domain foundation.
