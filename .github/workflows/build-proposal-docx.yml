@@ -95,6 +95,11 @@ jobs:
           python tools/thesis_docx/format_figures.py \
             build/Proposal_Tesis_USU.docx
 
+      - name: Format table of contents
+        run: |
+          python tools/thesis_docx/fix_toc.py \
+            build/Proposal_Tesis_USU.docx
+
       - name: Structural smoke test
         run: |
           python - <<'PY'
@@ -112,6 +117,45 @@ jobs:
           assert len(doc.inline_shapes) >= 2, (
               f"Expected cover logo + research flow figure; found {len(doc.inline_shapes)} inline shapes"
           )
+
+          expected_tc = {
+              'TC "BAB I PENDAHULUAN" \\f C \\l 1',
+              'TC "BAB II TINJAUAN PUSTAKA" \\f C \\l 1',
+              'TC "BAB III METODOLOGI PENELITIAN" \\f C \\l 1',
+              'TC "DAFTAR PUSTAKA" \\f C \\l 1',
+          }
+          actual_tc = {
+              node.get(qn("w:instr"), "")
+              for node in doc.element.iter(qn("w:fldSimple"))
+              if node.get(qn("w:instr"), "").startswith("TC ")
+          }
+          assert expected_tc <= actual_tc, f"Missing TOC chapter entries: {expected_tc - actual_tc}"
+
+          main_toc = [
+              (node.text or "")
+              for node in doc.element.iter(qn("w:instrText"))
+              if " TOC " in (node.text or "") and "Caption" not in (node.text or "")
+          ]
+          assert main_toc and '\\f C' in main_toc[0] and '\\o "2-3"' in main_toc[0], main_toc
+          assert doc.styles["TOC 1"].font.bold is True
+          assert doc.styles["TOC 1"].font.name == "Times New Roman"
+          assert doc.styles["TOC 2"].font.bold is not True
+
+          chapter_style_pairs = {
+              p.text.strip(): p.style.name
+              for p in doc.paragraphs
+              if p.text.strip() in {
+                  "BAB I", "PENDAHULUAN",
+                  "BAB II", "TINJAUAN PUSTAKA",
+                  "BAB III", "METODOLOGI PENELITIAN",
+              }
+          }
+          assert chapter_style_pairs["BAB I"] == "Chapter Number USU"
+          assert chapter_style_pairs["PENDAHULUAN"] == "Chapter Title USU"
+          assert chapter_style_pairs["BAB II"] == "Chapter Number USU"
+          assert chapter_style_pairs["TINJAUAN PUSTAKA"] == "Chapter Title USU"
+          assert chapter_style_pairs["BAB III"] == "Chapter Number USU"
+          assert chapter_style_pairs["METODOLOGI PENELITIAN"] == "Chapter Title USU"
 
           equation_tables = 0
           regular_tables = 0
@@ -161,7 +205,7 @@ jobs:
           print(
               f"OK: {len(doc.paragraphs)} paragraphs, {regular_tables} regular tables, "
               f"{equation_tables} equation tables, {len(doc.inline_shapes)} images, "
-              f"{len(doc.sections)} sections"
+              f"{len(doc.sections)} sections; TOC chapter entries combined and bold"
           )
           PY
 
