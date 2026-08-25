@@ -137,6 +137,12 @@ Batas adaptasi metode ditetapkan secara jelas. Dari Xu et al. (2025), penelitian
 
 Secara umum, proses terdiri atas pembentukan patch lokal, transformasi Fourier, pembentukan distribusi angular, perhitungan ambang berbasis entropi, pembobotan respons spektral, transformasi balik ke domain spasial, rekonstruksi patch, normalisasi respons, dan penggabungan residual dengan citra masukan.
 
+Arsitektur integrasi metode ditunjukkan pada Gambar 3.2. Panel (a) memperlihatkan bahwa prapemrosesan frekuensi-angular ditempatkan sebagai *frontend* pada ruang masukan sebelum YOLO26n, sementara *backbone*, *neck*, dan *detection head* YOLO26n dipertahankan. Panel (b) merangkum alur internal *frontend* mulai dari analisis spektral lokal sampai rekonstruksi dan penggabungan residual. Gambar tersebut menggambarkan kerangka umum prapemrosesan; variasi \(C_1\) sampai \(C_5\) merupakan alternatif keputusan desain yang diuji secara bertahap dan tidak dimaksudkan untuk menyatakan bahwa seluruh variasi tersebut pasti menjadi konfigurasi akhir.
+
+![Arsitektur integrasi prapemrosesan frekuensi-angular dengan YOLO26n](docs/thesis/proposal/assets/arsitektur_frekuensi_yolo26.svg){width=12.5cm}
+
+Gambar 3.2 Arsitektur Integrasi Prapemrosesan Frekuensi-Angular dengan YOLO26n
+
 ### 3.4.1 Pembentukan Patch Lokal
 
 Untuk citra RGB:
