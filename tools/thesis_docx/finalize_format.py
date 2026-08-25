@@ -32,19 +32,38 @@ def _replace_borders(parent, tag_name: str, edges, visible: bool) -> None:
     parent.append(borders)
 
 
-def _set_table_borders(table, visible: bool) -> None:
+def _set_table_style(table, style_name: str | None) -> None:
+    """Set an explicit Word table style without depending on the document theme."""
     tbl_pr = table._tbl.tblPr
-    _replace_borders(tbl_pr, "w:tblBorders", TABLE_EDGES, visible)
-
-    # Equation numbering uses a layout table. Remove its inherited table style as
-    # well, otherwise Word/LibreOffice can still draw a bottom rule even when a
-    # nil table border is present.
-    if not visible:
-        tbl_style = tbl_pr.find(qn("w:tblStyle"))
+    tbl_style = tbl_pr.find(qn("w:tblStyle"))
+    if style_name is None:
         if tbl_style is not None:
             tbl_pr.remove(tbl_style)
+        return
+    if tbl_style is None:
+        tbl_style = OxmlElement("w:tblStyle")
+        tbl_pr.insert(0, tbl_style)
+    tbl_style.set(qn("w:val"), style_name)
 
-    # Explicit cell borders override any inherited/default table formatting.
+
+def _set_table_borders(table, visible: bool) -> None:
+    tbl_pr = table._tbl.tblPr
+
+    if visible:
+        # TableGrid makes borders deterministic in Microsoft Word, while the
+        # explicit table/cell borders below ensure the same result in other
+        # renderers such as LibreOffice.
+        _set_table_style(table, "TableGrid")
+    else:
+        # Equation numbering uses a synthetic layout table. Removing the style
+        # prevents Word/LibreOffice from drawing a residual bottom rule.
+        _set_table_style(table, None)
+
+    _replace_borders(tbl_pr, "w:tblBorders", TABLE_EDGES, visible)
+
+    # Explicit cell borders override inherited/default table formatting. This is
+    # intentionally applied to every cell so no individual row/column can lose a
+    # border because of a Word table style or theme override.
     for row in table.rows:
         for cell in row.cells:
             tc_pr = cell._tc.get_or_add_tcPr()
@@ -212,7 +231,7 @@ def finalize(input_path: Path, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(output_path)
     print(
-        f"Finalized {output_path}: {normal_tables} regular tables with full borders, "
+        f"Finalized {output_path}: {normal_tables} regular tables with TableGrid/full borders, "
         f"{equation_tables} equation-layout tables without borders; font={FONT_NAME}."
     )
 
