@@ -101,7 +101,9 @@ dengan target utama tetap \(C=21\) apabila seluruh kelas memenuhi jumlah data mi
 
 Pembagian data dilakukan pada citra sumber asli **sebelum augmentasi**. Proporsi awal yang direncanakan adalah sekitar 70% untuk pelatihan, 15% untuk validasi, dan 15% untuk pengujian. Dengan target sekitar 200 citra sumber, proporsi tersebut setara secara kasar dengan sekitar 140 citra pelatihan, 30 citra validasi, dan 30 citra pengujian.
 
-Pembagian dilakukan berdasarkan kelompok sumber atau sesi pengambilan citra. Citra yang berasal dari sumber, sesi, atau susunan objek yang sangat berkaitan akan ditempatkan pada bagian data yang sama agar tidak terjadi kebocoran informasi antara pelatihan, validasi, dan pengujian. Selain menjaga pemisahan kelompok, pembagian juga mempertimbangkan distribusi kelas. Untuk setiap kelas akhir, diupayakan tersedia sekurang-kurangnya lima citra sumber pada data validasi dan lima citra sumber pada data pengujian, sedangkan bagian lainnya digunakan pada data pelatihan. Proporsi 70:15:15 diperlakukan sebagai sasaran keseluruhan dan dapat bergeser sedikit apabila diperlukan untuk memenuhi keterwakilan kelas tanpa melanggar pemisahan kelompok sumber.
+Pembagian dilakukan berdasarkan kelompok sumber atau sesi pengambilan citra. Citra yang berasal dari sumber, sesi, atau susunan objek yang sangat berkaitan akan ditempatkan pada bagian data yang sama agar tidak terjadi kebocoran informasi antara pelatihan, validasi, dan pengujian. Apabila biji atau spesimen fisik yang sama difoto lebih dari satu kali, seluruh citra yang memuat spesimen tersebut ditempatkan pada bagian data yang sama. Dengan demikian, model tidak dilatih menggunakan satu tampilan dari spesimen tertentu lalu diuji pada tampilan lain dari spesimen fisik yang sama.
+
+Selain menjaga pemisahan kelompok, pembagian juga mempertimbangkan distribusi kelas. Untuk setiap kelas akhir, diupayakan tersedia sekurang-kurangnya lima citra sumber pada data validasi dan lima citra sumber pada data pengujian, sedangkan bagian lainnya digunakan pada data pelatihan. Proporsi 70:15:15 diperlakukan sebagai sasaran keseluruhan dan dapat bergeser sedikit apabila diperlukan untuk memenuhi keterwakilan kelas tanpa melanggar pemisahan kelompok sumber.
 
 Secara umum, kelompok sumber pada ketiga bagian data harus saling terpisah:
 
@@ -550,7 +552,7 @@ Untuk mengamati kelas yang sulit secara konsisten, tiga kelas dengan AP50–95 t
 \mathcal{H}=\operatorname{Bottom3}(AP_{c,50:95}^{acuan}).
 \]
 
-Setelah ditetapkan, kelompok kelas tersebut tidak diubah ketika membandingkan kondisi lain. Rerata AP pada tiga kelas tersebut dihitung sebagai:
+Setelah ditetapkan, kelompok kelas \(\mathcal{H}\) dibekukan dan digunakan untuk seluruh perbandingan berikutnya, termasuk ketika hasil pada data uji akhir dilaporkan. Data uji tidak digunakan untuk memilih ulang kelas yang dianggap sulit. Rerata AP pada tiga kelas tersebut dihitung sebagai:
 
 \[
 AP_{\mathcal{H}}=\frac{1}{3}\sum_{c\in\mathcal{H}}AP_{c,50:95}.
