@@ -16,6 +16,7 @@ Aturan keras:
 | Sitasi formal | Key | Status gate | Sumber authority | Keputusan |
 |---|---|---|---|---|
 | Badan Standardisasi Nasional (2008) | STD-01 | FINAL — OFFICIAL VERIFIED | BSN | Aman |
+| International Telecommunication Union (2015) | STD-02 | FINAL — OFFICIAL VERIFIED | ITU-R Recommendation BT.709-6 | Aman; Item 3.2 memuat koefisien 0,2126, 0,7152, dan 0,0722 untuk pembentukan sinyal luminansi |
 | García et al. (2019) | COF-17 | FINAL — OFFICIAL VERIFIED | MDPI Applied Sciences | Aman |
 | Hong et al. (2026) | COF-01 | FINAL — OFFICIAL VERIFIED | Elsevier / Current Research in Food Science | Aman |
 | Bahy dan Rifai (2026) | COF-02 | FINAL — OFFICIAL VERIFIED | IJoICT official article/PDF | Aman |
@@ -43,14 +44,14 @@ Aturan keras:
 | Wu et al. (2020) | DIAG-02 | FINAL — OFFICIAL VERIFIED | CVF Open Access | Aman |
 | Jiang et al. (2018) | DIAG-03 | FINAL — OFFICIAL VERIFIED | ECCV/Springer proceedings | Aman |
 | Xie et al. (2025) | FG-02 | FINAL — PRIMARY PUBLISHER PDF VERIFIED | IEEE TCSVT publisher-format PDF | Aman |
-| Xu et al. (2025) | FG-01 | FINAL — OFFICIAL VERIFIED | Elsevier / Neural Networks | Aman; formula AFAB-2 telah diaudit dari full text primer |
+| Xu et al. (2025) | FG-01 | FINAL — OFFICIAL VERIFIED | Elsevier / Neural Networks | Aman; §3.1.1 memuat DFT/iDFT/amplitudo/fase dan §3.3.3 memuat AFAB-2 Eq. (9)–(13) |
 | Liu et al. (2022) | PRE-01 | FINAL — OFFICIAL VERIFIED | AAAI official proceedings | Aman |
 | Qin et al. (2022) | PRE-02 | FINAL — OFFICIAL VERIFIED | CVF ACCV Open Access | Aman |
 | Li et al. (2025) — FE-YOLO | PRE-03 | FINAL — OFFICIAL VERIFIED | Elsevier / Digital Signal Processing | Aman |
 | Syauqi et al. (2025) | PRE-04 | FINAL — PRIMARY PUBLISHER PDF VERIFIED | IEEE publisher PDF | Aman; sebut pipeline komposit, bukan CLAHE saja |
 | Chen et al. (2024) — maize seed | PRE-05 | FINAL — OFFICIAL VERIFIED | Elsevier / Computers and Electronics in Agriculture | Aman |
 | Yang dan Soatto (2020) | PRE-08 | FINAL — OFFICIAL VERIFIED | CVF Open Access | Aman |
-| Gonzalez dan Woods (2018) | THEORY-01 | OFFICIAL PUBLISHER METADATA VERIFIED | Pearson Global Edition, 4th ed. | Aman sebagai landasan teori; nomor halaman formula tidak boleh direka |
+| Gonzalez dan Woods (2018) | THEORY-01 | OFFICIAL PUBLISHER METADATA VERIFIED | Pearson Global Edition, 4th ed. | Aman sebagai landasan teori umum; formula yang ditampilkan juga dapat dilacak langsung pada Xu et al. (2025) §3.1.1 sehingga nomor halaman buku tidak direka |
 | Cao et al. (2019) | SPEC-01 | FINAL — OFFICIAL VERIFIED | Publisher official record | Aman |
 | Zhang dan Tan (2003) | SPEC-02 | FINAL — OFFICIAL VERIFIED | Elsevier / Pattern Recognition | Aman |
 | Chi et al. (2020) | FREQ-01 | FINAL — OFFICIAL VERIFIED | NeurIPS proceedings | Aman |
@@ -70,18 +71,18 @@ Aturan keras:
 
 ## D. Status daftar pustaka
 
-Set formal saat ini berjumlah **36 sumber unik**.
+Set formal saat ini berjumlah **37 sumber unik**.
 
 Audit dua arah yang harus berlaku pada snapshot ini:
 
-- `cited → bibliography`: **36/36**;
-- `bibliography → cited`: **36/36**;
+- `cited → bibliography`: **37/37**;
+- `bibliography → cited`: **37/37**;
 - cited source tanpa bibliography: **0**;
 - bibliography entry tanpa sitasi formal: **0**.
 
-Perubahan penting pada sinkronisasi ini:
+Perubahan terbaru pada sinkronisasi ini:
 
-- masuk ke set formal: `COF-18` Tarekegn & Debelee (2025), `DET-04` Wang et al. (2025);
-- keluar dari set formal tetapi tetap tersimpan sebagai source backend: `COF-03` Samudra & Rachmawati (2025), `EVAL-01` Lin et al. (2014).
+- masuk ke set formal: `STD-02` International Telecommunication Union (2015) karena BAB III menggunakan koefisien BT.709 pada variasi luminansi;
+- `COF-03` Samudra & Rachmawati (2025) dan `EVAL-01` Lin et al. (2014) tetap backend-only pada snapshot formal saat ini.
 
 Kondisi ini hanya berlaku untuk snapshot naskah saat ini. Penambahan, penghapusan, atau perubahan sitasi pada BAB I–III wajib memicu audit ulang metadata dan audit dua arah.
