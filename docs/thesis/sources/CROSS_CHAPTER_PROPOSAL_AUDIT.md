@@ -41,7 +41,7 @@ BAB III merencanakan sekitar 180–220 citra sumber, sekitar 6.000–10.000 anot
 
 ### 2.3 Pencegahan kebocoran data
 
-Citra yang berasal dari kelompok sumber yang sama dipertahankan pada bagian data yang sama. Jika spesimen fisik yang sama difoto lebih dari satu kali, seluruh citra yang memuat spesimen tersebut ditempatkan pada split yang sama. Data uji disisihkan sejak awal dan tidak digunakan untuk memilih konfigurasi atau parameter.
+Citra yang berasal dari kelompok sumber yang sama dipertahankan pada bagian data yang sama. Jika spesimen fisik yang sama difoto lebih dari satu kali, seluruh citra yang memuat spesimen tersebut ditempatkan pada split yang sama. Pembagian tidak hanya mengacak kelompok, tetapi juga mempertimbangkan distribusi kelas agar validation dan test mempunyai keterwakilan kelas yang memadai. Data uji disisihkan sejak awal dan tidak digunakan untuk memilih konfigurasi atau parameter.
 
 **Status: CONSISTENT.**
 
@@ -56,7 +56,7 @@ B2 = C0 + YOLO26n
 B3 = C* + YOLO26n
 ```
 
-Wavelet tidak menjadi pembanding utama. RT-DETRv3-R18 hanya menjadi evaluasi tambahan setelah konfigurasi utama ditetapkan.
+CLAHE bukan tahap optimasi sebelum C0, tetapi pembanding B1 pada pengujian ulang utama. Wavelet tidak menjadi pembanding utama. RT-DETRv3-R18 hanya menjadi evaluasi tambahan setelah konfigurasi utama ditetapkan dan tidak digunakan untuk retuning C*.
 
 **Status: CONSISTENT.**
 
@@ -73,9 +73,9 @@ C0 → C1 → C2 → C3 → C4 → C5
 dengan:
 
 - `C0`: konfigurasi frekuensi-angular referensi;
-- `C1`: fungsi jendela Hann;
+- `C1`: periodic square-root Hann dan normalized overlap-add;
 - `C2`: orientasi tak bertanda pada rentang 0°–180° dengan 180 interval, sehingga resolusi tetap 1° per interval;
-- `C3`: tiga pita radial berdasarkan radius ternormalisasi, secara operasional dibagi menjadi rendah, menengah, dan tinggi;
+- `C3`: tiga pita radial berdasarkan radius ternormalisasi `[0,1/3]`, `(1/3,2/3]`, dan `(2/3,1]`, dengan entropi/ambang dihitung per pita;
 - `C4`: ambang lunak dengan nilai awal `T=0,02`, yang diperlakukan sebagai keputusan desain awal dan bukan nilai optimal dari literatur;
 - `C5`: panduan luminansi berdasarkan ITU-R BT.709-6.
 
@@ -83,7 +83,13 @@ Desain lama berupa 16 orientasi dan pembagian radial berbasis kuantil grid tidak
 
 **Status: CONSISTENT.**
 
-### 2.6 Analisis sensitivitas
+### 2.6 Konfigurasi referensi C0
+
+Konfigurasi referensi menggunakan patch 32, overlap 50%, replicate padding, FFT ortonormal dengan FFT shift, 360 interval angular, `gamma=0,10`, `epsilon=1e-8`, dan gate RGB per kanal. Titik pusat/DC dipetakan ke interval angular pertama hanya sebagai aturan indeks. Bobot referensi berada pada rentang 0–1 sehingga tahap spektral berfungsi sebagai seleksi/penekanan respons. Rekonstruksi overlap C0 menggunakan perataan daerah tumpang tindih. Residual `I'=I+I⊙G` tidak diikuti clipping tambahan.
+
+**Status: CONSISTENT.**
+
+### 2.7 Analisis sensitivitas
 
 Analisis sensitivitas terbatas dilakukan satu parameter pada satu waktu menggunakan data pengembangan, dengan kandidat:
 
@@ -99,37 +105,49 @@ m\in\{16,32,64\},
 T\in\{0{,}01,0{,}02,0{,}05\}.
 \]
 
-Keputusan hasil sensitivitas harus dibekukan sebelum pengujian ulang multi-seed dan sebelum data uji digunakan.
+Ketika `m` berubah, overlap tetap 50% sehingga `stride=m/2`. Parameter lain dipertahankan pada nilai referensi selama satu sweep. Nilai terbaik dari sweep yang berbeda tidak boleh langsung digabungkan menjadi konfigurasi baru yang belum dievaluasi. Keputusan hasil sensitivitas harus dibekukan sebelum pengujian ulang multi-seed dan sebelum data uji digunakan.
 
 **Status: CONSISTENT.**
 
-### 2.7 Pemilihan kandidat
+### 2.8 Pemilihan kandidat
 
-Kandidat utama dipilih berdasarkan mAP50–95 pada data validasi:
+Tahap II tidak menggunakan checkpoint model acuan sebagai bobot awal. Seluruh C0–C5 dibangun langsung dari `yolo26n.pt` dengan seed pengembangan 42 dan kondisi awal yang dipasangkan.
+
+Kandidat struktur dipilih berdasarkan mAP50–95 pada data validasi:
 
 \[
-C^*=\arg\max_{C_j}mAP_{50:95}^{val}(C_j).
+C_{str}=\arg\max_{C_j}mAP_{50:95}^{val}(C_j).
 \]
 
-Jika nilai sama pada ketelitian pelaporan, digunakan rerata AP pada kelompok tiga kelas sulit yang telah dibekukan dari model acuan. Jika masih sama, waktu pemrosesan total digunakan sebagai pemecah seri berikutnya.
+Selisih absolut mAP50–95 kurang dari 0,001 pada skala 0–1 diperlakukan sebagai seri. Pemecah seri berikutnya adalah rerata AP pada kelompok tiga kelas sulit yang telah dibekukan dari model acuan, kemudian waktu pemrosesan total.
+
+Jika analisis sensitivitas dilakukan, final `C*` dipilih hanya dari `C_str` dan varian sensitivitas yang benar-benar telah dievaluasi menggunakan aturan yang sama. Jika tidak dilakukan, `C*=C_str`.
 
 **Status: CONSISTENT.**
 
-### 2.8 Konfirmasi multi-seed
+### 2.9 Konfirmasi multi-seed dan test
 
-Tahap konfirmasi tidak mewarisi checkpoint screening. Pada setiap seed 42, 123, dan 2026, kondisi B0–B3 dibangun kembali langsung dari bobot pralatih resmi `yolo26n.pt` dengan kondisi awal model yang dipasangkan.
+Pada setiap seed 42, 123, dan 2026, kondisi B0–B3 dibangun kembali langsung dari bobot pralatih resmi `yolo26n.pt` dengan kondisi awal model yang dipasangkan. Setelah C*, aturan pemilihan model, metrik, dan prosedur evaluasi dibekukan, seluruh checkpoint B0–B3 untuk ketiga seed dievaluasi pada data uji yang sama. Data uji tidak digunakan untuk memilih ulang konfigurasi.
 
 **Status: CONSISTENT.**
 
-### 2.9 Evaluasi
+### 2.10 Evaluasi
 
 mAP50–95 merupakan metrik utama. mAP50, precision, recall, AP per kelas, rerata kelompok tiga kelas sulit, AP kelas terendah, hasil per-seed, analisis kesalahan, analisis visual, dan efisiensi merupakan evaluasi tambahan.
 
-Kelompok tiga kelas sulit ditentukan satu kali dari model acuan pada data validasi dan tidak dipilih ulang dari data uji.
+Kelompok tiga kelas sulit ditentukan satu kali dari model acuan pada data validasi dan tidak dipilih ulang dari data uji. Precision/recall mengikuti prosedur evaluasi Ultralytics yang sama dan tidak digunakan untuk tuning threshold per kondisi. Jika bootstrap dilakukan, prosedurnya berpasangan dan berbasis kelompok sumber.
 
 **Status: CONSISTENT.**
 
-### 2.10 Sitasi dan daftar pustaka
+### 2.11 Analisis visual dan efisiensi
+
+Eigen-CAM diperlakukan sebagai visualisasi respons internal model, bukan bukti kausal dan bukan diasumsikan selalu class-specific. Visualisasi utama B0–B3 menggunakan seed 42 yang ditetapkan sebelumnya. Parameter prediksi visual dibuat sama antar kondisi.
+
+Benchmark efisiensi utama menggunakan input 640×640 dan batch 1 pada perangkat serta presisi yang sama. I/O umum tidak dimasukkan ke overhead frontend, timing GPU menggunakan sinkronisasi CUDA, dan memori dilaporkan sebagai peak allocated GPU memory. Jumlah warm-up dan pengulangan dibekukan sebelum benchmark.
+
+**Status: CONSISTENT.**
+
+### 2.12 Sitasi dan daftar pustaka
 
 Set formal terakhir berjumlah 37 sumber unik. Audit dua arah melaporkan 37/37 sumber tersitasi memiliki entri daftar pustaka dan 37/37 entri daftar pustaka digunakan dalam naskah formal.
 
@@ -140,7 +158,7 @@ Set formal terakhir berjumlah 37 sumber unik. Audit dua arah melaporkan 37/37 su
 BAB III membedakan secara eksplisit antara:
 
 1. prinsip yang diadaptasi dari Xu et al. (2025): DFT lokal per patch, distribusi angular, entropi dan ambang adaptif, penekanan respons dengan densitas rendah, pembobotan amplitudo, rekonstruksi dengan fase asli, serta penggabungan ruang asal dan hasil rekonstruksi;
-2. keputusan implementasi penelitian: pemrosesan per kanal RGB pada konfigurasi referensi, diskretisasi angular, overlap 50%, konstanta stabilitas numerik, dan penggabungan patch;
+2. keputusan implementasi penelitian: pemrosesan per kanal RGB pada konfigurasi referensi, diskretisasi angular, overlap 50%, konstanta stabilitas numerik, replicate padding, penggabungan patch, dan residual tanpa clipping tambahan;
 3. variasi `C1–C5` sebagai rancangan eksperimen penelitian sendiri.
 
 Audit full text mengunci bahwa AFAB-2 berada pada Xu et al. (2025) §3.3.3, Persamaan (9)–(13). Persamaan (14) pada paper Xu merupakan bagian CGFI, bukan AFAB-2.
@@ -157,7 +175,7 @@ Eigen-CAM merupakan kandidat utama visualisasi. Lapisan target dan prosedur visu
 
 ### 4.2 Nilai tetap yang merupakan keputusan desain
 
-Konfigurasi CLAHE, overlap 50%, pembagian tiga pita radial, dan nilai awal `T=0,02` merupakan keputusan desain yang ditetapkan sebelum data uji digunakan. Nilai tersebut tidak boleh ditulis sebagai nilai optimum dari literatur jika sumber primer tidak menyatakan demikian.
+Konfigurasi CLAHE, overlap 50%, pembagian tiga pita radial, `T=0,02`, dan toleransi seri mAP 0,001 merupakan keputusan desain yang ditetapkan sebelum data uji digunakan. Nilai tersebut tidak boleh ditulis sebagai nilai optimum dari literatur jika sumber primer tidak menyatakan demikian.
 
 **Status: ACCEPTABLE FOR PROPOSAL.**
 
