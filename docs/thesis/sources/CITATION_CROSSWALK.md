@@ -63,8 +63,15 @@ Aturan keras:
 
 `XAI-02` / Grad-CAM++ **tidak lagi disitasi secara eksplisit** pada BAB II atau BAB III formal. Naskah sekarang menggunakan Grad-CAM dan Eigen-CAM secara eksplisit serta frasa generik “varian CAM lain” jika kemudian diperlukan. Karena itu XAI-02 tidak boleh masuk daftar pustaka formal pada keadaan naskah saat ini.
 
-## D. Status kesiapan daftar pustaka
+## D. Status daftar pustaka
 
-Seluruh sitasi author–year yang saat ini terpetakan pada artefak formal mempunyai source authority resmi/primer yang cukup untuk metadata yang telah dikunci. Namun `DAFTAR_PUSTAKA.md` **belum otomatis boleh dibuat dari ingatan**. Sebelum pembentukan entri APA, full author list dan field bibliografis yang diperlukan harus diekstrak dari source authority masing-masing, terutama untuk entri yang pada audit masih ditulis dengan `et al.`.
+`DAFTAR_PUSTAKA.md` telah dibangun dari metadata yang dikunci melalui source resmi/primer, bukan dari ingatan. Set formal saat ini berjumlah **35 sumber unik**.
 
-Setelah metadata APA lengkap dikunci, lakukan audit dua arah: **cited → bibliography** dan **bibliography → cited**.
+Audit dua arah dicatat pada `BIDIRECTIONAL_CITATION_AUDIT.md` dengan hasil:
+
+- `cited → bibliography`: **35/35**;
+- `bibliography → cited`: **35/35**;
+- cited source tanpa bibliography: **0**;
+- bibliography entry tanpa sitasi formal: **0**.
+
+Kondisi ini hanya berlaku untuk snapshot naskah saat ini. Penambahan, penghapusan, atau perubahan sitasi pada BAB I–III wajib memicu audit ulang metadata dan audit dua arah.
