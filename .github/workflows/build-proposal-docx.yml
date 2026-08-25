@@ -62,7 +62,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y pandoc libreoffice-writer
+          sudo apt-get install -y pandoc libreoffice-writer librsvg2-bin
 
       - name: Install Python dependencies
         run: pip install -r tools/thesis_docx/requirements.txt
@@ -73,6 +73,7 @@ jobs:
           test -f docs/thesis/proposal/BAB_II_TINJAUAN_PUSTAKA.md
           test -f docs/thesis/proposal/BAB_III_METODOLOGI_PENELITIAN.md
           test -f docs/thesis/proposal/DAFTAR_PUSTAKA.md
+          test -f docs/thesis/proposal/assets/alur_penelitian.svg
 
       - name: Build proposal DOCX
         run: |
@@ -84,6 +85,11 @@ jobs:
       - name: Finalize thesis formatting
         run: |
           python tools/thesis_docx/finalize_format.py \
+            build/Proposal_Tesis_USU.docx
+
+      - name: Format Markdown figures
+        run: |
+          python tools/thesis_docx/format_figures.py \
             build/Proposal_Tesis_USU.docx
 
       - name: Structural smoke test
@@ -98,7 +104,11 @@ jobs:
           text = "\n".join(paragraph.text for paragraph in doc.paragraphs)
           for required in ("BAB I", "BAB II", "BAB III", "DAFTAR PUSTAKA"):
               assert required in text, f"Missing required section: {required}"
+          assert "Gambar 3.1 Alur Penelitian" in text, "Missing Gambar 3.1 caption"
           assert len(doc.sections) >= 5, f"Unexpected section count: {len(doc.sections)}"
+          assert len(doc.inline_shapes) >= 2, (
+              f"Expected cover logo + research flow figure; found {len(doc.inline_shapes)} inline shapes"
+          )
 
           equation_tables = 0
           regular_tables = 0
@@ -147,7 +157,8 @@ jobs:
 
           print(
               f"OK: {len(doc.paragraphs)} paragraphs, {regular_tables} regular tables, "
-              f"{equation_tables} equation tables, {len(doc.sections)} sections"
+              f"{equation_tables} equation tables, {len(doc.inline_shapes)} images, "
+              f"{len(doc.sections)} sections"
           )
           PY
 
