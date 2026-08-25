@@ -16,7 +16,7 @@ Gambar 3.1 Alur Penelitian
 Perbandingan utama dapat dinyatakan secara konseptual sebagai:
 
 $$
-\hat{Y}_{N}=\operatorname{YOLO26n}(I),
+\hat{Y}_{N}=\mathrm{YOLO26n}(I),
 $$
 
 untuk YOLO26n tanpa prapemrosesan tambahan, dan:
@@ -26,7 +26,7 @@ I'=\mathcal{P}_{FA}(I),
 $$
 
 $$
-\hat{Y}_{P}=\operatorname{YOLO26n}(I'),
+\hat{Y}_{P}=\mathrm{YOLO26n}(I'),
 $$
 
 dengan $I$ merupakan citra masukan, $\mathcal{P}_{FA}$ merupakan fungsi prapemrosesan frekuensi-angular, $I'$ merupakan citra hasil prapemrosesan, dan $\hat{Y}$ merupakan hasil prediksi deteksi. Persamaan tersebut hanya menunjukkan perbedaan pada jalur masukan dan tidak mengasumsikan bahwa prapemrosesan selalu meningkatkan kinerja.
@@ -198,7 +198,7 @@ Spektrum dipusatkan sehingga distribusi frekuensi dapat dianalisis berdasarkan p
 Setiap koordinat frekuensi dipetakan ke sudut relatif terhadap pusat spektrum:
 
 $$
-\theta(u,v)=\operatorname{mod}\left(\operatorname{atan2}(v-v_c,u-u_c),2\pi\right).
+\theta(u,v)=\mathrm{mod}\left(\mathrm{atan2}(v-v_c,u-u_c),2\pi\right).
 $$
 
 Xu et al. (2025) mendefinisikan distribusi angular pada rentang $[0,360^\circ)$. Pada konfigurasi referensi penelitian ini, domain tersebut didiskretkan menjadi 360 interval arah. Densitas angular untuk kanal $c$ dihitung sebagai:
@@ -619,7 +619,7 @@ $$
 Untuk mengamati kelas yang sulit secara konsisten, tiga kelas dengan AP50–95 terendah ditentukan satu kali dari model acuan pada data validasi:
 
 $$
-\mathcal{H}=\operatorname{Bottom3}(AP_{c,50:95}^{acuan}).
+\mathcal{H}=\mathrm{Bottom3}(AP_{c,50:95}^{acuan}).
 $$
 
 Setelah ditetapkan, kelompok kelas $\mathcal{H}$ dibekukan dan digunakan untuk seluruh perbandingan berikutnya, termasuk ketika hasil pada data uji akhir dilaporkan. Data uji tidak digunakan untuk memilih ulang kelas yang dianggap sulit. Rerata AP pada tiga kelas tersebut dihitung sebagai:

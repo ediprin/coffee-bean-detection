@@ -114,7 +114,7 @@ A(u,v)=\sqrt{R^2(u,v)+I^2(u,v)},
 $$
 
 $$
-\phi(u,v)=\operatorname{atan2}(I(u,v),R(u,v)).
+\phi(u,v)=\mathrm{atan2}(I(u,v),R(u,v)).
 $$
 
 Bentuk amplitudo dan fase tersebut sejalan dengan Persamaan (2) dan (3) pada Xu et al. (2025, §3.1.1). Secara umum, amplitudo menunjukkan besar respons spektral pada suatu koordinat frekuensi, sedangkan fase berkaitan dengan susunan spasial dalam representasi Fourier (Gonzalez & Woods, 2018). Yang dan Soatto (2020) menunjukkan bahwa manipulasi amplitudo dapat dilakukan dengan mempertahankan fase sumber pada konteks *domain adaptation*. Li et al. (2025) juga memproses amplitudo dan fase secara khusus pada FE-YOLO. Pada LFDet, Xu et al. (2025) mengubah respons amplitudo berdasarkan distribusi frekuensi dan menggunakan fase asli pada proses rekonstruksi.
@@ -128,7 +128,7 @@ r(u,v)=\sqrt{(u-u_c)^2+(v-v_c)^2},
 $$
 
 $$
-\theta(u,v)=\operatorname{atan2}(v-v_c,u-u_c).
+\theta(u,v)=\mathrm{atan2}(v-v_c,u-u_c).
 $$
 
 Representasi radial mengelompokkan informasi berdasarkan jarak dari pusat spektrum, sedangkan representasi angular mengelompokkan informasi berdasarkan arah. Cao et al. (2019) menggunakan distribusi radial dan angular dari energi spektrum Fourier untuk menganalisis tekstur pada citra *remote sensing*. Distribusi radial digunakan untuk mengamati perubahan frekuensi dan skala tekstur, sedangkan distribusi angular digunakan untuk menggambarkan arah dominan pola tekstur.
