@@ -8,9 +8,8 @@ Aturan keras:
 
 1. Crosswalk ini **bukan daftar pustaka**.
 2. `FINAL` berarti metadata yang akan ditulis harus mengikuti sumber resmi/primer yang dikunci di `OFFICIAL_CITATION_AUDIT.md`.
-3. `PRIMARY VERIFIED / PUBLISHER METADATA PENDING` boleh mendukung klaim yang telah dibaca dari full text primer, tetapi field bibliografis yang belum terlihat pada sumber primer tidak boleh ditebak.
-4. `OPTIONAL / UNRESOLVED` harus dihapus dari naskah formal atau ditutup auditnya sebelum `DAFTAR_PUSTAKA.md` dinyatakan citation-ready.
-5. Jika file proposal berubah, crosswalk ini harus diaudit ulang dua arah.
+3. Sumber yang tidak lagi disitasi pada artefak formal tidak boleh masuk `DAFTAR_PUSTAKA.md` hanya karena pernah muncul pada drafting lama.
+4. Jika file proposal berubah, crosswalk ini harus diaudit ulang dua arah.
 
 ## A. Sitasi domain kopi dan standar
 
@@ -61,12 +60,11 @@ Aturan keras:
 |---|---|---|---|---|
 | Selvaraju et al. (2017) | XAI-01 | FINAL — OFFICIAL VERIFIED | CVF Open Access | Aman |
 | Muhammad dan Yeasin (2020) | XAI-03 | FINAL — PRIMARY PREPRINT VERIFIED | Primary Eigen-CAM paper | Aman jika versi yang disitasi ditulis transparan sesuai source primer; jangan mengarang metadata IEEE |
-| Chattopadhyay et al. (2018) | XAI-02 | PRIMARY VERIFIED / OPTIONAL CITATION | Primary author preprint; IEEE landing belum dapat ditutup oleh crawler | **Belum bersih untuk bibliography publisher final. Rekomendasi: hapus sitasi eksplisit dan gunakan frasa “Grad-CAM atau variannya” kecuali official IEEE metadata ditutup.** |
+
+`XAI-02` / Grad-CAM++ **tidak lagi disitasi secara eksplisit** pada BAB II atau BAB III formal. Naskah sekarang menggunakan Grad-CAM dan Eigen-CAM secara eksplisit serta frasa generik “varian CAM lain” jika kemudian diperlukan. Karena itu XAI-02 tidak boleh masuk daftar pustaka formal pada keadaan naskah saat ini.
 
 ## D. Status kesiapan daftar pustaka
 
-Seluruh sitasi formal selain `XAI-02` sekarang mempunyai source authority yang cukup untuk metadata yang telah dikunci. Satu keputusan tersisa:
+Seluruh sitasi author–year yang saat ini terpetakan pada artefak formal mempunyai source authority resmi/primer yang cukup untuk metadata yang telah dikunci. Namun `DAFTAR_PUSTAKA.md` **belum otomatis boleh dibuat dari ingatan**. Sebelum pembentukan entri APA, full author list dan field bibliografis yang diperlukan harus diekstrak dari source authority masing-masing, terutama untuk entri yang pada audit masih ditulis dengan `et al.`.
 
-- **XAI-02 (Grad-CAM++):** sifatnya hanya alternatif metodologis. Untuk meminimalkan risiko sitasi, sitasi eksplisit sebaiknya dihapus dari naskah formal dan diganti menjadi “Grad-CAM atau variannya” sampai official IEEE record dapat dikunci.
-
-Setelah perubahan tersebut dilakukan, `DAFTAR_PUSTAKA.md` dapat dibangun dari source authority yang telah lolos gate dan kemudian diaudit dua arah: **cited → bibliography** dan **bibliography → cited**.
+Setelah metadata APA lengkap dikunci, lakukan audit dua arah: **cited → bibliography** dan **bibliography → cited**.
