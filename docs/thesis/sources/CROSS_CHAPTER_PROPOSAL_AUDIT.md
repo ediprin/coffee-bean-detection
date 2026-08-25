@@ -15,33 +15,19 @@ Audit ini tidak menggantikan `OFFICIAL_CITATION_AUDIT.md` atau `BIDIRECTIONAL_CI
 
 ### 1.1 Masalah penelitian
 
-BAB I menempatkan masalah pada deteksi *fine-grained* cacat biji kopi, terutama ketika beberapa kategori memiliki perbedaan visual yang halus dan kinerja antarkelas dapat berbeda.
-
-BAB II mendukung framing melalui literatur kopi, *fine-grained object detection*, prapemrosesan sebelum detector, dan pemrosesan frekuensi.
-
-BAB III mempertahankan fokus tersebut dan tidak mengubah penelitian menjadi counting, segmentation, open-set recognition, atau modifikasi arsitektur utama YOLO26n.
+BAB I menempatkan masalah pada deteksi *fine-grained* cacat biji kopi, terutama ketika beberapa kategori memiliki perbedaan visual yang halus dan kinerja antarkelas dapat berbeda. BAB II mendukung framing melalui literatur kopi, *fine-grained object detection*, prapemrosesan sebelum detector, dan pemrosesan frekuensi. BAB III mempertahankan fokus tersebut.
 
 **Status: CONSISTENT.**
 
 ### 1.2 Dataset primer dan jumlah kelas
 
-BAB I menyatakan dataset utama akan dikumpulkan secara primer dan menargetkan 20 kategori cacat fisik serta satu kelas biji normal.
-
-BAB II menyediakan konteks dataset multiclass sebelumnya dan contoh skala dataset deteksi multiobjek.
-
-BAB III menetapkan target sekitar 180–220 citra sumber, 6.000–10.000 anotasi objek, dan pemeriksaan kecukupan data tiap kelas sebelum jumlah kelas akhir ditetapkan.
-
-Ketiga bab tidak lagi menyatakan bahwa 21 kelas pasti tersedia sebelum pengumpulan data selesai.
+BAB I menyatakan dataset utama akan dikumpulkan secara primer dan menargetkan 20 kategori cacat fisik serta satu kelas biji normal. BAB II menyediakan konteks dataset multiclass sebelumnya dan contoh skala dataset deteksi multiobjek. BAB III menetapkan target sekitar 180–220 citra sumber, 6.000–10.000 anotasi objek, serta pemeriksaan kecukupan data tiap kelas sebelum jumlah kelas akhir ditetapkan.
 
 **Status: CONSISTENT.**
 
 ### 1.3 Model dan pembanding
 
-BAB I menetapkan YOLO26n sebagai model utama, YOLO26n tanpa prapemrosesan sebagai model acuan, CLAHE sebagai pembanding peningkatan kontras, dan RT-DETRv3-R18 sebagai analisis tambahan.
-
-BAB II menyediakan dasar literatur untuk YOLO26, CLAHE/composite preprocessing, wavelet sebagai alternatif konseptual, dan RT-DETRv3 sebagai detector keluarga Transformer.
-
-BAB III mengoperasionalkan empat kondisi utama:
+YOLO26n menjadi model utama. Empat kondisi utama di BAB III adalah:
 
 ```text
 B0 = YOLO26n tanpa prapemrosesan
@@ -50,115 +36,112 @@ B2 = C0 + YOLO26n
 B3 = C* + YOLO26n
 ```
 
-Wavelet tidak dijadikan baseline utama dan evaluasi RT-DETRv3 tetap opsional.
+Wavelet tidak dijadikan baseline utama. RT-DETRv3-R18 tetap hanya evaluasi tambahan setelah konfigurasi utama ditetapkan.
 
 **Status: CONSISTENT.**
 
 ### 1.4 Makna “analisis dan optimasi”
 
-BAB I menjelaskan bahwa optimasi dilakukan melalui pengujian variasi desain yang telah ditetapkan, bukan pencarian global optimum.
-
-BAB III mengoperasionalkannya melalui jalur kumulatif `C0 → C1 → C2 → C3 → C4 → C5` yang mencakup fungsi jendela, representasi orientasi, informasi radial, fungsi ambang, dan panduan luminansi.
+BAB I menjelaskan optimasi sebagai pengujian variasi desain yang telah ditetapkan, bukan pencarian global optimum. BAB III mengoperasionalkannya melalui jalur kumulatif `C0 → C1 → C2 → C3 → C4 → C5`.
 
 **Status: CONSISTENT.**
 
 ### 1.5 Data uji akhir
 
-BAB III sekarang menyisihkan data uji sejak awal dengan target sekitar 15% dari citra sumber. Data uji tidak digunakan untuk memilih konfigurasi atau parameter dan baru digunakan setelah metode serta aturan evaluasi ditetapkan.
-
-BAB I tidak menggunakan hasil data uji untuk merumuskan metode, dan BAB II hanya berfungsi sebagai dasar literatur.
+Data uji disisihkan sejak awal dan tidak digunakan untuk memilih konfigurasi atau parameter.
 
 **Status: CLOSED / CONSISTENT.**
 
 ### 1.6 Evaluasi
 
-BAB I menetapkan mAP50–95 sebagai metrik utama dan mAP50, precision, recall, serta AP per kelas sebagai metrik tambahan.
-
-BAB III menggunakan mAP50–95 sebagai metrik utama, menambahkan analisis tiga kelas sulit yang dibekukan dari model acuan pada validasi, AP kelas terendah, analisis beberapa seed, visualisasi, dan efisiensi komputasi.
+mAP50–95 menjadi metrik utama; mAP50, precision, recall, AP per kelas, kelas sulit yang dibekukan dari model acuan, AP terendah, beberapa seed, analisis visual, dan efisiensi menjadi evaluasi tambahan.
 
 **Status: CONSISTENT.**
 
 ### 1.7 Analisis visual
 
-BAB II menyediakan landasan Grad-CAM dan Eigen-CAM.
-
-BAB III menggunakan visualisasi hanya sebagai analisis pendukung dan tidak sebagai bukti kausal tunggal.
+BAB II menyediakan landasan Grad-CAM dan Eigen-CAM. BAB III menggunakan visualisasi hanya sebagai analisis pendukung.
 
 **Status: CONSISTENT.**
 
 ### 1.8 Sitasi dan bibliography
 
-`CITATION_CROSSWALK.md`, `BIBLIOGRAPHY_METADATA_LOCK.md`, `DAFTAR_PUSTAKA.md`, dan `BIDIRECTIONAL_CITATION_AUDIT.md` telah disinkronkan pada set formal 36 sumber.
+Set formal saat ini berjumlah **37 sumber** setelah penambahan ITU-R BT.709-6. Crosswalk dan audit dua arah harus selalu mengikuti snapshot manuscript terbaru.
 
 **Status: CONSISTENT pada snapshot saat ini.**
 
 ---
 
-## 2. Isu yang masih terbuka
+## 2. Isu metodologis yang telah ditutup pada audit terakhir
 
-### ISSUE-01 — Source mechanism vs adaptasi penelitian pada §3.4
+### 2.1 Batas AFAB-2 vs adaptasi penelitian
 
-BAB III telah menyatakan bahwa mekanisme frekuensi-angular mengadaptasi AFAB-2 Xu et al. (2025), tetapi naskah formal sengaja menyederhanakan sebagian detail implementasi agar tidak berubah menjadi dokumentasi kode.
+BAB III §3.4 sekarang membedakan secara eksplisit:
 
-Sebelum proposal akhir, perlu dipastikan bahwa pembaca tetap dapat membedakan:
+1. prinsip yang diadaptasi dari Xu et al. (2025): DFT lokal per patch, distribusi angular, entropi dan ambang adaptif, penekanan arah berdensitas rendah, pembobotan amplitudo, rekonstruksi dengan fase asli, serta penggabungan ruang asal dan hasil rekonstruksi melalui normalisasi, perkalian elemen, dan residual;
+2. keputusan adaptasi penelitian: pemrosesan RGB per kanal, diskretisasi 360 interval, overlap 50%, konstanta numerik, dan penggabungan patch;
+3. variasi C1–C5 sebagai rancangan eksperimen penelitian sendiri.
 
-1. prinsip yang berasal dari Xu et al. (2025), seperti DFT patch lokal, distribusi angular, entropi, ambang adaptif, dan pembobotan spektral;
-2. keputusan implementasi penelitian, seperti overlap 50%, cara pemrosesan kanal RGB, rekonstruksi overlap, normalisasi respons, dan penggabungan residual;
-3. variasi desain penelitian pada C1–C5.
+Audit full text juga mengunci bahwa AFAB-2 berada pada Xu et al. (2025) §3.3.3 dengan Persamaan (9)–(13). **Persamaan (14) pada paper Xu adalah bagian CGFI, bukan AFAB-2.**
 
-Tidak perlu mengembalikan seluruh detail kode, tetapi batas atribusi harus tetap jelas.
+**Status: CLOSED.**
 
-**Status: OPEN — HIGH PRIORITY sebelum proposal final.**
+### 2.2 Dasar formal koefisien luminansi
 
-### ISSUE-02 — Dasar formal luminansi Rec.709
-
-BAB III menggunakan koefisien luminansi Rec.709 pada variasi C5:
+BAB III §3.5.5 sekarang mengacu pada **Recommendation ITU-R BT.709-6 (2015)**. Item 3.2 standar tersebut memberikan koefisien pembentukan sinyal luminansi:
 
 \[
 Y=0{,}2126R+0{,}7152G+0{,}0722B.
 \]
 
-Jika formulasi tersebut dipertahankan sebagai bagian formal metode, standar atau sumber resmi ITU-R BT.709 sebaiknya masuk source audit. Alternatifnya adalah tidak memberi atribusi standar yang belum diaudit dan menyatakan koefisien sebagai keputusan implementasi yang perlu diberi sumber sebelum proposal final.
+Sumber telah dimasukkan ke daftar pustaka dan crosswalk formal.
 
-**Status: OPEN — MEDIUM PRIORITY.**
+**Status: CLOSED.**
 
-### ISSUE-03 — Locator halaman textbook untuk DFT/FFT
+### 2.3 Formula DFT/iDFT/amplitudo/fase
 
-Metadata Gonzalez & Woods (2018) telah dikunci dari Pearson dan aman sebagai landasan teori. Namun, exact page/section locator untuk formula DFT/iDFT dan amplitudo/fase belum tersedia dalam project source.
+Gonzalez & Woods (2018) tetap digunakan sebagai landasan teori umum tanpa mengarang nomor halaman. BAB II sekarang juga mengaitkan bentuk formula yang ditampilkan dengan Xu et al. (2025, §3.1.1, Persamaan 1–4), yang full text primernya tersedia dan telah diperiksa.
 
-Tidak boleh mengarang nomor halaman.
+Dengan demikian, tidak diperlukan nomor halaman buku yang tidak tersedia untuk menelusuri bentuk formula yang digunakan.
 
-**Status: OPEN — LOW/MEDIUM PRIORITY.**
+**Status: CLOSED untuk kebutuhan proposal; page locator buku tetap tidak diklaim.**
 
-### ISSUE-04 — Kompatibilitas teknis CAM dengan YOLO26
+---
 
-BAB II dan BAB III menempatkan Eigen-CAM sebagai kandidat visualisasi utama dan metode CAM lain sebagai alternatif. Sebelum eksekusi tesis, lapisan target dan prosedur visualisasi harus diverifikasi agar perbandingan antar kondisi benar-benar setara.
+## 3. Isu yang masih perlu diverifikasi saat masuk tahap eksperimen
 
-Ini bukan masalah terhadap proposal selama CAM tetap diposisikan sebagai analisis pendukung.
+### 3.1 Kompatibilitas CAM dengan YOLO26
+
+Eigen-CAM masih merupakan kandidat utama visualisasi. Lapisan target dan prosedur visualisasi harus diverifikasi saat implementasi agar perbandingan antar kondisi setara.
 
 **Status: ACCEPTABLE FOR PROPOSAL / VERIFY BEFORE EXPERIMENT.**
 
----
+### 3.2 Parameter fixed comparator dan variasi desain
 
-## 3. Isu lama yang telah ditutup
+Nilai seperti konfigurasi CLAHE tetap, suhu ambang lunak, jumlah orientasi, dan pembagian radial sudah diprespesifikasi dalam metodologi. Nilai tersebut tidak boleh dituning menggunakan data uji. Jika ada perubahan sebelum eksperimen utama, perubahan harus dilakukan sebelum test dibuka dan dicatat sebagai revisi protokol.
 
-- **Independent final evaluation set:** CLOSED — data uji sekarang disisihkan sejak awal.
-- **Label Q1/Q2/SINTA pada tabel penelitian terkait:** CLOSED — tabel menggunakan nama venue/publikasi tanpa klaim indeks yang tidak diaudit.
-- **Dataset lama Faruq sebagai dataset utama:** CLOSED — proposal sekarang menggunakan rencana dataset primer.
-- **21 kelas sebagai angka yang dipaksakan:** CLOSED — 21 adalah target awal; jumlah kelas akhir mengikuti kecukupan data.
-- **Tidak adanya pembanding peningkatan citra:** CLOSED — CLAHE ditambahkan sebagai pembanding konvensional.
-- **DETR sebagai baseline utama yang mengaburkan RQ:** CLOSED — RT-DETRv3-R18 hanya analisis tambahan setelah C* ditetapkan.
+**Status: ACCEPTABLE FOR PROPOSAL.**
 
 ---
 
-## 4. Urutan penutupan berikutnya
+## 4. Isu lama yang telah ditutup
 
-1. Tegaskan atribusi source-vs-adaptation pada §3.4 tanpa mengembalikan gaya bahasa yang terlalu teknis.
-2. Audit sumber resmi Rec.709 jika variasi luminansi tetap dipertahankan.
-3. Jika tersedia, tambahkan locator halaman/section Gonzalez & Woods tanpa menebak.
-4. Jalankan audit bahasa final dan cross-reference tabel/persamaan.
-5. Jalankan kembali citation crosswalk apabila ada penambahan sumber.
-6. Setelah itu baru siapkan artefak DOCX proposal.
+- independent final evaluation set: **CLOSED**;
+- label Q1/Q2/SINTA tanpa audit: **CLOSED**;
+- dataset Faruq sebagai dataset utama: **CLOSED**;
+- 21 kelas sebagai angka yang dipaksakan: **CLOSED**;
+- tidak adanya pembanding peningkatan citra: **CLOSED**;
+- DETR sebagai baseline utama yang mengaburkan RQ: **CLOSED**;
+- batas source-vs-adaptation AFAB-2: **CLOSED**;
+- source koefisien BT.709: **CLOSED**;
+- traceability formula Fourier tanpa page locator textbook: **CLOSED untuk proposal**.
+
+## 5. Langkah sebelum DOCX
+
+1. Jalankan audit bahasa final BAB I–III.
+2. Periksa penomoran tabel, persamaan, dan cross-reference.
+3. Pastikan crosswalk, metadata lock, daftar pustaka, dan audit dua arah berada pada snapshot sitasi yang sama.
+4. Setelah itu, proposal dapat dipindahkan ke format DOCX sesuai template kampus.
 
 ## Hard Rule
 
