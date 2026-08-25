@@ -95,10 +95,49 @@ jobs:
           python tools/thesis_docx/format_figures.py \
             build/Proposal_Tesis_USU.docx
 
-      - name: Format table of contents
+      - name: Format chapter headings
         run: |
           python tools/thesis_docx/fix_toc.py \
             build/Proposal_Tesis_USU.docx
+
+      - name: Prepare deterministic static table of contents
+        run: |
+          python tools/thesis_docx/static_toc.py prepare \
+            build/Proposal_Tesis_USU.docx \
+            build/Proposal_Tesis_USU.prepared.docx
+          mv build/Proposal_Tesis_USU.prepared.docx build/Proposal_Tesis_USU.docx
+
+      - name: Render pagination pass 1
+        run: |
+          mkdir -p build/toc-pass1
+          libreoffice --headless --convert-to pdf \
+            --outdir build/toc-pass1 \
+            build/Proposal_Tesis_USU.docx
+          test -s build/toc-pass1/Proposal_Tesis_USU.pdf
+
+      - name: Populate static table of contents
+        run: |
+          python tools/thesis_docx/static_toc.py populate \
+            build/Proposal_Tesis_USU.docx \
+            build/toc-pass1/Proposal_Tesis_USU.pdf \
+            build/Proposal_Tesis_USU.toc1.docx
+          mv build/Proposal_Tesis_USU.toc1.docx build/Proposal_Tesis_USU.docx
+
+      - name: Render pagination pass 2
+        run: |
+          mkdir -p build/toc-pass2
+          libreoffice --headless --convert-to pdf \
+            --outdir build/toc-pass2 \
+            build/Proposal_Tesis_USU.docx
+          test -s build/toc-pass2/Proposal_Tesis_USU.pdf
+
+      - name: Finalize static table of contents page numbers
+        run: |
+          python tools/thesis_docx/static_toc.py populate \
+            build/Proposal_Tesis_USU.docx \
+            build/toc-pass2/Proposal_Tesis_USU.pdf \
+            build/Proposal_Tesis_USU.final.docx
+          mv build/Proposal_Tesis_USU.final.docx build/Proposal_Tesis_USU.docx
 
       - name: Structural smoke test
         run: |
@@ -113,49 +152,29 @@ jobs:
           for required in ("BAB I", "BAB II", "BAB III", "DAFTAR PUSTAKA"):
               assert required in text, f"Missing required section: {required}"
           assert re.search(r"Gambar\s+3\.1\.?\s+Alur Penelitian", text), "Missing Gambar 3.1 caption"
-          assert len(doc.sections) >= 5, f"Unexpected section count: {len(doc.sections)}"
-          assert len(doc.inline_shapes) >= 2, (
-              f"Expected cover logo + research flow figure; found {len(doc.inline_shapes)} inline shapes"
-          )
+          assert len(doc.sections) >= 6, f"Expected cover/front-matter/body section split; got {len(doc.sections)}"
+          assert len(doc.inline_shapes) >= 2, "Expected cover logo + research flow figure"
 
-          expected_tc = {
-              'TC "BAB I PENDAHULUAN" \\f C \\l 1',
-              'TC "BAB II TINJAUAN PUSTAKA" \\f C \\l 1',
-              'TC "BAB III METODOLOGI PENELITIAN" \\f C \\l 1',
-              'TC "DAFTAR PUSTAKA" \\f C \\l 1',
-          }
-          actual_tc = {
-              node.get(qn("w:instr"), "")
-              for node in doc.element.iter(qn("w:fldSimple"))
-              if node.get(qn("w:instr"), "").startswith("TC ")
-          }
-          assert expected_tc <= actual_tc, f"Missing TOC chapter entries: {expected_tc - actual_tc}"
+          static_toc = [p for p in doc.paragraphs if p.style.name.startswith("Static TOC")]
+          assert len(static_toc) >= 50, f"Static TOC is unexpectedly short: {len(static_toc)} entries"
+          toc_text = "\n".join(p.text for p in static_toc)
+          for chapter in (
+              "BAB I PENDAHULUAN",
+              "BAB II TINJAUAN PUSTAKA",
+              "BAB III METODOLOGI PENELITIAN",
+              "DAFTAR PUSTAKA",
+          ):
+              assert chapter in toc_text, f"Missing static TOC entry: {chapter}"
+          assert doc.styles["Static TOC 1"].font.bold is True
+          assert doc.styles["Static TOC 1"].font.name == "Times New Roman"
+          assert doc.styles["Static TOC 2"].font.bold is not True
 
-          main_toc = [
+          main_toc_fields = [
               (node.text or "")
               for node in doc.element.iter(qn("w:instrText"))
               if " TOC " in (node.text or "") and "Caption" not in (node.text or "")
           ]
-          assert main_toc and '\\f C' in main_toc[0] and '\\o "2-3"' in main_toc[0], main_toc
-          assert doc.styles["TOC 1"].font.bold is True
-          assert doc.styles["TOC 1"].font.name == "Times New Roman"
-          assert doc.styles["TOC 2"].font.bold is not True
-
-          chapter_style_pairs = {
-              p.text.strip(): p.style.name
-              for p in doc.paragraphs
-              if p.text.strip() in {
-                  "BAB I", "PENDAHULUAN",
-                  "BAB II", "TINJAUAN PUSTAKA",
-                  "BAB III", "METODOLOGI PENELITIAN",
-              }
-          }
-          assert chapter_style_pairs["BAB I"] == "Chapter Number USU"
-          assert chapter_style_pairs["PENDAHULUAN"] == "Chapter Title USU"
-          assert chapter_style_pairs["BAB II"] == "Chapter Number USU"
-          assert chapter_style_pairs["TINJAUAN PUSTAKA"] == "Chapter Title USU"
-          assert chapter_style_pairs["BAB III"] == "Chapter Number USU"
-          assert chapter_style_pairs["METODOLOGI PENELITIAN"] == "Chapter Title USU"
+          assert not main_toc_fields, f"Dynamic main TOC field still present: {main_toc_fields}"
 
           equation_tables = 0
           regular_tables = 0
@@ -179,20 +198,15 @@ jobs:
                   values.append(element.get(qn("w:val")))
               if is_equation:
                   equation_tables += 1
-                  assert set(values) <= {"nil", "none"}, (
-                      f"Equation table {index} still has a visible border: {values}"
-                  )
+                  assert set(values) <= {"nil", "none"}, f"Equation table border visible: {values}"
               else:
                   regular_tables += 1
-                  assert set(values) == {"single"}, (
-                      f"Regular table {index} does not have full borders: {values}"
-                  )
+                  assert set(values) == {"single"}, f"Regular table lacks full borders: {values}"
 
           math_pr = doc.settings._element.find(qn("m:mathPr"))
           assert math_pr is not None, "Missing math defaults"
           math_font = math_pr.find(qn("m:mathFont"))
-          assert math_font is not None
-          assert math_font.get(qn("m:val")) == "Times New Roman"
+          assert math_font is not None and math_font.get(qn("m:val")) == "Times New Roman"
 
           bad_fonts = []
           for r_fonts in doc.element.iter(qn("w:rFonts")):
@@ -200,16 +214,15 @@ jobs:
                   if r_fonts.get(qn(f"w:{attr}")) != "Times New Roman":
                       bad_fonts.append((attr, r_fonts.get(qn(f"w:{attr}"))))
                       break
-          assert not bad_fonts, f"Non-Times New Roman direct font requests: {bad_fonts[:10]}"
+          assert not bad_fonts, f"Non-Times New Roman font requests: {bad_fonts[:10]}"
 
           print(
-              f"OK: {len(doc.paragraphs)} paragraphs, {regular_tables} regular tables, "
-              f"{equation_tables} equation tables, {len(doc.inline_shapes)} images, "
-              f"{len(doc.sections)} sections; TOC chapter entries combined and bold"
+              f"OK: {len(static_toc)} visible TOC entries, {regular_tables} regular tables, "
+              f"{equation_tables} equation tables, {len(doc.inline_shapes)} images, {len(doc.sections)} sections"
           )
           PY
 
-      - name: Render smoke test
+      - name: Render final smoke test
         run: |
           mkdir -p build/render-smoke
           libreoffice --headless --convert-to pdf \
