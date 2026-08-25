@@ -29,11 +29,7 @@ Berdasarkan latar belakang tersebut, penelitian ini dilakukan dengan judul **“
 
 ## 1.2 Rumusan Masalah
 
-Berdasarkan latar belakang yang telah diuraikan, rumusan masalah penelitian ini adalah:
-
-1. Bagaimana prapemrosesan citra berbasis frekuensi-angular yang mengadaptasi prinsip AFAB-2 dapat diterapkan pada citra masukan YOLO26n tanpa mengubah arsitektur utama model deteksi?
-2. Bagaimana pengaruh variasi desain prapemrosesan yang meliputi fungsi jendela, representasi orientasi, informasi radial, fungsi ambang, dan panduan luminansi terhadap kinerja deteksi pada tahap pengembangan, serta bagaimana konfigurasi kandidat dipilih berdasarkan prosedur yang telah ditetapkan?
-3. Bagaimana kinerja konfigurasi frekuensi-angular terpilih dibandingkan dengan YOLO26n tanpa prapemrosesan dan CLAHE pada data uji akhir ditinjau dari kinerja deteksi secara keseluruhan, kinerja per kelas, kesalahan deteksi, dan biaya komputasi?
+Deteksi cacat biji kopi dengan jumlah kategori yang rinci memiliki tantangan karena beberapa jenis cacat mempunyai karakteristik visual yang relatif serupa sehingga kemampuan model dalam mengenali setiap kelas dapat berbeda. Dalam literatur biji kopi yang ditinjau, peningkatan kinerja umumnya dilakukan melalui modifikasi komponen di dalam model, sedangkan pengolahan citra berdasarkan informasi frekuensi dan arah sebelum proses deteksi masih perlu dikaji lebih lanjut pada kasus cacat biji kopi. Oleh karena itu, permasalahan dalam penelitian ini adalah bagaimana menerapkan prapemrosesan citra berbasis frekuensi-angular pada YOLO26n, menganalisis variasi desainnya, serta mengevaluasi pengaruhnya terhadap kinerja deteksi *fine-grained* cacat biji kopi.
 
 ## 1.3 Batasan Masalah
 
@@ -51,11 +47,7 @@ Adapun batasan masalah pada penelitian ini agar penelitian tetap berada pada rua
 
 ## 1.4 Tujuan Penelitian
 
-Berdasarkan rumusan masalah tersebut, tujuan penelitian ini adalah:
-
-1. Menerapkan prapemrosesan citra berbasis frekuensi-angular yang mengadaptasi prinsip AFAB-2 pada citra masukan YOLO26n dengan mempertahankan arsitektur utama model deteksi.
-2. Menganalisis pengaruh variasi desain prapemrosesan yang meliputi fungsi jendela, representasi orientasi, informasi radial, fungsi ambang, dan panduan luminansi serta menentukan konfigurasi kandidat berdasarkan prosedur pengembangan yang telah ditetapkan.
-3. Mengevaluasi konfigurasi frekuensi-angular terpilih dan membandingkannya dengan YOLO26n tanpa prapemrosesan serta CLAHE pada data uji akhir berdasarkan kinerja deteksi keseluruhan, kinerja per kelas, kesalahan deteksi, dan biaya komputasi.
+Penelitian ini bertujuan untuk menerapkan dan menganalisis prapemrosesan citra berbasis frekuensi-angular pada YOLO26n untuk deteksi *fine-grained* cacat biji kopi, menentukan konfigurasi dari variasi desain yang diuji, serta mengevaluasi pengaruhnya terhadap kinerja deteksi dan biaya komputasi dibandingkan dengan YOLO26n tanpa prapemrosesan dan pembanding CLAHE.
 
 ## 1.5 Manfaat Penelitian
 
