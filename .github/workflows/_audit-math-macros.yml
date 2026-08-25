@@ -1,0 +1,52 @@
+name: One-time audit proposal math macros
+on:
+  push:
+    branches: [proposal/thesis-foundation]
+    paths: [.github/workflows/_audit-math-macros.yml]
+permissions:
+  contents: write
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: proposal/thesis-foundation
+      - name: Audit and normalize unsafe math macros
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          files=[Path('docs/thesis/proposal/BAB_II_TINJAUAN_PUSTAKA.md'),Path('docs/thesis/proposal/BAB_III_METODOLOGI_PENELITIAN.md')]
+          for p in files:
+              s=p.read_text()
+              math=[]
+              math += re.findall(r'\$\$(.*?)\$\$', s, flags=re.S)
+              tmp=re.sub(r'\$\$(.*?)\$\$', '', s, flags=re.S)
+              math += re.findall(r'(?<!\$)\$(?!\$)(.*?)(?<!\$)\$(?!\$)', tmp, flags=re.S)
+              cmds=[]
+              for m in math:
+                  cmds += re.findall(r'\\([A-Za-z]+)',m)
+              from collections import Counter
+              print('\n',p)
+              print(Counter(cmds))
+              # Normalize macros that GitHub safe math rejects or that are unnecessarily high-level.
+              s=re.sub(r'\\operatorname\{([^{}]+)\}', r'\\mathrm{\1}', s)
+              # Prefer standard modulo operator where the exact pattern is simple.
+              s=s.replace(r'\\mathrm{mod}\left(', r'\\bmod\left(')
+              s=s.replace(r'\\mathrm{mod}(', r'\\bmod(')
+              p.write_text(s)
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/thesis/proposal/BAB_II_TINJAUAN_PUSTAKA.md docs/thesis/proposal/BAB_III_METODOLOGI_PENELITIAN.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'Replace unsupported GitHub math macros [skip ci]'
+            git push origin HEAD:proposal/thesis-foundation
+          fi
+      - name: Remove one-time workflow
+        run: |
+          git pull --rebase origin proposal/thesis-foundation
+          git rm .github/workflows/_audit-math-macros.yml
+          git commit -m 'Remove one-time math macro audit [skip ci]'
+          git push origin HEAD:proposal/thesis-foundation
