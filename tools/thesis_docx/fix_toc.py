@@ -42,6 +42,8 @@ def set_style_font(style, *, bold=False, size=12):
 
 
 def configure_chapter_styles(doc):
+    # Match the existing Heading 1 spacing exactly so TOC source changes do not
+    # shift chapter pagination or alter the visible chapter layout.
     for name in ("Chapter Number USU", "Chapter Title USU"):
         style = add_paragraph_style(doc, name)
         set_style_font(style, bold=True)
@@ -51,9 +53,9 @@ def configure_chapter_styles(doc):
         pf.first_line_indent = Cm(0)
         pf.left_indent = Cm(0)
         pf.right_indent = Cm(0)
-        pf.space_before = Pt(0)
-        pf.space_after = Pt(0 if name == "Chapter Number USU" else 12)
-        pf.keep_with_next = name == "Chapter Number USU"
+        pf.space_before = Pt(12)
+        pf.space_after = Pt(6)
+        pf.keep_with_next = False
 
 
 def configure_toc_styles(doc):
