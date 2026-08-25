@@ -25,11 +25,11 @@ Deteksi objek (*object detection*) merupakan tugas *computer vision* yang menent
 
 Faster R-CNN merupakan contoh pendekatan dua tahap yang menggunakan *Region Proposal Network* untuk menghasilkan kandidat lokasi objek sebelum kandidat tersebut diproses pada tahap klasifikasi dan regresi kotak pembatas berikutnya (Ren et al., 2015). Sebaliknya, YOLO merumuskan deteksi sebagai prediksi langsung dari citra menuju lokasi objek dan probabilitas kelas dalam satu jaringan (Redmon et al., 2016). Pendekatan ini menjadi dasar perkembangan berbagai model deteksi satu tahap yang menekankan keseimbangan antara akurasi dan kecepatan inferensi.
 
-Kesesuaian spasial antara kotak pembatas prediksi dan *ground truth* dapat diukur menggunakan *Intersection over Union* (IoU). Untuk kotak pembatas prediksi \(B_p\) dan *ground truth* \(B_g\), IoU dirumuskan sebagai:
+Kesesuaian spasial antara kotak pembatas prediksi dan *ground truth* dapat diukur menggunakan *Intersection over Union* (IoU). Untuk kotak pembatas prediksi $B_p$ dan *ground truth* $B_g$, IoU dirumuskan sebagai:
 
-\[
+$$
 IoU(B_p,B_g)=\frac{|B_p\cap B_g|}{|B_p\cup B_g|}.
-\]
+$$
 
 Nilai IoU yang semakin tinggi menunjukkan tumpang tindih spasial yang semakin besar antara prediksi dan *ground truth*. Dalam evaluasi deteksi objek, prediksi kelas, skor kepercayaan, dan kualitas lokalisasi digunakan secara bersama untuk menentukan benar atau salahnya suatu deteksi.
 
@@ -81,19 +81,19 @@ Berdasarkan penelitian tersebut, prapemrosesan sebelum model deteksi dapat berup
 
 ### 2.8.1 Discrete Fourier Transform dan Fast Fourier Transform
 
-Citra digital dapat dipandang sebagai sinyal dua dimensi pada domain spasial. *Discrete Fourier Transform* (DFT) mengubah representasi tersebut ke domain frekuensi sehingga citra dinyatakan sebagai kombinasi komponen spektral (Gonzalez & Woods, 2018). Bentuk DFT dan transformasi balik yang digunakan sebagai dasar penelitian juga dituliskan secara eksplisit oleh Xu et al. (2025, §3.1.1, Persamaan 1 dan 4). Untuk citra diskrit \(f(x,y)\) berukuran \(M\times N\), DFT dua dimensi dapat dituliskan sebagai:
+Citra digital dapat dipandang sebagai sinyal dua dimensi pada domain spasial. *Discrete Fourier Transform* (DFT) mengubah representasi tersebut ke domain frekuensi sehingga citra dinyatakan sebagai kombinasi komponen spektral (Gonzalez & Woods, 2018). Bentuk DFT dan transformasi balik yang digunakan sebagai dasar penelitian juga dituliskan secara eksplisit oleh Xu et al. (2025, §3.1.1, Persamaan 1 dan 4). Untuk citra diskrit $f(x,y)$ berukuran $M\times N$, DFT dua dimensi dapat dituliskan sebagai:
 
-\[
+$$
 F(u,v)=\sum_{x=0}^{M-1}\sum_{y=0}^{N-1}f(x,y)
 \exp\left[-j2\pi\left(\frac{ux}{M}+\frac{vy}{N}\right)\right].
-\]
+$$
 
 Rekonstruksi ke domain spasial dilakukan menggunakan inverse DFT:
 
-\[
+$$
 f(x,y)=\frac{1}{MN}\sum_{u=0}^{M-1}\sum_{v=0}^{N-1}F(u,v)
 \exp\left[j2\pi\left(\frac{ux}{M}+\frac{vy}{N}\right)\right].
-\]
+$$
 
 *Fast Fourier Transform* (FFT) merupakan algoritma yang digunakan untuk menghitung DFT secara lebih efisien. Pemrosesan berbasis Fourier memungkinkan suatu transformasi dilakukan pada representasi spektral, kemudian citra dikembalikan kembali ke domain spasial melalui transformasi invers (Gonzalez & Woods, 2018; Xu et al., 2025).
 
@@ -101,35 +101,35 @@ Yang dan Soatto (2020) menggunakan manipulasi amplitudo Fourier pada *Fourier Do
 
 ### 2.8.2 Amplitudo dan Fase
 
-Koefisien Fourier \(F(u,v)\) merupakan bilangan kompleks yang dapat dinyatakan sebagai:
+Koefisien Fourier $F(u,v)$ merupakan bilangan kompleks yang dapat dinyatakan sebagai:
 
-\[
+$$
 F(u,v)=R(u,v)+jI(u,v).
-\]
+$$
 
 Amplitudo dan fase dapat dihitung sebagai:
 
-\[
+$$
 A(u,v)=\sqrt{R^2(u,v)+I^2(u,v)},
-\]
+$$
 
-\[
+$$
 \phi(u,v)=\operatorname{atan2}(I(u,v),R(u,v)).
-\]
+$$
 
 Bentuk amplitudo dan fase tersebut sejalan dengan Persamaan (2) dan (3) pada Xu et al. (2025, §3.1.1). Secara umum, amplitudo menunjukkan besar respons spektral pada suatu koordinat frekuensi, sedangkan fase berkaitan dengan susunan spasial dalam representasi Fourier (Gonzalez & Woods, 2018). Yang dan Soatto (2020) menunjukkan bahwa manipulasi amplitudo dapat dilakukan dengan mempertahankan fase sumber pada konteks *domain adaptation*. Li et al. (2025) juga memproses amplitudo dan fase secara khusus pada FE-YOLO. Pada LFDet, Xu et al. (2025) mengubah respons amplitudo berdasarkan distribusi frekuensi dan menggunakan fase asli pada proses rekonstruksi.
 
 ### 2.8.3 Representasi Radial dan Angular
 
-Koordinat spektrum dua dimensi dapat dianalisis dalam bentuk polar. Untuk pusat spektrum \((u_c,v_c)\), radius dan sudut suatu koordinat frekuensi dapat dituliskan sebagai:
+Koordinat spektrum dua dimensi dapat dianalisis dalam bentuk polar. Untuk pusat spektrum $(u_c,v_c)$, radius dan sudut suatu koordinat frekuensi dapat dituliskan sebagai:
 
-\[
+$$
 r(u,v)=\sqrt{(u-u_c)^2+(v-v_c)^2},
-\]
+$$
 
-\[
+$$
 \theta(u,v)=\operatorname{atan2}(v-v_c,u-u_c).
-\]
+$$
 
 Representasi radial mengelompokkan informasi berdasarkan jarak dari pusat spektrum, sedangkan representasi angular mengelompokkan informasi berdasarkan arah. Cao et al. (2019) menggunakan distribusi radial dan angular dari energi spektrum Fourier untuk menganalisis tekstur pada citra *remote sensing*. Distribusi radial digunakan untuk mengamati perubahan frekuensi dan skala tekstur, sedangkan distribusi angular digunakan untuk menggambarkan arah dominan pola tekstur.
 
