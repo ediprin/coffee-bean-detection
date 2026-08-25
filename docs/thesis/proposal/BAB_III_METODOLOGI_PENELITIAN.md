@@ -57,7 +57,7 @@ dengan \(I\) merupakan citra masukan, \(\mathcal{P}_{FA}\) merupakan fungsi prap
 
 ### 3.2.1 Sumber, Target Jumlah, dan Karakteristik Dataset Primer
 
-Penelitian direncanakan menggunakan **dataset primer** yang dikumpulkan secara langsung untuk tugas deteksi objek multikelas pada biji kopi hijau. Daftar kelas awal menargetkan 20 kategori cacat fisik yang mengacu pada SNI 01-2907-2008 ditambah satu kelas biji normal, sehingga jumlah kelas target awal adalah:
+Penelitian direncanakan menggunakan **dataset primer** yang dikumpulkan secara langsung untuk tugas deteksi objek multikelas pada biji kopi hijau. Daftar kelas awal menargetkan 20 kategori cacat fisik yang mengacu pada SNI 2907:2008 ditambah satu kelas biji normal, sehingga jumlah kelas target awal adalah:
 
 \[
 C_{target}=21.
@@ -151,7 +151,9 @@ Sebagai analisis tambahan, konfigurasi \(C^*\) dapat diuji pada RT-DETRv3-R18 un
 
 ## 3.4 Prapemrosesan Citra Berbasis Frekuensi-Angular
 
-Prapemrosesan yang digunakan mengadaptasi prinsip pemrosesan frekuensi lokal dan distribusi angular pada AFAB-2 yang diperkenalkan oleh Xu et al. (2025). Penelitian ini tidak mengadopsi keseluruhan LFDet, tetapi menggunakan mekanisme AFAB-2 sebagai konfigurasi referensi prapemrosesan sebelum citra diteruskan ke YOLO26n.
+Prapemrosesan yang digunakan mengadaptasi prinsip pemrosesan frekuensi lokal dan distribusi angular pada AFAB-2 yang diperkenalkan oleh Xu et al. (2025). Penelitian ini tidak mengadopsi keseluruhan LFDet ataupun AFAB-1, tetapi menggunakan mekanisme angular AFAB-2 sebagai konfigurasi referensi prapemrosesan sebelum citra diteruskan ke YOLO26n.
+
+Batas adaptasi metode ditetapkan secara jelas. Dari Xu et al. (2025), penelitian mengacu pada pembentukan respons frekuensi lokal melalui DFT per patch, distribusi densitas angular, entropi untuk membentuk ambang adaptif, penekanan arah dengan densitas rendah, pembobotan amplitudo, rekonstruksi menggunakan fase asli, serta penggabungan antara ruang spasial asal dan hasil rekonstruksi melalui normalisasi, perkalian elemen, dan residual. Sementara itu, pemrosesan per kanal RGB, diskretisasi sudut menjadi 360 interval, tumpang tindih patch 50%, konstanta stabilitas numerik, dan cara penggabungan patch yang bertumpang tindih merupakan keputusan adaptasi penelitian agar mekanisme tersebut dapat digunakan sebagai prapemrosesan mandiri sebelum YOLO26n. Variasi pada \(C_1\) sampai \(C_5\) merupakan rancangan eksperimen penelitian dan bukan bagian dari AFAB-2 asli.
 
 Secara umum, proses terdiri atas pembentukan patch lokal, transformasi Fourier, pembentukan distribusi angular, perhitungan ambang berbasis entropi, pembobotan respons spektral, transformasi balik ke domain spasial, rekonstruksi patch, normalisasi respons, dan penggabungan residual dengan citra masukan.
 
@@ -180,6 +182,8 @@ dengan tumpang tindih 50%, sehingga jarak perpindahan antarpatch adalah:
 \[
 s=16.
 \]
+
+Ukuran patch 32 mengikuti konfigurasi yang digunakan Xu et al. (2025) sebagai titik awal. Paper tersebut menyatakan penggunaan tumpang tindih yang besar untuk mengurangi diskontinuitas pada batas patch, tetapi tidak menetapkan 50% sebagai satu-satunya nilai pada definisi metodenya. Oleh karena itu, tumpang tindih 50% pada penelitian ini diperlakukan sebagai keputusan implementasi awal, bukan sebagai nilai yang diasumsikan optimal untuk citra kopi.
 
 Pembagian lokal digunakan agar informasi frekuensi tetap dapat dikaitkan dengan bagian tertentu dari citra, bukan hanya menggambarkan spektrum global. Jika ukuran citra tidak tepat memenuhi susunan patch, bagian tepi akan ditambahkan sementara dan dibuang kembali setelah proses rekonstruksi. Rincian teknis penambahan tepi dan rekonstruksi akan ditetapkan pada implementasi penelitian agar proses dapat direproduksi secara konsisten.
 
@@ -211,7 +215,7 @@ Setiap koordinat frekuensi dipetakan ke sudut relatif terhadap pusat spektrum:
 \theta(u,v)=\operatorname{mod}\left(\operatorname{atan2}(v-v_c,u-u_c),2\pi\right).
 \]
 
-Pada konfigurasi referensi, rentang sudut dibagi menjadi 360 interval arah. Densitas angular untuk kanal \(c\) dihitung sebagai:
+Xu et al. (2025) mendefinisikan distribusi angular pada rentang \([0,360^\circ)\). Pada konfigurasi referensi penelitian ini, domain tersebut didiskretkan menjadi 360 interval arah. Densitas angular untuk kanal \(c\) dihitung sebagai:
 
 \[
 D_i^c(k)=\sum_{(u,v):b(u,v)=k}A_i^c(u,v),
@@ -229,7 +233,7 @@ dengan:
 \varepsilon=10^{-8}.
 \]
 
-Pada konfigurasi referensi, perhitungan dilakukan secara terpisah pada kanal R, G, dan B.
+Pada konfigurasi referensi, perhitungan dilakukan secara terpisah pada kanal R, G, dan B. Diskretisasi 360 interval, konstanta \(\varepsilon\), dan pemrosesan per kanal merupakan keputusan implementasi penelitian.
 
 ### 3.4.4 Ambang Adaptif Berdasarkan Entropi
 
@@ -245,11 +249,13 @@ Nilai entropi digunakan untuk membentuk ambang pada setiap patch:
 \tau_i^c=\frac{\gamma}{1+\exp(-H_i^c)},
 \]
 
-dengan:
+dengan konfigurasi referensi:
 
 \[
 \gamma=0{,}10.
 \]
+
+Bentuk entropi dan ambang mengacu pada AFAB-2 Xu et al. (2025). Nilai \(\gamma=0{,}10\) digunakan sebagai konfigurasi referensi karena nilai tersebut digunakan pada eksperimen paper sumber setelah analisis sensitivitas pada dataset pesawat; penelitian ini tidak menganggap nilai tersebut otomatis optimal untuk biji kopi. Pengaruh \(\gamma\) tetap dapat diperiksa melalui analisis sensitivitas pada Subbab 3.5.6.
 
 Karena entropi dihitung dari masing-masing patch, nilai ambang dapat berubah mengikuti distribusi spektral lokal. Proses ini tidak menggunakan parameter yang dilatih.
 
@@ -277,7 +283,7 @@ Bobot tersebut diterapkan pada koefisien Fourier:
 \widetilde F_i^c(u,v)=F_i^c(u,v)\,w_i^c(b(u,v)).
 \]
 
-Karena nilai bobot berada pada rentang 0 sampai 1, tahap ini berfungsi memilih dan menekan respons spektral tertentu, bukan memperbesar koefisien Fourier melebihi nilai asalnya.
+Bentuk seleksi ini mengadaptasi mekanisme AFAB-2 yang mempertahankan respons dengan densitas relatif di atas ambang dan menekan respons di bawah ambang. Karena nilai bobot berada pada rentang 0 sampai 1, tahap ini berfungsi memilih dan menekan respons spektral tertentu, bukan memperbesar koefisien Fourier melebihi nilai asalnya.
 
 ### 3.4.6 Rekonstruksi dan Penggabungan Residual
 
@@ -287,7 +293,7 @@ Spektrum yang telah dibobotkan dikembalikan ke domain spasial menggunakan transf
 \widetilde P_i^c=\Re\left\{\mathcal{F}_2^{-1}(\widetilde F_i^c)\right\}.
 \]
 
-Patch yang saling bertumpang tindih kemudian digabungkan kembali dengan merata-ratakan bagian yang bertumpang tindih sehingga diperoleh respons spasial \(R_{FA}\) dengan ukuran yang sama seperti citra masukan.
+Prinsip AFAB-2 mempertahankan fase asli saat amplitudo yang telah disesuaikan direkonstruksi ke domain spasial. Pada penelitian ini, patch yang saling bertumpang tindih kemudian digabungkan kembali dengan merata-ratakan bagian yang bertumpang tindih sehingga diperoleh respons spasial \(R_{FA}\) dengan ukuran yang sama seperti citra masukan. Cara penggabungan patch tersebut merupakan keputusan implementasi penelitian.
 
 Respons tersebut dinormalisasi pada setiap kanal:
 
@@ -307,7 +313,7 @@ Citra keluaran dibentuk melalui penggabungan residual:
 \boxed{I'^c=I^c+I^c\odot G^c}.
 \]
 
-Persamaan tersebut menunjukkan bahwa respons hasil analisis frekuensi digunakan sebagai pembobot tambahan terhadap citra asal. Ukuran spasial citra tetap dipertahankan sehingga koordinat kotak pembatas tidak perlu diubah.
+Normalisasi hasil rekonstruksi, perkalian dengan ruang spasial asal, dan operasi residual mengikuti prinsip penggabungan yang dijelaskan Xu et al. (2025), sedangkan formulasi per kanal pada persamaan di atas merupakan bentuk implementasi penelitian. Ukuran spasial citra tetap dipertahankan sehingga koordinat kotak pembatas tidak perlu diubah.
 
 ## 3.5 Analisis Variasi Desain Prapemrosesan
 
@@ -406,13 +412,13 @@ Variasi ini digunakan untuk mengetahui apakah respons yang berada di sekitar nil
 
 ### 3.5.5 Variasi Panduan Luminansi
 
-Pada \(C_5\), panduan spektral dibentuk dari luminansi Rec.709:
+Pada \(C_5\), panduan spektral dibentuk dari sinyal luminansi menggunakan koefisien ITU-R BT.709-6 (International Telecommunication Union, 2015):
 
 \[
 Y=0{,}2126R+0{,}7152G+0{,}0722B.
 \]
 
-Bobot spektral dihitung dari luminansi dan digunakan bersama pada ketiga kanal RGB. Citra keluaran tetap berupa RGB. Variasi ini digunakan untuk menguji apakah pembobotan spektral perlu dihitung secara terpisah pada setiap kanal warna atau cukup menggunakan satu panduan luminansi bersama.
+Bobot spektral dihitung dari panduan luminansi tersebut dan digunakan bersama pada ketiga kanal RGB. Citra keluaran tetap berupa RGB. Variasi ini digunakan untuk menguji apakah pembobotan spektral perlu dihitung secara terpisah pada setiap kanal warna atau cukup menggunakan satu panduan luminansi bersama.
 
 ### 3.5.6 Analisis Sensitivitas Terbatas
 
