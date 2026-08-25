@@ -4,6 +4,8 @@ Status: **HARD GATE untuk daftar pustaka formal**
 
 Dokumen ini menentukan apakah sebuah sumber boleh masuk ke `docs/thesis/proposal/DAFTAR_PUSTAKA.md`. Master workbook, `CANONICAL_SOURCE_KEYS.md`, catatan percakapan, Google Scholar, DBLP, Crossref, Semantic Scholar, ResearchGate, OpenAIRE, atau metadata sekunder lain hanya berfungsi sebagai **locator/corroboration**, bukan sebagai otoritas final apabila halaman resmi penerbit/proceedings/standard body atau primary PDF tersedia.
 
+Pemetaan sitasi author–year yang benar-benar muncul pada BAB I–III terhadap key canonical dan status gate disimpan pada `CITATION_CROSSWALK.md`.
+
 ## Aturan status
 
 - **FINAL — OFFICIAL VERIFIED**: metadata bibliografis utama telah diverifikasi pada sumber resmi penerbit/proceedings/standard body.
@@ -32,6 +34,7 @@ Dokumen ini menentukan apakah sebuah sumber boleh masuk ke `docs/thesis/proposal
 | COF-17 | FINAL — OFFICIAL VERIFIED | MDPI Applied Sciences | Mauricio García, John E. Candelo-Becerra, Fredy E. Hoyos. **Quality and Defect Inspection of Green Coffee Beans Using a Computer Vision System**. *Applied Sciences*, 9(19), 4195 (2019). DOI `10.3390/app9194195`. |
 | COF-01 | FINAL — OFFICIAL VERIFIED | ScienceDirect / Elsevier | **Automated detection of defective coffee beans based on improved YOLOv10 framework**. *Current Research in Food Science* (2026). DOI `10.1016/j.crfs.2026.101461`. |
 | COF-02 | FINAL — OFFICIAL VERIFIED | IJoICT official article/PDF | Nanda Aptana Irsyadul Bahy; Achmad Pratama Rifai. **Real-Time Coffee Bean Defect Detection Based on SNI 01-2907-2008 Standards Using Lightweight YOLOv5s Architecture**. *IJoICT*, 12(1), 29–42 (2026). DOI `10.21108/ijoict.v12i1.10584`. |
+| COF-03 | FINAL — PRIMARY PUBLISHER PDF VERIFIED | IEEE Xplore-downloaded primary PDF | Melyna Nura Samudra; Ema Rachmawati. **Deep Learning-Based Defect Detection in Arabica Green Coffee Beans Using LSKNet**. 2025 International Conference on Data Science and Its Applications (ICoDSA), pp. 692–697. Primary PDF visibly confirms title, authors, conference identity, page 697, and that the file was downloaded from IEEE Xplore. DOI record used in the project is `10.1109/ICoDSA67155.2025.11157423`; do not add bibliographic fields beyond those locked from the primary paper/record. |
 | COF-04 | FINAL — OFFICIAL VERIFIED | INOVTEK Polbeng official page | Hocwin Hebert; Derry Alamsyah. **Detection of Coffee Bean Defects in Speciality Coffee Association Standards using YOLOv12**. *INOVTEK Polbeng - Seri Informatika*, 11(1), 85–95 (2026). DOI `10.35314/47yqwd13`. |
 | COF-05 | FINAL — OFFICIAL VERIFIED | Brilliance official page | Sayid Muhammad Jundullah; Hafizh Al Kautsar Aidilof; Fadlisyah. **YOLOv8-Based Multi-Class Detection of Coffee Bean Defects and Contaminants for Automated Quality Grading**. *Brilliance: Research of Artificial Intelligence*, 6(2), 313–322 (2026). DOI `10.47709/brilliance.v6i2.8612`. |
 | COF-06 | FINAL — OFFICIAL VERIFIED | Nature / Scientific Reports | **Comparative analysis of YOLO models for green coffee bean detection and defect classification**. *Scientific Reports*, 14, 28946 (2024). DOI `10.1038/s41598-024-78598-7`. |
@@ -75,7 +78,6 @@ Dokumen ini menentukan apakah sebuah sumber boleh masuk ke `docs/thesis/proposal
 
 | Key | Status | Bukti yang sudah ada | Keputusan aman |
 |---|---|---|---|
-| COF-03 | PRIMARY VERIFIED / PUBLISHER METADATA PENDING | Project PDF telah dibaca; title, authors, conference, halaman 692–697 dan DOI `10.1109/ICoDSA67155.2025.11157423` telah dikorroborasi; publisher landing IEEE tidak dapat dibaca crawler. | Boleh dipakai untuk klaim yang sudah diverifikasi dari full text. Untuk bibliography final, gunakan hanya metadata yang benar-benar terlihat pada primary PDF/DOI; jangan menambah detail publisher yang tidak terverifikasi. |
 | XAI-02 | PRIMARY VERIFIED / OPTIONAL CITATION | Primary author preprint memuat title **Grad-CAM++: Improved Visual Explanations for Deep Convolutional Networks**, author **Aditya Chattopadhyay, Anirban Sarkar, Prantik Howlader, Vineeth N. Balasubramanian**, serta metodologi weighted positive partial derivatives. DOI WACV `10.1109/WACV.2018.00097` dan pages 839–847 terkorroborasi, tetapi publisher HTML tidak tertutup. | Karena Grad-CAM++ hanya alternatif, opsi paling aman adalah menghapus sitasi eksplisitnya dari proposal formal dan menulis “Grad-CAM atau variannya”. Jika dipertahankan, bibliography harus transparan terhadap source primer yang dipakai. |
 
 Tidak ada alasan untuk mempromosikan sumber hanya karena metadata aggregator tampak lengkap. Status ini sengaja mempertahankan perbedaan antara **primary evidence** dan **publisher landing evidence**.
@@ -84,13 +86,11 @@ Tidak ada alasan untuk mempromosikan sumber hanya karena metadata aggregator tam
 
 ## C. Gate pembangunan `DAFTAR_PUSTAKA.md`
 
-`DAFTAR_PUSTAKA.md` belum boleh disebut final sampai:
+Crosswalk author–year → canonical key untuk sitasi formal telah dibuat pada `CITATION_CROSSWALK.md`. `DAFTAR_PUSTAKA.md` belum boleh disebut final sampai:
 
-1. seluruh sitasi author-year pada BAB I–III telah dicocokkan ke key canonical;
-2. setiap sumber yang tetap dipakai memiliki source primer/resmi yang cukup untuk metadata yang ditulis;
-3. optional citation yang masih ambigu (`XAI-02`) diputuskan: dihapus atau ditulis berdasarkan source primer secara transparan;
-4. metadata `COF-03` diambil dari primary paper tanpa menambah field yang belum diverifikasi;
-5. baru dibentuk entri APA;
-6. dilakukan audit dua arah **cited → bibliography** dan **bibliography → cited**.
+1. `XAI-02` diputuskan: dihapus dari naskah formal atau ditulis berdasarkan source primer secara transparan;
+2. seluruh entri bibliography dibentuk hanya dari metadata yang dikunci pada source authority;
+3. dilakukan audit dua arah **cited → bibliography** dan **bibliography → cited**;
+4. perubahan sitasi setelah audit harus memicu audit ulang crosswalk.
 
 Jika sebuah sumber tidak dapat diverifikasi, pilihannya hanya: **hapus/ganti klaim yang bergantung padanya**, atau tandai proposal belum citation-ready. Tidak ada opsi menebak metadata.
