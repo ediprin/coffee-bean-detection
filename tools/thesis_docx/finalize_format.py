@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import argparse
+import re
 from pathlib import Path
 
 from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
+from docx.shared import Cm, Pt
 
 FONT_NAME = "Times New Roman"
 TABLE_EDGES = ("top", "left", "bottom", "right", "insideH", "insideV")
@@ -49,10 +52,22 @@ def _set_table_borders(table, visible: bool) -> None:
 
 
 def _is_equation_layout_table(table) -> bool:
-    return bool(
+    """Identify only the synthetic 1x3 table used to center and number equations.
+
+    Ordinary thesis tables can legitimately contain inline OMML symbols such as B_0,
+    C_0, or gamma. Presence of math alone therefore must not classify a normal table
+    as an equation-layout table.
+    """
+    if len(table.rows) != 1 or len(table.columns) != 3:
+        return False
+    has_math = bool(
         list(table._tbl.iter(qn("m:oMath")))
         or list(table._tbl.iter(qn("m:oMathPara")))
     )
+    if not has_math:
+        return False
+    right_text = table.cell(0, 2).text.strip()
+    return bool(re.fullmatch(r"\(\d+(?:\.\d+)?\)", right_text))
 
 
 def _ensure_rfonts(r_pr) -> None:
@@ -131,6 +146,34 @@ def _set_math_default_font(doc) -> None:
     math_font.set(qn("m:val"), FONT_NAME)
 
 
+def _format_source_code_blocks(doc) -> None:
+    """Make Markdown fenced flow diagrams readable in Word.
+
+    Pandoc preserves alignment spaces in Source Code paragraphs. With a proportional
+    thesis font those spaces become very wide and can split each line across the page.
+    Collapse alignment whitespace while preserving line breaks and arrows.
+    """
+    for paragraph in doc.paragraphs:
+        if paragraph.style.name != "Source Code":
+            continue
+        lines = []
+        for line in paragraph.text.splitlines():
+            clean = re.sub(r"[ \t]{2,}", " ", line.strip())
+            if clean:
+                lines.append(clean)
+        paragraph.text = "\n".join(lines)
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        paragraph.paragraph_format.first_line_indent = Cm(0)
+        paragraph.paragraph_format.left_indent = Cm(0)
+        paragraph.paragraph_format.right_indent = Cm(0)
+        paragraph.paragraph_format.line_spacing = 1.0
+        paragraph.paragraph_format.space_before = Pt(6)
+        paragraph.paragraph_format.space_after = Pt(6)
+        for run in paragraph.runs:
+            run.font.name = FONT_NAME
+            run.font.size = Pt(12)
+
+
 def finalize(input_path: Path, output_path: Path) -> None:
     doc = Document(input_path)
 
@@ -144,6 +187,7 @@ def finalize(input_path: Path, output_path: Path) -> None:
             _set_table_borders(table, visible=True)
             normal_tables += 1
 
+    _format_source_code_blocks(doc)
     _force_style_fonts(doc)
     _set_math_default_font(doc)
     _force_font_in_root(doc.element)
