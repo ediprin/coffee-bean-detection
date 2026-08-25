@@ -27,11 +27,7 @@ on:
     branches:
       - proposal/thesis-foundation
     paths:
-      - "BAB_I_PENDAHULUAN.md"
-      - "BAB_II_TINJAUAN_PUSTAKA.md"
-      - "BAB_III_METODOLOGI_PENELITIAN.md"
-      - "DAFTAR_PUSTAKA.md"
-      - "docs/thesis/proposal/DAFTAR_PUSTAKA.md"
+      - "docs/thesis/proposal/**"
       - "README.md"
       - "tools/thesis_docx/**"
       - "docs/thesis/BUILD_DOCX.md"
@@ -71,12 +67,12 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r tools/thesis_docx/requirements.txt
 
-      - name: Resolve formal bibliography source
+      - name: Verify formal proposal sources
         run: |
-          if [ ! -f DAFTAR_PUSTAKA.md ]; then
-            test -f docs/thesis/proposal/DAFTAR_PUSTAKA.md
-            cp docs/thesis/proposal/DAFTAR_PUSTAKA.md DAFTAR_PUSTAKA.md
-          fi
+          test -f docs/thesis/proposal/BAB_I_PENDAHULUAN.md
+          test -f docs/thesis/proposal/BAB_II_TINJAUAN_PUSTAKA.md
+          test -f docs/thesis/proposal/BAB_III_METODOLOGI_PENELITIAN.md
+          test -f docs/thesis/proposal/DAFTAR_PUSTAKA.md
 
       - name: Build proposal DOCX
         run: |
