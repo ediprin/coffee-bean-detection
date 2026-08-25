@@ -5,14 +5,14 @@
 
 Penelitian ini menggunakan pendekatan eksperimental komparatif untuk menganalisis pengaruh *preprocessing* citra berbasis frekuensi-angular terhadap kinerja YOLO26n pada deteksi *fine-grained* cacat biji kopi. Arsitektur *backbone*, *neck*, dan *detection head* YOLO26n dipertahankan pada perbandingan utama sehingga perbedaan utama antar kondisi eksperimen berasal dari perlakuan terhadap tensor citra masukan.
 
-Secara umum, penelitian akan terdiri atas persiapan dataset dan pencegahan kebocoran data, pembentukan baseline YOLO26n, pembentukan konfigurasi referensi *preprocessing* frekuensi-angular, analisis faktor desain *preprocessing*, konfirmasi berpasangan pada beberapa *seed*, evaluasi pada *locked test*, analisis kinerja per kelas dan kesalahan, analisis visual, serta evaluasi efisiensi komputasi.
+Secara umum, penelitian akan terdiri atas pengumpulan dataset primer dan pencegahan kebocoran data, pembentukan baseline YOLO26n, pembentukan konfigurasi referensi *preprocessing* frekuensi-angular, analisis faktor desain *preprocessing*, konfirmasi berpasangan pada beberapa *seed*, evaluasi pada *locked test*, analisis kinerja per kelas dan kesalahan, analisis visual, serta evaluasi efisiensi komputasi.
 
 Alur penelitian dirangkum sebagai berikut:
 
 ```text
-Dataset biji kopi
+Pengumpulan dataset primer biji kopi
         ↓
-Persiapan data dan grouped split
+Anotasi, audit kelas, dan grouped split
         ↓
 Baseline development YOLO26n
         ↓
@@ -51,36 +51,79 @@ dengan \(I\) merupakan tensor citra masukan, \(\mathcal{P}_{FA}\) merupakan fung
 
 ## 3.2 Dataset Penelitian
 
-### 3.2.1 Sumber dan Karakteristik Dataset
+### 3.2.1 Sumber, Target Jumlah, dan Karakteristik Dataset Primer
 
-Penelitian menggunakan dataset *object detection* biji kopi hijau dengan total 21 kelas. Setiap objek memiliki anotasi *bounding box* dan label kelas. Dataset digunakan untuk melatih dan mengevaluasi kemampuan model dalam menentukan lokasi sekaligus kategori objek pada citra.
-
-Data pengembangan terdiri atas 1.665 citra pada bagian *training* dengan 2.986 anotasi dan 294 citra pada bagian *validation* dengan 526 anotasi. Seluruh 21 kelas target terdapat pada kedua bagian data tersebut. Ringkasan dataset ditunjukkan pada Tabel 3.1.
-
-### Tabel 3.1 Ringkasan Dataset Pengembangan
-
-| Bagian Data | Jumlah Citra | Jumlah Anotasi | Jumlah Kelas |
-|---|---:|---:|---:|
-| Training | 1.665 | 2.986 | 21 |
-| Validation | 294 | 526 | 21 |
-
-Konteks SNI 01-2907-2008 digunakan untuk menjelaskan relevansi cacat fisik biji kopi, sedangkan kelas yang dipelajari model mengikuti label yang tersedia pada dataset penelitian. Sistem yang dikembangkan tidak dimaksudkan untuk merekonstruksi keseluruhan prosedur penentuan mutu berdasarkan nilai cacat SNI.
-
-### 3.2.2 Pembagian Dataset dan Pencegahan Kebocoran Data
-
-Pembagian data pengembangan menggunakan *grouped split* berdasarkan identitas sumber atau *parent image*. Dengan pendekatan ini, citra yang mempunyai induk yang sama tidak ditempatkan pada bagian *training* dan *validation* yang berbeda. Pemeriksaan *exact hash* juga digunakan untuk mencegah citra identik muncul pada kedua bagian.
-
-Secara konseptual, apabila \(\mathcal{G}_{train}\) dan \(\mathcal{G}_{val}\) masing-masing menyatakan himpunan *parent group* pada data *training* dan *validation*, maka berlaku:
+Penelitian direncanakan menggunakan **dataset primer** yang dikumpulkan secara langsung untuk tugas *multi-class object detection* pada biji kopi hijau. Taksonomi awal menargetkan 20 kategori cacat fisik yang mengacu pada SNI 01-2907-2008 ditambah satu kelas biji normal, sehingga jumlah kelas target awal adalah:
 
 \[
-\mathcal{G}_{train}\cap\mathcal{G}_{val}=\varnothing.
+C_{target}=21.
 \]
 
-Pembagian data yang sama akan digunakan pada seluruh konfigurasi pengembangan. Data *test* tidak digunakan untuk pemilihan faktor *preprocessing*, *checkpoint*, ukuran patch, nilai \(\gamma\), maupun keputusan metodologis lainnya. *Locked test* hanya akan digunakan setelah konfigurasi final dan protokol evaluasi dibekukan sebagaimana dijelaskan pada Subbab 3.6.
+Jumlah kelas final akan dibekukan setelah tahap audit kelayakan kelas selesai dan sebelum pembagian data serta pelatihan model dilakukan. Dengan demikian, proposal tidak mengasumsikan bahwa seluruh kelas langka pasti dapat diperoleh dalam jumlah memadai hanya melalui augmentasi.
 
-### 3.2.3 Augmentasi Data
+Berbeda dengan dataset klasifikasi satu-biji-satu-citra, satu citra pada penelitian ini akan memuat banyak objek. Oleh karena itu, kecukupan dataset dinilai menggunakan dua satuan sekaligus, yaitu jumlah **citra sumber independen** dan jumlah **instance/bounding box** per kelas. Target pengumpulan ditetapkan sekitar 180–220 citra sumber independen, dengan target nominal sekitar 200 citra asli. Augmentasi tidak dihitung sebagai citra primer.
 
-Augmentasi merupakan bagian dari *runtime training pipeline* YOLO26 dan akan diterapkan dengan konfigurasi yang sama pada setiap kondisi yang dibandingkan dalam tahap eksperimen yang sama. Seluruh parameter augmentasi akan dikunci sebelum perbandingan dan direkam bersama konfigurasi *run*.
+Setiap citra direncanakan memuat sekitar 30–50 objek yang disusun dalam satu lapisan dengan orientasi bervariasi dan tanpa *severe overlap*. Dengan rancangan tersebut, target total anotasi berada pada kisaran:
+
+\[
+N_{box}\approx 6.000-10.000.
+\]
+
+Untuk setiap kelas yang dipertahankan pada taksonomi final, target dukungan ditetapkan sebagai berikut:
+
+1. sekurang-kurangnya sekitar 200 instance asli per kelas;
+2. target ideal sekitar 300–500 instance per kelas; dan
+3. kelas muncul pada sekurang-kurangnya 15–20 citra sumber independen.
+
+Angka tersebut merupakan **target perencanaan pengumpulan**, bukan jumlah data yang diklaim telah tersedia pada saat proposal disusun. Target ini dipilih agar tetap realistis untuk penelitian tesis tetapi tetap mempunyai dukungan multi-instance yang memadai. Sebagai konteks metodologis, Bahy dan Rifai (2026) melaporkan 107 citra sumber dengan 13.863 anotasi untuk deteksi 20 kelas SNI, sedangkan Tarekegn dan Debelee (2025) menggunakan 562 citra dengan 19.228 instance untuk 13 kelas cacat dan satu kelas normal. Dengan demikian, jumlah citra pada tugas deteksi tidak dapat dinilai terpisah dari jumlah objek yang teranotasi di dalam setiap citra.
+
+Pengambilan citra akan dilakukan secara *top-down* menggunakan latar belakang polos dan tidak reflektif, posisi kamera tetap, jarak kamera tetap, serta pencahayaan yang dikendalikan. Objek disusun dalam satu lapisan agar detail permukaan tetap terlihat dan agar penelitian berfokus pada diskriminasi cacat *fine-grained*, bukan pada *severe occlusion*. Orientasi objek tetap divariasikan untuk merepresentasikan kemungkinan sisi dan arah biji yang berbeda.
+
+Setiap sesi akuisisi akan memiliki identitas sesi/batch dan identitas citra sumber. Untuk kelas yang definisinya bergantung pada ukuran fisik, khususnya kategori benda asing berukuran kecil, sedang, dan besar, setup akan dikalibrasi menggunakan referensi skala pada awal sesi sehingga hubungan piksel terhadap ukuran fisik dapat ditelusuri secara konsisten.
+
+Setiap objek akan diberi *bounding box* dan label kelas. Definisi operasional kelas akan disusun sebelum anotasi dengan mengacu pada SNI dan referensi visual yang digunakan. Sampel yang secara visual ambigu tidak akan dipaksakan masuk ke kelas tertentu; sampel tersebut akan ditandai untuk peninjauan ulang. Validasi label direncanakan melibatkan praktisi atau validator yang memahami penilaian fisik mutu kopi, terutama untuk kelas yang mempunyai kemiripan visual tinggi.
+
+### 3.2.2 Audit Kelayakan Kelas dan Pembekuan Taksonomi
+
+Sebelum *training-validation-test split* dibekukan, dataset primer akan diaudit untuk mengetahui jumlah instance dan jumlah citra sumber yang memuat setiap kelas. Audit ini penting karena penelitian terdahulu berbasis SNI menunjukkan bahwa beberapa kategori dapat sangat langka atau sulit dibedakan secara konsisten dari citra RGB.
+
+Suatu kelas hanya akan dipertahankan sebagai kelas evaluasi utama apabila memenuhi batas dukungan minimum yang ditetapkan sebelum pelatihan, yaitu sekitar 200 instance asli dan muncul pada sekurang-kurangnya 15 citra sumber independen. Kekurangan data pada suatu kelas tidak akan ditutup dengan memperbanyak salinan augmentasi dari sejumlah kecil sumber asli. Apabila suatu kelas target tidak memenuhi kriteria tersebut, keputusan untuk menambah pengumpulan data atau menyesuaikan taksonomi akan dilakukan **sebelum** model utama dilatih dan akan didokumentasikan secara transparan.
+
+Setelah audit selesai, jumlah kelas final dinotasikan sebagai:
+
+\[
+C\le C_{target},
+\]
+
+dengan target utama tetap \(C=21\) apabila seluruh kelas memenuhi kriteria dukungan yang telah ditentukan.
+
+### 3.2.3 Pembagian Dataset dan Pencegahan Kebocoran Data
+
+Pembagian data akan dilakukan **pada citra sumber asli sebelum augmentasi**. Target pembagian awal adalah sekitar 70% untuk *training*, 15% untuk *validation*, dan 15% untuk *locked test*. Untuk target nominal 200 citra sumber, pembagian tersebut setara secara kasar dengan sekitar 140 citra *training*, 30 citra *validation*, dan 30 citra *test*. Jumlah akhir dapat sedikit disesuaikan untuk menjaga dukungan setiap kelas, tetapi data *test* tidak boleh digunakan untuk memilih metode atau parameter.
+
+Pembagian menggunakan *grouped split* pada tingkat sumber fisik atau sesi akuisisi. Jika beberapa citra berasal dari batch fisik, komposisi objek, atau sesi yang sangat berkaitan, seluruh citra tersebut akan ditempatkan pada bagian data yang sama. Dengan demikian, citra yang sangat berkaitan tidak tersebar antara *training*, *validation*, dan *test*.
+
+Secara konseptual, apabila \(\mathcal{G}_{train}\), \(\mathcal{G}_{val}\), dan \(\mathcal{G}_{test}\) menyatakan himpunan *source/acquisition group*, maka:
+
+\[
+\mathcal{G}_{train}\cap\mathcal{G}_{val}=\varnothing,
+\]
+
+\[
+\mathcal{G}_{train}\cap\mathcal{G}_{test}=\varnothing,
+\]
+
+\[
+\mathcal{G}_{val}\cap\mathcal{G}_{test}=\varnothing.
+\]
+
+Pemeriksaan *exact hash* juga akan digunakan untuk mencegah citra identik muncul pada bagian data yang berbeda. Semua turunan augmentasi dari suatu citra sumber hanya boleh berada pada bagian *training* yang sama dengan sumbernya dan tidak boleh masuk ke *validation* atau *test*.
+
+Data *validation* digunakan untuk *early stopping*, analisis faktor *preprocessing*, dan pemilihan konfigurasi kandidat. Data *test* tidak digunakan untuk pemilihan faktor *preprocessing*, *checkpoint*, ukuran patch, nilai \(\gamma\), maupun keputusan metodologis lainnya. *Locked test* hanya akan digunakan setelah konfigurasi final dan protokol evaluasi dibekukan sebagaimana dijelaskan pada Subbab 3.6.
+
+### 3.2.4 Augmentasi Data
+
+Augmentasi hanya diterapkan pada bagian *training* setelah pembagian citra sumber selesai. Data *validation* dan *test* mempertahankan citra asli tanpa augmentasi sintetis. Augmentasi merupakan bagian dari *runtime training pipeline* YOLO26 dan akan diterapkan dengan konfigurasi yang sama pada setiap kondisi yang dibandingkan dalam tahap eksperimen yang sama. Seluruh parameter augmentasi akan dikunci sebelum perbandingan dan direkam bersama konfigurasi *run*.
 
 *Preprocessing* frekuensi-angular tidak diperlakukan sebagai augmentasi karena operator tersebut bersifat deterministik, tidak menghasilkan label baru, dan tidak melakukan translasi, rotasi geometris, *cropping*, atau *warping* koordinat *bounding box*. Pada implementasi penelitian, augmentasi dan pembentukan tensor masukan dilakukan terlebih dahulu oleh *pipeline* data YOLO26. Tensor tersebut kemudian diproses oleh *frontend* frekuensi-angular sebelum memasuki jalur *forward* native YOLO26n. Frontend yang sama akan digunakan pada *training*, *validation*, dan *inference* untuk kondisi yang menggunakan *preprocessing*.
 
@@ -88,7 +131,7 @@ Augmentasi merupakan bagian dari *runtime training pipeline* YOLO26 dan akan dit
 
 YOLO26n digunakan sebagai model dasar pada penelitian ini. YOLO26 merupakan keluarga *real-time object detector* yang diperkenalkan oleh Jocher et al. (2026). Varian nano dipilih agar eksperimen menggunakan detector dengan kompleksitas relatif rendah sekaligus mempertahankan deteksi multi-skala pada P3, P4, dan P5.
 
-Model menggunakan bobot *pretrained* resmi `yolo26n.pt` sebagai sumber inisialisasi pada perbandingan utama. Karena dataset penelitian mempunyai 21 kelas, bagian prediksi kelas disesuaikan dengan jumlah kelas target. Pada final paired comparison, pembentukan detector target 21 kelas akan menggunakan *seed* inisialisasi yang sama untuk kondisi yang dipasangkan. Setelah transfer bobot *pretrained*, kesetaraan *persistent detector state* antar kondisi akan diverifikasi sebelum pelatihan dimulai sehingga satu-satunya perbedaan awal yang diizinkan adalah keberadaan atau konfigurasi *frontend preprocessing*.
+Model menggunakan bobot *pretrained* resmi `yolo26n.pt` sebagai sumber inisialisasi pada perbandingan utama. Setelah taksonomi dataset dibekukan, bagian prediksi kelas disesuaikan dengan jumlah kelas final \(C\), dengan target utama \(C=21\). Pada *final paired comparison*, pembentukan detector target akan menggunakan *seed* inisialisasi yang sama untuk kondisi yang dipasangkan. Setelah transfer bobot *pretrained*, kesetaraan *persistent detector state* antar kondisi akan diverifikasi sebelum pelatihan dimulai sehingga satu-satunya perbedaan awal yang diizinkan adalah keberadaan atau konfigurasi *frontend preprocessing*.
 
 Pada penelitian ini tidak dilakukan modifikasi terhadap *backbone*, *neck*, maupun *detection head* YOLO26n. *Preprocessing* yang dianalisis juga tidak mempunyai parameter trainable. Dengan demikian, analisis difokuskan pada perubahan representasi masukan dan bukan pada perubahan kapasitas arsitektur detector.
 
@@ -205,7 +248,7 @@ Konfigurasi referensi melakukan analisis tersebut secara independen pada kanal R
 Entropi distribusi angular dihitung sebagai:
 
 \[
-H_i^c=-\sum_k p_i^c(k)\log\left(\max(p_i^c(k),\varepsilon)\right).
+H_i^c=-\sum_k p_i^c(k)\log\left(\max(p_i^c(k),\varepsilon\right).
 \]
 
 Nilai tersebut digunakan untuk membentuk ambang *patch-dependent*:
@@ -434,9 +477,9 @@ Eksperimen dirancang dalam tiga tahap agar fungsi baseline, pemilihan desain, da
 
 ### 3.6.1 Tahap I — Baseline Development
 
-Tahap pertama akan membentuk baseline development YOLO26n pada dataset *training-validation* yang telah dikunci. Detector diinisialisasi dari bobot resmi `yolo26n.pt` dan dilatih menggunakan konfigurasi pada Subbab 3.7. Baseline development ini digunakan sebagai referensi pengembangan dan sebagai *common parent state* pada analisis faktor tahap berikutnya.
+Tahap pertama akan membentuk baseline development YOLO26n pada bagian *training-validation* dari dataset primer yang telah dibekukan. Detector diinisialisasi dari bobot resmi `yolo26n.pt` dan dilatih menggunakan konfigurasi pada Subbab 3.7. Baseline development ini digunakan sebagai referensi pengembangan dan sebagai *common parent state* pada analisis faktor tahap berikutnya.
 
-Sebelum pelatihan, operator dan dataset akan melalui pemeriksaan statis yang mencakup kesesuaian dimensi tensor, nilai *finite*, sifat deterministik operator, jumlah parameter trainable frontend, konsistensi konfigurasi, serta pencegahan akses terhadap *locked test*.
+Sebelum pelatihan, operator dan dataset akan melalui pemeriksaan statis yang mencakup kesesuaian dimensi tensor, nilai *finite*, sifat deterministik operator, jumlah parameter trainable frontend, konsistensi konfigurasi, dukungan kelas pada setiap split, serta pencegahan akses terhadap *locked test*.
 
 ### 3.6.2 Tahap II — Spectral Design-Factor Screening
 
@@ -472,7 +515,7 @@ untuk:
 s\in\{42,123,2026\}.
 \]
 
-Pada setiap *seed*, ketiga kondisi dimulai langsung dari sumber *pretrained* resmi yang sama. Pembentukan head target 21 kelas menggunakan *seed* inisialisasi yang sama dan *persistent detector state* akan diverifikasi identik sebelum pelatihan. Karena frontend tidak mempunyai parameter trainable, satu-satunya perbedaan awal antar kondisi adalah operasi terhadap tensor masukan.
+Pada setiap *seed*, ketiga kondisi dimulai langsung dari sumber *pretrained* resmi yang sama. Pembentukan head target \(C\) kelas menggunakan *seed* inisialisasi yang sama dan *persistent detector state* akan diverifikasi identik sebelum pelatihan. Karena frontend tidak mempunyai parameter trainable, satu-satunya perbedaan awal antar kondisi adalah operasi terhadap tensor masukan.
 
 Untuk metrik \(M\), perbedaan berpasangan per *seed* akan dihitung sebagai:
 
@@ -488,17 +531,18 @@ Nilai per *seed*, rerata, dan variasi antar *seed* akan dilaporkan sehingga kesi
 
 ### 3.6.4 Locked Final Evaluation
 
-Data *test* dipertahankan terkunci selama Tahap I dan Tahap II serta selama seluruh pemilihan parameter. Sebelum digunakan, *test set* harus memenuhi kriteria independensi terhadap data pengembangan, yaitu tidak mempunyai *parent identity* maupun *exact hash* yang overlap dengan *training-validation*.
+Data *test* dipertahankan terkunci selama Tahap I dan Tahap II serta selama seluruh pemilihan parameter. *Locked test* dibentuk dari citra sumber primer yang tidak digunakan pada pengembangan dan seluruh sumber/kelompok akuisisinya harus independen dari *training-validation*.
 
-Agar evaluasi per kelas mempunyai dukungan minimum, *locked test* hanya akan digunakan apabila memenuhi seluruh kriteria berikut:
+Dengan target nominal sekitar 200 citra primer dan proporsi sekitar 15% untuk *test*, bagian *locked test* direncanakan memuat sekitar 30 citra sumber independen. Sebelum digunakan untuk evaluasi akhir, *test set* harus memenuhi seluruh kriteria berikut:
 
-1. sekurang-kurangnya 50 citra independen;
-2. seluruh 21 kelas terdapat pada *test set*;
+1. sekurang-kurangnya sekitar 30 citra sumber independen;
+2. seluruh kelas pada taksonomi final \(C\) terdapat pada *test set*;
 3. setiap kelas mempunyai sekurang-kurangnya 10 instance;
-4. setiap kelas mempunyai sekurang-kurangnya 5 *parent group* independen; dan
-5. tidak terdapat anotasi terpilih yang gagal pada pemeriksaan geometri.
+4. setiap kelas muncul pada sekurang-kurangnya 5 citra sumber independen;
+5. tidak terdapat overlap *source/acquisition group* maupun *exact hash* dengan data pengembangan; dan
+6. anotasi yang digunakan lolos pemeriksaan geometri dan konsistensi label.
 
-Jika kriteria tersebut tidak terpenuhi, *test inference* tidak akan dipaksakan. Alternatif yang digunakan adalah *grouped cross-validation* atau penyusunan *external test set* baru dengan aturan independensi yang sama.
+Jika kriteria tersebut tidak terpenuhi, *test inference* tidak akan dipaksakan. Data primer tambahan akan dikumpulkan terlebih dahulu; apabila penambahan data tidak memungkinkan, alternatif yang telah ditetapkan adalah *grouped cross-validation* pada data pengembangan dengan keterbatasan tersebut dilaporkan secara eksplisit.
 
 Setelah \(C^*\), *checkpoint selection rule*, metrik, dan prosedur evaluasi dibekukan, *locked test* akan dibuka satu kali untuk mengevaluasi checkpoint final dari kondisi native, \(C_0\), dan \(C^*\). Tidak dilakukan perubahan metode atau *hyperparameter* berdasarkan hasil *locked test*.
 
@@ -554,7 +598,7 @@ yaitu rata-rata AP pada threshold IoU 0,50 sampai 0,95. Nilai \(mAP_{50}\) digun
 Selain metrik agregat, AP50–95 setiap kelas akan dilaporkan:
 
 \[
-AP_{c,50:95},\qquad c=1,\ldots,21.
+AP_{c,50:95},\qquad c=1,\ldots,C.
 \]
 
 Untuk menganalisis kelas sulit secara konsisten, himpunan tiga kelas dengan AP50–95 terendah ditentukan satu kali dari baseline development pada *validation*:
@@ -575,7 +619,7 @@ Selain itu, nilai kelas terendah dilaporkan sebagai *safety indicator*:
 AP_{worst}=\min_c AP_{c,50:95}.
 \]
 
-Metrik tail tidak digunakan sebagai pengganti \(mAP_{50:95}\), tetapi untuk menilai apakah perubahan agregat juga diikuti perubahan pada kelas yang sulit. Pada konfirmasi multi-seed, hasil akan dilaporkan per *seed* beserta rerata dan simpangan baku sampel. Apabila sumber daya memungkinkan, *paired grouped bootstrap* pada unit *parent group* akan digunakan sebagai analisis ketidakpastian tambahan pada evaluasi akhir.
+Metrik tail tidak digunakan sebagai pengganti \(mAP_{50:95}\), tetapi untuk menilai apakah perubahan agregat juga diikuti perubahan pada kelas yang sulit. Pada konfirmasi multi-seed, hasil akan dilaporkan per *seed* beserta rerata dan simpangan baku sampel. Apabila sumber daya memungkinkan, *paired grouped bootstrap* pada unit *source/acquisition group* akan digunakan sebagai analisis ketidakpastian tambahan pada evaluasi akhir.
 
 ## 3.9 Analisis Visual
 
