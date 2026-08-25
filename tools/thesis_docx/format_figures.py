@@ -9,7 +9,10 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt
 
-MAX_FIGURE_WIDTH = Cm(12.5)
+# Area teks tesis ≈ 14 cm. Diagram alur berbentuk portrait, sehingga
+# 8.5 cm lebih proporsional daripada memenuhi hampir seluruh lebar halaman.
+MAX_FIGURE_WIDTH = Cm(8.5)
+MAX_FIGURE_HEIGHT = Cm(13.5)
 
 
 def _paragraph_has_drawing(paragraph) -> bool:
@@ -37,18 +40,20 @@ def format_figures(input_path: Path, output_path: Path) -> None:
 
     resized = 0
     for shape in doc.inline_shapes:
-        if shape.width <= MAX_FIGURE_WIDTH:
+        width_scale = MAX_FIGURE_WIDTH / shape.width if shape.width > MAX_FIGURE_WIDTH else 1.0
+        height_scale = MAX_FIGURE_HEIGHT / shape.height if shape.height > MAX_FIGURE_HEIGHT else 1.0
+        scale = min(width_scale, height_scale)
+        if scale >= 1.0:
             continue
-        ratio = shape.height / shape.width
-        shape.width = MAX_FIGURE_WIDTH
-        shape.height = int(MAX_FIGURE_WIDTH * ratio)
+        shape.width = int(shape.width * scale)
+        shape.height = int(shape.height * scale)
         resized += 1
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(output_path)
     print(
         f"Formatted {figure_paragraphs} image paragraphs; "
-        f"resized {resized} figures wider than 12.5 cm."
+        f"resized {resized} figures to max 8.5 x 13.5 cm."
     )
 
 
