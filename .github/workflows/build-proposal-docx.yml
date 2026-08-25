@@ -85,10 +85,16 @@ jobs:
             --repo . \
             --output build/Proposal_Tesis_USU.docx
 
+      - name: Finalize thesis formatting
+        run: |
+          python tools/thesis_docx/finalize_format.py \
+            build/Proposal_Tesis_USU.docx
+
       - name: Structural smoke test
         run: |
           python - <<'PY'
           from docx import Document
+          from docx.oxml.ns import qn
 
           path = "build/Proposal_Tesis_USU.docx"
           doc = Document(path)
@@ -96,7 +102,50 @@ jobs:
           for required in ("BAB I", "BAB II", "BAB III", "DAFTAR PUSTAKA"):
               assert required in text, f"Missing required section: {required}"
           assert len(doc.sections) >= 5, f"Unexpected section count: {len(doc.sections)}"
-          print(f"OK: {len(doc.paragraphs)} paragraphs, {len(doc.tables)} tables, {len(doc.sections)} sections")
+
+          equation_tables = 0
+          regular_tables = 0
+          for index, table in enumerate(doc.tables):
+              is_equation = bool(
+                  list(table._tbl.iter(qn("m:oMath")))
+                  or list(table._tbl.iter(qn("m:oMathPara")))
+              )
+              borders = table._tbl.tblPr.find(qn("w:tblBorders"))
+              assert borders is not None, f"Table {index} has no explicit borders"
+              values = []
+              for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+                  element = borders.find(qn(f"w:{edge}"))
+                  assert element is not None, f"Table {index} missing border {edge}"
+                  values.append(element.get(qn("w:val")))
+              if is_equation:
+                  equation_tables += 1
+                  assert set(values) <= {"nil", "none"}, (
+                      f"Equation table {index} still has a visible border: {values}"
+                  )
+              else:
+                  regular_tables += 1
+                  assert set(values) == {"single"}, (
+                      f"Regular table {index} does not have full borders: {values}"
+                  )
+
+          math_pr = doc.settings._element.find(qn("m:mathPr"))
+          assert math_pr is not None, "Missing math defaults"
+          math_font = math_pr.find(qn("m:mathFont"))
+          assert math_font is not None
+          assert math_font.get(qn("m:val")) == "Times New Roman"
+
+          bad_fonts = []
+          for r_fonts in doc.element.iter(qn("w:rFonts")):
+              for attr in ("ascii", "hAnsi", "eastAsia", "cs"):
+                  if r_fonts.get(qn(f"w:{attr}")) != "Times New Roman":
+                      bad_fonts.append((attr, r_fonts.get(qn(f"w:{attr}"))))
+                      break
+          assert not bad_fonts, f"Non-Times New Roman direct font requests: {bad_fonts[:10]}"
+
+          print(
+              f"OK: {len(doc.paragraphs)} paragraphs, {regular_tables} regular tables, "
+              f"{equation_tables} equation tables, {len(doc.sections)} sections"
+          )
           PY
 
       - name: Render smoke test
