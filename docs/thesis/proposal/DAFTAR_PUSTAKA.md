@@ -20,6 +20,8 @@ Feng, C., Zhong, Y., Gao, Y., Scott, M. R., & Huang, W. (2021). TOOD: Task-align
 
 García, M., Candelo-Becerra, J. E., & Hoyos, F. E. (2019). Quality and defect inspection of green coffee beans using a computer vision system. *Applied Sciences, 9*(19), 4195. https://doi.org/10.3390/app9194195
 
+Gonzalez, R. C., & Woods, R. E. (2018). *Digital image processing* (4th ed., Global ed.). Pearson.
+
 Gope, H. L., Fukai, H., Ruhad, F. M., & Barman, S. (2024). Comparative analysis of YOLO models for green coffee bean detection and defect classification. *Scientific Reports, 14*, 28946. https://doi.org/10.1038/s41598-024-78598-7
 
 Hebert, H., & Alamsyah, D. (2026). Detection of coffee bean defects in Speciality Coffee Association standards using YOLOv12. *INOVTEK Polbeng - Seri Informatika, 11*(1), 85–95. https://doi.org/10.35314/47yqwd13
