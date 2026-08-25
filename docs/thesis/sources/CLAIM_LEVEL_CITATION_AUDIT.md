@@ -24,13 +24,15 @@ Primary PDF: *Real-Time Coffee Bean Defect Detection Based on SNI 01-2907-2008 S
 
 Locator yang sudah diverifikasi:
 - Abstract, p. 29.
-- Full-text audit sebelumnya juga memetakan Table VI p. 36, Table VIII p. 38, Conclusion/Future Work pp. 40–41; gunakan halaman ini hanya setelah direct page check bila klaim tabel spesifik akan ditulis.
+- Table VI, p. 36.
+- Table VIII, p. 38.
+- Conclusion/Future Work, pp. 40–41.
 
 Klaim yang aman:
 - studi mendeteksi **20 kategori cacat fisik** yang didefinisikan berdasarkan SNI 01-2907-2008;
 - dataset dilaporkan terdiri dari **107 citra dan 13.863 anotasi**;
 - analisis per kelas menunjukkan kelas morfologis yang jelas dapat jauh lebih mudah dideteksi daripada kelas yang ambigu secara visual;
-- abstract secara eksplisit menyebut *slight insect damage* lebih lemah dan mengaitkannya dengan **texture bias** dan **contrast ambiguity**.
+- *slight insect damage* dilaporkan lebih lemah dan pembahasan paper mengaitkan kesulitan tersebut dengan bias tekstur dan ambiguitas kontras.
 
 Batas klaim:
 - paper ini **tidak** membuktikan bahwa domain frekuensi adalah bottleneck cacat kopi;
@@ -61,13 +63,27 @@ Implikasi untuk BAB I saat ini: kalimat bahwa beberapa kategori memiliki AP jauh
 
 ### COF-05 — Jundullah et al. (2026)
 
-**Status: PENDING DIRECT PRIMARY CHECK**
+**Status: VERIFIED — PRIMARY PDF**
 
-Primary PDF sudah memiliki locator repository/File Library dan workbook full-text audit sebelumnya mencatat 2.000 citra, 3.983 object labels, 20 kelas, serta perbedaan antara kategori visual yang khas dan varian black/sour yang mirip. Namun pada pass audit ini direct excerpt dari PDF primer belum berhasil diekstrak.
+Primary PDF: *YOLOv8-Based Multi-Class Detection of Coffee Bean Defects and Contaminants for Automated Quality Grading*.
 
-Tindakan:
-- jangan memperkuat atau memperinci klaim Jundullah lebih jauh sampai direct PDF excerpt/page locator dibuka kembali;
-- kalimat formal yang bergantung pada interpretasi "kategori khas lebih mudah daripada kategori mirip" tetap harus dianggap **belum ditutup claim-level gate**.
+Locator yang sudah diverifikasi langsung:
+- Table 3, p. 319: metrik per kelas dan nilai rata-rata;
+- Fig. 6 dan Discussion, p. 320: confusion matrix serta pembahasan kategori yang mirip secara visual.
+
+Klaim yang aman:
+- paper mengevaluasi YOLOv8s pada kategori cacat/kontaminan multi-kelas dan melaporkan rata-rata precision 0,76, recall 0,75, dan mAP@0.5 0,75;
+- kelas dengan karakteristik visual yang khas dilaporkan lebih mudah dikenali daripada sejumlah kelas yang mirip secara visual;
+- paper secara eksplisit membahas kebingungan antara varian biji hitam serta kelas lain yang memiliki degradasi warna atau kerusakan struktural yang serupa;
+- Discussion mengaitkan kesulitan dengan perbedaan visual halus, kemiripan struktural/warna, ukuran objek kecil, dan kondisi pengambilan citra top-down;
+- pada konteks eksperimen mereka, penulis menyatakan tantangan utama lebih terkait dengan diskriminasi fine-grained dibanding lokalisasi objek.
+
+Batas klaim:
+- pernyataan tersebut berlaku pada dataset dan konfigurasi mereka; jangan ditulis sebagai hukum umum bahwa semua coffee-YOLO mempunyai bottleneck klasifikasi;
+- paper tidak membuktikan bahwa pemrosesan frekuensi akan menyelesaikan kebingungan kelas;
+- paper tidak membuktikan efektivitas preprocessing tesis.
+
+Implikasi untuk BAB I/BAB II: kalimat bahwa kategori dengan ciri visual khas cenderung lebih mudah dikenali daripada kelas yang saling mirip **didukung langsung** oleh primary PDF.
 
 ### COF-07 — Kesiman et al. (2023)
 
@@ -76,7 +92,8 @@ Tindakan:
 Primary PDF: *Benchmarking A New Dataset for Coffee Bean Defects Classification Based on SNI 01-2907-2008*.
 
 Locator yang sudah diverifikasi:
-- Table IV dan Conclusion, p. 79.
+- Table III–IV dan discussion, p. 79;
+- Conclusion, pp. 79–80.
 
 Klaim yang aman:
 - benchmark 17 kelas memberikan test accuracy **39,82% MobileNet** dan **53,35% InceptionResNetV2**;
@@ -145,24 +162,29 @@ Implikasi untuk BAB III: keberadaan subbab analisis visual dan penggunaan Eigen-
 
 Sumber resmi yang telah diverifikasi: Pearson official catalog.
 
-Metadata yang aman:
+Metadata convention yang dikunci untuk proposal:
 - Rafael C. Gonzalez dan Richard E. Woods;
-- *Digital Image Processing*, 4th edition;
+- *Digital Image Processing*, Global Edition, 4th edition;
 - Pearson;
-- official Pearson catalog menempatkan **Filtering in the Frequency Domain** sebagai Chapter 4 dan secara eksplisit mencantumkan *The Discrete Fourier Transform (DFT)* pada daftar isi.
+- tahun sitasi: **2018**;
+- ISBN-13: **9781292223049**.
 
-Catatan edisi:
-- halaman Pearson untuk cetakan/global edition menunjukkan metadata publikasi 2017/©2018, sementara digital-update listing yang lebih baru memiliki tanggal publikasi berbeda. Proposal harus memilih **satu edition/ISBN convention** dan tidak mencampur tahun dari listing berbeda.
+Dasar pemilihan convention:
+- Pearson official Global Edition page mengidentifikasi edisi ke-4 dan ©2018;
+- record bibliografis ISBN yang sama mengidentifikasi Pearson, 2018, 1024 halaman;
+- jangan mencampur metadata ini dengan digital-update/US listing yang memiliki ISBN atau tanggal publikasi berbeda.
+
+Cakupan sumber yang aman:
+- Chapter 4 adalah *Filtering in the Frequency Domain*;
+- buku tersebut merupakan sumber fundamental untuk transformasi Fourier/DFT pada citra dan pemrosesan domain frekuensi.
 
 Gate yang belum selesai:
-- formula DFT/iDFT dan definisi amplitude/phase yang saat ini tertulis di BAB II belum diberi page/section locator full text dari textbook;
-- sampai locator full text ditutup, jangan menganggap penambahan nama buku saja sudah menyelesaikan formula-level audit.
+- formula DFT/iDFT dan definisi amplitude/phase yang saat ini tertulis di BAB II belum mempunyai page-level locator dari salinan full text resmi yang tersimpan di project source;
+- karena itu, THEORY-01 dapat digunakan sebagai **bibliographic/theoretical anchor**, tetapi audit halaman formula tetap ditandai terbuka sampai halaman buku yang dipakai tersedia secara langsung.
 
-Tindakan berikut:
-1. tetapkan edition/ISBN yang benar-benar akan dipakai;
-2. cek halaman/subbagian DFT/iDFT dan amplitude/phase pada full text;
-3. baru tambahkan sitasi ke BAB II dan entri bibliography;
-4. setelah itu rerun citation crosswalk dan bidirectional audit.
+Larangan:
+- jangan mengklaim buku ini membuktikan AFAB-2 efektif;
+- jangan mengklaim buku ini membuktikan cacat kopi memiliki signature frekuensi tertentu.
 
 ---
 
@@ -301,17 +323,41 @@ Batas klaim terbesar:
 
 ---
 
-## E. Status snapshot claim-level gate
+## E. Evaluasi COCO / mAP50–95
+
+### EVAL-02 — Official COCOeval implementation
+
+**Status: VERIFIED — OFFICIAL COCO API SOURCE CODE**
+
+Sumber resmi: repository organisasi `cocodataset/cocoapi`, file `PythonAPI/pycocotools/cocoeval.py`.
+
+Locator yang diverifikasi langsung pada source code resmi:
+- komentar parameter evaluasi menyatakan `iouThrs - [.5:.05:.95] T=10 IoU thresholds`;
+- implementasi `setDetParams()` membentuk threshold IoU dari 0,50 sampai 0,95 dengan langkah 0,05;
+- evaluator mendukung `bbox` sebagai salah satu `iouType`.
+
+Klaim yang aman:
+- jika proposal menyebut evaluasi gaya COCO dengan AP yang dirata-ratakan pada IoU 0,50:0,05:0,95, definisi rentang threshold tersebut memiliki sumber implementasi resmi;
+- konfigurasi proposal tetap harus mengikuti evaluator yang benar-benar digunakan pada eksperimen final.
+
+Batas klaim:
+- jangan menyatakan semua output Ultralytics identik dengan seluruh konfigurasi COCOeval tanpa memeriksa implementasi evaluator yang dipakai;
+- `max_det=500` pada eksperimen tesis adalah konfigurasi penelitian dan tidak boleh disamakan dengan default `maxDets` COCOeval.
+
+---
+
+## F. Status snapshot claim-level gate
 
 ```text
-Bahy 2026       = VERIFIED primary PDF
-Hebert 2026     = VERIFIED primary PDF
-Kesiman 2023    = VERIFIED primary PDF
-Hu 2025         = VERIFIED primary publisher PDF
-Hong 2026 XAI   = VERIFIED primary publisher PDF
-Xu 2025 AFAB-2  = VERIFIED primary PDF sampai Eq. (9)–(13) + gamma sensitivity
-Jundullah 2026  = PENDING direct primary excerpt in current pass
-DFT/FFT textbook= official metadata verified; formula-level fulltext locator pending
+Bahy 2026        = VERIFIED primary PDF
+Hebert 2026      = VERIFIED primary PDF
+Jundullah 2026   = VERIFIED primary PDF, Table 3 p.319 + Discussion p.320
+Kesiman 2023     = VERIFIED primary PDF
+Hu 2025          = VERIFIED primary publisher PDF
+Hong 2026 XAI    = VERIFIED primary publisher PDF, §5.7 p.12
+Xu 2025 AFAB-2   = VERIFIED primary PDF sampai Eq. (9)–(13) + gamma sensitivity
+COCOeval         = VERIFIED official cocodataset/cocoapi implementation
+DFT/FFT textbook = official Pearson metadata locked; page-level formula locator masih pending
 ```
 
-Proposal **belum boleh disebut citation-ready penuh** sampai klaim sensitif yang masih pending ditutup atau kalimat yang bergantung padanya direvisi/dihapus.
+Proposal **belum disebut citation-ready penuh** karena halaman formula DFT/iDFT dan amplitude/phase dari textbook fundamental belum tersedia sebagai primary full-text project source. Semua claim-level gate lain yang tercantum pada snapshot di atas sudah ditutup.
