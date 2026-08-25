@@ -166,7 +166,142 @@ Tindakan berikut:
 
 ---
 
-## D. Status snapshot claim-level gate
+## D. Parent mechanism frekuensi-angular — Xu et al. (2025)
+
+### FG-01 — LFDet / AFAB / AFAB-2
+
+**Status: VERIFIED — PRIMARY PUBLISHER PDF, FORMULA-LEVEL**
+
+Primary paper: X. Xu, Z. Chen, Y. Hu, & G. Wang, *More Signals Matter to Detection: Integrating Language Knowledge and Frequency Representations for Boosting Fine-Grained Aircraft Recognition*, *Neural Networks*, 187 (2025), 107402, DOI `10.1016/j.neunet.2025.107402`.
+
+Locator primer yang sudah dibuka langsung:
+- §3.3 **Adaptive Frequency Augmentation Branch (AFAB)**, pp. 4–6;
+- §3.3.1 **Patch-wise DFT**, p. 5;
+- §3.3.3, pp. 5–6, Eq. (9)–(13);
+- §4.4.1 dan Table 6, p. 13, untuk pemisahan AFAB-1 dan AFAB-2;
+- Table 8 dan pembahasannya, p. 15, untuk sensitivitas `γ`.
+
+#### D.1 Patch-wise DFT
+
+Klaim sumber yang terverifikasi:
+- Xu et al. membagi citra menggunakan sliding window menjadi patch berukuran `m × m`;
+- paper menetapkan `m = 32` karena maximum downsampling rate feature space pada rancangan mereka adalah 32;
+- DFT dilakukan pada setiap patch dan patch-wise iDFT digunakan untuk kembali ke domain spasial;
+- paper menyatakan menggunakan **large overlap** untuk mengurangi diskontinuitas akibat pseudo high-frequency components pada tepi patch.
+
+Batas klaim:
+- paper **tidak memberikan angka 50% overlap** pada teks primer yang telah diverifikasi;
+- karena itu, overlap 50% / stride 16 pada proposal adalah **keputusan implementasi penelitian**, bukan parameter yang boleh diatributkan kepada Xu et al.;
+- `m=32` boleh disebut mengikuti reference setting Xu, tetapi tidak boleh dinyatakan optimal untuk citra kopi.
+
+#### D.2 Distribusi angular dan Eq. (9)
+
+Xu et al. mendefinisikan angular density distribution:
+
+\[
+D_i^P(\theta)=\sum_r A_i^P(r\cos\theta,r\sin\theta),
+\qquad \theta\in[0,360^\circ).
+\]
+
+Paper menginterpretasikan density yang lebih tinggi sebagai respons arah yang memiliki struktur edge/texture lebih nyata pada data mereka, sedangkan density rendah berkaitan dengan arah yang strukturnya lebih lemah dan lebih mungkin memuat gangguan.
+
+Batas klaim:
+- domain kontinu `θ ∈ [0,360°)` pada paper **bukan sama dengan** keputusan implementasi memakai 360 discrete bins;
+- 360 bin adalah diskretisasi penelitian/repository dan harus ditulis sebagai keputusan implementasi;
+- interpretasi edge/texture tersebut berasal dari data fine-grained aircraft remote sensing dan tidak boleh dipindahkan sebagai karakteristik fisik pasti dari cacat kopi.
+
+#### D.3 Entropi, adaptive threshold, dan Eq. (10)–(13)
+
+Xu et al. secara eksplisit menuliskan:
+
+\[
+E^P_{i,A}=-\sum_\theta D_i^{*P}(\theta)\log D_i^{*P}(\theta),
+\]
+
+\[
+t_i^P=\frac{\gamma}{1+\exp(-E^P_{i,A})},
+\]
+
+kemudian menekan arah dengan normalized angular density di bawah/equal threshold dan mempertahankan normalized density untuk arah lainnya. Adjusted amplitude dibentuk melalui perkalian amplitude dengan angular density yang telah diproses, lalu direkonstruksi menggunakan **adjusted amplitude + original phase + iDFT**.
+
+Dengan demikian, komponen berikut memang memiliki parent mechanism langsung dari Xu:
+- normalisasi angular density menjadi distribusi;
+- information entropy;
+- logistic adaptive threshold dengan `γ`;
+- hard suppression untuk normalized density yang tidak melewati threshold;
+- pembobotan amplitude berdasarkan respons angular;
+- mempertahankan fase asli saat rekonstruksi.
+
+Batas klaim implementasi:
+- penambahan `ε` untuk numerical stability adalah detail implementasi penelitian;
+- indeks kanal `c` dan keputusan memproses RGB per-channel secara independen adalah detail implementasi penelitian kecuali ditemukan pernyataan eksplisit lain pada sumber primer;
+- operasi implementasi yang mengalikan complex spectrum dengan bobot real dapat dijelaskan sebagai instansiasi yang mempertahankan fase, tetapi teks proposal sebaiknya mengikuti formulasi sumber: **adjusted amplitude dipasangkan dengan original phase**.
+
+#### D.4 Nilai gamma
+
+Xu et al. menguji `γ = 0, 0.05, 0.1, 0.15, 0.2` pada Table 8 dan melaporkan `γ = 0.1` sebagai nilai terbaik pada tiga benchmark mereka. Paper kemudian menyatakan menggunakan `γ = 0.1` pada seluruh eksperimen.
+
+Implikasi proposal:
+- `γ = 0.10` boleh digunakan sebagai **reference initialization** berdasarkan Xu et al.;
+- nilai tersebut **tidak boleh diasumsikan optimal untuk kopi**;
+- proposal sudah tepat bila memasukkan `γ` ke planned sensitivity analysis.
+
+#### D.5 AFAB-1 tidak sama dengan AFAB-2
+
+Xu et al. memisahkan:
+- AFAB-1 = *patch-specific adaptive high-pass filter*;
+- AFAB-2 = *patch-specific chaotic amplitude suppressor* berbasis distribusi angular.
+
+Table 6/7 memperlakukan keduanya sebagai subkomponen terpisah. Karena proposal saat ini berfokus pada mekanisme angular AFAB-2, reference configuration **tidak boleh ditulis seolah menggunakan radial/high-pass AFAB-1**.
+
+#### D.6 Rekonstruksi dan gating: bagian sumber vs adaptasi tesis
+
+Xu et al. menyatakan raw spatial domain dan recovered spatial domain difusikan melalui **gating mechanism**, dengan recovered space berfungsi mengatur information flow pada raw spatial domain.
+
+Namun, dari passage primer yang sudah diekstrak, exact thesis implementation berikut belum boleh diklaim sebagai persamaan Xu:
+
+\[
+G(I)=\operatorname{MinMax}(R_{FA}(I)),
+\]
+
+\[
+I'=I+I\odot G(I).
+\]
+
+Statusnya:
+- overlap fold/average reconstruction = implementasi penelitian;
+- min-max normalization = implementasi penelitian;
+- exact residual gate `I + I⊙G(I)` = instansiasi/adaptasi penelitian;
+- parameter-free frontend ≠ compute-free; biaya FFT/iFFT tetap harus dievaluasi.
+
+### Ringkasan provenance yang harus konsisten dengan BAB III
+
+| Elemen | Status |
+|---|---|
+| Patch-wise DFT/iDFT | Sumber Xu et al. |
+| `m=32` | Reference setting Xu; dipakai sebagai nilai awal, bukan optimum kopi |
+| 50% overlap / stride 16 | Adaptasi implementasi penelitian |
+| Angular density `θ∈[0,360°)` | Sumber Xu, Eq. (9) |
+| 360 discrete bins | Diskretisasi implementasi penelitian |
+| Entropy + logistic threshold | Sumber Xu, Eq. (10)–(11) |
+| Hard angular suppression | Sumber Xu, Eq. (12) |
+| Amplitude weighting | Sumber Xu, Eq. (13) |
+| Original phase + iDFT | Sumber Xu |
+| `γ=0.1` | Reference setting Xu; harus diuji sensitivitas pada kopi |
+| `ε` numerical stabilization | Implementasi penelitian |
+| Per-channel RGB processing | Implementasi penelitian |
+| Fold/average overlap reconstruction | Implementasi penelitian |
+| Min-max normalization | Implementasi penelitian |
+| `I'=I+I⊙G(I)` | Adaptasi gating penelitian |
+| AFAB-1 radial/high-pass | **Tidak digunakan** dalam reference angular-only preprocessing tesis |
+
+Batas klaim terbesar:
+- Xu et al. adalah **parent method pada aircraft remote sensing**, bukan validasi transfer ke biji kopi;
+- proposal harus tetap menyatakan efektivitas pada coffee-YOLO sebagai pertanyaan empiris.
+
+---
+
+## E. Status snapshot claim-level gate
 
 ```text
 Bahy 2026       = VERIFIED primary PDF
@@ -174,6 +309,7 @@ Hebert 2026     = VERIFIED primary PDF
 Kesiman 2023    = VERIFIED primary PDF
 Hu 2025         = VERIFIED primary publisher PDF
 Hong 2026 XAI   = VERIFIED primary publisher PDF
+Xu 2025 AFAB-2  = VERIFIED primary PDF sampai Eq. (9)–(13) + gamma sensitivity
 Jundullah 2026  = PENDING direct primary excerpt in current pass
 DFT/FFT textbook= official metadata verified; formula-level fulltext locator pending
 ```
