@@ -57,7 +57,7 @@ dengan \(I\) merupakan citra masukan, \(\mathcal{P}_{FA}\) merupakan fungsi prap
 
 ### 3.2.1 Sumber, Target Jumlah, dan Karakteristik Dataset Primer
 
-Penelitian direncanakan menggunakan **dataset primer** yang dikumpulkan secara langsung untuk tugas deteksi objek multikelas pada biji kopi hijau. Daftar kelas awal menargetkan 20 kategori cacat fisik yang mengacu pada SNI 2907:2008 ditambah satu kelas biji normal, sehingga jumlah kelas target awal adalah:
+Penelitian direncanakan menggunakan **dataset primer** yang dikumpulkan secara langsung untuk tugas deteksi objek multikelas pada biji kopi hijau. Daftar kelas awal menargetkan 20 kategori cacat fisik dan benda asing yang digunakan dalam penilaian SNI 2907:2008 ditambah satu kelas biji normal, sehingga jumlah kelas target awal adalah:
 
 \[
 C_{target}=21.
@@ -73,7 +73,7 @@ Setiap citra direncanakan memuat sekitar 30–50 objek yang disusun dalam satu l
 N_{box}\approx 6.000-10.000.
 \]
 
-Untuk setiap kelas yang dipertahankan, ditargetkan tersedia sekurang-kurangnya sekitar 200 objek asli per kelas, dengan sasaran ideal sekitar 300–500 objek per kelas. Selain itu, setiap kelas diupayakan muncul pada sedikitnya 15–20 citra sumber yang berbeda.
+Untuk setiap kelas yang dipertahankan, ditargetkan tersedia sekurang-kurangnya sekitar 200 objek asli per kelas, dengan sasaran ideal sekitar 300–500 objek per kelas. Selain jumlah objek, setiap kelas diupayakan muncul pada sedikitnya sekitar 30 citra sumber yang berbeda. Target kemunculan pada beberapa citra sumber diperlukan agar objek dari suatu kelas tidak terkonsentrasi hanya pada sedikit foto dan agar kelas tersebut dapat diwakili pada data pelatihan, validasi, dan pengujian.
 
 Angka tersebut merupakan target perencanaan pengumpulan, bukan jumlah data yang diklaim telah tersedia pada saat proposal disusun. Sebagai pembanding dari penelitian terdahulu, Bahy dan Rifai (2026) melaporkan 107 citra dengan 13.863 anotasi untuk deteksi 20 kelas SNI, sedangkan Tarekegn dan Debelee (2025) menggunakan 562 citra dengan 19.228 objek untuk 13 kelas cacat dan satu kelas normal. Hal ini menunjukkan bahwa pada tugas deteksi objek, jumlah citra perlu dipertimbangkan bersama jumlah objek yang terdapat di dalam setiap citra.
 
@@ -87,7 +87,7 @@ Setiap objek akan diberi kotak pembatas (*bounding box*) dan label kelas. Defini
 
 Sebelum data dibagi menjadi pelatihan, validasi, dan pengujian, jumlah objek dan jumlah citra sumber pada setiap kelas akan diperiksa. Langkah ini diperlukan karena penelitian terdahulu berbasis SNI menunjukkan bahwa beberapa kategori cacat dapat sangat langka atau sulit dibedakan secara konsisten hanya dari citra RGB.
 
-Suatu kelas akan dipertahankan sebagai kelas evaluasi utama apabila jumlah datanya memadai. Batas awal yang direncanakan adalah sekitar 200 objek asli dan kemunculan pada sedikitnya 15 citra sumber yang berbeda. Kekurangan data pada suatu kelas tidak akan ditutupi hanya dengan memperbanyak hasil augmentasi dari sejumlah kecil citra asli. Jika suatu kelas belum memenuhi batas tersebut, pengumpulan data akan ditambah atau susunan kelas akan disesuaikan sebelum pelatihan utama dilakukan.
+Suatu kelas akan dipertahankan sebagai kelas evaluasi utama apabila jumlah datanya memadai. Batas awal yang direncanakan adalah sekitar 200 objek asli dan kemunculan pada sedikitnya sekitar 30 citra sumber yang berbeda. Kekurangan data pada suatu kelas tidak akan ditutupi hanya dengan memperbanyak hasil augmentasi dari sejumlah kecil citra asli. Jika suatu kelas belum memenuhi batas tersebut, pengumpulan data akan ditambah atau susunan kelas akan disesuaikan sebelum pelatihan utama dilakukan.
 
 Setelah pemeriksaan selesai, jumlah kelas akhir dinotasikan sebagai:
 
@@ -101,7 +101,7 @@ dengan target utama tetap \(C=21\) apabila seluruh kelas memenuhi jumlah data mi
 
 Pembagian data dilakukan pada citra sumber asli **sebelum augmentasi**. Proporsi awal yang direncanakan adalah sekitar 70% untuk pelatihan, 15% untuk validasi, dan 15% untuk pengujian. Dengan target sekitar 200 citra sumber, proporsi tersebut setara secara kasar dengan sekitar 140 citra pelatihan, 30 citra validasi, dan 30 citra pengujian.
 
-Pembagian dilakukan berdasarkan kelompok sumber atau sesi pengambilan citra. Citra yang berasal dari sumber, sesi, atau susunan objek yang sangat berkaitan akan ditempatkan pada bagian data yang sama agar tidak terjadi kebocoran informasi antara pelatihan, validasi, dan pengujian.
+Pembagian dilakukan berdasarkan kelompok sumber atau sesi pengambilan citra. Citra yang berasal dari sumber, sesi, atau susunan objek yang sangat berkaitan akan ditempatkan pada bagian data yang sama agar tidak terjadi kebocoran informasi antara pelatihan, validasi, dan pengujian. Selain menjaga pemisahan kelompok, pembagian juga mempertimbangkan distribusi kelas. Untuk setiap kelas akhir, diupayakan tersedia sekurang-kurangnya lima citra sumber pada data validasi dan lima citra sumber pada data pengujian, sedangkan bagian lainnya digunakan pada data pelatihan. Proporsi 70:15:15 diperlakukan sebagai sasaran keseluruhan dan dapat bergeser sedikit apabila diperlukan untuk memenuhi keterwakilan kelas tanpa melanggar pemisahan kelompok sumber.
 
 Secara umum, kelompok sumber pada ketiga bagian data harus saling terpisah:
 
@@ -120,7 +120,7 @@ Data validasi digunakan untuk penghentian dini, pengujian variasi prapemrosesan,
 
 Augmentasi hanya diterapkan pada bagian pelatihan setelah pembagian citra sumber selesai. Data validasi dan pengujian tetap menggunakan citra asli tanpa augmentasi sintetis. Konfigurasi augmentasi akan dibuat sama untuk seluruh kondisi YOLO26n yang dibandingkan.
 
-Prapemrosesan frekuensi-angular tidak diperlakukan sebagai augmentasi karena tidak menghasilkan label baru dan tidak mengubah geometri kotak pembatas. Pada pelatihan, augmentasi YOLO dilakukan terlebih dahulu, kemudian citra masukan diproses oleh prapemrosesan frekuensi-angular sebelum diteruskan ke YOLO26n. Urutan yang sama dipertahankan pada seluruh kondisi yang menggunakan prapemrosesan tersebut.
+CLAHE dan prapemrosesan frekuensi-angular tidak diperlakukan sebagai augmentasi karena keduanya merupakan perlakuan terhadap citra masukan pada kondisi eksperimen tertentu. Pada pelatihan, augmentasi YOLO dilakukan terlebih dahulu. Setelah tensor citra masukan terbentuk, kondisi CLAHE maupun kondisi frekuensi-angular menerapkan prapemrosesan masing-masing sebelum citra diteruskan ke YOLO26n. Posisi prapemrosesan tersebut dibuat sama agar perbandingan tidak dipengaruhi oleh perbedaan urutan terhadap augmentasi. Kedua prapemrosesan tidak mengubah geometri kotak pembatas.
 
 ## 3.3 Model Dasar YOLO26n
 
@@ -143,7 +143,7 @@ Empat kondisi utama direncanakan sebagai berikut:
 
 CLAHE (*Contrast Limited Adaptive Histogram Equalization*) digunakan sebagai pembanding peningkatan citra konvensional. Tujuannya adalah menilai apakah perubahan kinerja yang diperoleh dari prapemrosesan frekuensi-angular juga dapat dicapai hanya dengan peningkatan kontras lokal. CLAHE akan diterapkan pada kanal luminansi dan hasilnya dikembalikan ke citra RGB sehingga geometri citra tetap sama.
 
-Agar CLAHE tidak menjadi metode kedua yang ikut dituning secara terpisah, hanya satu konfigurasi tetap yang digunakan, yaitu *clip limit* 2,0 dan ukuran kisi 8 × 8. Nilai tersebut ditetapkan sebelum eksperimen pembanding dan tidak akan dipilih berdasarkan hasil data uji.
+Agar CLAHE tidak menjadi metode kedua yang ikut dituning secara terpisah, hanya satu konfigurasi tetap yang digunakan, yaitu *clip limit* 2,0 dan ukuran kisi 8 × 8. Nilai tersebut ditetapkan sebelum eksperimen pembanding sebagai konfigurasi kontrol dan tidak dianggap sebagai nilai optimum untuk citra biji kopi. Konfigurasi CLAHE tidak akan diubah berdasarkan hasil data uji.
 
 Wavelet tidak dimasukkan sebagai pembanding utama. Meskipun relevan sebagai pendekatan transformasi multiskala, penerapan wavelet memerlukan keputusan tambahan mengenai jenis wavelet, tingkat dekomposisi, subband, ambang, dan rekonstruksi. Penambahan seluruh keputusan tersebut dapat memperluas ruang penelitian di luar fokus utama. Jika diperlukan pada tahap evaluasi akademik, satu konfigurasi wavelet tetap dapat ditambahkan sebagai analisis tambahan tanpa pencarian parameter yang luas.
 
@@ -422,7 +422,7 @@ Bobot spektral dihitung dari panduan luminansi tersebut dan digunakan bersama pa
 
 ### 3.5.6 Analisis Sensitivitas Terbatas
 
-Setelah variasi utama dianalisis, analisis sensitivitas terbatas dapat dilakukan terhadap parameter yang paling relevan, terutama ukuran patch \(m\) dan koefisien ambang \(\gamma\). Nilai kandidat akan ditetapkan sebelum eksperimen sensitivitas dilakukan dan hanya dipilih menggunakan data pengembangan. Data uji tidak digunakan untuk memilih parameter tersebut.
+Setelah variasi utama dianalisis, analisis sensitivitas terbatas dapat dilakukan terhadap parameter yang paling relevan, terutama ukuran patch \(m\) dan koefisien ambang \(\gamma\). Nilai kandidat akan ditetapkan sebelum eksperimen sensitivitas dilakukan dan hanya dipilih menggunakan data pengembangan. Data uji tidak digunakan untuk memilih parameter tersebut. Apabila analisis sensitivitas menghasilkan perubahan parameter yang digunakan pada konfigurasi kandidat, keputusan tersebut harus ditetapkan sebelum pengujian ulang dengan beberapa *seed* dan sebelum data uji dibuka.
 
 ## 3.6 Rancangan Eksperimen
 
@@ -444,7 +444,13 @@ C_0\rightarrow C_1\rightarrow\cdots\rightarrow C_5
 
 menunjukkan perubahan desain prapemrosesan, bukan kelanjutan pelatihan dari konfigurasi sebelumnya.
 
-Seluruh konfigurasi pada tahap ini menggunakan *seed* pengembangan yang sama. Data validasi digunakan untuk membandingkan perubahan antar tahap dan memilih konfigurasi kandidat \(C^*\). Hasil tahap ini digunakan untuk memilih konfigurasi yang akan diuji lebih lanjut dan belum digunakan sebagai dasar kesimpulan akhir penelitian.
+Seluruh konfigurasi pada tahap ini menggunakan *seed* pengembangan yang sama. Data validasi digunakan untuk membandingkan perubahan antar tahap dan memilih konfigurasi kandidat \(C^*\). Karena metrik utama penelitian adalah \(mAP_{50:95}\), aturan utama pemilihan kandidat ditetapkan sebagai:
+
+\[
+C^*=\arg\max_{C_j,\,j\in\{0,\ldots,5\}} mAP_{50:95}^{val}(C_j).
+\]
+
+Jika dua konfigurasi memiliki nilai \(mAP_{50:95}\) yang sama pada ketelitian pelaporan yang digunakan, konfigurasi dengan rerata AP lebih tinggi pada kelompok tiga kelas sulit \(\mathcal{H}\) yang ditetapkan dari model acuan dipilih. Jika masih sama, konfigurasi dengan waktu pemrosesan total yang lebih rendah dipilih. Aturan ini ditetapkan sebelum evaluasi akhir agar pemilihan \(C^*\) tidak berubah setelah melihat data uji. Hasil tahap ini digunakan untuk memilih konfigurasi yang akan diuji lebih lanjut dan belum digunakan sebagai dasar kesimpulan akhir penelitian.
 
 ### 3.6.3 Tahap III — Pengujian Ulang dengan Beberapa Seed
 
@@ -463,7 +469,7 @@ Nilai *seed* yang digunakan adalah:
 s\in\{42,123,2026\}.
 \]
 
-Pada setiap *seed*, seluruh kondisi menggunakan sumber bobot pralatih dan kondisi awal model yang sama. Dengan demikian, perbedaan utama yang dibandingkan adalah perlakuan terhadap citra masukan.
+Pada setiap *seed*, seluruh kondisi menggunakan sumber bobot pralatih dan kondisi awal model yang sama. Dengan demikian, perbedaan utama yang dibandingkan adalah perlakuan terhadap citra masukan. Konfigurasi \(C^*\) yang digunakan pada tahap ini telah ditetapkan dari Tahap II dan tidak diubah berdasarkan hasil pengujian ulang maupun data uji akhir.
 
 Untuk suatu metrik \(M\), perubahan terhadap model acuan dihitung secara umum sebagai:
 
@@ -483,7 +489,7 @@ Analisis ini bertujuan melihat apakah arah pengaruh prapemrosesan juga muncul pa
 
 Data uji akhir disisihkan sejak awal dan tidak digunakan selama pengembangan metode maupun pemilihan parameter. Dengan target sekitar 200 citra primer dan proporsi sekitar 15% untuk pengujian, data uji direncanakan memuat sekitar 30 citra sumber.
 
-Sebelum digunakan, data uji harus memenuhi beberapa syarat: seluruh kelas akhir tersedia, setiap kelas memiliki sedikitnya 10 objek dan muncul pada sedikitnya 5 citra sumber, tidak terdapat citra atau kelompok sumber yang sama dengan data pengembangan, serta seluruh anotasi telah lolos pemeriksaan.
+Sebelum digunakan, data uji harus memenuhi beberapa syarat: seluruh kelas akhir tersedia, setiap kelas memiliki sedikitnya 10 objek dan muncul pada sedikitnya 5 citra sumber, tidak terdapat citra atau kelompok sumber yang sama dengan data pengembangan, serta seluruh anotasi telah lolos pemeriksaan. Keterwakilan tersebut diperiksa pada saat pembagian data, sehingga kekurangan dukungan suatu kelas pada data uji diketahui sebelum eksperimen utama dimulai dan tanpa menggunakan hasil prediksi model.
 
 Jika syarat tersebut belum terpenuhi, pengumpulan data primer akan ditambah terlebih dahulu. Jika penambahan data tidak memungkinkan, evaluasi alternatif berupa validasi silang berbasis kelompok dapat digunakan dengan keterbatasannya dilaporkan secara jelas.
 
