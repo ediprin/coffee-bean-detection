@@ -7,33 +7,11 @@ Penelitian ini menggunakan pendekatan eksperimen komparatif untuk menganalisis p
 
 Secara umum, penelitian meliputi pengumpulan dataset primer, anotasi dan pembagian data, pembentukan model acuan YOLO26n, perbandingan dengan CLAHE sebagai metode peningkatan kontras konvensional, penerapan konfigurasi referensi prapemrosesan frekuensi-angular, pengujian beberapa variasi desain prapemrosesan, pemilihan konfigurasi, pengujian ulang dengan beberapa *seed*, evaluasi pada data uji akhir, serta analisis hasil dan efisiensi komputasi. Evaluasi pada arsitektur deteksi lain ditempatkan sebagai analisis tambahan apabila sumber daya penelitian memungkinkan.
 
-Alur penelitian dirangkum sebagai berikut:
+Alur penelitian dirangkum pada Gambar 3.1.
 
-```text
-Pengumpulan dataset primer biji kopi
-        ↓
-Anotasi dan pemeriksaan kecukupan data per kelas
-        ↓
-Pembagian data pelatihan, validasi, dan pengujian
-        ↓
-Pembentukan model acuan YOLO26n
-        ↓
-Perbandingan dengan CLAHE
-        ↓
-Konfigurasi referensi prapemrosesan frekuensi-angular
-        ↓
-Pengujian variasi desain prapemrosesan
-        ↓
-Pemilihan konfigurasi C*
-        ↓
-Pengujian ulang dengan beberapa seed
-        ↓
-Evaluasi akhir pada data uji
-        ↓
-Analisis per kelas, kesalahan, visual, dan efisiensi
-        ↓
-Kesimpulan
-```
+![Alur penelitian](docs/thesis/proposal/assets/alur_penelitian.svg){width=12.5cm}
+
+Gambar 3.1 Alur Penelitian
 
 Perbandingan utama dapat dinyatakan secara konseptual sebagai:
 
