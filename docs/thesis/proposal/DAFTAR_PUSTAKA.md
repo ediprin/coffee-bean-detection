@@ -12,7 +12,7 @@ Chen, L., Gu, L., Li, L., Yan, C., & Fu, Y. (2025). Frequency dynamic convolutio
 
 Chen, S., Li, Y., Zhang, Y., Yang, Y., & Zhang, X. (2024). Soft X-ray image recognition and classification of maize seed cracks based on image enhancement and optimized YOLOv8 model. *Computers and Electronics in Agriculture, 216*, 108475. https://doi.org/10.1016/j.compag.2023.108475
 
-Chi, L., Jiang, B., & Mu, Y. (2020). Fast Fourier convolution. *Advances in Neural Information Processing Systems, 33*.
+Chi, L., Jiang, B., & Mu, Y. (2020). Fast Fourier convolution. *Advances in Neural Information Processing Systems, 33*, 4479–4488.
 
 de Oliveira, E. M., Leme, D. S., Barbosa, B. H. G., Rodarte, M. P., & Pereira, R. G. F. A. (2016). A computer vision system for coffee beans classification based on computational intelligence techniques. *Journal of Food Engineering, 171*, 22–27. https://doi.org/10.1016/j.jfoodeng.2015.10.009
 
@@ -58,7 +58,7 @@ Samudra, M. N., & Rachmawati, E. (2025). Deep learning-based defect detection in
 
 Selvaraju, R. R., Cogswell, M., Das, A., Vedantam, R., Parikh, D., & Batra, D. (2017). Grad-CAM: Visual explanations from deep networks via gradient-based localization. In *Proceedings of the IEEE International Conference on Computer Vision* (pp. 618–626). https://doi.org/10.1109/ICCV.2017.74
 
-Syauqi, F., Oktiana, M., Muchtar, K., Bahri, A., & Razali, S. (2025). Edge AI-based defect detection in white pepper (*Piper nigrum* L.) using CLAHE-based pre-processing and YOLO. In *2025 IEEE International Conference on Networking, Intelligent Systems, and IoT (ICONS-IoT)*. IEEE. https://doi.org/10.1109/ICONS-IOT65216.2025.11211242
+Syauqi, F., Oktiana, M., Muchtar, K., Bahri, A., & Razali, S. (2025). Edge AI-based defect detection in white pepper (*Piper nigrum* L.) using CLAHE-based pre-processing and YOLO. In *2025 IEEE International Conference on Networking, Intelligent Systems, and IoT (ICONS-IoT)* (pp. 18–23). IEEE. https://doi.org/10.1109/ICONS-IOT65216.2025.11211242
 
 Wu, Y., Chen, Y., Yuan, L., Liu, Z., Wang, L., Li, H., & Fu, Y. (2020). Rethinking classification and localization for object detection. In *Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition* (pp. 10186–10195).
 
