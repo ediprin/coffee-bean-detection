@@ -86,6 +86,11 @@ jobs:
             --repo . \
             --output build/Proposal_Tesis_USU.docx
 
+      - name: Set exact cover identity
+        run: |
+          python tools/thesis_docx/fix_cover_identity.py \
+            build/Proposal_Tesis_USU.docx
+
       - name: Finalize thesis formatting
         run: |
           python tools/thesis_docx/finalize_format.py \
@@ -148,6 +153,23 @@ jobs:
           path = "build/Proposal_Tesis_USU.docx"
           doc = Document(path)
           text = "\n".join(paragraph.text for paragraph in doc.paragraphs)
+
+          # Exact institutional block requested for the cover.
+          cover_lines = [
+              "PROGRAM STUDI S2 TEKNIK INFORMATIKA",
+              "FAKULTAS ILMU KOMPUTER DAN TEKNOLOGI INFORMASI",
+              "UNIVERSITAS SUMATERA UTARA",
+              "MEDAN",
+              "2026",
+          ]
+          toc_index = next(i for i, p in enumerate(doc.paragraphs) if p.text.strip() == "DAFTAR ISI")
+          front_texts = [p.text.strip() for p in doc.paragraphs[:toc_index]]
+          start = front_texts.index(cover_lines[0])
+          assert front_texts[start:start + len(cover_lines)] == cover_lines, (
+              "Cover institutional block is not exact: "
+              f"{front_texts[start:start + len(cover_lines)]}"
+          )
+          assert "SEKOLAH PASCASARJANA" not in front_texts
 
           # Required document order must remain intact.
           required_order = ["BAB I", "BAB II", "BAB III", "DAFTAR PUSTAKA"]
@@ -243,7 +265,7 @@ jobs:
           assert not bad_fonts, f"Non-Times New Roman font requests: {bad_fonts[:10]}"
 
           print(
-              f"OK: chapter order preserved; {len(static_toc)} visible TOC entries, "
+              f"OK: exact cover identity; chapter order preserved; {len(static_toc)} visible TOC entries, "
               f"{regular_tables} regular tables, {equation_tables} equation tables, "
               f"{len(doc.inline_shapes)} images, {len(doc.sections)} sections"
           )
