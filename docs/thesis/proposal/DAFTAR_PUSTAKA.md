@@ -44,8 +44,6 @@ Li, H., Yi, Z., Wang, Z., Wang, Y., Ge, L., Cao, W., Mei, L., Yang, W., & Sun, Q
 
 Li, Y., Li, X., & Lin, M. (2025). FE-YOLO: Fourier enhancement YOLO for end-to-end object detection in low-light conditions. *Digital Signal Processing, 166*, 105355. https://doi.org/10.1016/j.dsp.2025.105355
 
-Lin, T.-Y., Maire, M., Belongie, S., Hays, J., Perona, P., Ramanan, D., Dollár, P., & Zitnick, C. L. (2014). Microsoft COCO: Common objects in context. In *Computer vision—ECCV 2014* (Lecture Notes in Computer Science, Vol. 8693, pp. 740–755). Springer. https://doi.org/10.1007/978-3-319-10602-1_48
-
 Liu, W., Ren, G., Yu, R., Guo, S., Zhu, J., & Zhang, L. (2022). Image-adaptive YOLO for object detection in adverse weather conditions. *Proceedings of the AAAI Conference on Artificial Intelligence, 36*(2), 1792–1800. https://doi.org/10.1609/aaai.v36i2.20072
 
 Muhammad, M. B., & Yeasin, M. (2020). *Eigen-CAM: Class activation map using principal components* [Preprint]. arXiv. https://doi.org/10.48550/arXiv.2008.00299
@@ -55,8 +53,6 @@ Qin, Q., Chang, K., Huang, M., & Li, G. (2022). DENet: Detection-driven enhancem
 Redmon, J., Divvala, S., Girshick, R., & Farhadi, A. (2016). You only look once: Unified, real-time object detection. In *Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition* (pp. 779–788).
 
 Ren, S., He, K., Girshick, R., & Sun, J. (2015). Faster R-CNN: Towards real-time object detection with region proposal networks. *Advances in Neural Information Processing Systems, 28*, 91–99.
-
-Samudra, M. N., & Rachmawati, E. (2025). Deep learning-based defect detection in Arabica green coffee beans using LSKNet. In *2025 International Conference on Data Science and Its Applications (ICoDSA)* (pp. 692–697). IEEE. https://doi.org/10.1109/ICoDSA67155.2025.11157423
 
 Selvaraju, R. R., Cogswell, M., Das, A., Vedantam, R., Parikh, D., & Batra, D. (2017). Grad-CAM: Visual explanations from deep networks via gradient-based localization. In *Proceedings of the IEEE International Conference on Computer Vision* (pp. 618–626). https://doi.org/10.1109/ICCV.2017.74
 
