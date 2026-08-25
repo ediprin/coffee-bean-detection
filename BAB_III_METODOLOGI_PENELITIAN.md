@@ -106,7 +106,10 @@ Pembagian dilakukan berdasarkan kelompok sumber atau sesi pengambilan citra. Cit
 Secara umum, kelompok sumber pada ketiga bagian data harus saling terpisah:
 
 \[
-\mathcal{G}_{train}\cap\mathcal{G}_{val}\cap\mathcal{G}_{test}=\varnothing.
+\mathcal{G}_{train}\cap\mathcal{G}_{val}
+=\mathcal{G}_{train}\cap\mathcal{G}_{test}
+=\mathcal{G}_{val}\cap\mathcal{G}_{test}
+=\varnothing.
 \]
 
 Pemeriksaan citra identik juga akan dilakukan menggunakan *hash*. Seluruh hasil augmentasi dari suatu citra sumber hanya boleh berada pada bagian pelatihan dan tidak boleh masuk ke data validasi atau pengujian.
@@ -333,7 +336,7 @@ Perbedaan antara dua konfigurasi berurutan digunakan untuk melihat pengaruh inkr
 
 ### 3.5.1 Variasi Fungsi Jendela
 
-Pada \(C_1\), patch persegi biasa diganti dengan *periodic square-root Hann window*. Fungsi satu dimensinya dinyatakan sebagai:
+Pada \(C_1\), patch persegi biasa diganti dengan fungsi jendela Hann akar kuadrat periodik (*periodic square-root Hann window*). Fungsi satu dimensinya dinyatakan sebagai:
 
 \[
 h[n]=\sqrt{\frac{1}{2}-\frac{1}{2}\cos\left(\frac{2\pi n}{m}\right)}.
@@ -371,7 +374,7 @@ Pada \(C_3\), informasi radial ditambahkan pada representasi orientasi. Radius p
 r(u,v)=\sqrt{(u-u_c)^2+(v-v_c)^2}.
 \]
 
-Spektrum dibagi menjadi tiga rentang radial berdasarkan geometri grid Fourier. Densitas kemudian dihitung untuk setiap kombinasi rentang radial dan orientasi:
+Spektrum dibagi menjadi tiga rentang radial. Batas antarrentang ditentukan menggunakan kuantil \(1/3\) dan \(2/3\) dari radius grid Fourier nonnol, sehingga pembagian tersebut ditentukan oleh geometri grid dan tidak dihitung dari statistik data pelatihan atau validasi. Densitas kemudian dihitung untuk setiap kombinasi rentang radial dan orientasi:
 
 \[
 D_i^c(b,k)=\sum_{(u,v)\in\Omega_{b,k}}A_i^c(u,v).
@@ -494,7 +497,7 @@ Konfigurasi utama pelatihan YOLO26n ditunjukkan pada Tabel 3.3.
 | Epoch maksimum | 50 |
 | Ukuran batch | 16 |
 | Penghentian dini | 15 epoch tanpa peningkatan |
-| Pengoptimal | Auto |
+| Algoritma optimasi | Auto |
 | Seed konfirmasi | 42, 123, 2026 |
 
 Seluruh kondisi yang dibandingkan pada tahap yang sama menggunakan dataset, augmentasi, ukuran masukan, jumlah epoch maksimum, ukuran batch, aturan penghentian dini, dan lingkungan komputasi yang sama. Model tidak harus berhenti pada epoch yang sama karena penghentian dini mengikuti kinerja validasi masing-masing kondisi.
@@ -519,7 +522,7 @@ Metrik utama penelitian adalah:
 \boxed{mAP_{50:95}},
 \]
 
-yaitu rata-rata AP pada ambang IoU 0,50 sampai 0,95. Nilai \(mAP_{50}\) digunakan sebagai metrik sekunder.
+yaitu rata-rata AP pada ambang IoU 0,50 sampai 0,95. Nilai \(mAP_{50}\) digunakan sebagai metrik sekunder. Jumlah maksimum prediksi yang dievaluasi pada setiap citra ditetapkan sebesar 500 untuk seluruh kondisi.
 
 Selain metrik rata-rata, AP50–95 setiap kelas juga akan dilaporkan:
 
