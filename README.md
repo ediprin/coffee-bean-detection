@@ -1,23 +1,42 @@
 # Proposal Tesis — Source of Truth
 
-Branch `proposal/thesis-foundation` dikhususkan hanya untuk artefak proposal tesis.
+Branch `proposal/thesis-foundation` dikhususkan untuk artefak proposal tesis.
 
-## Naskah utama
+## Satu-satunya naskah formal
 
-1. `BAB_I_PENDAHULUAN.md`
-2. `BAB_II_TINJAUAN_PUSTAKA.md`
-3. `BAB_III_METODOLOGI_PENELITIAN.md`
-4. `DAFTAR_PUSTAKA.md` — dibuat setelah seluruh referensi yang benar-benar disitasi selesai diverifikasi dari sumber primer/resmi.
+Semua agent, revisi, dan audit proposal **harus menggunakan direktori berikut sebagai sumber utama**:
 
-## Aturan
+```text
+docs/thesis/proposal/
+├── 01_PROPOSAL_SKELETON.md
+├── BAB_I_PENDAHULUAN.md
+├── BAB_II_TINJAUAN_PUSTAKA.md
+├── BAB_III_METODOLOGI_PENELITIAN.md
+└── DAFTAR_PUSTAKA.md
+```
+
+File BAB yang masih berada di root repository merupakan **salinan historis/legacy**. File tersebut tidak lagi menjadi authority dan tidak boleh digunakan sebagai target revisi proposal. Jika terdapat perbedaan antara file root dan `docs/thesis/proposal/`, versi di `docs/thesis/proposal/` selalu menang.
+
+## Aturan kerja
 
 - Proposal adalah rencana penelitian, bukan laporan hasil eksperimen.
-- Branch ini tidak menyimpan hasil pilot, D0/D0FT, seed result, promotion gate, log eksperimen, config, source code, notebook, CI, audit internal, atau artefak implementasi.
+- BAB I–III tidak boleh memuat hasil eksperimen penelitian sendiri, hasil pilot, nilai mAP internal, seed result, promotion gate, atau diagnosis yang diperoleh setelah eksperimen.
 - Klaim literatur harus mengikuti paper, standar, atau sumber resmi yang benar-benar mendukung klaim tersebut.
 - Metadata bibliografis seperti nama penulis, judul, DOI, volume, nomor artikel, dan halaman tidak boleh ditebak.
-- Hanya referensi yang benar-benar disitasi dalam BAB I–III yang dimasukkan ke daftar pustaka formal.
-- Istilah internal eksperimen seperti AF2, AF2C, AF2WIN, dan nama konfigurasi lain tidak digunakan dalam naskah formal tanpa definisi akademik yang jelas.
-- Tiga file BAB pada branch ini menjadi authority naskah proposal.
+- Hanya referensi yang benar-benar disitasi dalam BAB I–III formal yang dimasukkan ke `docs/thesis/proposal/DAFTAR_PUSTAKA.md`.
+- Backend audit sumber berada di `docs/thesis/sources/` dan digunakan untuk memverifikasi sitasi, bukan sebagai pengganti naskah proposal.
+- Istilah internal eksperimen seperti nama branch atau nama konfigurasi historis tidak digunakan dalam naskah formal. Variasi metode dijelaskan melalui faktor akademiknya.
+- Setiap perubahan substansial pada metodologi harus diperiksa kembali konsistensinya terhadap BAB I, BAB II, BAB III, dan daftar pustaka.
+
+## Rancangan yang berlaku saat ini
+
+- dataset utama: dataset primer yang akan dikumpulkan;
+- target awal kelas: 20 kategori cacat fisik + 1 kelas biji normal, dengan jumlah kelas akhir mengikuti kecukupan data;
+- model utama: YOLO26n;
+- pembanding utama: YOLO26n tanpa prapemrosesan dan CLAHE + YOLO26n;
+- metode: prapemrosesan frekuensi-angular dengan konfigurasi referensi dan pengujian variasi desain;
+- evaluasi lintas arsitektur menggunakan RT-DETRv3-R18 bersifat opsional;
+- metrik utama: mAP50–95.
 
 ## Judul kerja
 
