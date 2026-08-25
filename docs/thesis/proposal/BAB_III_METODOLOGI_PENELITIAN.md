@@ -198,7 +198,7 @@ Spektrum dipusatkan sehingga distribusi frekuensi dapat dianalisis berdasarkan p
 Setiap koordinat frekuensi dipetakan ke sudut relatif terhadap pusat spektrum:
 
 $$
-\theta(u,v)=\mathrm{mod}\left(\mathrm{atan2}(v-v_c,u-u_c),2\pi\right).
+\theta(u,v)=\mathrm{atan2}(v-v_c,u-u_c)\bmod 2\pi.
 $$
 
 Xu et al. (2025) mendefinisikan distribusi angular pada rentang $[0,360^\circ)$. Pada konfigurasi referensi penelitian ini, domain tersebut didiskretkan menjadi 360 interval arah. Densitas angular untuk kanal $c$ dihitung sebagai:
@@ -282,7 +282,7 @@ Bentuk seleksi ini mengadaptasi mekanisme AFAB-2 yang mempertahankan respons den
 Spektrum yang telah dibobotkan dikembalikan ke domain spasial menggunakan transformasi Fourier balik dengan normalisasi yang sama seperti transformasi maju:
 
 $$
-\widetilde P_i^c=\Re\left\{\mathcal{F}_2^{-1}(\widetilde F_i^c)\right\}.
+\widetilde P_i^c=\mathrm{Re}\left\{\mathcal{F}_2^{-1}(\widetilde F_i^c)\right\}.
 $$
 
 Prinsip AFAB-2 mempertahankan fase asli saat amplitudo yang telah disesuaikan direkonstruksi ke domain spasial. Pada konfigurasi referensi penelitian ini, patch yang saling bertumpang tindih kemudian digabungkan kembali dengan merata-ratakan bagian yang bertumpang tindih sehingga diperoleh respons spasial $R_{FA}$ dengan ukuran yang sama seperti citra masukan. Cara penggabungan patch tersebut merupakan keputusan implementasi penelitian.
