@@ -12,24 +12,25 @@ Jika manuscript berubah, audit ini harus dijalankan ulang.
 
 ## Hasil audit dua arah
 
-- Unique cited-source set: **36 sumber**.
-- Entri pada `DAFTAR_PUSTAKA.md`: **36 sumber**.
-- `cited → bibliography`: **36/36 terpetakan**.
-- `bibliography → cited`: **36/36 terpetakan**.
+- Unique cited-source set: **37 sumber**.
+- Entri pada `DAFTAR_PUSTAKA.md`: **37 sumber**.
+- `cited → bibliography`: **37/37 terpetakan**.
+- `bibliography → cited`: **37/37 terpetakan**.
 - Uncited bibliography entries: **0**.
 - Cited sources tanpa bibliography entry: **0**.
 
-Perubahan pada konsolidasi terakhir:
+Perubahan terbaru:
 
-- masuk ke set formal: `COF-18` Tarekegn & Debelee (2025) dan `DET-04` Wang et al. (2025) RT-DETRv3;
-- keluar dari bibliography formal tetapi tetap terverifikasi sebagai backend: `COF-03` Samudra & Rachmawati (2025) dan `EVAL-01` Lin et al. (2014);
-- `XAI-02` Grad-CAM++ tetap backend-only dan tidak disitasi eksplisit.
+- `STD-02` International Telecommunication Union (2015) masuk ke set formal karena BAB III menggunakan koefisien ITU-R BT.709-6 untuk variasi panduan luminansi;
+- `COF-18` Tarekegn & Debelee (2025) dan `DET-04` Wang et al. (2025) tetap berada pada set formal;
+- `COF-03` Samudra & Rachmawati (2025), `EVAL-01` Lin et al. (2014), dan `XAI-02` Grad-CAM++ tetap backend-only.
 
 ## Cross-check set formal
 
 | Key | Sitasi formal | Bibliography | Source gate |
 |---|---|---|---|
 | STD-01 | Badan Standardisasi Nasional (2008) | Ada | Official BSN |
+| STD-02 | International Telecommunication Union (2015) | Ada | Official ITU-R BT.709-6 |
 | COF-17 | García et al. (2019) | Ada | Official publisher |
 | COF-01 | Hong et al. (2026) | Ada | Official publisher + primary full text |
 | COF-02 | Bahy dan Rifai (2026) | Ada | Official journal + primary full text |
@@ -50,7 +51,7 @@ Perubahan pada konsolidasi terakhir:
 | DIAG-02 | Wu et al. (2020) | Ada | CVF primary proceedings |
 | DIAG-03 | Jiang et al. (2018) | Ada | Springer official chapter |
 | FG-02 | Xie et al. (2025) | Ada | Primary IEEE publisher-format paper |
-| FG-01 | Xu et al. (2025) | Ada | Official publisher + AFAB-2 full-text audit |
+| FG-01 | Xu et al. (2025) | Ada | Official publisher + full-text formula audit |
 | PRE-01 | Liu et al. (2022) | Ada | AAAI official proceedings |
 | PRE-02 | Qin et al. (2022) | Ada | CVF ACCV Open Access |
 | PRE-03 | Li et al. (2025) | Ada | Official publisher |
@@ -71,18 +72,19 @@ Perubahan pada konsolidasi terakhir:
 | Key | Sumber | Alasan tidak masuk bibliography formal saat ini |
 |---|---|---|
 | COF-03 | Samudra & Rachmawati (2025) | Tidak mempunyai sitasi author–year pada BAB I–III saat ini |
-| EVAL-01 | Lin et al. (2014) | Digunakan sebagai sumber evaluasi backend, tetapi tidak disitasi formal pada naskah |
-| XAI-02 | Grad-CAM++ | Tidak lagi disitasi eksplisit; naskah hanya menggunakan frasa generik untuk varian CAM lain |
+| EVAL-01 | Lin et al. (2014) | Sumber evaluasi backend, tetapi tidak disitasi formal pada naskah |
+| XAI-02 | Grad-CAM++ | Tidak lagi disitasi eksplisit |
 
 ## Scholarly-quality guardrail
 
-Audit bibliografis dua arah **bukan** bukti bahwa setiap klaim telah diverifikasi sampai halaman dan persamaan. Beberapa klaim metodologis telah diaudit pada full text primer, tetapi aturan berikut tetap berlaku:
+Audit bibliografis dua arah **bukan** bukti bahwa setiap klaim telah diverifikasi sampai halaman dan persamaan. Guardrail yang berlaku:
 
-- AFAB-2 dan formulanya harus mengikuti Xu et al. (2025) serta batas adaptasi penelitian;
-- Syauqi et al. (2025) harus tetap disebut sebagai pipeline komposit, bukan bukti CLAHE-only;
-- angka dataset Tarekegn & Debelee harus mengikuti full text primer;
+- AFAB-2 mengikuti Xu et al. (2025): distribusi angular Eq. (9), entropi/ambang/pembobotan Eq. (10)–(13); Eq. (14) pada paper adalah bagian CGFI dan tidak boleh diatribusikan kepada AFAB-2;
+- Syauqi et al. (2025) tetap disebut sebagai pipeline komposit, bukan bukti CLAHE-only;
+- angka dataset Tarekegn & Debelee mengikuti full text primer;
 - RT-DETRv3 dipakai sebagai dasar evaluasi tambahan, bukan klaim superioritas arsitektur;
-- formula fundamental Gonzalez & Woods tidak diberi nomor halaman yang belum diverifikasi.
+- koefisien luminansi pada C5 mengikuti ITU-R BT.709-6 Item 3.2;
+- Gonzalez & Woods tetap menjadi landasan teori umum, sementara formula DFT/iDFT/amplitudo/fase juga dapat dilacak pada Xu et al. (2025) §3.1.1 tanpa mengarang nomor halaman buku.
 
 ## Hard Rule
 
