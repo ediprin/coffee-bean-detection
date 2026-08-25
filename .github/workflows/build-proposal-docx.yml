@@ -31,6 +31,7 @@ on:
       - "BAB_II_TINJAUAN_PUSTAKA.md"
       - "BAB_III_METODOLOGI_PENELITIAN.md"
       - "DAFTAR_PUSTAKA.md"
+      - "docs/thesis/proposal/DAFTAR_PUSTAKA.md"
       - "README.md"
       - "tools/thesis_docx/**"
       - "docs/thesis/BUILD_DOCX.md"
@@ -69,6 +70,13 @@ jobs:
 
       - name: Install Python dependencies
         run: pip install -r tools/thesis_docx/requirements.txt
+
+      - name: Resolve formal bibliography source
+        run: |
+          if [ ! -f DAFTAR_PUSTAKA.md ]; then
+            test -f docs/thesis/proposal/DAFTAR_PUSTAKA.md
+            cp docs/thesis/proposal/DAFTAR_PUSTAKA.md DAFTAR_PUSTAKA.md
+          fi
 
       - name: Build proposal DOCX
         run: |
