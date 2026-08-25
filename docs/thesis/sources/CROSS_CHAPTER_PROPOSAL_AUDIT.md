@@ -1,141 +1,165 @@
 # Cross-Chapter Proposal Audit
 
-Status: **WORKING AUTHORITY — proposal consistency gate**
+Status: **CURRENT CONSISTENCY GATE — POST-CONSOLIDATION**
 
-Dokumen ini mengaudit konsistensi antara `BAB_I_PENDAHULUAN.md`, `BAB_II_TINJAUAN_PUSTAKA.md`, `BAB_III_METODOLOGI_PENELITIAN.md`, dan `DAFTAR_PUSTAKA.md`. Audit ini tidak menggantikan `OFFICIAL_CITATION_AUDIT.md` atau `BIDIRECTIONAL_CITATION_AUDIT.md`.
+Dokumen ini mengaudit konsistensi antara artefak formal di `docs/thesis/proposal/`:
+
+- `BAB_I_PENDAHULUAN.md`;
+- `BAB_II_TINJAUAN_PUSTAKA.md`;
+- `BAB_III_METODOLOGI_PENELITIAN.md`;
+- `DAFTAR_PUSTAKA.md`.
+
+Audit ini tidak menggantikan `OFFICIAL_CITATION_AUDIT.md` atau `BIDIRECTIONAL_CITATION_AUDIT.md`.
 
 ## 1. Alignment utama yang sudah konsisten
 
-### Masalah penelitian
+### 1.1 Masalah penelitian
 
-BAB I menempatkan masalah utama pada **deteksi fine-grained cacat biji kopi**, khususnya ketika kategori memiliki karakteristik visual yang relatif serupa dan performa antar kelas tidak seragam.
+BAB I menempatkan masalah pada deteksi *fine-grained* cacat biji kopi, terutama ketika beberapa kategori memiliki perbedaan visual yang halus dan kinerja antarkelas dapat berbeda.
 
-BAB II mendukung framing tersebut melalui literatur kopi, fine-grained object detection, preprocessing sebelum detector, dan pemrosesan frekuensi.
+BAB II mendukung framing melalui literatur kopi, *fine-grained object detection*, prapemrosesan sebelum detector, dan pemrosesan frekuensi.
 
-BAB III tidak mengubah masalah menjadi problem lain seperti open-set recognition, counting, segmentation, atau modifikasi arsitektur YOLO.
-
-**Status: CONSISTENT.**
-
-### Posisi metode
-
-BAB I menggunakan istilah **preprocessing citra berbasis frekuensi-angular** tanpa mengasumsikan pembaca memahami nama internal repository.
-
-BAB II menjelaskan sumber mekanisme: Fourier representation, radial/angular spectrum, dan AFAB/AFAB-2 pada Xu et al. (2025).
-
-BAB III menempatkan preprocessing sebelum YOLO26n dan mempertahankan backbone, neck, dan detection head sebagai detector yang tidak dimodifikasi.
+BAB III mempertahankan fokus tersebut dan tidak mengubah penelitian menjadi counting, segmentation, open-set recognition, atau modifikasi arsitektur utama YOLO26n.
 
 **Status: CONSISTENT.**
 
-### Makna “analisis dan optimasi”
+### 1.2 Dataset primer dan jumlah kelas
 
-BAB I menyatakan penelitian akan menganalisis dan mengoptimasi rancangan preprocessing.
+BAB I menyatakan dataset utama akan dikumpulkan secara primer dan menargetkan 20 kategori cacat fisik serta satu kelas biji normal.
 
-BAB III mengoperasionalkannya melalui analisis satu faktor pada satu waktu terhadap windowing, representasi arah, struktur spektral, fungsi ambang, dan strategi warna, kemudian sensitivity analysis terbatas.
+BAB II menyediakan konteks dataset multiclass sebelumnya dan contoh skala dataset deteksi multiobjek.
 
-**Status: CONSISTENT, tetapi provenance setiap variasi harus dibedakan antara source-derived mechanism dan engineering design choice.**
+BAB III menetapkan target sekitar 180–220 citra sumber, 6.000–10.000 anotasi objek, dan pemeriksaan kecukupan data tiap kelas sebelum jumlah kelas akhir ditetapkan.
 
-### Evaluasi
-
-BAB I menyebut kinerja deteksi, kinerja per kelas, dan biaya komputasi.
-
-BAB III memetakan hal tersebut ke mAP50, mAP50–95, precision, recall, AP per kelas, ringkasan kelas bawah, analisis kesalahan, analisis visual, latency, throughput, parameter, dan memory.
+Ketiga bab tidak lagi menyatakan bahwa 21 kelas pasti tersedia sebelum pengumpulan data selesai.
 
 **Status: CONSISTENT.**
 
-### Analisis visual
+### 1.3 Model dan pembanding
+
+BAB I menetapkan YOLO26n sebagai model utama, YOLO26n tanpa prapemrosesan sebagai model acuan, CLAHE sebagai pembanding peningkatan kontras, dan RT-DETRv3-R18 sebagai analisis tambahan.
+
+BAB II menyediakan dasar literatur untuk YOLO26, CLAHE/composite preprocessing, wavelet sebagai alternatif konseptual, dan RT-DETRv3 sebagai detector keluarga Transformer.
+
+BAB III mengoperasionalkan empat kondisi utama:
+
+```text
+B0 = YOLO26n tanpa prapemrosesan
+B1 = CLAHE + YOLO26n
+B2 = C0 + YOLO26n
+B3 = C* + YOLO26n
+```
+
+Wavelet tidak dijadikan baseline utama dan evaluasi RT-DETRv3 tetap opsional.
+
+**Status: CONSISTENT.**
+
+### 1.4 Makna “analisis dan optimasi”
+
+BAB I menjelaskan bahwa optimasi dilakukan melalui pengujian variasi desain yang telah ditetapkan, bukan pencarian global optimum.
+
+BAB III mengoperasionalkannya melalui jalur kumulatif `C0 → C1 → C2 → C3 → C4 → C5` yang mencakup fungsi jendela, representasi orientasi, informasi radial, fungsi ambang, dan panduan luminansi.
+
+**Status: CONSISTENT.**
+
+### 1.5 Data uji akhir
+
+BAB III sekarang menyisihkan data uji sejak awal dengan target sekitar 15% dari citra sumber. Data uji tidak digunakan untuk memilih konfigurasi atau parameter dan baru digunakan setelah metode serta aturan evaluasi ditetapkan.
+
+BAB I tidak menggunakan hasil data uji untuk merumuskan metode, dan BAB II hanya berfungsi sebagai dasar literatur.
+
+**Status: CLOSED / CONSISTENT.**
+
+### 1.6 Evaluasi
+
+BAB I menetapkan mAP50–95 sebagai metrik utama dan mAP50, precision, recall, serta AP per kelas sebagai metrik tambahan.
+
+BAB III menggunakan mAP50–95 sebagai metrik utama, menambahkan analisis tiga kelas sulit yang dibekukan dari model acuan pada validasi, AP kelas terendah, analisis beberapa seed, visualisasi, dan efisiensi komputasi.
+
+**Status: CONSISTENT.**
+
+### 1.7 Analisis visual
 
 BAB II menyediakan landasan Grad-CAM dan Eigen-CAM.
 
-BAB III menggunakan visualisasi sebagai analisis pendukung: visualisasi tahapan preprocessing, respons model, dan prediksi deteksi. Visualisasi tidak diposisikan sebagai bukti kausal tunggal.
+BAB III menggunakan visualisasi hanya sebagai analisis pendukung dan tidak sebagai bukti kausal tunggal.
 
 **Status: CONSISTENT.**
 
----
+### 1.8 Sitasi dan bibliography
 
-## 2. Isu metodologis yang masih harus ditutup sebelum proposal dianggap final
+`CITATION_CROSSWALK.md`, `BIBLIOGRAPHY_METADATA_LOCK.md`, `DAFTAR_PUSTAKA.md`, dan `BIDIRECTIONAL_CITATION_AUDIT.md` telah disinkronkan pada set formal 36 sumber.
 
-### ISSUE-01 — Final evaluation set belum didefinisikan secara independen
-
-BAB III saat ini mendeskripsikan `training` dan `validation`, sementara tahap optimasi juga menggunakan hasil evaluasi untuk memilih konfigurasi preprocessing. Jika konfigurasi dipilih dan performa akhir dilaporkan pada validation set yang sama, hasil akhir dapat menjadi optimistik karena validation set berfungsi sekaligus sebagai selection set dan final evaluation set.
-
-**Tidak boleh diselesaikan dengan mengarang adanya test set.**
-
-Keputusan yang harus dibuat secara eksplisit sebelum finalisasi BAB III:
-
-- menyediakan held-out test set yang dibekukan sebelum pemilihan metode; atau
-- memakai protokol evaluasi lain yang menjaga data final evaluation terpisah dari data selection.
-
-Status saat ini: **OPEN — HIGH PRIORITY.**
-
-### ISSUE-02 — Source-vs-adaptation pada formula preprocessing perlu dipertegas
-
-BAB III §3.4 mengadaptasi prinsip AFAB-2 Xu et al. (2025), tetapi implementasi penelitian bukan salinan penuh AFAB/LFDet. Naskah final harus membedakan dengan jelas:
-
-1. konsep/formula yang langsung berasal dari source paper;
-2. adaptasi yang dilakukan untuk menjadikannya standalone input preprocessing sebelum YOLO26;
-3. keputusan implementasi penelitian sendiri seperti residual composition, normalization, patch aggregation, dan parameter default apabila tidak identik dengan source paper.
-
-Tujuannya agar tidak ada formula implementasi penelitian yang terbaca seolah-olah merupakan persamaan asli Xu et al.
-
-Status saat ini: **OPEN — HIGH PRIORITY.**
-
-### ISSUE-03 — Tabel penelitian terkait masih memuat label indeks/quartile yang memerlukan audit terpisah
-
-Tabel 2.1 masih menggunakan label seperti `Q1`, `Q2`, `SINTA 3`, dan `Conference`. Metadata bibliografis paper sudah diaudit melalui official/primary source, tetapi status quartile/indexing adalah klaim berbeda dan harus diverifikasi pada sumber indeks yang relevan untuk periode yang dimaksud.
-
-Sampai audit indeks dilakukan, pilihan paling aman adalah mengganti kolom `Indeks/Venue` menjadi `Sumber Publikasi` dan menampilkan nama jurnal/proceedings tanpa label quartile.
-
-Status saat ini: **OPEN — MEDIUM/HIGH PRIORITY.**
-
-### ISSUE-04 — Rec.709 pada variasi warna belum mempunyai source gate formal
-
-Tabel 3.2 menyebut `Gate berbasis luminance Rec.709`. Jika Rec.709 dipertahankan sebagai istilah/metode formal, standar ITU-R BT.709 harus dimasukkan ke source audit resmi. Jika bukan bagian penting dari kontribusi, wording dapat digeneralisasi menjadi `gate berbasis luminance yang dibagi antar kanal` sampai formulasi final ditetapkan.
-
-Status saat ini: **OPEN — MEDIUM PRIORITY.**
-
-### ISSUE-05 — Page-level locator textbook DFT belum tersedia
-
-Metadata Gonzalez & Woods (2018) sudah dikunci melalui publisher, dan BAB II menggunakannya sebagai theoretical anchor untuk DFT/FFT serta amplitude/phase. Namun exact page/section locator dari edisi yang dipakai belum tersimpan sebagai project source.
-
-Tidak boleh mengarang nomor halaman. Sitasi author–year tetap sah secara bibliografis, tetapi proposal belum boleh disebut `page-level source audit complete` untuk formula fundamental tersebut.
-
-Status saat ini: **OPEN — LOW/MEDIUM PRIORITY.**
-
-### ISSUE-06 — Eigen-CAM bibliography menggunakan primary preprint secara transparan
-
-BAB II dan BAB III menyebut Eigen-CAM. Source primer arXiv telah diverifikasi, sementara publisher IEEE proceedings metadata belum seluruhnya dikunci dalam project source. `DAFTAR_PUSTAKA.md` karena itu menulis Eigen-CAM sebagai preprint, bukan menyamarkannya sebagai paper IEEE.
-
-Ini **bukan error**, tetapi status sumber harus dipertahankan transparan sampai official IEEE record dikunci penuh.
-
-Status saat ini: **ACCEPTABLE WITH DISCLOSURE.**
+**Status: CONSISTENT pada snapshot saat ini.**
 
 ---
 
-## 3. Citation state snapshot
+## 2. Isu yang masih terbuka
 
-Menurut `BIDIRECTIONAL_CITATION_AUDIT.md` pada snapshot saat audit ini:
+### ISSUE-01 — Source mechanism vs adaptasi penelitian pada §3.4
 
-- unique cited sources: 36;
-- bibliography entries: 36;
-- cited → bibliography: 36/36;
-- bibliography → cited: 36/36;
-- uncited bibliography entries: 0;
-- cited sources without bibliography entry: 0.
+BAB III telah menyatakan bahwa mekanisme frekuensi-angular mengadaptasi AFAB-2 Xu et al. (2025), tetapi naskah formal sengaja menyederhanakan sebagian detail implementasi agar tidak berubah menjadi dokumentasi kode.
 
-Angka tersebut **hanya berlaku untuk snapshot manuscript saat ini**. Setiap perubahan sitasi pada BAB I–III wajib memicu audit ulang.
+Sebelum proposal akhir, perlu dipastikan bahwa pembaca tetap dapat membedakan:
+
+1. prinsip yang berasal dari Xu et al. (2025), seperti DFT patch lokal, distribusi angular, entropi, ambang adaptif, dan pembobotan spektral;
+2. keputusan implementasi penelitian, seperti overlap 50%, cara pemrosesan kanal RGB, rekonstruksi overlap, normalisasi respons, dan penggabungan residual;
+3. variasi desain penelitian pada C1–C5.
+
+Tidak perlu mengembalikan seluruh detail kode, tetapi batas atribusi harus tetap jelas.
+
+**Status: OPEN — HIGH PRIORITY sebelum proposal final.**
+
+### ISSUE-02 — Dasar formal luminansi Rec.709
+
+BAB III menggunakan koefisien luminansi Rec.709 pada variasi C5:
+
+\[
+Y=0{,}2126R+0{,}7152G+0{,}0722B.
+\]
+
+Jika formulasi tersebut dipertahankan sebagai bagian formal metode, standar atau sumber resmi ITU-R BT.709 sebaiknya masuk source audit. Alternatifnya adalah tidak memberi atribusi standar yang belum diaudit dan menyatakan koefisien sebagai keputusan implementasi yang perlu diberi sumber sebelum proposal final.
+
+**Status: OPEN — MEDIUM PRIORITY.**
+
+### ISSUE-03 — Locator halaman textbook untuk DFT/FFT
+
+Metadata Gonzalez & Woods (2018) telah dikunci dari Pearson dan aman sebagai landasan teori. Namun, exact page/section locator untuk formula DFT/iDFT dan amplitudo/fase belum tersedia dalam project source.
+
+Tidak boleh mengarang nomor halaman.
+
+**Status: OPEN — LOW/MEDIUM PRIORITY.**
+
+### ISSUE-04 — Kompatibilitas teknis CAM dengan YOLO26
+
+BAB II dan BAB III menempatkan Eigen-CAM sebagai kandidat visualisasi utama dan metode CAM lain sebagai alternatif. Sebelum eksekusi tesis, lapisan target dan prosedur visualisasi harus diverifikasi agar perbandingan antar kondisi benar-benar setara.
+
+Ini bukan masalah terhadap proposal selama CAM tetap diposisikan sebagai analisis pendukung.
+
+**Status: ACCEPTABLE FOR PROPOSAL / VERIFY BEFORE EXPERIMENT.**
 
 ---
 
-## 4. Urutan penutupan sebelum DOCX
+## 3. Isu lama yang telah ditutup
 
-1. Tutup ISSUE-01 tentang independent final evaluation set.
-2. Harden §3.4 dengan penandaan source equation vs research adaptation.
-3. Hilangkan atau audit label Q1/Q2/SINTA pada Tabel 2.1.
-4. Putuskan apakah Rec.709 dipertahankan dan, jika ya, audit standar resminya.
-5. Jalankan ulang citation crosswalk dan bidirectional bibliography audit.
-6. Audit bahasa proposal dan cross-reference gambar/tabel/persamaan.
-7. Baru generate DOCX per bab.
+- **Independent final evaluation set:** CLOSED — data uji sekarang disisihkan sejak awal.
+- **Label Q1/Q2/SINTA pada tabel penelitian terkait:** CLOSED — tabel menggunakan nama venue/publikasi tanpa klaim indeks yang tidak diaudit.
+- **Dataset lama Faruq sebagai dataset utama:** CLOSED — proposal sekarang menggunakan rencana dataset primer.
+- **21 kelas sebagai angka yang dipaksakan:** CLOSED — 21 adalah target awal; jumlah kelas akhir mengikuti kecukupan data.
+- **Tidak adanya pembanding peningkatan citra:** CLOSED — CLAHE ditambahkan sebagai pembanding konvensional.
+- **DETR sebagai baseline utama yang mengaburkan RQ:** CLOSED — RT-DETRv3-R18 hanya analisis tambahan setelah C* ditetapkan.
 
-## Hard rule
+---
 
-Tidak ada isu di atas yang boleh “ditutup” dengan tebakan atau dengan mengubah fakta backend menjadi fakta proposal. Jika source atau data yang dibutuhkan belum tersedia, status tetap OPEN sampai keputusan metodologis atau source resmi tersedia.
+## 4. Urutan penutupan berikutnya
+
+1. Tegaskan atribusi source-vs-adaptation pada §3.4 tanpa mengembalikan gaya bahasa yang terlalu teknis.
+2. Audit sumber resmi Rec.709 jika variasi luminansi tetap dipertahankan.
+3. Jika tersedia, tambahkan locator halaman/section Gonzalez & Woods tanpa menebak.
+4. Jalankan audit bahasa final dan cross-reference tabel/persamaan.
+5. Jalankan kembali citation crosswalk apabila ada penambahan sumber.
+6. Setelah itu baru siapkan artefak DOCX proposal.
+
+## Hard Rule
+
+Tidak ada isu yang boleh ditutup dengan tebakan atau dengan mengubah hasil eksperimen internal menjadi bukti proposal. Jika sumber yang diperlukan belum tersedia, status tetap OPEN sampai source resmi atau keputusan metodologis tersedia.
