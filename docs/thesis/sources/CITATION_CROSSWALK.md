@@ -20,7 +20,7 @@ Aturan keras:
 | García et al. (2019) | COF-17 | FINAL — OFFICIAL VERIFIED | MDPI Applied Sciences | Aman |
 | Hong et al. (2026) | COF-01 | FINAL — OFFICIAL VERIFIED | Elsevier / Current Research in Food Science | Aman |
 | Bahy dan Rifai (2026) | COF-02 | FINAL — OFFICIAL VERIFIED | IJoICT official article/PDF | Aman |
-| Samudra dan Rachmawati (2025) | COF-03 | PRIMARY VERIFIED / PUBLISHER METADATA PENDING | Primary project PDF; IEEE DOI/proceedings metadata corroborated | Klaim full-text aman; bibliography jangan menambah metadata yang belum dikunci |
+| Samudra dan Rachmawati (2025) | COF-03 | FINAL — PRIMARY PUBLISHER PDF VERIFIED | IEEE Xplore-downloaded primary PDF | Aman sesuai metadata yang dikunci dari primary paper/record |
 | Hebert dan Alamsyah (2026) | COF-04 | FINAL — OFFICIAL VERIFIED | INOVTEK Polbeng official page | Aman |
 | Jundullah et al. (2026) | COF-05 | FINAL — OFFICIAL VERIFIED | Brilliance official page | Aman |
 | Gope et al. (2024) | COF-06 | FINAL — OFFICIAL VERIFIED | Nature / Scientific Reports | Aman |
@@ -65,9 +65,8 @@ Aturan keras:
 
 ## D. Status kesiapan daftar pustaka
 
-Pada audit saat ini, hampir seluruh sitasi formal telah mempunyai source authority yang cukup. Dua perhatian tersisa adalah:
+Seluruh sitasi formal selain `XAI-02` sekarang mempunyai source authority yang cukup untuk metadata yang telah dikunci. Satu keputusan tersisa:
 
-1. **COF-03 (Samudra & Rachmawati, 2025):** klaim paper telah didukung oleh full text primer. Metadata conference/DOI telah teridentifikasi, tetapi bibliography harus hanya memakai metadata yang sudah dikunci dari paper/record yang dapat diverifikasi.
-2. **XAI-02 (Grad-CAM++):** sifatnya hanya alternatif metodologis. Untuk meminimalkan risiko sitasi, sitasi eksplisit sebaiknya dihapus dari naskah formal sampai official IEEE record dapat dikunci.
+- **XAI-02 (Grad-CAM++):** sifatnya hanya alternatif metodologis. Untuk meminimalkan risiko sitasi, sitasi eksplisit sebaiknya dihapus dari naskah formal dan diganti menjadi “Grad-CAM atau variannya” sampai official IEEE record dapat dikunci.
 
-`DAFTAR_PUSTAKA.md` hanya boleh dibangun setelah dua keputusan di atas diselesaikan dan audit cited → bibliography / bibliography → cited dijalankan.
+Setelah perubahan tersebut dilakukan, `DAFTAR_PUSTAKA.md` dapat dibangun dari source authority yang telah lolos gate dan kemudian diaudit dua arah: **cited → bibliography** dan **bibliography → cited**.
