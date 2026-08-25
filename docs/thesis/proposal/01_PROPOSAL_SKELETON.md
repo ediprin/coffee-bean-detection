@@ -1,27 +1,31 @@
 # Proposal Skeleton — Formal Artifact Contract
 
-Working title:
+Judul kerja:
 
 **Analisis dan Optimasi Preprocessing Citra Berbasis Frekuensi-Angular pada YOLO26 untuk Deteksi Fine-Grained Cacat Biji Kopi**
 
-Direktori `docs/thesis/proposal/` diperlakukan sebagai **artefak proposal tesis**, bukan laporan hasil eksperimen repository. Naskah formal harus dapat dibaca oleh pembaca akademik yang tidak mengetahui struktur kode, nama konfigurasi internal, riwayat eksperimen, atau hasil pilot penelitian.
+Direktori `docs/thesis/proposal/` merupakan **satu-satunya sumber utama naskah proposal tesis**. Naskah formal harus dapat dibaca oleh pembaca akademik yang tidak mengetahui struktur kode, nama konfigurasi internal, riwayat eksperimen, atau hasil pilot penelitian.
 
-## Artefak formal utama
+## 1. Source of Truth
+
+Artefak formal utama adalah:
 
 ```text
-BAB_I_PENDAHULUAN.md
-BAB_II_TINJAUAN_PUSTAKA.md
-BAB_III_METODOLOGI_PENELITIAN.md
-DAFTAR_PUSTAKA.md
+docs/thesis/proposal/
+├── 01_PROPOSAL_SKELETON.md
+├── BAB_I_PENDAHULUAN.md
+├── BAB_II_TINJAUAN_PUSTAKA.md
+├── BAB_III_METODOLOGI_PENELITIAN.md
+└── DAFTAR_PUSTAKA.md
 ```
 
-`DAFTAR_PUSTAKA.md` sudah dibangun dari sumber yang telah melewati gate resmi/primer dan audit dua arah. Namun, **proposal belum boleh disebut citation-ready penuh** hanya karena bibliography sudah lengkap. Claim-level verification tetap harus diselesaikan untuk klaim metodologis dan faktual yang sensitif.
+File `BAB_I_PENDAHULUAN.md`, `BAB_II_TINJAUAN_PUSTAKA.md`, dan `BAB_III_METODOLOGI_PENELITIAN.md` yang masih berada di root repository adalah **salinan historis/legacy** dan tidak lagi menjadi authority. Jika ada perbedaan antara root dan `docs/thesis/proposal/`, versi di `docs/thesis/proposal/` selalu digunakan.
 
-File lama seperti `02_BACKGROUND.md`, `03_PROBLEM_FORMULATION.md`, `04_LITERATURE_REVIEW.md`, `05_METHODOLOGY.md`, `05_05_AF2_PRIMARY_SOURCE_HARDENED.md`, dan `06_RESEARCH_FLOW.md` adalah bahan kerja/backend teknis, bukan authority naskah formal.
+Semua agent yang mengerjakan proposal harus membaca dan mengubah file di `docs/thesis/proposal/`, bukan salinan root.
 
-## BAB I — Pendahuluan
+## 2. BAB I — Pendahuluan
 
-Authority: `BAB_I_PENDAHULUAN.md`.
+Authority: `docs/thesis/proposal/BAB_I_PENDAHULUAN.md`.
 
 ```text
 1.1 Latar Belakang
@@ -31,20 +35,32 @@ Authority: `BAB_I_PENDAHULUAN.md`.
 1.5 Manfaat Penelitian
 ```
 
-Bab I tidak memuat hasil eksperimen penelitian sendiri, RQ1–RQ4, nama konfigurasi internal, maupun istilah `AF2` yang belum diperkenalkan. Istilah yang digunakan adalah **preprocessing citra berbasis frekuensi-angular**.
+Kondisi metodologis yang harus konsisten dengan BAB III:
 
-## BAB II — Tinjauan Pustaka
+- dataset utama adalah dataset primer yang akan dikumpulkan;
+- target awal adalah 20 kategori cacat fisik yang mengacu pada SNI 2907:2008 ditambah satu kelas biji normal;
+- jumlah kelas akhir ditentukan setelah kecukupan data tiap kelas diperiksa;
+- YOLO26n merupakan model utama;
+- YOLO26n tanpa prapemrosesan merupakan model acuan;
+- CLAHE digunakan sebagai pembanding peningkatan kontras lokal;
+- optimasi berarti pengujian variasi desain prapemrosesan yang telah ditetapkan, bukan pencarian global optimum;
+- RT-DETRv3-R18 hanya merupakan evaluasi tambahan jika sumber daya memungkinkan;
+- mAP50–95 merupakan metrik utama.
 
-Authority: `BAB_II_TINJAUAN_PUSTAKA.md`.
+BAB I tidak memuat hasil eksperimen penelitian sendiri, nama branch, nama konfigurasi internal, atau nilai performa internal.
+
+## 3. BAB II — Tinjauan Pustaka
+
+Authority: `docs/thesis/proposal/BAB_II_TINJAUAN_PUSTAKA.md`.
 
 ```text
 2.1 Biji Kopi Hijau dan Cacat Fisik Biji Kopi
 2.2 Inspeksi Mutu Biji Kopi
 2.3 Object Detection
 2.4 You Only Look Once (YOLO)
-2.5 YOLO26
+2.5 YOLO26 dan Pembanding Arsitektur
 2.6 Fine-Grained Object Detection
-2.7 Preprocessing Citra untuk Object Detection
+2.7 Prapemrosesan Citra untuk Object Detection
 2.8 Representasi Citra pada Domain Frekuensi
     2.8.1 Discrete Fourier Transform dan Fast Fourier Transform
     2.8.2 Amplitudo dan Fase
@@ -54,117 +70,151 @@ Authority: `BAB_II_TINJAUAN_PUSTAKA.md`.
 2.10 Penelitian Terkait
 ```
 
-Bab II boleh memuat hasil penelitian terdahulu yang telah diverifikasi. Citation key internal (`COF-01`, `FG-01`, dan sebagainya), status audit, path repository, dan hasil eksperimen penelitian sendiri tidak masuk naskah formal. AFAB/AFAB-2 disebut hanya sebagai terminologi metode sumber Xu et al.
+BAB II boleh memuat hasil penelitian terdahulu yang telah diverifikasi dari sumber primer/resmi. Hasil penelitian terdahulu tidak boleh ditulis sebagai bukti bahwa metode yang diusulkan pasti efektif pada dataset tesis.
 
-Subbab 2.9 menjadi landasan untuk rencana analisis visual pada Bab III. Eigen-CAM menjadi kandidat utama visualisasi respons model, sedangkan Grad-CAM menjadi alternatif apabila target prediksi, layer target, dan aliran gradient pada YOLO26 dapat didefinisikan secara konsisten. Varian CAM lain hanya disebut secara generik sampai sumber dan kompatibilitas teknisnya benar-benar diverifikasi. Visualisasi diposisikan sebagai analisis interpretatif pendukung dan bukan bukti kausal tunggal.
+Guardrail penting:
 
-## BAB III — Metodologi Penelitian
+- AFAB/AFAB-2 disebut sebagai metode sumber Xu et al. (2025), bukan sebagai metode yang diciptakan penelitian ini;
+- Syauqi et al. (2025) diperlakukan sebagai pipeline prapemrosesan komposit, sehingga hasilnya tidak boleh diatribusikan kepada CLAHE saja;
+- wavelet merupakan alternatif transformasi multiskala yang relevan, tetapi bukan baseline utama penelitian;
+- RT-DETRv3-R18 hanya menjadi dasar evaluasi transfer antararsitektur yang bersifat tambahan;
+- literatur tidak digunakan untuk mengklaim bahwa cacat biji kopi memiliki *frequency signature* yang unik.
 
-Authority: `BAB_III_METODOLOGI_PENELITIAN.md`.
+## 4. BAB III — Metodologi Penelitian
 
-Struktur formal:
+Authority: `docs/thesis/proposal/BAB_III_METODOLOGI_PENELITIAN.md`.
+
+Struktur formal saat ini:
 
 ```text
-3.1 Arsitektur Umum Penelitian
+3.1 Rancangan Umum Penelitian
 3.2 Dataset Penelitian
-    3.2.1 Sumber dan Karakteristik Dataset
-    3.2.2 Pembagian Dataset dan Pencegahan Kebocoran Data
-    3.2.3 Augmentasi Data
+    3.2.1 Sumber, Target Jumlah, dan Karakteristik Dataset Primer
+    3.2.2 Pemeriksaan Kecukupan Data dan Penetapan Kelas
+    3.2.3 Pembagian Data dan Pencegahan Kebocoran
+    3.2.4 Augmentasi Data
 3.3 Model Dasar YOLO26n
-3.4 Preprocessing Citra Berbasis Frekuensi-Angular
+    3.3.1 Model Acuan dan Pembanding
+3.4 Prapemrosesan Citra Berbasis Frekuensi-Angular
     3.4.1 Pembentukan Patch Lokal
     3.4.2 Transformasi Fourier
     3.4.3 Distribusi Angular
     3.4.4 Ambang Adaptif Berdasarkan Entropi
     3.4.5 Pembobotan Respons Spektral
-    3.4.6 Inverse Fourier Transform dan Rekonstruksi Citra
-3.5 Analisis dan Optimasi Preprocessing
+    3.4.6 Rekonstruksi dan Penggabungan Residual
+3.5 Analisis Variasi Desain Prapemrosesan
+    3.5.1 Variasi Fungsi Jendela
+    3.5.2 Variasi Representasi Orientasi
+    3.5.3 Variasi Radial-Angular
+    3.5.4 Variasi Ambang Lunak
+    3.5.5 Variasi Panduan Luminansi
+    3.5.6 Analisis Sensitivitas Terbatas
 3.6 Rancangan Eksperimen
+    3.6.1 Tahap I — Pembentukan Model Acuan
+    3.6.2 Tahap II — Pengujian Variasi Prapemrosesan
+    3.6.3 Tahap III — Pengujian Ulang dengan Beberapa Seed
+    3.6.4 Evaluasi pada Arsitektur Lain — Opsional
+    3.6.5 Evaluasi Akhir pada Data Uji
 3.7 Konfigurasi Pelatihan
 3.8 Evaluasi Kinerja Deteksi
 3.9 Analisis Visual
-    3.9.1 Visualisasi Tahapan Preprocessing
-    3.9.2 Visualisasi Respons Model
-    3.9.3 Visualisasi Prediksi Deteksi
 3.10 Analisis Kesalahan dan Kinerja Per Kelas
 3.11 Evaluasi Efisiensi Komputasi
 3.12 Lingkungan Implementasi
 ```
 
-Analisis visual digunakan sebagai **analisis pendukung**, bukan sebagai bukti kausal tunggal. Visualisasi yang direncanakan mencakup tahapan preprocessing, respons/aktivasi model menggunakan Eigen-CAM atau metode CAM lain yang kompatibel dengan YOLO26, serta perbandingan prediksi deteksi pada citra yang sama. Pemilihan contoh visual harus mengikuti kriteria yang konsisten agar tidak hanya menampilkan kasus yang menguntungkan metode yang diusulkan.
+Rancangan dataset primer yang berlaku:
 
-Bab III menjelaskan apa yang **akan dilakukan**. Detail seperti checkpoint hash, commit SHA, D0/D0FT, historical factorization genealogy, promotion gate, RNG fork, dan hasil pilot tidak dimasukkan ke naskah formal. Rancangan eksperimen, parameter pelatihan, formula metode, dan rencana evaluasi boleh dicantumkan karena merupakan bagian dari metodologi proposal.
+```text
+Target citra sumber      : sekitar 180–220, nominal sekitar 200
+Target kelas awal        : 20 cacat fisik + 1 normal
+Target anotasi total     : sekitar 6.000–10.000 objek
+Minimum awal per kelas   : sekitar 200 objek asli
+Target ideal per kelas   : sekitar 300–500 objek
+Kemunculan per kelas     : sedikitnya 15–20 citra sumber
+Split awal               : sekitar 70% / 15% / 15%
+```
 
-Nama konfigurasi internal seperti `AF2C`, `AF2WIN`, `AF2ORI`, `AF2POL`, `AF2SOFT`, dan `AF2LUM` tidak digunakan. Variasi dijelaskan berdasarkan faktor akademiknya: windowing, representasi arah, struktur radial-angular, fungsi ambang, dan strategi pemrosesan warna.
+Jumlah kelas akhir tidak dipaksakan menjadi 21 apabila data primer untuk kelas tertentu tidak memenuhi kriteria kecukupan yang ditetapkan sebelum pelatihan.
 
-## Official citation hard gate
+Pembanding utama:
 
-Sitasi formal adalah bagian kritis proposal dan **tidak boleh dibangun dari ingatan atau metadata yang belum diverifikasi**.
+```text
+B0 = YOLO26n tanpa prapemrosesan
+B1 = CLAHE + YOLO26n
+B2 = konfigurasi frekuensi-angular referensi C0 + YOLO26n
+B3 = konfigurasi terpilih C* + YOLO26n
+```
 
-Authority backend untuk sitasi:
+Konfigurasi variasi prapemrosesan diuji secara bertahap dan kumulatif:
+
+```text
+C0 → C1 → C2 → C3 → C4 → C5
+```
+
+Perubahan yang dianalisis meliputi fungsi jendela, representasi orientasi, informasi radial, fungsi ambang, dan panduan luminansi. Hubungan tersebut menunjukkan akumulasi keputusan desain, bukan pewarisan bobot model antar konfigurasi.
+
+Pengujian ulang utama menggunakan seed 42, 123, dan 2026. Data uji disisihkan sejak awal dan tidak digunakan untuk memilih konfigurasi atau parameter.
+
+## 5. Daftar Pustaka dan Source Audit
+
+Authority bibliography formal:
+
+`docs/thesis/proposal/DAFTAR_PUSTAKA.md`
+
+Authority backend utama:
 
 ```text
 docs/thesis/sources/OFFICIAL_CITATION_AUDIT.md
-    = status verifikasi sumber resmi/primer
-
 docs/thesis/sources/CITATION_CROSSWALK.md
-    = pemetaan sitasi author–year formal ke canonical source
-
 docs/thesis/sources/BIBLIOGRAPHY_METADATA_LOCK.md
-    = metadata bibliografis yang sudah dikunci dari sumber resmi/primer
-
 docs/thesis/sources/BIDIRECTIONAL_CITATION_AUDIT.md
-    = audit cited → bibliography dan bibliography → cited
 ```
 
-Status snapshot saat ini:
+Pada snapshot setelah konsolidasi proposal, set formal ditargetkan tetap satu-ke-satu antara sitasi BAB I–III dan daftar pustaka. Set saat ini berjumlah 36 sumber unik setelah Tarekegn dan Debelee (2025) serta Wang et al. (2025) masuk ke naskah, sementara Samudra dan Rachmawati (2025) serta Lin et al. (2014) tidak lagi menjadi sitasi formal.
+
+Setiap perubahan sitasi harus mengikuti alur:
 
 ```text
-bibliography formal        = tersedia
-cited ↔ bibliography       = terpetakan dua arah pada snapshot saat ini
-claim-level verification   = BELUM SELESAI
-fundamental DFT/FFT source  = perlu dipasang jika rumus fundamental dipertahankan
+PERUBAHAN NASKAH
+      ↓
+CITATION_CROSSWALK
+      ↓
+OFFICIAL / PRIMARY SOURCE CHECK
+      ↓
+BIBLIOGRAPHY_METADATA_LOCK
+      ↓
+DAFTAR_PUSTAKA
+      ↓
+BIDIRECTIONAL_CITATION_AUDIT
 ```
 
-Aturan wajib:
+Daftar pustaka lengkap tidak sama dengan kebenaran seluruh klaim. Klaim metodologis atau faktual yang sensitif tetap harus ditelusuri ke full text primer.
 
-1. publisher/proceedings/standard body/primary paper mengalahkan workbook dan metadata sekunder jika terjadi konflik;
-2. DOI, nama penulis, tahun, judul, volume, issue, halaman, article number, venue, quartile, dan indeks tidak boleh ditebak;
-3. full text primer diperlukan untuk mendukung klaim metode; metadata resmi hanya mengunci identitas bibliografis;
-4. preprint harus disebut sebagai preprint;
-5. jika satu field belum terverifikasi, field tersebut tetap pending atau sumber tidak dipakai; jangan mengisinya secara inferensial;
-6. perubahan sitasi pada BAB I–III wajib memicu pembaruan crosswalk, metadata lock, daftar pustaka, dan audit dua arah;
-7. bibliography lengkap **tidak sama dengan** claim correctness. Klaim sensitif tetap harus diverifikasi pada halaman/section/equation primary source.
+## 6. Temporal Guardrail Proposal
 
-## Temporal guardrail proposal
+BAB I–III hanya menjelaskan:
 
-```text
-BOLEH
-- masalah penelitian
-- teori dan hasil penelitian terdahulu
-- metode yang diusulkan
-- rancangan optimasi
-- rancangan eksperimen
-- parameter/metrik yang akan digunakan
-- analisis visual yang akan dilakukan
-- evaluasi yang akan dilakukan
+- masalah penelitian;
+- teori dan hasil penelitian terdahulu;
+- metode yang diusulkan;
+- dataset yang akan dikumpulkan;
+- rancangan optimasi dan pembanding;
+- rancangan eksperimen;
+- parameter dan metrik yang akan digunakan;
+- analisis visual dan efisiensi yang akan dilakukan.
 
-TIDAK BOLEH SEBAGAI HASIL PROPOSAL
-- hasil eksperimen penelitian sendiri
-- hasil pilot satu seed
-- historical candidate results
-- diagnosis pasca-eksperimen
-- klaim bahwa metode usulan sudah meningkatkan performa
-```
+BAB I–III **tidak boleh** memuat sebagai hasil proposal:
 
-## Prinsip source-of-truth
+- hasil eksperimen penelitian sendiri;
+- hasil pilot satu seed;
+- hasil kandidat historis;
+- konfigurasi yang disebut telah terbukti terbaik;
+- diagnosis pasca-eksperimen;
+- klaim bahwa metode usulan telah meningkatkan performa.
 
-```text
-proposal/*.md formal artifact
-    = apa yang dibaca dosen/penguji
+## 7. Gaya Bahasa Formal
 
-foundation/ + sources/ + protocol/config/code
-    = alasan, bukti, dan detail teknis internal
-```
+Bahasa utama proposal adalah bahasa Indonesia yang natural. Istilah teknis Inggris boleh dipertahankan apabila lebih lazim dalam bidang pembelajaran mesin, misalnya *seed*, *optimizer*, *patch*, *backbone*, *neck*, *pretrained*, dan *bootstrap*. Hindari terjemahan literal yang membuat istilah menjadi rancu.
 
-Setiap revisi substansial pada percakapan harus dipindahkan ke artefak formal yang sesuai agar keputusan tidak hanya hidup di chat.
+Detail kode yang tidak diperlukan untuk memahami metodologi ditempatkan pada konfigurasi implementasi, bukan memenuhi narasi utama proposal.
