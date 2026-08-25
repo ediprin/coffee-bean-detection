@@ -19,17 +19,13 @@ Pendekatan serupa juga ditemukan pada objek pertanian. Syauqi et al. (2025) meng
 
 Salah satu bentuk pengolahan citra yang dapat digunakan adalah pemrosesan pada domain frekuensi. Melalui transformasi Fourier, informasi citra dapat direpresentasikan berdasarkan komponen frekuensinya. Selain besarnya komponen frekuensi, distribusi energi spektral juga dapat dianalisis berdasarkan arah. Cao et al. (2019) menunjukkan penggunaan distribusi radial dan angular dari spektrum Fourier dalam analisis tekstur, sedangkan Zhang dan Tan (2003) menunjukkan bahwa distribusi orientasi spektral dapat digunakan sebagai informasi diskriminatif. Pada tugas *fine-grained object detection*, Xu et al. (2025) menggunakan pemrosesan frekuensi lokal dan informasi angular pada deteksi kategori pesawat yang memiliki perbedaan visual yang halus. Hasil tersebut menunjukkan bahwa informasi frekuensi dan arah layak dipertimbangkan sebagai salah satu bentuk representasi citra, tetapi efektivitasnya pada deteksi cacat biji kopi masih perlu diuji.
 
-Berdasarkan uraian tersebut, penelitian ini mengusulkan penggunaan prapemrosesan citra berbasis frekuensi-angular sebelum proses deteksi menggunakan YOLO26n. Citra akan dianalisis secara lokal pada domain Fourier sehingga informasi spektral dapat diproses berdasarkan distribusi arahnya, kemudian hasil pengolahan dikembalikan ke domain spasial sebelum diberikan kepada model deteksi. Pendekatan ini ditempatkan pada citra masukan sehingga arsitektur utama YOLO26n tidak menjadi objek modifikasi dalam penelitian.
+Berdasarkan uraian tersebut, penelitian ini mengusulkan prapemrosesan citra berbasis frekuensi-angular sebelum proses deteksi menggunakan YOLO26n. Citra diproses secara lokal pada domain Fourier untuk memanfaatkan informasi frekuensi dan arah, kemudian direkonstruksi kembali ke domain spasial sebelum diberikan kepada model deteksi. Pendekatan ini ditempatkan pada ruang masukan sehingga arsitektur utama YOLO26n tetap dipertahankan.
 
-Rancangan prapemrosesan frekuensi-angular memiliki beberapa keputusan desain yang dapat memengaruhi citra hasil pengolahan. Oleh karena itu, optimasi pada penelitian ini dilakukan dengan menguji beberapa variasi desain yang telah ditetapkan terlebih dahulu, bukan melalui pencarian *global optimum*. Konfigurasi referensi dan konfigurasi terpilih akan dibandingkan dengan YOLO26n tanpa prapemrosesan. CLAHE juga digunakan sebagai pembanding peningkatan kontras lokal konvensional agar pengaruh prapemrosesan frekuensi-angular tidak hanya dibandingkan terhadap citra asli. Selain kinerja deteksi secara keseluruhan dan per kelas, biaya komputasi tambahan akibat prapemrosesan juga akan dievaluasi.
-
-Penelitian menggunakan dataset primer yang akan dikumpulkan secara langsung. Daftar kelas awal menargetkan 20 kategori cacat fisik dan benda asing yang digunakan dalam penilaian SNI 2907:2008, ditambah satu kelas biji normal. Jumlah kelas akhir ditetapkan setelah kecukupan data pada setiap kelas diperiksa sehingga kategori yang sangat langka tidak dipaksakan menjadi kelas evaluasi hanya melalui augmentasi.
-
-Berdasarkan latar belakang tersebut, penelitian ini dilakukan dengan judul **“Analisis dan Optimasi Prapemrosesan Citra Berbasis Frekuensi-Angular pada YOLO26 untuk Deteksi Fine-Grained Cacat Biji Kopi.”**
+Penelitian selanjutnya menganalisis variasi desain prapemrosesan tersebut serta mengevaluasi pengaruhnya terhadap kinerja deteksi dan biaya komputasi. YOLO26n tanpa prapemrosesan digunakan sebagai model acuan, sedangkan CLAHE digunakan sebagai pembanding peningkatan kontras lokal.
 
 ## 1.2 Rumusan Masalah
 
-Deteksi cacat biji kopi dengan jumlah kategori yang rinci memiliki tantangan karena beberapa jenis cacat mempunyai karakteristik visual yang relatif serupa sehingga kemampuan model dalam mengenali setiap kelas dapat berbeda. Dalam literatur biji kopi yang ditinjau, peningkatan kinerja umumnya dilakukan melalui modifikasi komponen di dalam model, sedangkan pengolahan citra berdasarkan informasi frekuensi dan arah sebelum proses deteksi masih perlu dikaji lebih lanjut pada kasus cacat biji kopi. Oleh karena itu, permasalahan dalam penelitian ini adalah bagaimana menerapkan prapemrosesan citra berbasis frekuensi-angular pada YOLO26n, menganalisis variasi desainnya, serta mengevaluasi pengaruhnya terhadap kinerja deteksi *fine-grained* cacat biji kopi.
+Deteksi cacat biji kopi dengan jumlah kategori yang rinci memiliki tantangan karena beberapa jenis cacat mempunyai karakteristik visual yang relatif serupa sehingga kemampuan model dalam mengenali setiap kelas dapat berbeda. Dalam literatur biji kopi yang ditinjau, peningkatan kinerja umumnya dilakukan melalui modifikasi komponen di dalam model, sedangkan pengolahan citra berdasarkan informasi frekuensi dan arah sebelum proses deteksi masih perlu dikaji lebih lanjut pada kasus cacat biji kopi. Untuk itu, diperlukan penelitian mengenai penerapan prapemrosesan citra berbasis frekuensi-angular pada YOLO26n, variasi desain prapemrosesan tersebut, serta pengaruhnya terhadap kinerja deteksi *fine-grained* cacat biji kopi.
 
 ## 1.3 Batasan Masalah
 
@@ -47,7 +43,7 @@ Adapun batasan masalah pada penelitian ini agar penelitian tetap berada pada rua
 
 ## 1.4 Tujuan Penelitian
 
-Penelitian ini bertujuan untuk menerapkan dan menganalisis prapemrosesan citra berbasis frekuensi-angular pada YOLO26n untuk deteksi *fine-grained* cacat biji kopi, menentukan konfigurasi dari variasi desain yang diuji, serta mengevaluasi pengaruhnya terhadap kinerja deteksi dan biaya komputasi dibandingkan dengan YOLO26n tanpa prapemrosesan dan pembanding CLAHE.
+Penelitian ini bertujuan untuk menerapkan dan menganalisis prapemrosesan citra berbasis frekuensi-angular pada YOLO26n untuk deteksi *fine-grained* cacat biji kopi, menentukan konfigurasi dari variasi desain yang diuji, serta mengevaluasi pengaruhnya terhadap kinerja deteksi dan biaya komputasi.
 
 ## 1.5 Manfaat Penelitian
 
