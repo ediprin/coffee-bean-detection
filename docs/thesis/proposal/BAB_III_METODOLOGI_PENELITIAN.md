@@ -335,8 +335,8 @@ Ringkasan perubahan pada setiap tahap ditunjukkan pada Tabel 3.2.
 |---|---|---|
 | \(C_0\) | Konfigurasi frekuensi-angular referensi | Menjadi acuan prapemrosesan |
 | \(C_1\) | Fungsi jendela Hann | Menguji pengaruh batas patch |
-| \(C_2\) | Representasi 16 orientasi | Menguji representasi arah yang lebih ringkas |
-| \(C_3\) | Penambahan informasi radial | Menguji informasi skala frekuensi |
+| \(C_2\) | Orientasi tak bertanda dengan resolusi sudut tetap | Menguji arah dan orientasi tanpa mengubah resolusi angular |
+| \(C_3\) | Tiga pita radial | Menguji informasi frekuensi radial rendah, menengah, dan tinggi |
 | \(C_4\) | Ambang lunak | Menguji pembobotan yang lebih bertahap di sekitar ambang |
 | \(C_5\) | Panduan luminansi | Menguji kebutuhan pembobotan terpisah pada setiap kanal warna |
 
@@ -360,19 +360,19 @@ Jendela diterapkan sebelum FFT dan pada tahap rekonstruksi. Secara sederhana, fu
 
 ### 3.5.2 Variasi Representasi Orientasi
 
-Pada \(C_2\), representasi arah diubah dari 360 interval arah pada rentang \([0,2\pi)\) menjadi 16 orientasi pada rentang \([0,\pi)\):
+Pada \(C_2\), representasi arah pada konfigurasi sebelumnya diubah menjadi orientasi tak bertanda. Sudut \(\theta\) pada rentang \([0,2\pi)\) dipetakan ke rentang \([0,\pi)\) melalui:
 
 \[
 \theta_o=\theta\bmod\pi.
 \]
 
-Dengan jumlah 16 orientasi, setiap interval memiliki lebar sekitar:
+Agar perubahan ini hanya menguji perbedaan antara arah dan orientasi, resolusi sudut dipertahankan sebesar \(1^\circ\) per interval. Oleh karena itu, rentang \([0,\pi)\) dibagi menjadi 180 interval orientasi:
 
 \[
-\Delta\theta=\frac{180^\circ}{16}=11{,}25^\circ.
+\Delta\theta=\frac{180^\circ}{180}=1^\circ.
 \]
 
-Perubahan ini membuat dua arah yang berlawanan diperlakukan sebagai orientasi yang sama dan sekaligus mengurangi jumlah interval sudut. Oleh karena itu, hasilnya akan ditafsirkan sebagai pengaruh keseluruhan perubahan representasi orientasi tersebut.
+Dengan perubahan tersebut, dua arah yang berlawanan diperlakukan sebagai orientasi yang sama, tetapi ketelitian diskretisasi sudut tetap sama seperti konfigurasi 360 interval pada rentang \([0,2\pi)\). Dengan demikian, perbandingan \(C_1\) dan \(C_2\) terutama digunakan untuk menguji apakah representasi orientasi tak bertanda lebih sesuai daripada representasi arah bertanda, tanpa mencampurkan perubahan tersebut dengan pengurangan resolusi angular.
 
 ### 3.5.3 Variasi Radial-Angular
 
@@ -382,19 +382,40 @@ Pada \(C_3\), informasi radial ditambahkan pada representasi orientasi. Radius p
 r(u,v)=\sqrt{(u-u_c)^2+(v-v_c)^2}.
 \]
 
-Spektrum dibagi menjadi tiga rentang radial. Batas antarrentang ditentukan menggunakan kuantil \(1/3\) dan \(2/3\) dari radius grid Fourier nonnol, sehingga pembagian tersebut ditentukan oleh geometri grid dan tidak dihitung dari statistik data pelatihan atau validasi. Densitas kemudian dihitung untuk setiap kombinasi rentang radial dan orientasi:
+Radius kemudian dinormalisasi terhadap radius maksimum pada grid Fourier:
+
+\[
+\rho(u,v)=\frac{r(u,v)}{r_{max}},
+\qquad 0\le\rho\le1.
+\]
+
+Untuk mempertahankan rancangan yang sederhana dan mudah ditafsirkan, spektrum dibagi menjadi tiga pita radial dengan lebar yang sama pada radius ternormalisasi:
+
+\[
+B_1: 0<\rho\le\frac{1}{3},
+\]
+
+\[
+B_2: \frac{1}{3}<\rho\le\frac{2}{3},
+\]
+
+\[
+B_3: \frac{2}{3}<\rho\le1.
+\]
+
+Ketiga pita tersebut secara operasional mewakili rentang radial rendah, menengah, dan tinggi. Jumlah tiga pita merupakan keputusan desain penelitian untuk memperoleh pemisahan radial yang sederhana, bukan nilai yang dianggap optimal berdasarkan literatur. Densitas kemudian dihitung untuk setiap kombinasi pita radial dan orientasi:
 
 \[
 D_i^c(b,k)=\sum_{(u,v)\in\Omega_{b,k}}A_i^c(u,v).
 \]
 
-Normalisasi dilakukan secara terpisah pada setiap rentang radial:
+Normalisasi dilakukan secara terpisah pada setiap pita radial:
 
 \[
 p_i^c(b,k)=\frac{D_i^c(b,k)}{\sum_jD_i^c(b,j)+\varepsilon}.
 \]
 
-Pembagian radial bertujuan mempertahankan informasi mengenai jarak frekuensi dari pusat spektrum, yang tidak dibedakan ketika hanya distribusi angular yang digunakan.
+Pembagian radial digunakan untuk menguji apakah pemisahan informasi berdasarkan jarak dari pusat spektrum memberikan informasi tambahan dibandingkan representasi yang hanya membedakan orientasi.
 
 ### 3.5.4 Variasi Ambang Lunak
 
@@ -404,11 +425,13 @@ Pada \(C_4\), ambang keras diganti dengan pembobotan yang berubah secara bertaha
 w_{soft}(q,\tau)=q\,\sigma\left(\frac{q-\tau}{T}\right),
 \]
 
-dengan \(\sigma(\cdot)\) merupakan fungsi sigmoid dan:
+dengan \(\sigma(\cdot)\) merupakan fungsi sigmoid dan \(T\) mengatur lebar transisi di sekitar nilai ambang. Nilai awal yang ditetapkan adalah:
 
 \[
 T=0{,}02.
 \]
+
+Nilai tersebut diperlakukan sebagai keputusan desain awal penelitian dan tidak dianggap sebagai nilai optimal yang berasal dari literatur. Secara matematis, nilai \(T\) yang lebih kecil membuat fungsi semakin mendekati ambang keras, sedangkan nilai yang lebih besar menghasilkan transisi yang lebih bertahap. Oleh karena itu, pengaruh \(T\) akan diperiksa secara terbatas sebagaimana dijelaskan pada Subbab 3.5.6.
 
 Variasi ini digunakan untuk mengetahui apakah respons yang berada di sekitar nilai ambang lebih baik diperlakukan secara bertahap daripada langsung dipertahankan atau dihilangkan.
 
@@ -424,7 +447,23 @@ Bobot spektral dihitung dari panduan luminansi tersebut dan digunakan bersama pa
 
 ### 3.5.6 Analisis Sensitivitas Terbatas
 
-Setelah variasi utama dianalisis, analisis sensitivitas terbatas dapat dilakukan terhadap parameter yang paling relevan, terutama ukuran patch \(m\) dan koefisien ambang \(\gamma\). Nilai kandidat akan ditetapkan sebelum eksperimen sensitivitas dilakukan dan hanya dipilih menggunakan data pengembangan. Data uji tidak digunakan untuk memilih parameter tersebut. Apabila analisis sensitivitas menghasilkan perubahan parameter yang digunakan pada konfigurasi kandidat, keputusan tersebut harus ditetapkan sebelum pengujian ulang dengan beberapa *seed* dan sebelum data uji dibuka.
+Setelah variasi utama dianalisis, analisis sensitivitas terbatas dapat dilakukan terhadap parameter yang paling relevan. Analisis ini tidak dilakukan sebagai pencarian seluruh kombinasi parameter, tetapi satu parameter diuji pada satu waktu terhadap konfigurasi yang sesuai. Kandidat yang direncanakan adalah:
+
+\[
+m\in\{16,32,64\},
+\]
+
+\[
+\gamma\in\{0{,}05,0{,}10,0{,}15\},
+\]
+
+\[
+T\in\{0{,}01,0{,}02,0{,}05\}.
+\]
+
+Ukuran patch \(m\) digunakan untuk melihat sensitivitas terhadap ukuran wilayah lokal, \(\gamma\) untuk melihat sensitivitas ambang adaptif, dan \(T\) untuk melihat sensitivitas tingkat kelunakan pembobotan pada \(C_4\). Nilai kandidat tersebut ditetapkan sebelum eksperimen sensitivitas dilakukan. Seluruh keputusan hanya menggunakan data pengembangan dan tidak menggunakan data uji.
+
+Apabila analisis sensitivitas menghasilkan perubahan parameter yang digunakan pada konfigurasi kandidat, keputusan tersebut harus ditetapkan sebelum pengujian ulang dengan beberapa *seed* dan sebelum data uji dibuka. Dengan demikian, analisis sensitivitas tetap berfungsi sebagai bagian pengembangan metode dan tidak digunakan untuk menyesuaikan metode terhadap data uji.
 
 ## 3.6 Rancangan Eksperimen
 
