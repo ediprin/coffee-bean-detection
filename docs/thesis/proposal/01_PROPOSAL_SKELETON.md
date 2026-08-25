@@ -12,8 +12,10 @@ Direktori `docs/thesis/proposal/` diperlakukan sebagai **artefak proposal tesis*
 BAB_I_PENDAHULUAN.md
 BAB_II_TINJAUAN_PUSTAKA.md
 BAB_III_METODOLOGI_PENELITIAN.md
-DAFTAR_PUSTAKA.md                 # BLOCKED sampai metadata resmi selesai dikunci
+DAFTAR_PUSTAKA.md
 ```
+
+`DAFTAR_PUSTAKA.md` sudah dibangun dari sumber yang telah melewati gate resmi/primer dan audit dua arah. Namun, **proposal belum boleh disebut citation-ready penuh** hanya karena bibliography sudah lengkap. Claim-level verification tetap harus diselesaikan untuk klaim metodologis dan faktual yang sensitif.
 
 File lama seperti `02_BACKGROUND.md`, `03_PROBLEM_FORMULATION.md`, `04_LITERATURE_REVIEW.md`, `05_METHODOLOGY.md`, `05_05_AF2_PRIMARY_SOURCE_HARDENED.md`, dan `06_RESEARCH_FLOW.md` adalah bahan kerja/backend teknis, bukan authority naskah formal.
 
@@ -105,11 +107,23 @@ Authority backend untuk sitasi:
 docs/thesis/sources/OFFICIAL_CITATION_AUDIT.md
     = status verifikasi sumber resmi/primer
 
-docs/thesis/sources/FORMAL_CITATION_INVENTORY.md
-    = daftar sitasi yang benar-benar muncul pada BAB I–III
+docs/thesis/sources/CITATION_CROSSWALK.md
+    = pemetaan sitasi author–year formal ke canonical source
 
 docs/thesis/sources/BIBLIOGRAPHY_METADATA_LOCK.md
     = metadata bibliografis yang sudah dikunci dari sumber resmi/primer
+
+docs/thesis/sources/BIDIRECTIONAL_CITATION_AUDIT.md
+    = audit cited → bibliography dan bibliography → cited
+```
+
+Status snapshot saat ini:
+
+```text
+bibliography formal        = tersedia
+cited ↔ bibliography       = terpetakan dua arah pada snapshot saat ini
+claim-level verification   = BELUM SELESAI
+fundamental DFT/FFT source  = perlu dipasang jika rumus fundamental dipertahankan
 ```
 
 Aturan wajib:
@@ -119,7 +133,8 @@ Aturan wajib:
 3. full text primer diperlukan untuk mendukung klaim metode; metadata resmi hanya mengunci identitas bibliografis;
 4. preprint harus disebut sebagai preprint;
 5. jika satu field belum terverifikasi, field tersebut tetap pending atau sumber tidak dipakai; jangan mengisinya secara inferensial;
-6. `DAFTAR_PUSTAKA.md` baru boleh dipromosikan menjadi artefak formal setelah metadata seluruh sumber yang dipertahankan lolos hard gate dan audit dua arah sitasi ↔ daftar pustaka selesai.
+6. perubahan sitasi pada BAB I–III wajib memicu pembaruan crosswalk, metadata lock, daftar pustaka, dan audit dua arah;
+7. bibliography lengkap **tidak sama dengan** claim correctness. Klaim sensitif tetap harus diverifikasi pada halaman/section/equation primary source.
 
 ## Temporal guardrail proposal
 
