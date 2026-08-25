@@ -11,6 +11,8 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt
 
+from ensure_table_captions import apply as ensure_table_captions
+
 FONT_NAME = "Times New Roman"
 TABLE_EDGES = ("top", "left", "bottom", "right", "insideH", "insideV")
 CELL_EDGES = ("top", "left", "bottom", "right")
@@ -230,6 +232,12 @@ def finalize(input_path: Path, output_path: Path) -> None:
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(output_path)
+
+    # Complete and normalize the five formal table captions before the static
+    # Daftar Tabel is materialized. This also fixes the BAB III sequence to
+    # Tabel 3.1, 3.2, 3.3, and 3.4 without touching equation-layout tables.
+    ensure_table_captions(output_path, output_path)
+
     print(
         f"Finalized {output_path}: {normal_tables} regular tables with TableGrid/full borders, "
         f"{equation_tables} equation-layout tables without borders; font={FONT_NAME}."
