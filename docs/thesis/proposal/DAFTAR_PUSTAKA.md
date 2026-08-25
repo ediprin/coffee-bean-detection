@@ -62,6 +62,10 @@ Selvaraju, R. R., Cogswell, M., Das, A., Vedantam, R., Parikh, D., & Batra, D. (
 
 Syauqi, F., Oktiana, M., Muchtar, K., Bahri, A., & Razali, S. (2025). Edge AI-based defect detection in white pepper (*Piper nigrum* L.) using CLAHE-based pre-processing and YOLO. In *2025 IEEE International Conference on Networking, Intelligent Systems, and IoT (ICONS-IoT)* (pp. 18–23). IEEE. https://doi.org/10.1109/ICONS-IOT65216.2025.11211242
 
+Tarekegn, T. A., & Debelee, T. G. (2025). KN-YOLOv8: A lightweight deep learning model for real-time coffee bean defect detection. *Journal on Artificial Intelligence, 7*(1), 585–613. https://doi.org/10.32604/jai.2025.067333
+
+Wang, S., Xia, C., Lv, F., & Shi, Y. (2025). RT-DETRv3: Real-time end-to-end object detection with hierarchical dense positive supervision. In *Proceedings of the Winter Conference on Applications of Computer Vision (WACV)* (pp. 1628–1636).
+
 Wu, Y., Chen, Y., Yuan, L., Liu, Z., Wang, L., Li, H., & Fu, Y. (2020). Rethinking classification and localization for object detection. In *Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition* (pp. 10186–10195).
 
 Xie, X., Cheng, G., Li, W., Lang, C., Zhang, P., Yao, Y., & Han, J. (2025). Learning discriminative representation for fine-grained object detection in remote sensing images. *IEEE Transactions on Circuits and Systems for Video Technology, 35*(8), 8197–8208. https://doi.org/10.1109/TCSVT.2025.3544741
