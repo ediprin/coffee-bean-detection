@@ -20,6 +20,7 @@ from docx.shared import Cm, Pt, RGBColor
 
 LOGO_B64_PATH = Path(__file__).with_name("usu_logo.jpg.b64")
 ROMAN = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7, "VIII": 8, "IX": 9, "X": 10}
+FORMAL_PROPOSAL_DIR = Path("docs/thesis/proposal")
 
 
 def set_cell_margins(cell, top=0, start=0, bottom=0, end=0):
@@ -471,19 +472,20 @@ def extract_title(repo: Path):
         match = re.search(r"##\s+Judul kerja.*?\*\*(.+?)\*\*", text, re.S | re.I)
         if match:
             return " ".join(match.group(1).split())
-    return "Analisis dan Optimasi Preprocessing Citra Berbasis Frekuensi-Angular pada YOLO26 untuk Deteksi Fine-Grained Cacat Biji Kopi"
+    return "Analisis dan Optimasi Prapemrosesan Citra Berbasis Frekuensi-Angular pada YOLO26 untuk Deteksi Fine-Grained Cacat Biji Kopi"
 
 
 def build(repo: Path, output: Path, student, nim, prodi, year, label):
+    proposal_dir = repo / FORMAL_PROPOSAL_DIR
     sources = [
-        repo / "BAB_I_PENDAHULUAN.md",
-        repo / "BAB_II_TINJAUAN_PUSTAKA.md",
-        repo / "BAB_III_METODOLOGI_PENELITIAN.md",
-        repo / "DAFTAR_PUSTAKA.md",
+        proposal_dir / "BAB_I_PENDAHULUAN.md",
+        proposal_dir / "BAB_II_TINJAUAN_PUSTAKA.md",
+        proposal_dir / "BAB_III_METODOLOGI_PENELITIAN.md",
+        proposal_dir / "DAFTAR_PUSTAKA.md",
     ]
     missing = [str(path) for path in sources if not path.exists()]
     if missing:
-        raise SystemExit("Missing source files: " + ", ".join(missing))
+        raise SystemExit("Missing formal proposal source files: " + ", ".join(missing))
 
     combined = "\n\n".join(path.read_text(encoding="utf-8") for path in sources)
     title = extract_title(repo)
@@ -517,36 +519,41 @@ def build(repo: Path, output: Path, student, nim, prodi, year, label):
         number_equations(doc)
         insert_front_matter(doc, title, student, nim, prodi, year, label)
         set_update_fields(doc)
+        doc.save(sectioned_docx)
 
-        template = copy.deepcopy(doc.sections[-1]._sectPr)
-        first_front = next((paragraph for paragraph in doc.paragraphs if paragraph.text.strip() == "DAFTAR ISI"), None)
-        if first_front:
-            make_break_before(first_front, template)
-        for paragraph in list(doc.paragraphs):
+        doc = Document(sectioned_docx)
+        template_sectpr = copy.deepcopy(doc.sections[-1]._sectPr)
+        for paragraph in doc.paragraphs:
             text = paragraph.text.strip()
             if re.match(r"^BAB\s+[IVX]+$", text, re.I) or text.upper() == "DAFTAR PUSTAKA":
-                make_break_before(paragraph, template)
+                make_break_before(paragraph, template_sectpr)
+        doc.save(output)
 
-        doc.save(sectioned_docx)
-        doc = Document(sectioned_docx)
+        doc = Document(output)
         configure_headers_footers(doc)
         set_update_fields(doc)
         doc.save(output)
 
-    print(output)
-
 
 def main():
-    parser = argparse.ArgumentParser(description="Build SPs USU proposal DOCX from authoritative Markdown files.")
+    parser = argparse.ArgumentParser()
     parser.add_argument("--repo", default=".")
-    parser.add_argument("--output", default="build/Proposal_Tesis_USU.docx")
-    parser.add_argument("--student", default=os.environ.get("THESIS_STUDENT", "NAMA MAHASISWA"))
-    parser.add_argument("--nim", default=os.environ.get("THESIS_NIM", "NIM / SINGKATAN PRODI"))
-    parser.add_argument("--prodi", default=os.environ.get("THESIS_PRODI", "NAMA PROGRAM STUDI"))
-    parser.add_argument("--year", default=os.environ.get("THESIS_YEAR", "2026"))
-    parser.add_argument("--label", default=os.environ.get("THESIS_LABEL", "TESIS"))
+    parser.add_argument("--output", required=True)
+    parser.add_argument("--student", default=os.getenv("THESIS_STUDENT", "NAMA MAHASISWA"))
+    parser.add_argument("--nim", default=os.getenv("THESIS_NIM", "NIM / SINGKATAN PRODI"))
+    parser.add_argument("--prodi", default=os.getenv("THESIS_PRODI", "NAMA PROGRAM STUDI"))
+    parser.add_argument("--year", default=os.getenv("THESIS_YEAR", "2026"))
+    parser.add_argument("--label", default=os.getenv("THESIS_LABEL", "TESIS"))
     args = parser.parse_args()
-    build(Path(args.repo), Path(args.output), args.student, args.nim, args.prodi, args.year, args.label)
+    build(
+        Path(args.repo).resolve(),
+        Path(args.output).resolve(),
+        args.student,
+        args.nim,
+        args.prodi,
+        args.year,
+        args.label,
+    )
 
 
 if __name__ == "__main__":
