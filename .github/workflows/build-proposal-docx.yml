@@ -1,0 +1,108 @@
+name: Build Proposal DOCX
+
+on:
+  workflow_dispatch:
+    inputs:
+      student_name:
+        description: Nama mahasiswa (opsional)
+        required: false
+        default: ""
+      nim:
+        description: NIM / singkatan program studi (opsional)
+        required: false
+        default: ""
+      prodi:
+        description: Nama program studi (opsional)
+        required: false
+        default: ""
+      year:
+        description: Tahun pada sampul
+        required: false
+        default: "2026"
+      document_label:
+        description: Label dokumen pada sampul
+        required: false
+        default: "TESIS"
+  push:
+    branches:
+      - proposal/thesis-foundation
+    paths:
+      - "BAB_I_PENDAHULUAN.md"
+      - "BAB_II_TINJAUAN_PUSTAKA.md"
+      - "BAB_III_METODOLOGI_PENELITIAN.md"
+      - "DAFTAR_PUSTAKA.md"
+      - "README.md"
+      - "tools/thesis_docx/**"
+      - "docs/thesis/BUILD_DOCX.md"
+      - ".github/workflows/build-proposal-docx.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: proposal-docx-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      THESIS_STUDENT: ${{ github.event.inputs.student_name || vars.THESIS_STUDENT || 'NAMA MAHASISWA' }}
+      THESIS_NIM: ${{ github.event.inputs.nim || vars.THESIS_NIM || 'NIM / SINGKATAN PRODI' }}
+      THESIS_PRODI: ${{ github.event.inputs.prodi || vars.THESIS_PRODI || 'NAMA PROGRAM STUDI' }}
+      THESIS_YEAR: ${{ github.event.inputs.year || vars.THESIS_YEAR || '2026' }}
+      THESIS_LABEL: ${{ github.event.inputs.document_label || vars.THESIS_LABEL || 'TESIS' }}
+
+    steps:
+      - name: Checkout proposal branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc libreoffice-writer
+
+      - name: Install Python dependencies
+        run: pip install -r tools/thesis_docx/requirements.txt
+
+      - name: Build proposal DOCX
+        run: |
+          mkdir -p build
+          python tools/thesis_docx/build_proposal.py \
+            --repo . \
+            --output build/Proposal_Tesis_USU.docx
+
+      - name: Structural smoke test
+        run: |
+          python - <<'PY'
+          from docx import Document
+
+          path = "build/Proposal_Tesis_USU.docx"
+          doc = Document(path)
+          text = "\n".join(paragraph.text for paragraph in doc.paragraphs)
+          for required in ("BAB I", "BAB II", "BAB III", "DAFTAR PUSTAKA"):
+              assert required in text, f"Missing required section: {required}"
+          assert len(doc.sections) >= 5, f"Unexpected section count: {len(doc.sections)}"
+          print(f"OK: {len(doc.paragraphs)} paragraphs, {len(doc.tables)} tables, {len(doc.sections)} sections")
+          PY
+
+      - name: Render smoke test
+        run: |
+          mkdir -p build/render-smoke
+          libreoffice --headless --convert-to pdf \
+            --outdir build/render-smoke \
+            build/Proposal_Tesis_USU.docx
+          test -s build/render-smoke/Proposal_Tesis_USU.pdf
+
+      - name: Upload DOCX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: proposal-thesis-usu
+          path: build/Proposal_Tesis_USU.docx
+          if-no-files-found: error
+          retention-days: 30
