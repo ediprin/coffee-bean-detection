@@ -162,7 +162,29 @@ Konfigurasi variasi prapemrosesan diuji secara bertahap dan kumulatif:
 C0 → C1 → C2 → C3 → C4 → C5
 ```
 
-Perubahan yang dianalisis meliputi fungsi jendela, representasi orientasi, informasi radial, fungsi ambang, dan panduan luminansi. Hubungan tersebut menunjukkan akumulasi keputusan desain, bukan pewarisan bobot model antar konfigurasi.
+Keputusan desain yang berlaku adalah:
+
+```text
+C1 = fungsi jendela square-root Hann
+C2 = orientasi tak bertanda pada [0, π) dengan 180 interval; resolusi tetap 1°/interval
+C3 = tiga pita radial berdasarkan radius ternormalisasi: (0,1/3], (1/3,2/3], (2/3,1]
+C4 = ambang lunak sigmoid; T=0,02 merupakan nilai awal, bukan nilai optimum dari literatur
+C5 = panduan luminansi bersama menggunakan koefisien ITU-R BT.709-6
+```
+
+Perubahan pada `C2` sengaja mempertahankan resolusi sudut agar perbandingan dengan konfigurasi sebelumnya terutama menguji arah bertanda versus orientasi tak bertanda, bukan sekaligus menguji pengurangan jumlah interval. Tiga pita pada `C3` merupakan keputusan desain penelitian yang sederhana untuk membedakan rentang radial rendah, menengah, dan tinggi, bukan jumlah pita yang diklaim optimal dari literatur.
+
+Analisis sensitivitas bersifat terbatas dan satu-parameter-pada-satu-waktu, bukan pencarian faktorial penuh:
+
+```text
+m     ∈ {16, 32, 64}
+gamma ∈ {0,05, 0,10, 0,15}
+T     ∈ {0,01, 0,02, 0,05}
+```
+
+Seluruh pemilihan pada analisis sensitivitas hanya menggunakan data pengembangan dan harus dibekukan sebelum pengujian ulang beberapa seed dan sebelum data uji digunakan.
+
+Hubungan `C0 → C1 → ... → C5` menunjukkan akumulasi keputusan desain, bukan pewarisan bobot model antar konfigurasi.
 
 Pemilihan kandidat `C*` menggunakan mAP50–95 pada data validasi sebagai kriteria utama. Jika terjadi nilai sama pada ketelitian pelaporan, digunakan kinerja kelompok tiga kelas sulit yang telah ditetapkan dari model acuan, kemudian waktu pemrosesan total sebagai pemecah seri berikutnya. Aturan pemilihan harus ditetapkan sebelum data uji digunakan.
 
