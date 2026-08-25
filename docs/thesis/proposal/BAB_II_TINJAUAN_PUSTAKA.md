@@ -75,7 +75,7 @@ Berdasarkan penelitian tersebut, *preprocessing* sebelum *object detector* dapat
 
 ### 2.8.1 Discrete Fourier Transform dan Fast Fourier Transform
 
-Citra digital dapat dipandang sebagai sinyal dua dimensi pada domain spasial. *Discrete Fourier Transform* (DFT) mengubah representasi tersebut ke domain frekuensi sehingga citra dinyatakan sebagai kombinasi komponen spektral. Untuk citra diskrit \(f(x,y)\) berukuran \(M\times N\), DFT dua dimensi dapat dituliskan sebagai:
+Citra digital dapat dipandang sebagai sinyal dua dimensi pada domain spasial. *Discrete Fourier Transform* (DFT) mengubah representasi tersebut ke domain frekuensi sehingga citra dinyatakan sebagai kombinasi komponen spektral (Gonzalez & Woods, 2018). Untuk citra diskrit \(f(x,y)\) berukuran \(M\times N\), DFT dua dimensi dapat dituliskan sebagai:
 
 \[
 F(u,v)=\sum_{x=0}^{M-1}\sum_{y=0}^{N-1}f(x,y)
@@ -89,7 +89,7 @@ f(x,y)=\frac{1}{MN}\sum_{u=0}^{M-1}\sum_{v=0}^{N-1}F(u,v)
 \exp\left[j2\pi\left(\frac{ux}{M}+\frac{vy}{N}\right)\right].
 \]
 
-*Fast Fourier Transform* (FFT) merupakan algoritma yang digunakan untuk menghitung DFT secara lebih efisien. Pemrosesan berbasis Fourier memungkinkan suatu transformasi dilakukan pada representasi spektral, kemudian citra dikembalikan kembali ke domain spasial melalui transformasi invers.
+*Fast Fourier Transform* (FFT) merupakan algoritma yang digunakan untuk menghitung DFT secara lebih efisien. Pemrosesan berbasis Fourier memungkinkan suatu transformasi dilakukan pada representasi spektral, kemudian citra dikembalikan kembali ke domain spasial melalui transformasi invers (Gonzalez & Woods, 2018).
 
 Yang dan Soatto (2020) menggunakan manipulasi amplitudo Fourier pada *Fourier Domain Adaptation* dan merekonstruksi kembali citra menggunakan inverse transform. Li et al. (2025) menggunakan pola transformasi, pemrosesan spektral, dan rekonstruksi sebelum citra diteruskan ke YOLO. Xu et al. (2025) menggunakan DFT lokal pada patch untuk mempertahankan variasi frekuensi pada bagian-bagian citra yang berbeda.
 
@@ -111,7 +111,7 @@ A(u,v)=\sqrt{R^2(u,v)+I^2(u,v)},
 \phi(u,v)=\operatorname{atan2}(I(u,v),R(u,v)).
 \]
 
-Amplitudo menunjukkan besar respons spektral pada suatu koordinat frekuensi, sedangkan fase berkaitan dengan susunan spasial struktur citra. Yang dan Soatto (2020) menunjukkan bahwa manipulasi amplitudo dapat dilakukan dengan mempertahankan fase sumber pada konteks *domain adaptation*. Li et al. (2025) juga memproses amplitudo dan fase secara khusus pada FE-YOLO. Pada LFDet, Xu et al. (2025) mengubah respons amplitudo berdasarkan distribusi frekuensi dan menggunakan fase asli pada proses rekonstruksi.
+Amplitudo menunjukkan besar respons spektral pada suatu koordinat frekuensi, sedangkan fase berkaitan dengan representasi struktur spasial citra dalam transformasi Fourier (Gonzalez & Woods, 2018). Yang dan Soatto (2020) menunjukkan bahwa manipulasi amplitudo dapat dilakukan dengan mempertahankan fase sumber pada konteks *domain adaptation*. Li et al. (2025) juga memproses amplitudo dan fase secara khusus pada FE-YOLO. Pada LFDet, Xu et al. (2025) mengubah respons amplitudo berdasarkan distribusi frekuensi dan menggunakan fase asli pada proses rekonstruksi.
 
 ### 2.8.3 Representasi Radial dan Angular
 
