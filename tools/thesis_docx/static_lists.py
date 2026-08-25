@@ -41,8 +41,16 @@ def find_page(pages: list[str], text: str, start_page: int = 1) -> int:
 
 
 def find_bab1_page(pages: list[str]) -> int:
+    # After the static TOC has been populated, its first page also contains the
+    # strings "BAB I PENDAHULUAN" and "1.1 Latar Belakang". Explicitly exclude
+    # the TOC page so the body-page offset remains anchored to the real BAB I.
     for page_number, page_text in enumerate(pages, start=1):
-        if "bab i" in page_text and "pendahuluan" in page_text and "1.1 latar belakang" in page_text:
+        if (
+            "bab i" in page_text
+            and "pendahuluan" in page_text
+            and "1.1 latar belakang" in page_text
+            and "daftar isi" not in page_text
+        ):
             return page_number
     raise RuntimeError("Could not locate BAB I first page")
 
