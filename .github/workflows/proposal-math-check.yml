@@ -1,0 +1,31 @@
+name: Proposal Math Source Check
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - proposal/thesis-foundation
+    paths:
+      - "docs/thesis/proposal/BAB_I_PENDAHULUAN.md"
+      - "docs/thesis/proposal/BAB_II_TINJAUAN_PUSTAKA.md"
+      - "docs/thesis/proposal/BAB_III_METODOLOGI_PENELITIAN.md"
+      - "tools/thesis_docx/check_math_source.py"
+      - ".github/workflows/proposal-math-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout proposal branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify GitHub-safe math source
+        run: python tools/thesis_docx/check_math_source.py
