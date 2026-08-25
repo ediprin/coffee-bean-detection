@@ -1,13 +1,16 @@
 # Build Proposal Tesis ke DOCX
 
-Dokumen proposal formal dibangun otomatis dari source of truth Markdown pada branch `proposal/thesis-foundation`:
+Dokumen proposal formal dibangun otomatis dari **satu-satunya source of truth** pada branch `proposal/thesis-foundation`, yaitu:
 
-1. `BAB_I_PENDAHULUAN.md`
-2. `BAB_II_TINJAUAN_PUSTAKA.md`
-3. `BAB_III_METODOLOGI_PENELITIAN.md`
-4. `DAFTAR_PUSTAKA.md`
+```text
+docs/thesis/proposal/
+├── BAB_I_PENDAHULUAN.md
+├── BAB_II_TINJAUAN_PUSTAKA.md
+├── BAB_III_METODOLOGI_PENELITIAN.md
+└── DAFTAR_PUSTAKA.md
+```
 
-Generator berada di `tools/thesis_docx/build_proposal.py` dan workflow GitHub Actions berada di `.github/workflows/build-proposal-docx.yml`.
+File BAB duplikat di root repository tidak digunakan dan telah dihapus. Generator berada di `tools/thesis_docx/build_proposal.py` dan workflow GitHub Actions berada di `.github/workflows/build-proposal-docx.yml`.
 
 ## Format yang diterapkan
 
@@ -28,7 +31,9 @@ Generator menerapkan kontrak format utama Sekolah Pascasarjana USU yang digunaka
 
 ## Build otomatis
 
-Setiap push ke branch `proposal/thesis-foundation` yang mengubah naskah proposal, generator, atau workflow akan menjalankan workflow **Build Proposal DOCX**.
+Setiap push ke branch `proposal/thesis-foundation` yang mengubah isi `docs/thesis/proposal/`, generator, README, panduan build, atau workflow akan menjalankan workflow **Build Proposal DOCX**.
+
+Workflow terlebih dahulu memverifikasi keberadaan keempat sumber formal di `docs/thesis/proposal/`. Generator kemudian membaca langsung file tersebut; tidak ada mekanisme fallback ke naskah root.
 
 Hasil build disimpan sebagai GitHub Actions artifact bernama:
 
@@ -36,7 +41,7 @@ Hasil build disimpan sebagai GitHub Actions artifact bernama:
 proposal-thesis-usu
 ```
 
-Isi artifact:
+dengan isi:
 
 ```text
 Proposal_Tesis_USU.docx
@@ -60,7 +65,7 @@ Input metadata sampul bersifat opsional:
 - tahun;
 - label dokumen pada sampul.
 
-Jika input manual dikosongkan, workflow akan mencoba menggunakan GitHub Actions repository variables berikut:
+Jika input manual dikosongkan, workflow akan mencoba menggunakan repository variables berikut:
 
 ```text
 THESIS_STUDENT
@@ -76,12 +81,16 @@ Jika repository variables juga belum diisi, generator menggunakan placeholder ya
 
 Diperlukan Python, Pandoc, dan dependensi Python pada `requirements.txt`.
 
+Dari root repository, jalankan:
+
 ```bash
 pip install -r tools/thesis_docx/requirements.txt
 python tools/thesis_docx/build_proposal.py \
   --repo . \
   --output build/Proposal_Tesis_USU.docx
 ```
+
+Argumen `--repo .` menunjuk root repository agar generator dapat menemukan `docs/thesis/proposal/` dan README. Generator **tidak** membaca BAB I–III dari root.
 
 Metadata sampul dapat diberikan melalui argumen:
 
@@ -113,4 +122,4 @@ Langkah ini diperlukan agar seluruh field dinamis mencerminkan nomor halaman ter
 
 ## Batas source of truth
 
-Generator tidak mengubah substansi ilmiah BAB I–III. Ia hanya menggabungkan dan memformat naskah authority pada root branch. Hasil eksperimen, log pilot, nama konfigurasi internal, atau artefak implementasi tidak otomatis dimasukkan ke proposal formal.
+Generator tidak mengubah substansi ilmiah BAB I–III. Ia hanya menggabungkan dan memformat naskah formal dari `docs/thesis/proposal/`. Hasil eksperimen, log pilot, nama konfigurasi internal, atau artefak implementasi tidak otomatis dimasukkan ke proposal formal.
