@@ -14,6 +14,8 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 
+from static_lists import build as build_static_lists
+
 FONT = "Times New Roman"
 
 
@@ -352,6 +354,12 @@ def populate(input_path: Path, pdf_path: Path, output_path: Path):
     entries = collect_entries(doc, pages)
     insert_static_toc(doc, entries)
     doc.save(output_path)
+
+    # Materialize DAFTAR TABEL and DAFTAR GAMBAR in the same pagination pass.
+    # static_lists.py preserves the front-matter anchor carrying the BAB I
+    # section break, so this does not alter chapter order/section structure.
+    build_static_lists(output_path, pdf_path, output_path)
+
     for level, text, page in entries:
         print(f"{level}: {text} -> {page}")
 
