@@ -5,7 +5,7 @@
 
 Penelitian ini menggunakan pendekatan eksperimental komparatif untuk menganalisis pengaruh *preprocessing* citra berbasis frekuensi-angular terhadap kinerja YOLO26n pada deteksi *fine-grained* cacat biji kopi. Arsitektur *backbone*, *neck*, dan *detection head* YOLO26n dipertahankan pada perbandingan utama sehingga perbedaan utama antar kondisi eksperimen berasal dari perlakuan terhadap tensor citra masukan.
 
-Secara umum, penelitian akan terdiri atas pengumpulan dataset primer dan pencegahan kebocoran data, pembentukan baseline YOLO26n, pembentukan konfigurasi referensi *preprocessing* frekuensi-angular, analisis faktor desain *preprocessing*, konfirmasi berpasangan pada beberapa *seed*, evaluasi pada *locked test*, analisis kinerja per kelas dan kesalahan, analisis visual, serta evaluasi efisiensi komputasi.
+Secara umum, penelitian akan terdiri atas pengumpulan dataset primer dan pencegahan kebocoran data, pembentukan baseline YOLO26n, pembanding *preprocessing* konvensional, pembentukan konfigurasi referensi *preprocessing* frekuensi-angular, analisis faktor desain *preprocessing*, konfirmasi berpasangan pada beberapa *seed*, evaluasi pada *locked test*, analisis kinerja per kelas dan kesalahan, analisis visual, evaluasi efisiensi komputasi, serta pengujian transfer lintas arsitektur secara opsional setelah konfigurasi utama dibekukan.
 
 Alur penelitian dirangkum sebagai berikut:
 
@@ -16,6 +16,8 @@ Anotasi, audit kelas, dan grouped split
         ↓
 Baseline development YOLO26n
         ↓
+Conventional preprocessing control (CLAHE)
+        ↓
 Reference frequency-angular preprocessing
         ↓
 Staged cumulative spectral factorization
@@ -23,6 +25,8 @@ Staged cumulative spectral factorization
 Pemilihan konfigurasi kandidat C*
         ↓
 Paired multi-seed confirmation
+        ↓
+Optional cross-architecture transfer test
         ↓
 Locked final evaluation
         ↓
@@ -134,6 +138,25 @@ YOLO26n digunakan sebagai model dasar pada penelitian ini. YOLO26 merupakan kelu
 Model menggunakan bobot *pretrained* resmi `yolo26n.pt` sebagai sumber inisialisasi pada perbandingan utama. Setelah taksonomi dataset dibekukan, bagian prediksi kelas disesuaikan dengan jumlah kelas final \(C\), dengan target utama \(C=21\). Pada *final paired comparison*, pembentukan detector target akan menggunakan *seed* inisialisasi yang sama untuk kondisi yang dipasangkan. Setelah transfer bobot *pretrained*, kesetaraan *persistent detector state* antar kondisi akan diverifikasi sebelum pelatihan dimulai sehingga satu-satunya perbedaan awal yang diizinkan adalah keberadaan atau konfigurasi *frontend preprocessing*.
 
 Pada penelitian ini tidak dilakukan modifikasi terhadap *backbone*, *neck*, maupun *detection head* YOLO26n. *Preprocessing* yang dianalisis juga tidak mempunyai parameter trainable. Dengan demikian, analisis difokuskan pada perubahan representasi masukan dan bukan pada perubahan kapasitas arsitektur detector.
+
+### 3.3.1 Baseline dan Pembanding Eksperimen
+
+Agar pertanyaan penelitian tetap berfokus pada representasi masukan, YOLO26n dipertahankan sebagai detector utama pada seluruh pembanding inti. Empat kondisi utama direncanakan sebagai berikut:
+
+| Kode | Kondisi | Fungsi dalam eksperimen |
+|---|---|---|
+| \(B_0\) | YOLO26n native pada citra asli | Baseline utama tanpa *preprocessing* tambahan |
+| \(B_1\) | CLAHE + YOLO26n | Kontrol *image enhancement* konvensional |
+| \(B_2\) | \(C_0\) AF2-Ref + YOLO26n | Konfigurasi referensi frekuensi-angular |
+| \(B_3\) | \(C^*\) + YOLO26n | Konfigurasi frekuensi-angular yang dipilih dari analisis faktor |
+
+CLAHE (*Contrast Limited Adaptive Histogram Equalization*) digunakan untuk menjawab apakah perubahan kinerja dapat diperoleh hanya melalui peningkatan kontras lokal konvensional tanpa analisis frekuensi-angular. CLAHE akan diterapkan pada kanal luminance dan hasilnya dikonversi kembali ke RGB sehingga geometri citra dan anotasi *bounding box* tidak berubah. Untuk mencegah CLAHE berubah menjadi ruang optimasi kedua, hanya satu konfigurasi tetap yang digunakan. Konfigurasi kontrol direncanakan menggunakan `clipLimit=2.0` dan `tileGridSize=8×8`; nilai tersebut akan dibekukan sebelum *run* pembanding dan tidak akan dituning berdasarkan *locked test*.
+
+Pembanding CLAHE tidak dimaksudkan untuk membuktikan bahwa CLAHE merupakan metode peningkatan citra terbaik. Fungsinya adalah sebagai **conventional enhancement control** terhadap hipotesis bahwa representasi frekuensi-angular memberi informasi yang lebih spesifik daripada peningkatan kontras lokal biasa.
+
+Transformasi berbasis wavelet tidak dimasukkan sebagai baseline utama. Wavelet tetap dibahas sebagai pendekatan transform-domain yang relevan pada tinjauan pustaka, tetapi penggunaannya memerlukan keputusan tambahan mengenai keluarga wavelet, level dekomposisi, pemilihan subband, fungsi threshold, dan rekonstruksi. Menjadikannya baseline yang ikut dioptimasi akan membuka ruang desain baru yang berada di luar pertanyaan utama penelitian. Apabila diperlukan oleh evaluasi akademik, satu konfigurasi wavelet tetap dapat ditambahkan sebagai analisis tambahan tanpa *hyperparameter search*, tetapi tidak digunakan untuk memilih \(C^*\).
+
+Selain pembanding utama tersebut, penelitian dapat melakukan **cross-architecture transfer evaluation** menggunakan RT-DETRv3-R18 sebagai detector keluarga transformer setelah \(C^*\) dibekukan. RT-DETRv3 merupakan detector end-to-end yang dipublikasikan pada WACV 2025; varian R18 dipilih karena merupakan varian paling ringan pada keluarga tersebut dan memiliki implementasi serta bobot pretrained publik. Eksperimen ini tidak digunakan untuk menentukan apakah YOLO26n lebih baik daripada RT-DETRv3, melainkan untuk menguji apakah arah perubahan akibat \(C^*\) tetap dapat diamati ketika detector diganti.
 
 ## 3.4 Preprocessing Citra Berbasis Frekuensi-Angular
 
@@ -248,7 +271,7 @@ Konfigurasi referensi melakukan analisis tersebut secara independen pada kanal R
 Entropi distribusi angular dihitung sebagai:
 
 \[
-H_i^c=-\sum_k p_i^c(k)\log\left(\max(p_i^c(k),\varepsilon\right).
+H_i^c=-\sum_k p_i^c(k)\log\left(\max(p_i^c(k),\varepsilon)\right).
 \]
 
 Nilai tersebut digunakan untuk membentuk ambang *patch-dependent*:
@@ -473,7 +496,7 @@ Setelah faktor struktural dianalisis, *sensitivity analysis* terbatas dapat dila
 
 ## 3.6 Rancangan Eksperimen
 
-Eksperimen dirancang dalam tiga tahap agar fungsi baseline, pemilihan desain, dan konfirmasi akhir tidak tercampur.
+Eksperimen dirancang dalam tiga tahap utama agar fungsi baseline, pemilihan desain, dan konfirmasi akhir tidak tercampur. Pengujian transfer lintas arsitektur ditempatkan sebagai eksperimen tambahan yang hanya dilakukan setelah konfigurasi utama dibekukan.
 
 ### 3.6.1 Tahap I — Baseline Development
 
@@ -495,10 +518,14 @@ Screening dilakukan menggunakan *seed* pengembangan yang sama dan data *validati
 
 ### 3.6.3 Tahap III — Paired Multi-Seed Confirmation
 
-Konfirmasi utama akan membandingkan tiga kondisi:
+Konfirmasi utama akan membandingkan empat kondisi YOLO26n:
 
 \[
 N_s=\operatorname{Train}(\text{YOLO26n native},s),
+\]
+
+\[
+H_s=\operatorname{Train}(\text{CLAHE}+\text{YOLO26n},s),
 \]
 
 \[
@@ -515,9 +542,13 @@ untuk:
 s\in\{42,123,2026\}.
 \]
 
-Pada setiap *seed*, ketiga kondisi dimulai langsung dari sumber *pretrained* resmi yang sama. Pembentukan head target \(C\) kelas menggunakan *seed* inisialisasi yang sama dan *persistent detector state* akan diverifikasi identik sebelum pelatihan. Karena frontend tidak mempunyai parameter trainable, satu-satunya perbedaan awal antar kondisi adalah operasi terhadap tensor masukan.
+Pada setiap *seed*, keempat kondisi dimulai langsung dari sumber *pretrained* resmi yang sama. Pembentukan head target \(C\) kelas menggunakan *seed* inisialisasi yang sama dan *persistent detector state* akan diverifikasi identik sebelum pelatihan. CLAHE dan frontend frekuensi-angular tidak mempunyai parameter trainable, sehingga perbedaan awal antar kondisi terletak pada transformasi tensor masukan.
 
 Untuk metrik \(M\), perbedaan berpasangan per *seed* akan dihitung sebagai:
+
+\[
+\Delta_s^{CLAHE}=M(H_s)-M(N_s),
+\]
 
 \[
 \Delta_s^{C_0}=M(A_s)-M(N_s),
@@ -527,9 +558,39 @@ Untuk metrik \(M\), perbedaan berpasangan per *seed* akan dihitung sebagai:
 \Delta_s^{C^*}=M(O_s)-M(N_s).
 \]
 
+Selain perbandingan terhadap baseline native, perbedaan langsung antara \(C^*\) dan CLAHE juga akan dilaporkan untuk menilai apakah perubahan akibat konfigurasi terpilih berbeda dari kontrol peningkatan kontras konvensional:
+
+\[
+\Delta_s^{C^*-CLAHE}=M(O_s)-M(H_s).
+\]
+
 Nilai per *seed*, rerata, dan variasi antar *seed* akan dilaporkan sehingga kesimpulan tidak hanya bergantung pada satu kondisi acak.
 
-### 3.6.4 Locked Final Evaluation
+### 3.6.4 Cross-Architecture Transfer Evaluation — Opsional
+
+Setelah \(C^*\) dibekukan menggunakan data pengembangan, satu eksperimen tambahan dapat dilakukan menggunakan RT-DETRv3-R18. Eksperimen ini tidak digunakan untuk memilih \(C^*\) dan tidak dimaksudkan sebagai kompetisi langsung antara keluarga YOLO dan DETR. Tujuannya adalah menguji apakah arah pengaruh *preprocessing* terpilih dapat dipertahankan ketika arsitektur detector berubah.
+
+Dua kondisi yang dibandingkan adalah:
+
+\[
+R_s=\operatorname{Train}(\text{RT-DETRv3-R18 native},s),
+\]
+
+\[
+R_s^*=\operatorname{Train}(C^*+\text{RT-DETRv3-R18},s).
+\]
+
+Kedua kondisi harus menggunakan sumber bobot pretrained, split data, ukuran input, aturan evaluasi, dan seed yang sama di dalam pasangan RT-DETRv3. Konfigurasi optimisasi dapat mengikuti protokol native RT-DETRv3 dan tidak dipaksa sama dengan YOLO26n, karena tujuan eksperimen bukan membandingkan efisiensi training antar arsitektur. Jika sumber daya komputasi tidak memadai, eksperimen ini akan dihilangkan seluruhnya daripada digunakan untuk menentukan kesimpulan utama dari satu konfigurasi yang tidak setara.
+
+Apabila eksperimen transfer dilakukan, efeknya dinyatakan sebagai:
+
+\[
+\Delta_s^{DETR}=M(R_s^*)-M(R_s).
+\]
+
+Arah dan besarnya \(\Delta_s^{DETR}\) akan dibandingkan secara deskriptif dengan \(\Delta_s^{C^*}\) pada YOLO26n sebagai analisis transferabilitas, bukan sebagai klaim bahwa satu arsitektur mengungguli arsitektur lainnya.
+
+### 3.6.5 Locked Final Evaluation
 
 Data *test* dipertahankan terkunci selama Tahap I dan Tahap II serta selama seluruh pemilihan parameter. *Locked test* dibentuk dari citra sumber primer yang tidak digunakan pada pengembangan dan seluruh sumber/kelompok akuisisinya harus independen dari *training-validation*.
 
@@ -544,7 +605,7 @@ Dengan target nominal sekitar 200 citra primer dan proporsi sekitar 15% untuk *t
 
 Jika kriteria tersebut tidak terpenuhi, *test inference* tidak akan dipaksakan. Data primer tambahan akan dikumpulkan terlebih dahulu; apabila penambahan data tidak memungkinkan, alternatif yang telah ditetapkan adalah *grouped cross-validation* pada data pengembangan dengan keterbatasan tersebut dilaporkan secara eksplisit.
 
-Setelah \(C^*\), *checkpoint selection rule*, metrik, dan prosedur evaluasi dibekukan, *locked test* akan dibuka satu kali untuk mengevaluasi checkpoint final dari kondisi native, \(C_0\), dan \(C^*\). Tidak dilakukan perubahan metode atau *hyperparameter* berdasarkan hasil *locked test*.
+Setelah \(C^*\), *checkpoint selection rule*, metrik, pembanding CLAHE, dan prosedur evaluasi dibekukan, *locked test* akan dibuka satu kali untuk mengevaluasi checkpoint final dari kondisi native, CLAHE, \(C_0\), dan \(C^*\). Jika cross-architecture transfer evaluation dilaksanakan, pasangan RT-DETRv3 native dan \(C^*\)+RT-DETRv3 juga harus telah dibekukan sebelum akses test dan dievaluasi dalam tahap final yang sama. Tidak dilakukan perubahan metode atau *hyperparameter* berdasarkan hasil *locked test*.
 
 ## 3.7 Konfigurasi Pelatihan
 
@@ -571,7 +632,7 @@ Konfigurasi pelatihan diringkas pada Tabel 3.3.
 
 Seluruh konfigurasi yang dibandingkan pada tahap yang sama akan menggunakan dataset, augmentasi, ukuran input, maksimum epoch, aturan *early stopping*, batch size, optimizer, dan lingkungan perangkat yang sama. Nilai 50 merupakan maksimum epoch; model tidak diwajibkan berhenti pada epoch yang sama karena semua kondisi mengikuti aturan *early stopping* yang identik dengan `patience=15`.
 
-Optimizer `Auto` akan digunakan pada versi Ultralytics yang dipin sehingga aturan pemilihannya tidak berubah antar kondisi. Parameter augmentasi mengikuti konfigurasi runtime pada versi yang sama dan akan direkam bersama setiap *run*. Pada *factor screening*, seluruh frontend dimulai dari parent detector development yang sama. Pada *final paired confirmation*, seluruh kondisi dimulai langsung dari sumber *pretrained* resmi dengan inisialisasi target yang dipasangkan.
+Optimizer `Auto` akan digunakan pada versi Ultralytics yang dipin sehingga aturan pemilihannya tidak berubah antar kondisi. Parameter augmentasi mengikuti konfigurasi runtime pada versi yang sama dan akan direkam bersama setiap *run*. Pada *factor screening*, seluruh frontend dimulai dari parent detector development yang sama. Pada *final paired confirmation*, seluruh kondisi YOLO26n dimulai langsung dari sumber *pretrained* resmi dengan inisialisasi target yang dipasangkan. CLAHE dan konfigurasi frekuensi-angular diterapkan sebagai transformasi input tanpa mengubah parameter detector.
 
 Parameter `max_det=500` tidak diperlakukan sebagai konfigurasi pelatihan karena parameter tersebut digunakan pada tahap prediksi dan evaluasi sebagaimana dijelaskan pada Subbab 3.8.
 
@@ -644,11 +705,11 @@ Visualisasi ini digunakan untuk menunjukkan transformasi yang dilakukan operator
 
 Visualisasi respons model direncanakan menggunakan metode *class activation mapping* yang kompatibel dengan YOLO26. Eigen-CAM dipertimbangkan karena pada formulasi aslinya tidak memerlukan *class-gradient backpropagation*. Metode CAM lain hanya akan digunakan apabila *target layer*, target deteksi, dan prosedur visualisasinya dapat didefinisikan secara konsisten pada seluruh kondisi.
 
-Metode, *target layer*, ukuran input, dan prosedur normalisasi visualisasi yang dipilih akan diterapkan secara sama pada model native, \(C_0\), dan \(C^*\). Hasil CAM tidak digunakan sebagai pengganti metrik deteksi dan tidak ditafsirkan sebagai bukti bahwa model menggunakan fitur tertentu secara eksklusif.
+Metode, *target layer*, ukuran input, dan prosedur normalisasi visualisasi yang dipilih akan diterapkan secara sama pada model native, CLAHE, \(C_0\), dan \(C^*\). Hasil CAM tidak digunakan sebagai pengganti metrik deteksi dan tidak ditafsirkan sebagai bukti bahwa model menggunakan fitur tertentu secara eksklusif.
 
 ### 3.9.3 Visualisasi Prediksi Deteksi
 
-Hasil prediksi kondisi native, \(C_0\), dan \(C^*\) akan dibandingkan pada citra yang sama. Visualisasi mencakup *bounding box*, label kelas, dan skor kepercayaan.
+Hasil prediksi kondisi native, CLAHE, \(C_0\), dan \(C^*\) akan dibandingkan pada citra yang sama. Visualisasi mencakup *bounding box*, label kelas, dan skor kepercayaan.
 
 Contoh visual akan dipilih berdasarkan kriteria yang ditetapkan sebelum inspeksi hasil, misalnya kelas dengan kinerja tinggi, kelas dengan kinerja rendah, kasus ketika seluruh model benar, seluruh model salah, dan kasus ketika model berbeda. Pendekatan ini digunakan untuk mengurangi kecenderungan hanya menampilkan contoh yang mendukung salah satu kondisi.
 
@@ -662,27 +723,27 @@ Apabila memungkinkan dari output evaluator, analisis juga membedakan kesalahan k
 
 ## 3.11 Evaluasi Efisiensi Komputasi
 
-Meskipun *preprocessing* tidak menambahkan parameter trainable, operasi pembentukan patch, FFT, analisis angular/radial-angular, IFFT, dan rekonstruksi menambah biaya komputasi. Oleh karena itu, efisiensi akan dievaluasi pada tingkat sistem, bukan hanya berdasarkan jumlah parameter detector.
+Meskipun *preprocessing* tidak menambahkan parameter trainable, CLAHE maupun operasi pembentukan patch, FFT, analisis angular/radial-angular, IFFT, dan rekonstruksi menambah biaya komputasi. Oleh karena itu, efisiensi akan dievaluasi pada tingkat sistem, bukan hanya berdasarkan jumlah parameter detector.
 
 Pengukuran mencakup:
 
 1. jumlah parameter trainable detector dan frontend;
-2. latency *preprocessing* \(t_{FA}\);
-3. latency detector \(t_{YOLO}\);
+2. latency *preprocessing* untuk setiap kondisi, termasuk \(t_{CLAHE}\) dan \(t_{FA}\);
+3. latency detector \(t_{detector}\);
 4. latency *end-to-end*;
 5. throughput dalam citra per detik; dan
 6. penggunaan memori GPU.
 
-Latency *end-to-end* didefinisikan sebagai:
+Untuk kondisi dengan *preprocessing*, latency *end-to-end* dinyatakan sebagai:
 
 \[
-t_{E2E}=t_{FA}+t_{YOLO}.
+t_{E2E}=t_{pre}+t_{detector}.
 \]
 
-Pengukuran baseline dan model dengan *preprocessing* dilakukan pada perangkat, ukuran input, batch size, dan presisi komputasi yang sama. Jumlah *warm-up*, pengulangan pengukuran, dan mekanisme sinkronisasi perangkat akan dibuat sama pada seluruh konfigurasi yang dibandingkan.
+Pada konfigurasi frekuensi-angular berlaku \(t_{pre}=t_{FA}\), sedangkan pada kontrol konvensional berlaku \(t_{pre}=t_{CLAHE}\). Pengukuran baseline dan model dengan *preprocessing* dilakukan pada perangkat, ukuran input, batch size, dan presisi komputasi yang sama. Jumlah *warm-up*, pengulangan pengukuran, dan mekanisme sinkronisasi perangkat akan dibuat sama pada seluruh konfigurasi yang dibandingkan.
 
 ## 3.12 Lingkungan Implementasi
 
 Implementasi penelitian menggunakan Python dan PyTorch melalui Ultralytics YOLO. Versi perangkat lunak akan dipin sebelum eksperimen utama; protokol penelitian menggunakan Ultralytics 8.4.96 sebagai versi referensi. Informasi versi Python, PyTorch, CUDA, perangkat GPU, sistem operasi, serta konfigurasi perangkat keras akan dicatat bersama setiap *run*.
 
-Versi implementasi *preprocessing* juga akan dikunci melalui identitas *commit* kode sehingga konfigurasi operator yang digunakan pada setiap eksperimen dapat ditelusuri. Pencatatan lingkungan dan versi implementasi dilakukan untuk menjaga keterulangan eksperimen dan memudahkan verifikasi metodologi.
+Versi implementasi *preprocessing* juga akan dikunci melalui identitas *commit* kode sehingga konfigurasi operator yang digunakan pada setiap eksperimen dapat ditelusuri. Jika cross-architecture transfer evaluation dilakukan, versi kode, bobot pretrained, dan konfigurasi RT-DETRv3-R18 juga akan dipin secara terpisah. Pencatatan lingkungan dan versi implementasi dilakukan untuk menjaga keterulangan eksperimen dan memudahkan verifikasi metodologi.
