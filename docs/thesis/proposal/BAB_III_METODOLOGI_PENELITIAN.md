@@ -469,7 +469,7 @@ Nilai *seed* yang digunakan adalah:
 s\in\{42,123,2026\}.
 \]
 
-Pada setiap *seed*, seluruh kondisi menggunakan sumber bobot pralatih dan kondisi awal model yang sama. Dengan demikian, perbedaan utama yang dibandingkan adalah perlakuan terhadap citra masukan. Konfigurasi \(C^*\) yang digunakan pada tahap ini telah ditetapkan dari Tahap II dan tidak diubah berdasarkan hasil pengujian ulang maupun data uji akhir.
+Berbeda dari Tahap II, Tahap III tidak memulai pelatihan dari checkpoint model acuan pengembangan. Pada setiap *seed*, keempat kondisi dibangun kembali langsung dari bobot pralatih resmi `yolo26n.pt`. Inisialisasi bagian keluaran untuk jumlah kelas \(C\) dilakukan dengan *seed* yang sama, kemudian kondisi awal parameter model diperiksa agar setara sebelum pelatihan. Dengan demikian, perbedaan utama yang dibandingkan pada setiap *seed* adalah perlakuan terhadap citra masukan. Konfigurasi \(C^*\) yang digunakan pada tahap ini telah ditetapkan dari Tahap II dan tidak diubah berdasarkan hasil pengujian ulang maupun data uji akhir.
 
 Untuk suatu metrik \(M\), perubahan terhadap model acuan dihitung secara umum sebagai:
 
@@ -514,7 +514,9 @@ Konfigurasi utama pelatihan YOLO26n ditunjukkan pada Tabel 3.3.
 
 Seluruh kondisi yang dibandingkan pada tahap yang sama menggunakan dataset, augmentasi, ukuran masukan, jumlah epoch maksimum, ukuran batch, aturan penghentian dini, dan lingkungan komputasi yang sama. Model tidak harus berhenti pada epoch yang sama karena penghentian dini mengikuti kinerja validasi masing-masing kondisi.
 
-Versi Ultralytics akan ditetapkan dan tidak diubah selama eksperimen utama sehingga perilaku optimizer dan augmentasi tetap konsisten. Rincian implementasi lain, seperti jumlah proses pemuat data, penggunaan *cache*, penghentian *mosaic* menjelang akhir pelatihan, dan parameter prediksi, tetap ditetapkan serta dicatat pada konfigurasi eksperimen, tetapi tidak dijadikan faktor penelitian.
+Untuk setiap run, model yang digunakan pada evaluasi adalah checkpoint `best.pt` yang dipilih oleh mekanisme validasi Ultralytics pada versi perangkat lunak yang telah dikunci. Aturan pemilihan checkpoint dibuat sama untuk seluruh kondisi dan tidak diubah berdasarkan hasil data uji.
+
+Versi Ultralytics akan ditetapkan dan tidak diubah selama eksperimen utama sehingga perilaku optimizer, augmentasi, dan pemilihan checkpoint tetap konsisten. Rincian implementasi lain, seperti jumlah proses pemuat data, penggunaan *cache*, penghentian *mosaic* menjelang akhir pelatihan, dan parameter prediksi, tetap ditetapkan serta dicatat pada konfigurasi eksperimen, tetapi tidak dijadikan faktor penelitian.
 
 ## 3.8 Evaluasi Kinerja Deteksi
 
