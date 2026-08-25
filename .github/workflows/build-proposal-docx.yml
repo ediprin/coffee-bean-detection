@@ -95,11 +95,8 @@ jobs:
           python tools/thesis_docx/format_figures.py \
             build/Proposal_Tesis_USU.docx
 
-      - name: Format chapter headings
-        run: |
-          python tools/thesis_docx/fix_toc.py \
-            build/Proposal_Tesis_USU.docx
-
+      # Do not rewrite BAB/title heading styles here. The visible TOC is built
+      # independently so the chapter order and Word heading structure stay intact.
       - name: Prepare deterministic static table of contents
         run: |
           python tools/thesis_docx/static_toc.py prepare \
@@ -145,15 +142,43 @@ jobs:
           import re
           from docx import Document
           from docx.oxml.ns import qn
+          from docx.shared import Cm
 
           path = "build/Proposal_Tesis_USU.docx"
           doc = Document(path)
           text = "\n".join(paragraph.text for paragraph in doc.paragraphs)
-          for required in ("BAB I", "BAB II", "BAB III", "DAFTAR PUSTAKA"):
-              assert required in text, f"Missing required section: {required}"
+
+          # Required document order must remain intact.
+          required_order = ["BAB I", "BAB II", "BAB III", "DAFTAR PUSTAKA"]
+          positions = []
+          for required in required_order:
+              matches = [i for i, p in enumerate(doc.paragraphs) if p.text.strip() == required]
+              assert matches, f"Missing required section: {required}"
+              positions.append(matches[0])
+          assert positions == sorted(positions), f"Broken chapter order: {list(zip(required_order, positions))}"
+
+          # Keep original Word heading semantics: no chapter-style rewriting.
+          chapter_pairs = {
+              "BAB I": "PENDAHULUAN",
+              "BAB II": "TINJAUAN PUSTAKA",
+              "BAB III": "METODOLOGI PENELITIAN",
+          }
+          for bab, title in chapter_pairs.items():
+              bi = next(i for i, p in enumerate(doc.paragraphs) if p.text.strip() == bab)
+              assert doc.paragraphs[bi].style.name == "Heading 1", (bab, doc.paragraphs[bi].style.name)
+              assert doc.paragraphs[bi + 1].text.strip() == title
+              assert doc.paragraphs[bi + 1].style.name == "Heading 1", (title, doc.paragraphs[bi + 1].style.name)
+
           assert re.search(r"Gambar\s+3\.1\.?\s+Alur Penelitian", text), "Missing Gambar 3.1 caption"
-          assert len(doc.sections) >= 6, f"Expected cover/front-matter/body section split; got {len(doc.sections)}"
-          assert len(doc.inline_shapes) >= 2, "Expected cover logo + research flow figure"
+          assert "Gambar 3.2" not in text, "Unexpected extra methodology figure"
+          assert len(doc.sections) >= 6, f"Expected cover/front-matter/body split; got {len(doc.sections)}"
+          assert len(doc.inline_shapes) == 2, f"Expected only cover logo + Gambar 3.1; got {len(doc.inline_shapes)} images"
+
+          # The flowchart must be proportional to the text area.
+          figures = list(doc.inline_shapes)
+          flow = max(figures, key=lambda s: s.height)
+          assert flow.width <= Cm(8.5) + 1000, f"Flowchart too wide: {flow.width / Cm(1):.2f} cm"
+          assert flow.height <= Cm(13.5) + 1000, f"Flowchart too tall: {flow.height / Cm(1):.2f} cm"
 
           static_toc = [p for p in doc.paragraphs if p.style.name.startswith("Static TOC")]
           assert len(static_toc) >= 50, f"Static TOC is unexpectedly short: {len(static_toc)} entries"
@@ -217,8 +242,9 @@ jobs:
           assert not bad_fonts, f"Non-Times New Roman font requests: {bad_fonts[:10]}"
 
           print(
-              f"OK: {len(static_toc)} visible TOC entries, {regular_tables} regular tables, "
-              f"{equation_tables} equation tables, {len(doc.inline_shapes)} images, {len(doc.sections)} sections"
+              f"OK: chapter order preserved; {len(static_toc)} visible TOC entries, "
+              f"{regular_tables} regular tables, {equation_tables} equation tables, "
+              f"{len(doc.inline_shapes)} images, {len(doc.sections)} sections"
           )
           PY
 
