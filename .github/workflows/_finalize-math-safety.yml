@@ -1,0 +1,45 @@
+name: One-time finalize proposal math safety
+on:
+  push:
+    branches: [proposal/thesis-foundation]
+    paths: [.github/workflows/_finalize-math-safety.yml]
+permissions:
+  contents: write
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: proposal/thesis-foundation
+      - name: Normalize remaining math syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('docs/thesis/proposal/BAB_III_METODOLOGI_PENELITIAN.md')
+          s=p.read_text()
+          old=r'''\theta(u,v)=\mathrm{mod}\left(\mathrm{atan2}(v-v_c,u-u_c),2\pi\right).'''
+          new=r'''\theta(u,v)=\mathrm{atan2}(v-v_c,u-u_c)\bmod 2\pi.'''
+          if old not in s:
+              raise SystemExit('Expected angular formula not found')
+          s=s.replace(old,new)
+          s=s.replace(r'\Re\left\{', r'\mathrm{Re}\left\{')
+          if r'\operatorname' in s:
+              raise SystemExit('operatorname still present in BAB III')
+          p.write_text(s)
+          for q in [Path('docs/thesis/proposal/BAB_I_PENDAHULUAN.md'),Path('docs/thesis/proposal/BAB_II_TINJAUAN_PUSTAKA.md'),p]:
+              t=q.read_text()
+              if r'\operatorname' in t:
+                  raise SystemExit(f'Forbidden operatorname remains in {q}')
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/thesis/proposal/BAB_III_METODOLOGI_PENELITIAN.md
+          git commit -m 'Normalize GitHub-safe math operators [skip ci]'
+          git push origin HEAD:proposal/thesis-foundation
+      - name: Remove one-time workflow
+        run: |
+          git pull --rebase origin proposal/thesis-foundation
+          git rm .github/workflows/_finalize-math-safety.yml
+          git commit -m 'Remove one-time math safety cleanup [skip ci]'
+          git push origin HEAD:proposal/thesis-foundation
