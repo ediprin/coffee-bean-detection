@@ -21,6 +21,14 @@ Dokumen ini mengunci metadata bibliografis untuk sumber yang benar-benar disitas
 - *SNI 2907:2008—Biji kopi*.
 - Authority: BSN.
 
+### STD-02 — LOCKED
+- International Telecommunication Union. 2015.
+- *Recommendation ITU-R BT.709-6: Parameter values for the HDTV standards for production and international programme exchange*.
+- Recommendation: ITU-R BT.709-6 (06/2015).
+- Approved: 17 June 2015.
+- Authority: official ITU-R recommendation page and primary PDF.
+- Method locator: Item 3.2, “Derivation of luminance signal”, gives coefficients 0.2126, 0.7152, and 0.0722.
+
 ### COF-17 — LOCKED
 - Mauricio García; John E. Candelo-Becerra; Fredy E. Hoyos. 2019.
 - *Quality and Defect Inspection of Green Coffee Beans Using a Computer Vision System*.
@@ -104,6 +112,8 @@ Dokumen ini mengunci metadata bibliografis untuk sumber yang benar-benar disitas
 - *More signals matter to detection: Integrating language knowledge and frequency representations for boosting fine-grained aircraft recognition*.
 - *Neural Networks*, 187, 107402.
 - DOI `10.1016/j.neunet.2025.107402`.
+- Formula locator: §3.1.1 Eq. (1)–(4) for DFT/amplitude/phase/iDFT; §3.3.3 Eq. (9)–(13) for AFAB-2.
+- Guardrail: Eq. (14) belongs to CGFI, not AFAB-2.
 
 ### FG-02 — LOCKED
 - Xingxing Xie; Gong Cheng; Wenbo Li; Chunbo Lang; Peng Zhang; Yanqing Yao; Junwei Han. 2025.
@@ -152,7 +162,7 @@ Dokumen ini mengunci metadata bibliografis untuk sumber yang benar-benar disitas
 - *Digital Image Processing*, 4th ed., Global Edition.
 - Pearson.
 - ISBN `9781292223049`.
-- Guardrail: exact page locator untuk formula fundamental tidak boleh dibuat tanpa halaman sumber yang tersedia.
+- Guardrail: exact page locator untuk formula fundamental tidak boleh dibuat tanpa halaman sumber yang tersedia. Bentuk formula proposal juga ditelusurkan ke FG-01 §3.1.1.
 
 ### SPEC-01 — LOCKED
 - Min Cao; Dongping Ming; Lu Xu; Ju Fang; Lin Liu; Xiao Ling; Weizhi Ma. 2019.
@@ -255,10 +265,10 @@ Mereka tidak masuk `DAFTAR_PUSTAKA.md` selama tidak mempunyai sitasi formal pada
 
 ## F. Current Readiness
 
-Set formal saat ini berjumlah **36 sumber unik**.
+Set formal saat ini berjumlah **37 sumber unik**.
 
-- cited → bibliography: **36/36**;
-- bibliography → cited: **36/36**;
+- cited → bibliography: **37/37**;
+- bibliography → cited: **37/37**;
 - metadata formal yang masih perlu ditebak: **0**;
 - sumber backend-only tidak dihitung dalam set formal.
 
