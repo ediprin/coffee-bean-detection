@@ -86,19 +86,40 @@ Pada penelitian ini tidak dilakukan modifikasi terhadap *backbone*, *neck*, maup
 
 ## 3.4 Preprocessing Citra Berbasis Frekuensi-Angular
 
-*Preprocessing* yang digunakan mengadaptasi prinsip pemrosesan frekuensi lokal dan analisis distribusi angular pada AFAB-2 yang diperkenalkan Xu et al. (2025) untuk *fine-grained object detection*. Mekanisme tersebut tidak diterapkan sebagai salinan keseluruhan arsitektur LFDet, tetapi diadaptasi menjadi *preprocessing* pada citra masukan sebelum YOLO26.
+*Preprocessing* yang digunakan mengadaptasi prinsip pemrosesan frekuensi lokal dan analisis distribusi angular pada AFAB-2 yang diperkenalkan Xu et al. (2025) untuk *fine-grained object detection*. Mekanisme tersebut tidak diterapkan sebagai salinan keseluruhan arsitektur LFDet, tetapi diadaptasi menjadi *preprocessing* yang berdiri pada citra masukan sebelum YOLO26.
 
-Tahapan utama *preprocessing* meliputi pembentukan patch lokal, transformasi Fourier, pembentukan distribusi angular, penentuan ambang adaptif, pembobotan respons spektral, inverse Fourier transform, rekonstruksi patch, dan penggabungan residual dengan citra asli.
+Xu et al. (2025, pp. 5–6, Persamaan 9–13) mendefinisikan mekanisme AFAB-2 melalui *patch-wise* Fourier processing, distribusi densitas angular, entropi untuk membentuk ambang adaptif, penekanan arah dengan densitas rendah, pembobotan amplitudo, serta rekonstruksi menggunakan amplitudo yang telah disesuaikan dan fase asli. Penelitian ini mempertahankan prinsip tersebut, tetapi beberapa keputusan implementasi disesuaikan untuk pipeline YOLO26. Pemisahan antara mekanisme sumber dan adaptasi penelitian ditunjukkan pada Tabel 3.2.
+
+### Tabel 3.2 Asal Mekanisme dan Adaptasi Preprocessing Frekuensi-Angular
+
+| Elemen Rancangan | Status dalam Penelitian | Dasar |
+|---|---|---|
+| *Patch-wise* DFT dan iDFT | Diadaptasi dari metode sumber | Xu et al. (2025), §3.3.1 |
+| Ukuran patch awal 32 × 32 | Mengikuti nilai referensi sebagai konfigurasi awal | Xu et al. (2025), §3.3.1; tidak diasumsikan optimal untuk citra kopi |
+| Overlap 50% / stride 16 | Keputusan implementasi penelitian | Xu et al. hanya menyatakan penggunaan *large overlap* tanpa menetapkan 50% pada bagian metode yang diverifikasi |
+| Distribusi angular pada rentang 0–360° | Diadaptasi dari metode sumber | Xu et al. (2025), Persamaan (9) |
+| Diskretisasi menjadi 360 bin | Keputusan implementasi penelitian | Implementasi diskrit dari domain angular kontinu pada metode sumber |
+| Entropi dan ambang adaptif | Diadaptasi dari metode sumber | Xu et al. (2025), Persamaan (10)–(11) |
+| Ambang keras pada densitas angular | Diadaptasi dari metode sumber | Xu et al. (2025), Persamaan (12) |
+| Pembobotan amplitudo | Diadaptasi dari metode sumber | Xu et al. (2025), Persamaan (13) |
+| Fase asli pada rekonstruksi | Diadaptasi dari metode sumber | Xu et al. (2025), §3.3.3 |
+| Nilai awal \(\gamma=0{,}10\) | Mengikuti nilai referensi sebagai konfigurasi awal | Xu et al. (2025), Tabel 8; tetap diuji melalui analisis sensitivitas pada penelitian ini |
+| Stabilitas numerik \(\varepsilon\) dan pemrosesan per kanal RGB | Keputusan implementasi penelitian | Digunakan untuk implementasi numerik penelitian |
+| Penggabungan patch overlap, normalisasi *min-max*, dan residual enhancement | Adaptasi implementasi penelitian | Digunakan untuk membentuk frontend citra sebelum YOLO26 |
+
+AFAB pada Xu et al. (2025) juga memiliki komponen lain berupa *patch-specific adaptive high-pass filter* atau AFAB-1. Komponen radial/high-pass tersebut **tidak termasuk dalam konfigurasi referensi frekuensi-angular penelitian ini**, yang berfokus pada mekanisme angular AFAB-2. Pemisahan ini diperlukan agar metode yang diuji tidak disamakan dengan keseluruhan AFAB atau keseluruhan LFDet.
+
+Tahapan utama *preprocessing* pada penelitian ini meliputi pembentukan patch lokal, transformasi Fourier, pembentukan distribusi angular, penentuan ambang adaptif, pembobotan respons spektral, inverse Fourier transform, rekonstruksi patch, dan penggabungan residual dengan citra asli.
 
 ### 3.4.1 Pembentukan Patch Lokal
 
-Untuk citra masukan \(I\), citra dibagi menjadi patch lokal berukuran \(m\times m\). Konfigurasi awal menggunakan ukuran patch:
+Untuk citra masukan \(I\), citra dibagi menjadi patch lokal berukuran \(m\times m\). Xu et al. (2025) menggunakan \(m=32\) pada LFDet karena maximum downsampling rate pada feature space mereka adalah 32. Penelitian ini menggunakan nilai tersebut sebagai konfigurasi awal, bukan sebagai asumsi bahwa ukuran 32 merupakan nilai optimum untuk citra biji kopi:
 
 \[
 m=32.
 \]
 
-Patch dibentuk dengan overlap 50%, sehingga untuk ukuran patch 32 piksel digunakan *stride* 16 piksel. Penggunaan patch lokal bertujuan agar analisis frekuensi tidak hanya menggambarkan karakteristik global citra, tetapi juga mempertahankan variasi lokal pada bagian-bagian citra yang berbeda.
+Xu et al. (2025) menyatakan penggunaan *large overlap* untuk mengurangi diskontinuitas pada tepi patch, tetapi tidak menetapkan nilai overlap 50% pada bagian metode yang telah diverifikasi. Oleh karena itu, penelitian ini menetapkan overlap 50% sebagai keputusan implementasi awal. Dengan ukuran patch 32 piksel, konfigurasi tersebut menghasilkan *stride* 16 piksel. Pengaruh ukuran patch selanjutnya dianalisis pada tahap sensitivitas.
 
 ### 3.4.2 Transformasi Fourier
 
@@ -118,57 +139,62 @@ A_i(u,v)=|F_i(u,v)|,
 \phi_i(u,v)=\arg F_i(u,v).
 \]
 
-Amplitudo digunakan untuk menganalisis besar respons pada setiap koordinat frekuensi, sedangkan fase dipertahankan pada proses rekonstruksi.
+Amplitudo digunakan untuk membentuk respons frekuensi-angular, sedangkan fase asli dipertahankan pada proses rekonstruksi sesuai prinsip AFAB-2 Xu et al. (2025).
 
 ### 3.4.3 Distribusi Angular
 
-Setiap koordinat frekuensi dipetakan ke sudut berdasarkan posisi relatifnya terhadap pusat spektrum. Sudut dapat dinyatakan sebagai:
+Xu et al. (2025, Persamaan 9) mendefinisikan distribusi densitas angular dengan menjumlahkan amplitudo sepanjang radius pada setiap arah:
 
 \[
-\theta(u,v)=\operatorname{atan2}(v-v_c,u-u_c),
+D_i(\theta)=\sum_r A_i(r\cos\theta,r\sin\theta),
+\qquad \theta\in[0,360^\circ).
 \]
 
-dengan \((u_c,v_c)\) merupakan pusat spektrum.
-
-Pada konfigurasi awal, domain angular dibagi menjadi 360 bin. Amplitudo pada koordinat yang termasuk pada bin arah yang sama dijumlahkan sehingga diperoleh densitas angular:
+Pada implementasi penelitian, domain angular kontinu tersebut didiskretkan menjadi 360 bin. Untuk setiap kanal warna \(c\), amplitudo pada koordinat yang termasuk dalam bin arah yang sama dijumlahkan:
 
 \[
 D_i^c(k)=\sum_{(u,v):b(u,v)=k}A_i^c(u,v),
 \]
 
-dengan \(c\) menunjukkan kanal warna dan \(k\) menunjukkan indeks bin angular.
+dengan \(c\) menunjukkan kanal warna dan \(k\) menunjukkan indeks bin angular. Indeks kanal dan diskretisasi 360 bin merupakan notasi serta keputusan implementasi penelitian, bukan persamaan yang identik dengan notasi paper sumber.
 
-Densitas kemudian dinormalisasi menjadi distribusi probabilitas:
+Densitas kemudian dinormalisasi menjadi distribusi:
 
 \[
-p_i^c(k)=\frac{D_i^c(k)}{\sum_jD_i^c(j)+\varepsilon}.
+p_i^c(k)=\frac{D_i^c(k)}{\sum_jD_i^c(j)+\varepsilon},
 \]
+
+dengan \(\varepsilon\) merupakan konstanta kecil untuk menjaga stabilitas numerik.
 
 ### 3.4.4 Ambang Adaptif Berdasarkan Entropi
 
-Entropi distribusi angular dihitung untuk menggambarkan penyebaran respons pada setiap patch:
+Mengikuti Xu et al. (2025, Persamaan 10–11), entropi distribusi angular digunakan untuk membentuk ambang adaptif pada setiap patch. Dalam notasi implementasi penelitian:
 
 \[
-H_i^c=-\sum_k p_i^c(k)\log\left(p_i^c(k)+\varepsilon\right).
+H_i^c=-\sum_k p_i^c(k)\log\left(p_i^c(k)+\varepsilon\right),
 \]
-
-Nilai entropi digunakan untuk membentuk ambang adaptif:
 
 \[
-\tau_i^c=\frac{\gamma}{1+\exp(-H_i^c)},
+\tau_i^c=\frac{\gamma}{1+\exp(-H_i^c)}.
 \]
 
-dengan \(\gamma\) merupakan parameter pengatur ambang. Konfigurasi awal menggunakan \(\gamma=0{,}10\). Karena nilai \(H_i^c\) dihitung dari patch yang sedang diproses, ambang berubah mengikuti karakteristik spektral citra meskipun tidak memiliki parameter trainable.
+Xu et al. (2025) menguji beberapa nilai \(\gamma\) dan menggunakan \(\gamma=0{,}10\) pada eksperimen mereka setelah analisis sensitivitas pada tiga benchmark aircraft. Penelitian ini menggunakan nilai tersebut sebagai konfigurasi awal:
+
+\[
+\gamma=0{,}10,
+\]
+
+namun tidak menganggapnya sebagai nilai optimum untuk domain biji kopi. Pengaruh \(\gamma\) akan diuji melalui analisis sensitivitas yang direncanakan pada Subbab 3.5.
 
 ### 3.4.5 Pembobotan Respons Spektral
 
-Densitas angular dinormalisasi terhadap respons maksimum:
+Mengikuti Persamaan (12) Xu et al. (2025), densitas angular dinormalisasi terhadap respons maksimum:
 
 \[
 q_i^c(k)=\frac{D_i^c(k)}{\max_jD_i^c(j)+\varepsilon}.
 \]
 
-Pada konfigurasi awal digunakan pembobotan dengan ambang keras:
+Pada konfigurasi referensi digunakan ambang keras:
 
 \[
 w_i^c(k)=
@@ -178,41 +204,49 @@ q_i^c(k), & q_i^c(k)>\tau_i^c.
 \end{cases}
 \]
 
-Bobot tersebut dipetakan kembali ke koordinat Fourier sehingga diperoleh spektrum yang telah disesuaikan:
+Sesuai prinsip Persamaan (13) Xu et al. (2025), bobot angular digunakan untuk menyesuaikan amplitudo pada koordinat frekuensi yang bersesuaian:
 
 \[
-\widetilde F_i^c(u,v)=F_i^c(u,v)\,w_i^c(b(u,v)).
+\widetilde A_i^c(u,v)=A_i^c(u,v)\,w_i^c(b(u,v)).
 \]
+
+Fase asli \(\phi_i^c(u,v)\) tidak diganti pada tahap ini. Dengan demikian, operasi diarahkan pada besar respons spektral, sedangkan informasi fase dipertahankan untuk rekonstruksi.
 
 ### 3.4.6 Inverse Fourier Transform dan Rekonstruksi Citra
 
-Spektrum yang telah dibobotkan dikembalikan ke domain spasial menggunakan inverse Fourier transform:
+Amplitudo yang telah disesuaikan dipasangkan kembali dengan fase asli untuk membentuk spektrum rekonstruksi:
+
+\[
+\widetilde F_i^c(u,v)=\widetilde A_i^c(u,v)\exp\left(j\phi_i^c(u,v)\right).
+\]
+
+Patch kemudian dikembalikan ke domain spasial menggunakan inverse Fourier transform:
 
 \[
 \widetilde P_i=\Re\left\{\mathcal{F}^{-1}(\widetilde F_i)\right\}.
 \]
 
-Patch yang saling overlap kemudian digabungkan melalui perataan pada area yang bertumpang tindih sehingga diperoleh respons spasial \(R_{FA}(I)\). Respons tersebut dinormalisasi menggunakan *min-max normalization*:
+Prinsip penggunaan amplitudo yang telah disesuaikan, fase asli, dan iDFT berasal dari AFAB-2 Xu et al. (2025). Tahap setelah itu merupakan adaptasi implementasi penelitian untuk membentuk frontend sebelum YOLO26. Patch yang saling overlap digabungkan melalui perataan pada area yang bertumpang tindih sehingga diperoleh respons spasial \(R_{FA}(I)\). Respons tersebut kemudian dinormalisasi menggunakan *min-max normalization*:
 
 \[
 G(I)=\operatorname{MinMax}\left(R_{FA}(I)\right).
 \]
 
-Citra hasil *preprocessing* dibentuk melalui residual enhancement:
+Citra masukan YOLO26 dibentuk melalui residual enhancement:
 
 \[
 I'=I+I\odot G(I).
 \]
 
-Operasi tersebut mempertahankan ukuran spasial citra sehingga anotasi *bounding box* tidak perlu diubah akibat proses *preprocessing*.
+Persamaan residual tersebut merupakan instansiasi gating pada penelitian ini dan tidak diatribusikan sebagai persamaan asli AFAB-2. Karena operasi tidak melakukan *crop*, rotasi geometris, *warping*, maupun perubahan ukuran spasial, koordinat anotasi *bounding box* dipertahankan.
 
 ## 3.5 Analisis dan Optimasi Preprocessing
 
 Kata "optimasi" pada penelitian ini merujuk pada analisis sistematis terhadap faktor rancangan *preprocessing*, bukan pada penambahan banyak modul secara bertumpuk. Setiap variasi dibandingkan terhadap konfigurasi referensi dengan mengubah satu faktor utama pada satu waktu. Pendekatan ini digunakan agar pengaruh setiap keputusan desain dapat dianalisis secara lebih jelas.
 
-Faktor yang dianalisis ditunjukkan pada Tabel 3.2.
+Faktor yang dianalisis ditunjukkan pada Tabel 3.3.
 
-### Tabel 3.2 Faktor Rancangan Preprocessing yang Dianalisis
+### Tabel 3.3 Faktor Rancangan Preprocessing yang Dianalisis
 
 | Faktor | Konfigurasi Referensi | Variasi yang Dianalisis | Tujuan Analisis |
 |---|---|---|---|
@@ -245,9 +279,9 @@ Perbandingan utama dilakukan pada tiga seed, yaitu 42, 123, dan 2026, agar kesim
 
 ## 3.7 Konfigurasi Pelatihan
 
-Konfigurasi awal pelatihan ditunjukkan pada Tabel 3.3.
+Konfigurasi awal pelatihan ditunjukkan pada Tabel 3.4.
 
-### Tabel 3.3 Konfigurasi Pelatihan YOLO26n
+### Tabel 3.4 Konfigurasi Pelatihan YOLO26n
 
 | Parameter | Nilai |
 |---|---:|
