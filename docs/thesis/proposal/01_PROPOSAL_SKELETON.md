@@ -19,9 +19,7 @@ docs/thesis/proposal/
 └── DAFTAR_PUSTAKA.md
 ```
 
-File `BAB_I_PENDAHULUAN.md`, `BAB_II_TINJAUAN_PUSTAKA.md`, dan `BAB_III_METODOLOGI_PENELITIAN.md` yang masih berada di root repository adalah **salinan historis/legacy** dan tidak lagi menjadi authority. Jika ada perbedaan antara root dan `docs/thesis/proposal/`, versi di `docs/thesis/proposal/` selalu digunakan.
-
-Semua agent yang mengerjakan proposal harus membaca dan mengubah file di `docs/thesis/proposal/`, bukan salinan root.
+BAB I–III duplikat yang sebelumnya berada di root repository telah dihapus. Semua agent yang mengerjakan proposal harus membaca dan mengubah file di `docs/thesis/proposal/`. Generator DOCX juga hanya membaca naskah formal dari direktori tersebut.
 
 ## 2. BAB I — Pendahuluan
 
@@ -55,7 +53,7 @@ Kondisi metodologis yang harus konsisten dengan BAB III:
 - RT-DETRv3-R18 hanya merupakan evaluasi tambahan jika sumber daya memungkinkan;
 - mAP50–95 merupakan metrik utama.
 
-BAB I tidak memuat hasil eksperimen penelitian sendiri, nama branch, nama konfigurasi internal, atau nilai performa internal.
+BAB I tidak memuat hasil eksperimen penelitian sendiri, nama branch eksperimen, nama konfigurasi internal, atau nilai performa internal.
 
 ## 3. BAB II — Tinjauan Pustaka
 
@@ -172,7 +170,7 @@ C4 = ambang lunak sigmoid; T=0,02 merupakan nilai awal, bukan nilai optimum dari
 C5 = panduan luminansi bersama menggunakan koefisien ITU-R BT.709-6
 ```
 
-Perubahan pada `C2` sengaja mempertahankan resolusi sudut agar perbandingan dengan konfigurasi sebelumnya terutama menguji arah bertanda versus orientasi tak bertanda, bukan sekaligus menguji pengurangan jumlah interval. Tiga pita pada `C3` merupakan keputusan desain penelitian yang sederhana untuk membedakan rentang radial rendah, menengah, dan tinggi, bukan jumlah pita yang diklaim optimal dari literatur.
+Desain lama berupa 16 orientasi dan pembagian radial berbasis kuantil grid tidak lagi berlaku.
 
 Analisis sensitivitas bersifat terbatas dan satu-parameter-pada-satu-waktu, bukan pencarian faktorial penuh:
 
@@ -196,18 +194,18 @@ Authority bibliography formal:
 
 `docs/thesis/proposal/DAFTAR_PUSTAKA.md`
 
-Authority backend utama:
+Backend utama yang dipertahankan:
 
 ```text
 docs/thesis/sources/OFFICIAL_CITATION_AUDIT.md
 docs/thesis/sources/CITATION_CROSSWALK.md
 docs/thesis/sources/BIBLIOGRAPHY_METADATA_LOCK.md
 docs/thesis/sources/BIDIRECTIONAL_CITATION_AUDIT.md
+docs/thesis/sources/CLAIM_LEVEL_SOURCE_AUDIT.md
+docs/thesis/sources/CROSS_CHAPTER_PROPOSAL_AUDIT.md
 ```
 
-Pada snapshot setelah konsolidasi proposal, set formal ditargetkan tetap satu-ke-satu antara sitasi BAB I–III dan daftar pustaka. Set formal terakhir berjumlah 37 sumber unik setelah penambahan ITU-R BT.709-6 sebagai sumber koefisien luminansi.
-
-Setiap perubahan sitasi harus mengikuti alur:
+Set formal terakhir berjumlah 37 sumber unik. Setiap perubahan sitasi harus mengikuti alur:
 
 ```text
 PERUBAHAN NASKAH
