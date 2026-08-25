@@ -94,19 +94,17 @@ Angka di atas hanya menyatakan **status gate sumber**, bukan bahwa seluruh entri
 ### Selesai
 
 1. Tabel 2.1 BAB II tidak lagi menampilkan klaim `Q1`, `Q2`, atau `SINTA 3`. Kolom tersebut telah diubah menjadi **Sumber Publikasi/Venue** dan hanya menggunakan nama jurnal/konferensi yang terkait dengan paper.
-2. Nomenklatur standar pada narasi BAB II telah dinormalisasi menjadi **SNI 2907:2008**. Bentuk `SNI 01-2907-2008` hanya boleh dipertahankan apabila merupakan bagian persis dari judul publikasi terdahulu.
+2. Nomenklatur standar pada narasi BAB II dan BAB III telah dinormalisasi menjadi **SNI 2907:2008**. Bentuk `SNI 01-2907-2008` hanya boleh dipertahankan apabila merupakan bagian persis dari judul publikasi terdahulu.
 3. Grad-CAM++ tidak lagi menjadi sitasi eksplisit pada BAB II/BAB III sehingga `XAI-02` tidak menjadi dependency daftar pustaka formal.
 
 ### Masih diperlukan
 
-1. Nomenklatur SNI pada BAB III masih perlu diselaraskan menjadi **SNI 2907:2008** pada narasi penelitian sendiri.
-2. `COF-03` tetap tidak dipromosikan ke `FINAL` hanya berdasarkan metadata sekunder. Primary PDF mengonfirmasi judul, dua penulis, metode, dan klaim visual-similarity; venue/pages/DOI telah terkorroborasi, tetapi publisher landing IEEE belum tertutup melalui source resmi yang dapat dibaca.
-3. Metadata APA lengkap setiap sumber masih harus diekstrak dari source resmi/primer sebelum bibliography formal dibuat.
+1. `COF-03` tetap tidak dipromosikan ke `FINAL` hanya berdasarkan metadata sekunder. Primary PDF mengonfirmasi judul, dua penulis, metode, dan klaim visual-similarity; venue/pages/DOI telah terkorroborasi, tetapi publisher landing IEEE belum tertutup melalui source resmi yang dapat dibaca.
+2. Metadata APA lengkap setiap sumber masih harus diekstrak dari source resmi/primer sebelum bibliography formal dibuat.
 
 ## Gate berikutnya
 
-1. Selaraskan nomenklatur SNI pada BAB III.
-2. Tutup `COF-03` bila primary publisher PDF atau IEEE record memberikan metadata final yang dapat diverifikasi; jika tidak, jangan menambah metadata dari tebakan.
-3. Ekstrak metadata APA lengkap hanya dari source yang lolos gate.
-4. Bangun `DAFTAR_PUSTAKA.md` setelah metadata aman lengkap.
-5. Lakukan audit dua arah: `cited -> bibliography` dan `bibliography -> cited`.
+1. Tutup `COF-03` bila primary publisher PDF atau IEEE record memberikan metadata final yang dapat diverifikasi; jika tidak, jangan menambah metadata dari tebakan.
+2. Ekstrak metadata APA lengkap hanya dari source yang lolos gate.
+3. Bangun `DAFTAR_PUSTAKA.md` setelah metadata aman lengkap.
+4. Lakukan audit dua arah: `cited -> bibliography` dan `bibliography -> cited`.
