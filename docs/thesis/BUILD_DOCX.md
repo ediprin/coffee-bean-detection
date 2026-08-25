@@ -40,6 +40,8 @@ Display : $$ ... $$
 
 Rumus tidak diubah menjadi gambar. Pada proses build, Pandoc mengonversi ekspresi matematika tersebut menjadi objek equation native Word (OMML), kemudian generator menambahkan format dan penomoran persamaan. Dengan demikian, source yang sama dapat dibaca pada GitHub Markdown dan tetap menghasilkan persamaan yang dapat diedit di Word.
 
+GitHub membatasi sebagian macro MathJax meskipun macro tersebut dapat diterima oleh LaTeX/Pandoc. Source proposal **tidak menggunakan `\operatorname{...}`** karena GitHub menolaknya dengan pesan `The following macros are not allowed: operatorname`. Nama fungsi nonstandar ditulis menggunakan bentuk yang lebih sederhana seperti `\mathrm{atan2}` atau `\mathrm{Bottom3}`, sedangkan operator standar menggunakan macro yang tersedia, misalnya `\bmod`, `\max`, `\min`, `\arg`, `\log`, dan `\exp`. Perubahan macro tidak boleh mengubah makna matematis persamaan.
+
 ## Build otomatis
 
 Setiap push ke branch `proposal/thesis-foundation` yang mengubah isi `docs/thesis/proposal/`, generator, README, panduan build, atau workflow akan menjalankan workflow **Build Proposal DOCX**.
