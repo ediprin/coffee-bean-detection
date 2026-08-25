@@ -64,7 +64,7 @@ Data pengembangan yang digunakan terdiri atas 1.665 citra pada bagian *training*
 | Training | 1.665 | 2.986 | 21 |
 | Validation | 294 | 526 | 21 |
 
-Konteks SNI 01-2907-2008 digunakan untuk menjelaskan relevansi cacat fisik biji kopi, sedangkan kelas yang dipelajari model mengikuti label yang tersedia pada dataset penelitian. Sistem yang dikembangkan tidak dimaksudkan untuk merekonstruksi keseluruhan prosedur penentuan mutu berdasarkan nilai cacat SNI.
+Konteks SNI 2907:2008 digunakan untuk menjelaskan relevansi cacat fisik biji kopi, sedangkan kelas yang dipelajari model mengikuti label yang tersedia pada dataset penelitian. Sistem yang dikembangkan tidak dimaksudkan untuk merekonstruksi keseluruhan prosedur penentuan mutu berdasarkan nilai cacat SNI.
 
 ### 3.2.2 Pembagian Dataset dan Pencegahan Kebocoran Data
 
