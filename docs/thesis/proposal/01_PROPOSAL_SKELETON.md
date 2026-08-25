@@ -12,7 +12,7 @@ Direktori `docs/thesis/proposal/` diperlakukan sebagai **artefak proposal tesis*
 BAB_I_PENDAHULUAN.md
 BAB_II_TINJAUAN_PUSTAKA.md
 BAB_III_METODOLOGI_PENELITIAN.md
-DAFTAR_PUSTAKA.md                 # belum dibangun
+DAFTAR_PUSTAKA.md                 # BLOCKED sampai metadata resmi selesai dikunci
 ```
 
 File lama seperti `02_BACKGROUND.md`, `03_PROBLEM_FORMULATION.md`, `04_LITERATURE_REVIEW.md`, `05_METHODOLOGY.md`, `05_05_AF2_PRIMARY_SOURCE_HARDENED.md`, dan `06_RESEARCH_FLOW.md` adalah bahan kerja/backend teknis, bukan authority naskah formal.
@@ -94,6 +94,32 @@ Analisis visual digunakan sebagai **analisis pendukung**, bukan sebagai bukti ka
 Bab III menjelaskan apa yang **akan dilakukan**. Detail seperti checkpoint hash, commit SHA, D0/D0FT, historical factorization genealogy, promotion gate, RNG fork, dan hasil pilot tidak dimasukkan ke naskah formal. Rancangan eksperimen, parameter pelatihan, formula metode, dan rencana evaluasi boleh dicantumkan karena merupakan bagian dari metodologi proposal.
 
 Nama konfigurasi internal seperti `AF2C`, `AF2WIN`, `AF2ORI`, `AF2POL`, `AF2SOFT`, dan `AF2LUM` tidak digunakan. Variasi dijelaskan berdasarkan faktor akademiknya: windowing, representasi arah, struktur radial-angular, fungsi ambang, dan strategi pemrosesan warna.
+
+## Official citation hard gate
+
+Sitasi formal adalah bagian kritis proposal dan **tidak boleh dibangun dari ingatan atau metadata yang belum diverifikasi**.
+
+Authority backend untuk sitasi:
+
+```text
+docs/thesis/sources/OFFICIAL_CITATION_AUDIT.md
+    = status verifikasi sumber resmi/primer
+
+docs/thesis/sources/FORMAL_CITATION_INVENTORY.md
+    = daftar sitasi yang benar-benar muncul pada BAB I–III
+
+docs/thesis/sources/BIBLIOGRAPHY_METADATA_LOCK.md
+    = metadata bibliografis yang sudah dikunci dari sumber resmi/primer
+```
+
+Aturan wajib:
+
+1. publisher/proceedings/standard body/primary paper mengalahkan workbook dan metadata sekunder jika terjadi konflik;
+2. DOI, nama penulis, tahun, judul, volume, issue, halaman, article number, venue, quartile, dan indeks tidak boleh ditebak;
+3. full text primer diperlukan untuk mendukung klaim metode; metadata resmi hanya mengunci identitas bibliografis;
+4. preprint harus disebut sebagai preprint;
+5. jika satu field belum terverifikasi, field tersebut tetap pending atau sumber tidak dipakai; jangan mengisinya secara inferensial;
+6. `DAFTAR_PUSTAKA.md` baru boleh dipromosikan menjadi artefak formal setelah metadata seluruh sumber yang dipertahankan lolos hard gate dan audit dua arah sitasi ↔ daftar pustaka selesai.
 
 ## Temporal guardrail proposal
 
