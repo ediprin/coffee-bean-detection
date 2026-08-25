@@ -29,6 +29,24 @@ CAPTIONS = {
 }
 
 
+def set_run_font(run, *, bold=None) -> None:
+    run.font.name = FONT
+    run.font.size = Pt(12)
+    if bold is not None:
+        run.bold = bold
+    rpr = run._r.get_or_add_rPr()
+    rfonts = rpr.find(qn("w:rFonts"))
+    if rfonts is None:
+        rfonts = OxmlElement("w:rFonts")
+        rpr.insert(0, rfonts)
+    for attr in ("ascii", "hAnsi", "eastAsia", "cs"):
+        rfonts.set(qn(f"w:{attr}"), FONT)
+    for attr in ("asciiTheme", "hAnsiTheme", "eastAsiaTheme", "cstheme"):
+        key = qn(f"w:{attr}")
+        if key in rfonts.attrib:
+            del rfonts.attrib[key]
+
+
 def is_equation_table(table) -> bool:
     has_math = bool(
         list(table._tbl.iter(qn("m:oMath")))
@@ -57,16 +75,7 @@ def set_caption_format(paragraph, caption_style) -> None:
     pf.space_before = Pt(6)
     pf.space_after = Pt(3)
     for run in paragraph.runs:
-        run.font.name = FONT
-        run.font.size = Pt(12)
-        run.bold = True
-        rpr = run._r.get_or_add_rPr()
-        rfonts = rpr.find(qn("w:rFonts"))
-        if rfonts is None:
-            rfonts = OxmlElement("w:rFonts")
-            rpr.insert(0, rfonts)
-        for attr in ("ascii", "hAnsi", "eastAsia", "cs"):
-            rfonts.set(qn(f"w:{attr}"), FONT)
+        set_run_font(run, bold=True)
 
 
 def previous_paragraph_node(table_node):
@@ -108,13 +117,13 @@ def update_training_reference(doc):
     for paragraph in doc.paragraphs:
         if old in paragraph.text:
             paragraph.text = paragraph.text.replace(old, new)
-            # Preserve body formatting after replacing text.
+            # Preserve body formatting after replacing text, including all four
+            # explicit Word font mappings so the global TNR smoke test remains valid.
             paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
             paragraph.paragraph_format.first_line_indent = Cm(1.27)
             paragraph.paragraph_format.line_spacing = 1.5
             for run in paragraph.runs:
-                run.font.name = FONT
-                run.font.size = Pt(12)
+                set_run_font(run)
             changed += 1
     return changed
 
