@@ -93,6 +93,7 @@ jobs:
       - name: Structural smoke test
         run: |
           python - <<'PY'
+          import re
           from docx import Document
           from docx.oxml.ns import qn
 
@@ -106,9 +107,15 @@ jobs:
           equation_tables = 0
           regular_tables = 0
           for index, table in enumerate(doc.tables):
-              is_equation = bool(
+              has_math = bool(
                   list(table._tbl.iter(qn("m:oMath")))
                   or list(table._tbl.iter(qn("m:oMathPara")))
+              )
+              is_equation = (
+                  len(table.rows) == 1
+                  and len(table.columns) == 3
+                  and has_math
+                  and bool(re.fullmatch(r"\(\d+(?:\.\d+)?\)", table.cell(0, 2).text.strip()))
               )
               borders = table._tbl.tblPr.find(qn("w:tblBorders"))
               assert borders is not None, f"Table {index} has no explicit borders"
