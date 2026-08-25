@@ -2,7 +2,7 @@
 
 Judul kerja:
 
-**Analisis dan Optimasi Preprocessing Citra Berbasis Frekuensi-Angular pada YOLO26 untuk Deteksi Fine-Grained Cacat Biji Kopi**
+**Analisis dan Optimasi Prapemrosesan Citra Berbasis Frekuensi-Angular pada YOLO26 untuk Deteksi Fine-Grained Cacat Biji Kopi**
 
 Direktori `docs/thesis/proposal/` merupakan **satu-satunya sumber utama naskah proposal tesis**. Naskah formal harus dapat dibaca oleh pembaca akademik yang tidak mengetahui struktur kode, nama konfigurasi internal, riwayat eksperimen, atau hasil pilot penelitian.
 
@@ -35,10 +35,18 @@ Authority: `docs/thesis/proposal/BAB_I_PENDAHULUAN.md`.
 1.5 Manfaat Penelitian
 ```
 
+### LOCKED SECTIONS
+
+**Subbab 1.2 Rumusan Masalah dan Subbab 1.4 Tujuan Penelitian berstatus LOCKED.**
+
+- Isi kedua subbab tersebut tidak boleh ditulis ulang, dipecah menjadi butir baru, diperluas, dipersempit, atau diubah redaksinya tanpa perintah eksplisit dari pengguna.
+- Audit konsistensi harus menyesuaikan BAB II dan BAB III terhadap Rumusan Masalah dan Tujuan Penelitian yang sudah ada, bukan sebaliknya.
+- Perubahan pada Latar Belakang, Batasan Masalah, atau Metodologi tidak otomatis memberi izin untuk mengubah 1.2 atau 1.4.
+
 Kondisi metodologis yang harus konsisten dengan BAB III:
 
 - dataset utama adalah dataset primer yang akan dikumpulkan;
-- target awal adalah 20 kategori cacat fisik yang mengacu pada SNI 2907:2008 ditambah satu kelas biji normal;
+- target awal adalah 20 kategori cacat fisik dan benda asing yang digunakan dalam penilaian SNI 2907:2008 ditambah satu kelas biji normal;
 - jumlah kelas akhir ditentukan setelah kecukupan data tiap kelas diperiksa;
 - YOLO26n merupakan model utama;
 - YOLO26n tanpa prapemrosesan merupakan model acuan;
@@ -54,13 +62,13 @@ BAB I tidak memuat hasil eksperimen penelitian sendiri, nama branch, nama konfig
 Authority: `docs/thesis/proposal/BAB_II_TINJAUAN_PUSTAKA.md`.
 
 ```text
-2.1 Biji Kopi Hijau dan Cacat Fisik Biji Kopi
+2.1 Biji Kopi Hijau, Cacat Fisik, dan Benda Asing
 2.2 Inspeksi Mutu Biji Kopi
-2.3 Object Detection
+2.3 Deteksi Objek
 2.4 You Only Look Once (YOLO)
 2.5 YOLO26 dan Pembanding Arsitektur
 2.6 Fine-Grained Object Detection
-2.7 Prapemrosesan Citra untuk Object Detection
+2.7 Prapemrosesan Citra untuk Deteksi Objek
 2.8 Representasi Citra pada Domain Frekuensi
     2.8.1 Discrete Fourier Transform dan Fast Fourier Transform
     2.8.2 Amplitudo dan Fase
@@ -75,6 +83,7 @@ BAB II boleh memuat hasil penelitian terdahulu yang telah diverifikasi dari sumb
 Guardrail penting:
 
 - AFAB/AFAB-2 disebut sebagai metode sumber Xu et al. (2025), bukan sebagai metode yang diciptakan penelitian ini;
+- penelitian hanya mengadaptasi prinsip AFAB-2 sebagai konfigurasi referensi pada ruang masukan, bukan keseluruhan LFDet, AFAB-1, CGFI, atau FTIF;
 - Syauqi et al. (2025) diperlakukan sebagai pipeline prapemrosesan komposit, sehingga hasilnya tidak boleh diatribusikan kepada CLAHE saja;
 - wavelet merupakan alternatif transformasi multiskala yang relevan, tetapi bukan baseline utama penelitian;
 - RT-DETRv3-R18 hanya menjadi dasar evaluasi transfer antararsitektur yang bersifat tambahan;
@@ -127,12 +136,13 @@ Rancangan dataset primer yang berlaku:
 
 ```text
 Target citra sumber      : sekitar 180–220, nominal sekitar 200
-Target kelas awal        : 20 cacat fisik + 1 normal
+Target kelas awal        : 20 cacat fisik/benda asing + 1 normal
 Target anotasi total     : sekitar 6.000–10.000 objek
 Minimum awal per kelas   : sekitar 200 objek asli
 Target ideal per kelas   : sekitar 300–500 objek
-Kemunculan per kelas     : sedikitnya 15–20 citra sumber
+Kemunculan per kelas     : sedikitnya sekitar 30 citra sumber
 Split awal               : sekitar 70% / 15% / 15%
+Representasi val/test    : diupayakan ≥5 citra sumber per kelas pada masing-masing bagian
 ```
 
 Jumlah kelas akhir tidak dipaksakan menjadi 21 apabila data primer untuk kelas tertentu tidak memenuhi kriteria kecukupan yang ditetapkan sebelum pelatihan.
@@ -154,6 +164,8 @@ C0 → C1 → C2 → C3 → C4 → C5
 
 Perubahan yang dianalisis meliputi fungsi jendela, representasi orientasi, informasi radial, fungsi ambang, dan panduan luminansi. Hubungan tersebut menunjukkan akumulasi keputusan desain, bukan pewarisan bobot model antar konfigurasi.
 
+Pemilihan kandidat `C*` menggunakan mAP50–95 pada data validasi sebagai kriteria utama. Jika terjadi nilai sama pada ketelitian pelaporan, digunakan kinerja kelompok tiga kelas sulit yang telah ditetapkan dari model acuan, kemudian waktu pemrosesan total sebagai pemecah seri berikutnya. Aturan pemilihan harus ditetapkan sebelum data uji digunakan.
+
 Pengujian ulang utama menggunakan seed 42, 123, dan 2026. Data uji disisihkan sejak awal dan tidak digunakan untuk memilih konfigurasi atau parameter.
 
 ## 5. Daftar Pustaka dan Source Audit
@@ -171,7 +183,7 @@ docs/thesis/sources/BIBLIOGRAPHY_METADATA_LOCK.md
 docs/thesis/sources/BIDIRECTIONAL_CITATION_AUDIT.md
 ```
 
-Pada snapshot setelah konsolidasi proposal, set formal ditargetkan tetap satu-ke-satu antara sitasi BAB I–III dan daftar pustaka. Set saat ini berjumlah 36 sumber unik setelah Tarekegn dan Debelee (2025) serta Wang et al. (2025) masuk ke naskah, sementara Samudra dan Rachmawati (2025) serta Lin et al. (2014) tidak lagi menjadi sitasi formal.
+Pada snapshot setelah konsolidasi proposal, set formal ditargetkan tetap satu-ke-satu antara sitasi BAB I–III dan daftar pustaka. Set formal terakhir berjumlah 37 sumber unik setelah penambahan ITU-R BT.709-6 sebagai sumber koefisien luminansi.
 
 Setiap perubahan sitasi harus mengikuti alur:
 
