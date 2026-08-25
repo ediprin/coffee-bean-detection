@@ -503,6 +503,7 @@ def build(repo: Path, output: Path, student, nim, prodi, year, label):
                 "pandoc",
                 "--from=markdown+tex_math_dollars+tex_math_single_backslash+pipe_tables",
                 "--to=docx",
+                f"--resource-path={proposal_dir}{os.pathsep}{repo}",
                 str(markdown),
                 "-o",
                 str(raw_docx),
