@@ -30,6 +30,8 @@ Hong, S., Zhang, D., Chi, H., He, J., Guo, X., Fu, H., & Wang, L. (2026). Automa
 
 Hu, X., He, J., Guo, X., Hong, S., & Yu, J. (2025). Siamese networks for few-shot coffee bean defect detection. *LWT, 235*, 118631. https://doi.org/10.1016/j.lwt.2025.118631
 
+International Telecommunication Union. (2015). *Recommendation ITU-R BT.709-6: Parameter values for the HDTV standards for production and international programme exchange*.
+
 Jiang, B., Luo, R., Mao, J., Xiao, T., & Jiang, Y. (2018). Acquisition of localization confidence for accurate object detection. In V. Ferrari, M. Hebert, C. Sminchisescu, & Y. Weiss (Eds.), *Computer vision—ECCV 2018* (Lecture Notes in Computer Science, Vol. 11218, pp. 816–832). Springer. https://doi.org/10.1007/978-3-030-01264-9_48
 
 Jiao, Y., Zhao, Y., Jia, A., Wang, T., Li, J., Xiang, K., Deng, H., He, M., Jiang, R., & Zhang, Y. (2025). Swin-HSSAM: A green coffee bean grading method by Swin transformer. *PLOS ONE, 20*(5), e0322198. https://doi.org/10.1371/journal.pone.0322198
