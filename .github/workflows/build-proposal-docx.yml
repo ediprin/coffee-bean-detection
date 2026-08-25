@@ -74,6 +74,7 @@ jobs:
           test -f docs/thesis/proposal/BAB_III_METODOLOGI_PENELITIAN.md
           test -f docs/thesis/proposal/DAFTAR_PUSTAKA.md
           test -f docs/thesis/proposal/assets/alur_penelitian.svg
+          test -f docs/thesis/proposal/assets/arsitektur_frekuensi_yolo26.svg
           test ! -f BAB_I_PENDAHULUAN.md
           test ! -f BAB_II_TINJAUAN_PUSTAKA.md
           test ! -f BAB_III_METODOLOGI_PENELITIAN.md
@@ -170,9 +171,9 @@ jobs:
               assert doc.paragraphs[bi + 1].style.name == "Heading 1", (title, doc.paragraphs[bi + 1].style.name)
 
           assert re.search(r"Gambar\s+3\.1\.?\s+Alur Penelitian", text), "Missing Gambar 3.1 caption"
-          assert "Gambar 3.2" not in text, "Unexpected extra methodology figure"
+          assert re.search(r"Gambar\s+3\.2\.?\s+Arsitektur Integrasi Prapemrosesan Frekuensi-Angular dengan YOLO26n", text), "Missing Gambar 3.2 caption"
           assert len(doc.sections) >= 6, f"Expected cover/front-matter/body split; got {len(doc.sections)}"
-          assert len(doc.inline_shapes) == 2, f"Expected only cover logo + Gambar 3.1; got {len(doc.inline_shapes)} images"
+          assert len(doc.inline_shapes) == 3, f"Expected cover logo + Gambar 3.1 + Gambar 3.2; got {len(doc.inline_shapes)} images"
 
           # The flowchart must be proportional to the text area.
           figures = list(doc.inline_shapes)
