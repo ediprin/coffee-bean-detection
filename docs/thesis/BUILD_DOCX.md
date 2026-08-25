@@ -27,7 +27,18 @@ Generator menerapkan kontrak format utama Sekolah Pascasarjana USU yang digunaka
 - bagian awal menggunakan nomor halaman Romawi kecil; bagian utama menggunakan angka Arab;
 - halaman pembuka bagian utama menampilkan nomor halaman di kanan bawah, sedangkan halaman lanjutan di kanan atas;
 - daftar pustaka menggunakan spasi tunggal dengan hanging indent;
-- Daftar Isi, Daftar Tabel, dan Daftar Gambar dibuat sebagai field Word agar dapat diperbarui dari struktur dokumen.
+- Daftar Isi, Daftar Tabel, dan Daftar Gambar dibuat oleh pipeline dokumen dari struktur proposal.
+
+### Sintaks matematika pada Markdown
+
+Source proposal menggunakan delimiter matematika yang dapat dirender langsung oleh GitHub sekaligus dibaca Pandoc:
+
+```text
+Inline  : $C^*$
+Display : $$ ... $$
+```
+
+Rumus tidak diubah menjadi gambar. Pada proses build, Pandoc mengonversi ekspresi matematika tersebut menjadi objek equation native Word (OMML), kemudian generator menambahkan format dan penomoran persamaan. Dengan demikian, source yang sama dapat dibaca pada GitHub Markdown dan tetap menghasilkan persamaan yang dapat diedit di Word.
 
 ## Build otomatis
 
@@ -109,16 +120,7 @@ atau melalui environment variables dengan nama yang sama seperti repository vari
 
 ## Penting sebelum pengumpulan
 
-Daftar Isi, Daftar Tabel, dan Daftar Gambar menggunakan field Microsoft Word. Sebelum dokumen diserahkan atau diekspor menjadi PDF di Microsoft Word:
-
-1. buka `Proposal_Tesis_USU.docx`;
-2. tekan `Ctrl+A`;
-3. tekan `F9`;
-4. pilih pembaruan seluruh tabel jika Word meminta pilihan;
-5. periksa nomor halaman dan pemenggalan tabel/persamaan setelah field diperbarui;
-6. simpan kembali dokumen.
-
-Langkah ini diperlukan agar seluruh field dinamis mencerminkan nomor halaman terbaru setelah layout final dihitung oleh Microsoft Word.
+Setelah layout final dibuat, dokumen tetap perlu diperiksa di Microsoft Word sebelum diserahkan atau diekspor menjadi PDF. Periksa khususnya nomor halaman, Daftar Isi, Daftar Tabel, Daftar Gambar, pemenggalan tabel, gambar, dan persamaan pada hasil build final.
 
 ## Batas source of truth
 
