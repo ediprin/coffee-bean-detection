@@ -74,6 +74,9 @@ jobs:
           test -f docs/thesis/proposal/BAB_III_METODOLOGI_PENELITIAN.md
           test -f docs/thesis/proposal/DAFTAR_PUSTAKA.md
           test -f docs/thesis/proposal/assets/alur_penelitian.svg
+          test ! -f BAB_I_PENDAHULUAN.md
+          test ! -f BAB_II_TINJAUAN_PUSTAKA.md
+          test ! -f BAB_III_METODOLOGI_PENELITIAN.md
 
       - name: Build proposal DOCX
         run: |
