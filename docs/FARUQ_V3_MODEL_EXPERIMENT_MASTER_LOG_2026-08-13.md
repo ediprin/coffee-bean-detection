@@ -407,8 +407,8 @@ Result: `docs/FARUQ_V3_DLRBC_FRESH_SEED42_RESULT_2026-08-26.md`.
 
 ## AF2 class-selective DLRBC residual
 
-**Status: protocol frozen; implementation and static wiring verified; training
-not yet executed.** This bounded follow-up does not combine the failed global
+**Status: completed -- STOP_AFTER_SEED42; no extra seeds or test.** This
+bounded follow-up did not combine the failed global
 DLRBC head with AF2. It freezes the completed `AF2DIRECT_seed42` detector and
 routes a zero-initialized rank-8 quadratic residual only to classes selected
 by an AF2-versus-DLRBC train-only complementarity audit. Validation cannot
@@ -416,9 +416,16 @@ participate in class selection. Static verification against the real
 AF2DIRECT checkpoint passed: initial raw boxes/scores are exactly AF2, active
 residuals change only selected class scores, non-selected scores and raw boxes
 remain bitwise equal, and gradients are finite. The candidate adds 44,796
-parameters; only these residual/gate parameters may train for 20 epochs.
+parameters; only these residual/gate parameters trained for 20 epochs.
 
-A seed-42 failure stops the direction without extra seeds or test. A pass only
-authorizes a prospective paired multi-seed protocol and is not a final claim.
+AF2CSD1 moved Macro from 80.79% to 80.86% (+0.07 point), Bottom-3 from
+69.58% to 69.80% (+0.22 point), and left Worst-class unchanged at 66.95%.
+Mean AP over train-selected classes improved only 0.23 point, below the frozen
+0.50-point requirement. The direction therefore stopped without test or
+extra seeds. The successful isolation but insufficient effect is retained as
+a negative result; the AF2DIRECT baseline is not interchangeable with AF2
+results from other initialization protocols.
 
 Protocol: `docs/FARUQ_V3_AF2_CLASS_SELECTIVE_DLRBC_PROTOCOL_2026-08-26.md`.
+
+Result: `docs/FARUQ_V3_AF2_CLASS_SELECTIVE_DLRBC_RESULT_2026-08-26.md`.
