@@ -64,12 +64,13 @@ tersedia di
 
 ## Fresh DLRBC fine-grained screen
 
-Eksperimen fresh end-to-end tanpa D0FT/Coffee parent tersedia sebagai tiga
-notebook paralel: `B0_FRESH`, kontrol linear berkapasitas sama
-`LRLIN_FRESH`, dan kandidat kuadratik `DLRBC_FRESH`. Protokol dan gate
-prospektif dibekukan di
-[`docs/FARUQ_V3_DLRBC_FRESH_PROTOCOL_2026-08-26.md`](docs/FARUQ_V3_DLRBC_FRESH_PROTOCOL_2026-08-26.md).
-Keputusan seed-42 dijalankan setelah ketiga arm selesai dan tidak membuka test.
+**Status: STOP pada seed 42.** `DLRBC_FRESH` meningkatkan Macro sebesar 0,93
+poin dan Bottom-3 sebesar 1,86 poin terhadap kontrol linear berkapasitas sama,
+tetapi Worst-class turun 10,45 poin. Penurunan itu melanggar batas prospektif
+0,5 poin, sehingga seed tambahan dan faktorial AF2 tidak diizinkan. Kedua arm
+selesai 50 epoch dari initial-state SHA yang sama; test tidak dibuka. Lihat
+[protokol](docs/FARUQ_V3_DLRBC_FRESH_PROTOCOL_2026-08-26.md) dan
+[hasil seed-42](docs/FARUQ_V3_DLRBC_FRESH_SEED42_RESULT_2026-08-26.md).
 
 ## Kontrol sumber SNI-21: Adrian vs Faruq
 

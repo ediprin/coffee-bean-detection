@@ -389,14 +389,18 @@ Protocol: `docs/FARUQ_V3_AF2_SPECTRAL_FACTORIZATION_PROTOCOL.md`.
 
 ## Fresh detector-native low-rank bilinear residual
 
-**Status: protocol frozen; implementation and parallel Colab notebooks
-prepared; no training result.** This study resets optimization to the exact
-official YOLO26n checkpoint and prohibits D0FT, AF2, or any other coffee-domain
-parent. It compares native `B0_FRESH`, an equal-parameter low-rank linear
-control `LRLIN_FRESH`, and the quadratic residual `DLRBC_FRESH`. All three use
-the same 50-epoch seed-42 schedule and grouped Faruq-v3 development data. The
-quadratic arm must beat its matched linear control on at least two of Macro,
-Bottom-3, and Worst mAP50-95 without a drop over 0.5 point. Test remains
-closed; seeds 123/2026 are unauthorized until a seed-42 promotion.
+**Status: completed -- STOP_AFTER_SEED42; no test.** The matched linear and
+quadratic arms each completed 50 epochs from the same official YOLO26n source
+and identical initialized detector-state SHA. DLRBC improved Macro by 0.93
+point and Bottom-3 by 1.86 points against `LRLIN_FRESH`, but Worst-class fell
+10.45 points. The first frozen criterion (two metrics improve) passed, while
+the maximum 0.5-point-drop criterion failed decisively. Seeds 123/2026 and an
+AF2 factorial are not authorized.
+
+`D0DIRECT` and `AF2DIRECT` are retained only as descriptive context because
+their initialized detector-state SHA differs; they are not substituted for
+the matched linear causal control or the missing `B0_FRESH` record.
 
 Protocol: `docs/FARUQ_V3_DLRBC_FRESH_PROTOCOL_2026-08-26.md`.
+
+Result: `docs/FARUQ_V3_DLRBC_FRESH_SEED42_RESULT_2026-08-26.md`.

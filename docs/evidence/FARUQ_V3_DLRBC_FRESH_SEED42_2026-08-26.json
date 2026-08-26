@@ -1,0 +1,71 @@
+{
+  "format": "coffee_detector.dlrbc_fresh.seed42_evidence.v1",
+  "protocol": "faruq-v3-dlrbc-fresh-seed42-v1",
+  "date": "2026-08-26",
+  "seed": 42,
+  "evaluation_split": "val",
+  "paired_initial_state_sha256": "2591ff254b57e63c9da3b278873a6eb6ab0b998c02976a6eeda18aed06132cd7",
+  "official_pretrained_sha256": "9b09cc8bf347f0fc8a5f7657480587f25db09b34bf33b0652110fb03a8ad4fef",
+  "arms": {
+    "LRLIN_FRESH": {
+      "metrics": {
+        "macro_map50_95": 0.8112401625490129,
+        "bottom3_class_map50_95": 0.6235965667849231,
+        "worst_class_map50_95": 0.6087141525141525
+      },
+      "diagnostic": {
+        "raw_top500_proposal_accessibility": 0.9980988593155894,
+        "conditional_top1_accuracy": 0.46578947368421053,
+        "correct_decision_recall": 0.3365019011406844
+      },
+      "checkpoint_sha256": "c8979c6514b0854a90bc49994092fc9c48e34cc65aacc38a6094cb1856c8a91b",
+      "completed_epochs": 50,
+      "maximum_epochs": 50,
+      "fresh_optimizer": true,
+      "coffee_parent_checkpoint": null,
+      "test_images_accessed": false
+    },
+    "DLRBC_FRESH": {
+      "metrics": {
+        "macro_map50_95": 0.8205823564701866,
+        "bottom3_class_map50_95": 0.642224499009889,
+        "worst_class_map50_95": 0.5042536570183629
+      },
+      "diagnostic": {
+        "raw_top500_proposal_accessibility": 0.9980988593155894,
+        "conditional_top1_accuracy": 0.5207823960880196,
+        "correct_decision_recall": 0.4049429657794677
+      },
+      "checkpoint_sha256": "0025b68afc9397395136a049d1866b4c9cc2bb1387a624b0dfa0e75ac19fe8f2",
+      "completed_epochs": 50,
+      "maximum_epochs": 50,
+      "fresh_optimizer": true,
+      "coffee_parent_checkpoint": null,
+      "test_images_accessed": false
+    }
+  },
+  "dlrbc_minus_matched_linear": {
+    "macro_map50_95": 0.0093421939211737,
+    "bottom3_class_map50_95": 0.0186279322249659,
+    "worst_class_map50_95": -0.1044604954957896
+  },
+  "diagnostic_delta_dlrbc_minus_matched_linear": {
+    "raw_top500_proposal_accessibility": 0.0,
+    "conditional_top1_accuracy": 0.0549929224038091,
+    "correct_decision_recall": 0.0684410646387833
+  },
+  "criteria": {
+    "improves_at_least_two_headline_metrics_vs_matched_linear": true,
+    "no_headline_drop_over_0_5_point_vs_matched_linear": false,
+    "both_arms_share_initial_state_sha256": true,
+    "both_arms_fresh_optimizer": true,
+    "no_coffee_parent_checkpoint": true,
+    "test_not_opened": true
+  },
+  "decision": "STOP_AFTER_SEED42",
+  "next": "DO_NOT_RUN_MORE_SEEDS_OR_AF2_FACTORIAL",
+  "b0_fresh_status": "NOT_AVAILABLE_IN_RECORDED_RESULTS",
+  "cross_protocol_note": "D0DIRECT and AF2DIRECT use a different initialized detector-state SHA and are descriptive context only, not causal controls for this study.",
+  "training_executed_for_recording": false,
+  "test_images_accessed": false
+}
