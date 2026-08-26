@@ -88,7 +88,12 @@ def _letterbox_sample(
 
 def _unwrap_head(model: torch.nn.Module):
     head = model.model[-1]
-    return head.base_head if isinstance(head, CoffeeFGDetectHead) else head
+    # Classification-only wrappers retain a native Detect under ``base_head``.
+    # Recursive unwrapping keeps diagnostics compatible without teaching this
+    # module every experiment-specific wrapper class.
+    while hasattr(head, "base_head"):
+        head = head.base_head
+    return head
 
 
 def _raw_branches(model: torch.nn.Module, image: torch.Tensor, max_det: int):

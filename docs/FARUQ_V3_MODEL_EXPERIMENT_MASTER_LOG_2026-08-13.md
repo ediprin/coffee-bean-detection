@@ -386,3 +386,17 @@ global winner may receive paired seeds 123/2026. The locked Faruq test remains
 closed. No outcome is asserted by this authorization entry.
 
 Protocol: `docs/FARUQ_V3_AF2_SPECTRAL_FACTORIZATION_PROTOCOL.md`.
+
+## Fresh detector-native low-rank bilinear residual
+
+**Status: protocol frozen; implementation and parallel Colab notebooks
+prepared; no training result.** This study resets optimization to the exact
+official YOLO26n checkpoint and prohibits D0FT, AF2, or any other coffee-domain
+parent. It compares native `B0_FRESH`, an equal-parameter low-rank linear
+control `LRLIN_FRESH`, and the quadratic residual `DLRBC_FRESH`. All three use
+the same 50-epoch seed-42 schedule and grouped Faruq-v3 development data. The
+quadratic arm must beat its matched linear control on at least two of Macro,
+Bottom-3, and Worst mAP50-95 without a drop over 0.5 point. Test remains
+closed; seeds 123/2026 are unauthorized until a seed-42 promotion.
+
+Protocol: `docs/FARUQ_V3_DLRBC_FRESH_PROTOCOL_2026-08-26.md`.

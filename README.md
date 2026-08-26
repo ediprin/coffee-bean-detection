@@ -62,6 +62,15 @@ menyimpan checkpoint langsung ke Drive, dan menghentikan refiner sebelum gate
 tersedia di
 [`notebooks/CoffeeFG_YOLO26_A0_Colab.ipynb`](notebooks/CoffeeFG_YOLO26_A0_Colab.ipynb).
 
+## Fresh DLRBC fine-grained screen
+
+Eksperimen fresh end-to-end tanpa D0FT/Coffee parent tersedia sebagai tiga
+notebook paralel: `B0_FRESH`, kontrol linear berkapasitas sama
+`LRLIN_FRESH`, dan kandidat kuadratik `DLRBC_FRESH`. Protokol dan gate
+prospektif dibekukan di
+[`docs/FARUQ_V3_DLRBC_FRESH_PROTOCOL_2026-08-26.md`](docs/FARUQ_V3_DLRBC_FRESH_PROTOCOL_2026-08-26.md).
+Keputusan seed-42 dijalankan setelah ketiga arm selesai dan tidak membuka test.
+
 ## Kontrol sumber SNI-21: Adrian vs Faruq
 
 A0 gabungan tidak lagi dipakai sebagai satu-satunya kontrol arsitektur. Adrian
