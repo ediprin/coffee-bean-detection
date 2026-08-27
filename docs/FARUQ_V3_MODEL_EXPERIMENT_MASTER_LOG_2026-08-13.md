@@ -437,3 +437,19 @@ Result: `docs/FARUQ_V3_AF2_CLASS_SELECTIVE_DLRBC_RESULT_2026-08-26.md`.
 - Tujuan: menguji stabilisasi lower-tail tanpa perubahan arsitektur/parameter.
 - Test tetap tertutup; jika gate gagal, AF2 asli dipertahankan.
 - Protocol: `docs/FARUQ_V3_AF2_UNIFORM_MODEL_SOUP_PROTOCOL_2026-08-27.md`.
+
+## AF2 box-score factorial
+
+**Status: protocol frozen; validation-only implementation prepared; not yet
+executed.** The study crosses raw one-to-one regression tensors and class-score
+tensors from the optimization-matched D0FT seed-42 checkpoint and confirmed
+AF2 seed-42 checkpoint. The four fixed arms are DD, DA, AD, and AA. Pure DD/AA
+must reproduce both native post-processing exactly and their frozen historical
+validation metrics within 0.2 point before either hybrid is interpreted.
+
+The primary question is whether D0FT regression plus AF2 scores (`DA`) can
+retain AF2 Macro while preserving or improving its lower tail. This is a
+zero-training mechanistic diagnostic, not a new model result. Test remains
+unavailable.
+
+Protocol: `docs/FARUQ_V3_AF2_BOX_SCORE_FACTORIAL_PROTOCOL_2026-08-27.md`.
