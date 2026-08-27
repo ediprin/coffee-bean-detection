@@ -429,3 +429,11 @@ results from other initialization protocols.
 Protocol: `docs/FARUQ_V3_AF2_CLASS_SELECTIVE_DLRBC_PROTOCOL_2026-08-26.md`.
 
 Result: `docs/FARUQ_V3_AF2_CLASS_SELECTIVE_DLRBC_RESULT_2026-08-26.md`.
+# AF2 uniform model soup — protocol frozen (2026-08-27)
+
+- Status: `AUTHORIZED_VALIDATION_ONLY`; hasil belum tersedia.
+- Tiga checkpoint AF2 terkonfirmasi (seed 42/123/2026) akan dirata-ratakan
+  dengan koefisien uniform tanpa training atau pemilihan koefisien memakai val.
+- Tujuan: menguji stabilisasi lower-tail tanpa perubahan arsitektur/parameter.
+- Test tetap tertutup; jika gate gagal, AF2 asli dipertahankan.
+- Protocol: `docs/FARUQ_V3_AF2_UNIFORM_MODEL_SOUP_PROTOCOL_2026-08-27.md`.
