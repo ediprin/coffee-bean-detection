@@ -201,10 +201,13 @@ def test_colab_notebooks_are_separate_quiet_and_test_locked():
         source = "\n".join(
             "".join(cell.get("source", [])) for cell in payload["cells"]
         )
-        assert f"ARM='{arm}'" in source
+        assert f"ARM = '{arm}'" in source
         assert "codex/af2-complementary-mechanisms" in source
         assert "--authorize-training" in source
-        assert "time.sleep(300)" in source
+        assert "time.sleep(30)" in source
+        assert "epochs % 5 == 0" in source
+        assert "exec(" not in source
+        assert len(payload["cells"]) >= 5
         assert "test/images" not in source
         assert "--authorize-test" not in source
 
