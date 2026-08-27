@@ -262,8 +262,12 @@ def run_af2_quality_alignment_audit(
             for model_name, network in networks.items():
                 head = _unwrap_head(network)
                 head.max_det = int(max_det)
-                output = network(images)
-                predictions[model_name] = output[0] if isinstance(output, tuple) else output
+                network_output = network(images)
+                predictions[model_name] = (
+                    network_output[0]
+                    if isinstance(network_output, tuple)
+                    else network_output
+                )
             height, width = images.shape[-2:]
             scale = torch.tensor([width, height, width, height], device=torch_device)
             for sample_index in range(len(images)):

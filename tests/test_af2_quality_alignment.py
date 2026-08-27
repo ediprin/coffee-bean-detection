@@ -89,3 +89,11 @@ def test_notebook_is_validation_only_and_uses_factorial_gate() -> None:
     assert "--authorize-training" not in source
     assert "Test tidak boleh tersedia" in source
 
+
+def test_run_function_does_not_shadow_output_path() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "src/coffee_detector/analysis/af2_quality_alignment.py"
+    ).read_text(encoding="utf-8")
+    assert "                output = network(images)" not in source.splitlines()
+    assert "network_output = network(images)" in source
