@@ -22,6 +22,23 @@ CONFIGS = {
 }
 
 
+def _normalize_torch_device(device: str | int | torch.device) -> torch.device:
+    """Accept both Ultralytics device syntax (``0``) and PyTorch syntax."""
+
+    if isinstance(device, torch.device):
+        return device
+    value = str(device).strip()
+    if value.isdigit():
+        value = f"cuda:{value}"
+    try:
+        return torch.device(value)
+    except RuntimeError as error:
+        raise ValueError(
+            f"Device static audit tidak valid: {device!r}; gunakan 'cpu', '0', "
+            "atau 'cuda:0'."
+        ) from error
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -69,6 +86,7 @@ def run_af2_complement_static_audit(
 ) -> dict:
     checkpoint = Path(af2_checkpoint).expanduser().resolve()
     output = Path(output).expanduser().resolve()
+    torch_device = _normalize_torch_device(device)
     if not checkpoint.is_file():
         raise FileNotFoundError(checkpoint)
 
@@ -86,13 +104,13 @@ def run_af2_complement_static_audit(
 
     from ultralytics import YOLO
 
-    source = YOLO(str(checkpoint)).model.to(device).eval()
+    source = YOLO(str(checkpoint)).model.to(torch_device).eval()
     source_head = source.model[-1]
     if type(source_head).__name__ != "Detect":
         raise TypeError("Checkpoint harus AF2 dengan native Detect head")
     source_parameters = sum(parameter.numel() for parameter in source.parameters())
     torch.manual_seed(20260828)
-    sample = torch.rand(1, 3, 64, 64, device=device)
+    sample = torch.rand(1, 3, 64, 64, device=torch_device)
     with torch.inference_mode():
         source_output = source(sample)
 
@@ -104,7 +122,7 @@ def run_af2_complement_static_audit(
             verbose=False,
             afab=afabs[arm],
             complement=configs[arm],
-        ).to(device)
+        ).to(torch_device)
         transfer = load_af2_complement_weights(model, source)
         model.eval()
         with torch.inference_mode():
@@ -118,13 +136,22 @@ def run_af2_complement_static_audit(
             child.in_channels for child in first_branch.modules() if isinstance(child, torch.nn.Conv2d)
         )
         features = [
-            torch.rand(2, channels, 16, 16, device=device, requires_grad=True),
+            torch.rand(2, channels, 16, 16, device=torch_device, requires_grad=True),
         ]
         for branch, side in zip(head.base_head.cv2[1:], (8, 4)):
             branch_channels = next(
                 child.in_channels for child in branch.modules() if isinstance(child, torch.nn.Conv2d)
             )
-            features.append(torch.rand(2, branch_channels, side, side, device=device, requires_grad=True))
+            features.append(
+                torch.rand(
+                    2,
+                    branch_channels,
+                    side,
+                    side,
+                    device=torch_device,
+                    requires_grad=True,
+                )
+            )
 
         with torch.no_grad():
             identity_feature = head.adapt(features)[0]

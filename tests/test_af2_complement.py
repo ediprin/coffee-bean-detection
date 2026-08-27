@@ -16,6 +16,7 @@ from coffee_detector.af2_complement import (
     load_af2_complement_weights,
 )
 from coffee_detector.af2_complement.modules import low_high_split
+from coffee_detector.af2_complement.audit import _normalize_torch_device
 from coffee_detector.afab import AFABConfig
 from coffee_detector.afab.model import AFABDetectionModel
 from coffee_detector.experiments.run_faruq_v3_af2_complement_decision import (
@@ -24,6 +25,14 @@ from coffee_detector.experiments.run_faruq_v3_af2_complement_decision import (
 
 
 MODEL_CFG = "configs/coffee_fg/models/yolo26n-p3.yaml"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("0", "cuda:0"), (0, "cuda:0"), ("cuda:0", "cuda:0"), ("cpu", "cpu")],
+)
+def test_static_audit_normalizes_ultralytics_device_syntax(value, expected):
+    assert str(_normalize_torch_device(value)) == expected
 
 
 @pytest.mark.parametrize(
