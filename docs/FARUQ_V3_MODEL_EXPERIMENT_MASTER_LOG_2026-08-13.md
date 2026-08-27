@@ -453,3 +453,27 @@ zero-training mechanistic diagnostic, not a new model result. Test remains
 unavailable.
 
 Protocol: `docs/FARUQ_V3_AF2_BOX_SCORE_FACTORIAL_PROTOCOL_2026-08-27.md`.
+
+### AF2 box-score factorial result
+
+**Status: completed -- AF2_BOX_SCORE_INTERACTION_NECESSARY.** DD and AA
+reproduced the historical D0FT/AF2 metrics exactly and every validity gate
+passed. D0FT boxes plus AF2 scores recovered most of AF2's gain but remained
+0.12 Macro, 0.44 Bottom-3, and 0.62 Worst-class points below full AF2. AF2
+scores are the dominant contributor, but AF2 regression remains necessary for
+the complete lower-tail result. Naive branch replacement is stopped; test was
+not accessed.
+
+Result: `docs/FARUQ_V3_AF2_BOX_SCORE_FACTORIAL_RESULT_2026-08-27.md`.
+
+## AF2 confidence-IoU alignment audit
+
+**Status: protocol frozen; validation-only implementation prepared; not yet
+executed.** The audit preserves each model's final candidate set, boxes, and
+classes, then measures confidence alignment to same-class IoU and an oracle
+confidence-only reranking upper bound. Native D0FT/AF2 metrics must exactly
+reproduce the completed factorial before the audit is interpretable. A PASS
+may authorize one matched AF2 quality-loss screen; no training or test is part
+of this audit.
+
+Protocol: `docs/FARUQ_V3_AF2_QUALITY_ALIGNMENT_PROTOCOL_2026-08-27.md`.
