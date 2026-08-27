@@ -17,6 +17,7 @@ from coffee_detector.af2_complement import (
 )
 from coffee_detector.af2_complement.modules import low_high_split
 from coffee_detector.af2_complement.audit import (
+    CUDA_INPUT_ATOL,
     CUDA_OUTPUT_ATOL,
     _max_abs_difference,
     _normalize_torch_device,
@@ -47,6 +48,10 @@ def test_static_audit_bounds_equivalent_cuda_output_numerically():
     }
     assert not torch.equal(reference["scores"], equivalent["scores"])
     assert _max_abs_difference(reference, equivalent) <= CUDA_OUTPUT_ATOL
+
+
+def test_static_audit_uses_stricter_frontend_than_detector_tolerance():
+    assert 0 < CUDA_INPUT_ATOL < CUDA_OUTPUT_ATOL
 
 
 @pytest.mark.parametrize(

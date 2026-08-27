@@ -73,6 +73,8 @@ def run_faruq_v3_af2_complement_arm(
         raise FileNotFoundError("Dataset development atau checkpoint AF2 tidak lengkap")
     _read(grouped_summary, "Grouped summary")
     audit = _read(static_audit, "Static audit")
+    if audit.get("format") != "coffee_detector.af2_complement.static_audit.v2":
+        raise RuntimeError("Static audit bukan schema v2 terbaru")
     if audit.get("decision") != "PASS" or not audit.get("training_authorized"):
         raise RuntimeError("Static audit belum PASS")
     if audit.get("checkpoint_sha256") != _sha256(checkpoint):

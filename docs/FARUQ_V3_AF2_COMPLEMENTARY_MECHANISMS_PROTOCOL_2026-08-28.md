@@ -126,10 +126,11 @@ the AF2 detector parameter count.
 Training is authorized only when the static audit establishes all of:
 
 1. all arm codes, AF2 configs, model YAMLs, and schedules are exact;
-2. all four models reproduce the AF2 frontend input bitwise and detector
-   output numerically within `1e-4` at initialization; this is the same CUDA
-   tolerance already used by the frozen AF2R/AF2CAL wiring audits because
-   separate equivalent GPU forwards can differ by a few ULPs;
+2. the checkpoint AF2 configuration must exactly match every candidate;
+   separate equivalent CUDA FFT forwards must reproduce the AF2 frontend
+   within `1e-6`, and detector output within `1e-4`, at initialization. The
+   output tolerance matches the frozen AF2R/AF2CAL wiring audits; the stricter
+   frontend tolerance only permits floating-point ULP differences;
 3. shared P3 is identical at initialization;
 4. activated FS and SFS change both raw boxes and raw scores;
 5. all adapter and contrastive gradients are finite and nonzero where required;

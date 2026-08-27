@@ -20,6 +20,7 @@ CONFIGS = {
     arm: REPO_ROOT / "configs/af2_complement" / f"{arm}_yolo26n.yaml"
     for arm in ARMS
 }
+CUDA_INPUT_ATOL = 1.0e-6
 CUDA_OUTPUT_ATOL = 1.0e-4
 
 
@@ -124,6 +125,9 @@ def run_af2_complement_static_audit(
     source_enhancer = getattr(source, "afab", None)
     if source_enhancer is None:
         raise TypeError("Checkpoint sumber tidak memuat frontend AF2")
+    source_afab_config = AFABConfig.from_mapping(
+        getattr(source, "afab_config", getattr(source_enhancer, "config", None))
+    )
     source_parameters = sum(parameter.numel() for parameter in source.parameters())
     torch.manual_seed(20260828)
     sample = torch.rand(1, 3, 64, 64, device=torch_device)
@@ -202,6 +206,9 @@ def run_af2_complement_static_audit(
             "added_parameters": parameters - source_parameters,
             "transfer": transfer,
             "initial_af2_input_exact": torch.equal(source_input, initial_input),
+            "initial_af2_input_max_abs_diff": _max_abs_difference(
+                source_input, initial_input
+            ),
             "initial_af2_output_exact": _all_equal(source_output, initial_output),
             "initial_af2_output_max_abs_diff": _max_abs_difference(
                 source_output, initial_output
@@ -230,9 +237,14 @@ def run_af2_complement_static_audit(
         "same_af2_config": common_afab,
         "same_training_schedule": common_schedule,
         "source_has_af2_frontend": source_enhancer is not None,
+        "source_af2_config_matches_candidates": all(
+            afab.to_dict() == source_afab_config.to_dict()
+            for afab in afabs.values()
+        ),
         "source_is_native_af2_head": type(source_head).__name__ == "Detect",
-        "all_initial_af2_inputs_exact": all(
-            report["initial_af2_input_exact"] for report in arm_reports.values()
+        "all_initial_af2_inputs_numerically_consistent": all(
+            report["initial_af2_input_max_abs_diff"] <= CUDA_INPUT_ATOL
+            for report in arm_reports.values()
         ),
         "all_initial_detector_outputs_numerically_consistent": all(
             report["initial_af2_output_max_abs_diff"] <= CUDA_OUTPUT_ATOL
@@ -262,9 +274,12 @@ def run_af2_complement_static_audit(
         else "FAIL"
     )
     result = {
-        "format": "coffee_detector.af2_complement.static_audit.v1",
+        "format": "coffee_detector.af2_complement.static_audit.v2",
         "checkpoint": str(checkpoint),
         "checkpoint_sha256": _sha256(checkpoint),
+        "source_af2_config": source_afab_config.to_dict(),
+        "cuda_input_atol": CUDA_INPUT_ATOL,
+        "cuda_output_atol": CUDA_OUTPUT_ATOL,
         "source_parameters": source_parameters,
         "arms": arm_reports,
         "gates": gates,
