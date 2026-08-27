@@ -240,8 +240,9 @@ def test_colab_notebooks_are_separate_quiet_and_test_locked():
     decision = (notebook_dir / "Faruq_V3_AF2_Complement_Decision_Colab.ipynb").read_text(
         encoding="utf-8"
     )
-    assert "run_af2_complement_static_audit" in audit
-    assert "traceback.print_exc()" in audit
+    assert "run_faruq_v3_af2_complement_audit" in audit
+    assert "stderr=subprocess.STDOUT" in audit
+    assert "static_audit_run.log" in audit
     assert "--authorize-training" not in audit
     assert "run_faruq_v3_af2_complement_decision" in decision
     assert "--authorize-training" not in decision
