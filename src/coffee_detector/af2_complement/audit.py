@@ -20,6 +20,7 @@ CONFIGS = {
     arm: REPO_ROOT / "configs/af2_complement" / f"{arm}_yolo26n.yaml"
     for arm in ARMS
 }
+CUDA_OUTPUT_ATOL = 1.0e-4
 
 
 def _normalize_torch_device(device: str | int | torch.device) -> torch.device:
@@ -68,6 +69,18 @@ def _all_equal(left: Any, right: Any) -> bool:
     return len(a) == len(b) and all(torch.equal(x, y) for x, y in zip(a, b))
 
 
+def _max_abs_difference(left: Any, right: Any) -> float:
+    a, b = _flatten_tensors(left), _flatten_tensors(right)
+    if len(a) != len(b):
+        return float("inf")
+    differences = []
+    for first, second in zip(a, b):
+        if first.shape != second.shape:
+            return float("inf")
+        differences.append(float((first.float() - second.float()).abs().max()))
+    return max(differences, default=0.0)
+
+
 def _branch(output: Any) -> dict[str, torch.Tensor]:
     if isinstance(output, tuple) and len(output) > 1 and isinstance(output[1], dict):
         output = output[1]
@@ -108,10 +121,14 @@ def run_af2_complement_static_audit(
     source_head = source.model[-1]
     if type(source_head).__name__ != "Detect":
         raise TypeError("Checkpoint harus AF2 dengan native Detect head")
+    source_enhancer = getattr(source, "afab", None)
+    if source_enhancer is None:
+        raise TypeError("Checkpoint sumber tidak memuat frontend AF2")
     source_parameters = sum(parameter.numel() for parameter in source.parameters())
     torch.manual_seed(20260828)
     sample = torch.rand(1, 3, 64, 64, device=torch_device)
     with torch.inference_mode():
+        source_input = source_enhancer(sample)
         source_output = source(sample)
 
     models, arm_reports = {}, {}
@@ -126,6 +143,7 @@ def run_af2_complement_static_audit(
         transfer = load_af2_complement_weights(model, source)
         model.eval()
         with torch.inference_mode():
+            initial_input = model.afab(sample)
             initial_output = model(sample)
         head = model.model[-1]
         if not isinstance(head, SharedFeatureDetectHead):
@@ -183,7 +201,11 @@ def run_af2_complement_static_audit(
             "parameters": parameters,
             "added_parameters": parameters - source_parameters,
             "transfer": transfer,
+            "initial_af2_input_exact": torch.equal(source_input, initial_input),
             "initial_af2_output_exact": _all_equal(source_output, initial_output),
+            "initial_af2_output_max_abs_diff": _max_abs_difference(
+                source_output, initial_output
+            ),
             "initial_shared_feature_exact": identity_preserved,
             "active_changes_boxes": active_boxes,
             "active_changes_scores": active_scores,
@@ -207,9 +229,14 @@ def run_af2_complement_static_audit(
         "same_model_yaml": len(set(model_paths.values())) == 1,
         "same_af2_config": common_afab,
         "same_training_schedule": common_schedule,
+        "source_has_af2_frontend": source_enhancer is not None,
         "source_is_native_af2_head": type(source_head).__name__ == "Detect",
-        "all_initial_af2_outputs_exact": all(
-            report["initial_af2_output_exact"] for report in arm_reports.values()
+        "all_initial_af2_inputs_exact": all(
+            report["initial_af2_input_exact"] for report in arm_reports.values()
+        ),
+        "all_initial_detector_outputs_numerically_consistent": all(
+            report["initial_af2_output_max_abs_diff"] <= CUDA_OUTPUT_ATOL
+            for report in arm_reports.values()
         ),
         "all_initial_shared_features_exact": all(
             report["initial_shared_feature_exact"] for report in arm_reports.values()

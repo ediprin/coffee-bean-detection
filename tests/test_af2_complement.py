@@ -16,7 +16,11 @@ from coffee_detector.af2_complement import (
     load_af2_complement_weights,
 )
 from coffee_detector.af2_complement.modules import low_high_split
-from coffee_detector.af2_complement.audit import _normalize_torch_device
+from coffee_detector.af2_complement.audit import (
+    CUDA_OUTPUT_ATOL,
+    _max_abs_difference,
+    _normalize_torch_device,
+)
 from coffee_detector.afab import AFABConfig
 from coffee_detector.afab.model import AFABDetectionModel
 from coffee_detector.experiments.run_faruq_v3_af2_complement_decision import (
@@ -33,6 +37,16 @@ MODEL_CFG = "configs/coffee_fg/models/yolo26n-p3.yaml"
 )
 def test_static_audit_normalizes_ultralytics_device_syntax(value, expected):
     assert str(_normalize_torch_device(value)) == expected
+
+
+def test_static_audit_bounds_equivalent_cuda_output_numerically():
+    reference = {"scores": torch.tensor([1.0]), "boxes": torch.tensor([2.0])}
+    equivalent = {
+        "scores": torch.tensor([1.0 + CUDA_OUTPUT_ATOL / 2]),
+        "boxes": torch.tensor([2.0]),
+    }
+    assert not torch.equal(reference["scores"], equivalent["scores"])
+    assert _max_abs_difference(reference, equivalent) <= CUDA_OUTPUT_ATOL
 
 
 @pytest.mark.parametrize(
