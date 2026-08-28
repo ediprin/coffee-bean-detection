@@ -516,15 +516,34 @@ Protocol:
 Result:
 `docs/FARUQ_V3_AF2SFS1_ROOT_CAUSE_RESULT_2026-08-28.md`.
 
-### AF2SFS1 full-mAP intervention authorization
+### AF2SFS1 full-mAP intervention result
 
-**Status: protocol frozen; validation-only implementation prepared; not yet
-executed.** Native mAP is evaluated for AF2CTRL and four states of the same
-AF2SFS1 checkpoint: normal, adapter bypass, spatial-only, and frequency-only.
-The exact factorization separates direct selector AP effect from the
-optimization-mediated AP effect retained after bypass. Per-class AP50/AP75 and
-checkpoint tensor drift are reported. There is no training, post-hoc model
-selection, or test access.
+**Status: completed -- OPTIMIZATION_MEDIATED_DOMINANT.** Normal AF2SFS1 and
+adapter-bypass AF2SFS1 both retained 89.96% Macro, 84.19% Bottom-3, and 83.25%
+Worst-class AP. Relative to AF2CTRL, the bypass state retained +0.96 Macro and
++0.31 Bottom-3 points while Worst changed by -0.29 point. The direct active
+selector effect was approximately zero (-0.01 Macro point; zero Bottom-3 and
+Worst change). AP50/AP75 improvements of +0.88/+0.84 points also survived
+bypass. The benefit is therefore attributed to detector-weight optimization,
+not an inference-time selector. Test remained closed.
 
 Protocol:
 `docs/FARUQ_V3_AF2SFS1_MAP_INTERVENTION_PROTOCOL_2026-08-28.md`.
+
+Result:
+`docs/FARUQ_V3_AF2SFS1_MAP_INTERVENTION_RESULT_2026-08-28.md`.
+
+### AF2 multilevel training-scaffold kill gate
+
+**Status: protocol frozen; implementation prepared; seed-42 training not yet
+executed.** `AF2MTS1` extends the supported optimization-mediated mechanism to
+temporary P3/P4/P5 space/frequency scaffolds. Scaffolds are active only during
+training, cosine-decay to zero, and are bypassed for every validation forward.
+The completed checkpoint must be exported to a native AF2 head with bitwise
+equal bypass output and no inference parameter increase. This intentionally
+expensive direction receives one decisive seed-42 screen: at least 90.50%
+Macro, 84.50% Bottom-3, +1.50 Macro points over AF2CTRL, and no Worst-class
+drop. Passing does not authorize test access; failing stops this direction.
+
+Protocol:
+`docs/FARUQ_V3_AF2_MULTILEVEL_TRAINING_SCAFFOLD_PROTOCOL_2026-08-28.md`.
