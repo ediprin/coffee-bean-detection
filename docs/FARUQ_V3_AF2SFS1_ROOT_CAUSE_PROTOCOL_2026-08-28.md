@@ -2,7 +2,7 @@
 
 Date frozen: 2026-08-28
 
-Status: **AUTHORIZED — VALIDATION-ONLY DIAGNOSTIC**
+Status: **COMPLETED — INTERPRETABLE; ACTIVE SELECTOR NOT YET SUPPORTED**
 
 Training: **forbidden**
 
@@ -108,3 +108,6 @@ The diagnostic may attribute the observed seed-42 gain and identify a
 mechanism for paired confirmation. It must not tune the selector, alter the
 frozen seed-123/2026 confirmation gate, open test, or claim general causal
 validity beyond this checkpoint and validation set.
+
+Result:
+`docs/FARUQ_V3_AF2SFS1_ROOT_CAUSE_RESULT_2026-08-28.md`.

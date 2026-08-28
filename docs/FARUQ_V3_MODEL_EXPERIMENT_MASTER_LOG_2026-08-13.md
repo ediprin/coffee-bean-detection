@@ -500,14 +500,31 @@ Result:
 
 ### AF2SFS1 root-cause diagnostic authorization
 
-**Status: protocol frozen; validation-only implementation prepared; not yet
-executed.** Before additional seeds, the retained seed-42 checkpoint will be
-decomposed into raw localization, final proposal selection, conditional class
-accuracy, per-class AP, train-defined size strata, and P3 selector behavior.
-Frozen inference interventions compare the learned selector with adapter
-bypass, spatial-only, and frequency-only execution on the same checkpoint.
-This analysis performs no training, cannot select a replacement model, and
-keeps test closed.
+**Status: completed -- INTERPRETABLE; active selector effect unsupported at
+the fixed operating point.** Raw accessibility was unchanged at 99.81%.
+AF2SFS1 gained 1.33 points final matched recall but lost 1.25 points
+conditional top-1 accuracy, leaving correct-decision recall 0.19 point below
+AF2CTRL. Normal and adapter-bypass AF2SFS1 had identical 66.35%
+correct-decision recall. The completed +0.95-point Macro AP result therefore
+cannot yet be attributed to active selector inference; it may reflect AP
+ranking across thresholds or an optimization-mediated detector-weight change.
+Test remained closed.
 
 Protocol:
 `docs/FARUQ_V3_AF2SFS1_ROOT_CAUSE_PROTOCOL_2026-08-28.md`.
+
+Result:
+`docs/FARUQ_V3_AF2SFS1_ROOT_CAUSE_RESULT_2026-08-28.md`.
+
+### AF2SFS1 full-mAP intervention authorization
+
+**Status: protocol frozen; validation-only implementation prepared; not yet
+executed.** Native mAP is evaluated for AF2CTRL and four states of the same
+AF2SFS1 checkpoint: normal, adapter bypass, spatial-only, and frequency-only.
+The exact factorization separates direct selector AP effect from the
+optimization-mediated AP effect retained after bypass. Per-class AP50/AP75 and
+checkpoint tensor drift are reported. There is no training, post-hoc model
+selection, or test access.
+
+Protocol:
+`docs/FARUQ_V3_AF2SFS1_MAP_INTERVENTION_PROTOCOL_2026-08-28.md`.
