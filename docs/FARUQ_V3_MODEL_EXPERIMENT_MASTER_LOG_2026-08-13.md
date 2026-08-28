@@ -528,3 +528,16 @@ selection, or test access.
 
 Protocol:
 `docs/FARUQ_V3_AF2SFS1_MAP_INTERVENTION_PROTOCOL_2026-08-28.md`.
+
+# 2026-08-29 — AF2-SPDS protocol frozen (not yet trained)
+
+- Added a matched three-arm screen: `AF2BASE`, `AF2RGBDS`, and `AF2SPDS`.
+- The design responds directly to the failed AF2MTS1 perturbation: auxiliary
+  P3/P4/P5 decoders are read-only and removable; native Detect inputs and
+  inference remain unchanged.
+- Causal control separates generic RGB reconstruction from AF2-specific signal
+  reconstruction (`AF2(x)-x`).
+- Seed-42 development-only kill gate is frozen in
+  `docs/FARUQ_V3_AF2_SIGNAL_PRESERVATION_DEEP_SUPERVISION_PROTOCOL_2026-08-29.md`.
+- Test remains locked; no result claim exists until all three reports and the
+  decision artifact are present.
