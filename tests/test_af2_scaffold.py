@@ -133,7 +133,7 @@ def _write_result(path: Path, arm: str, values: tuple[float, float, float], *, c
                 "bottom3_class_map50_95": 0.0,
                 "worst_class_map50_95": 0.0,
             },
-            native_export_raw_output_bitwise_exact=True,
+            native_export_raw_output_numerically_consistent=True,
         )
     path.write_text(json.dumps(payload), encoding="utf-8")
 

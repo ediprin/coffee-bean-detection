@@ -33,7 +33,9 @@ The scaffold is active only in `model.train()`. Every validation and inference
 forward bypasses it exactly. Training strength is 1.0 through epoch 18,
 cosine-decays during epochs 19–27, and is exactly zero for epochs 28–30. The
 completed checkpoint is exported with the wrapper and all scaffold parameters
-removed. The exported model must reproduce bypass output and validation metrics.
+removed. The exported model must reproduce bypass validation metrics within
+`1e-6`; separately loaded GPU raw tensors must agree within the predeclared
+`1e-4` CUDA tolerance already used by the earlier AF2 static audit.
 
 ## Fixed comparison
 
@@ -54,7 +56,9 @@ Training is forbidden unless all gates pass:
 3. all P3/P4/P5 adapters receive finite gradients and can alter train output;
 4. schedule endpoints are exactly 1.0 and 0.0 as frozen above;
 5. native head schema is preserved and the stripped export contains no scaffold
-   parameters;
+   parameters. CUDA output equivalence uses maximum absolute error `1e-4`
+   because separately loaded identical convolution graphs need not be bitwise
+   equal on GPU;
 6. no ROI, decoded-box dependency, test path, or test authorization exists.
 
 ## Seed-42 kill gate

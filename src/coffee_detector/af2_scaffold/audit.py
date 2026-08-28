@@ -22,6 +22,7 @@ from .model import (
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 MODEL_CFG = REPO_ROOT / "configs/coffee_fg/models/yolo26n-p3.yaml"
+CUDA_OUTPUT_ATOL = 1.0e-4
 
 
 def _sha256(path: Path) -> str:
@@ -59,6 +60,18 @@ def _flatten(value: Any) -> list[torch.Tensor]:
 def _equal(left: Any, right: Any) -> bool:
     a, b = _flatten(left), _flatten(right)
     return len(a) == len(b) and all(torch.equal(x, y) for x, y in zip(a, b))
+
+
+def _max_abs_difference(left: Any, right: Any) -> float:
+    a, b = _flatten(left), _flatten(right)
+    if len(a) != len(b):
+        return float("inf")
+    differences: list[float] = []
+    for first, second in zip(a, b):
+        if first.shape != second.shape:
+            return float("inf")
+        differences.append(float((first.float() - second.float()).abs().max()))
+    return max(differences, default=0.0)
 
 
 def _different(left: Any, right: Any) -> bool:
@@ -105,14 +118,14 @@ def run_af2_scaffold_static_audit(
     with torch.no_grad():
         source_train = source(sample.clone())
         candidate_train = candidate(sample.clone())
-    initial_train_exact = _equal(source_train, candidate_train)
+    initial_train_difference = _max_abs_difference(source_train, candidate_train)
 
     source.eval()
     candidate.eval()
     with torch.inference_mode():
         source_eval = source(sample.clone())
         candidate_eval = candidate(sample.clone())
-    initial_eval_exact = _equal(source_eval, candidate_eval)
+    initial_eval_difference = _max_abs_difference(source_eval, candidate_eval)
 
     synthetic_features = [
         torch.rand(2, channel, max(3, 12 // (2**level)), max(3, 12 // (2**level)), device=resolved_device)
@@ -146,7 +159,7 @@ def run_af2_scaffold_static_audit(
     candidate.eval()
     with torch.inference_mode():
         active_eval = candidate(sample.clone())
-    active_eval_still_exact = _equal(source_eval, active_eval)
+    active_eval_difference = _max_abs_difference(source_eval, active_eval)
 
     source_parameters = _parameters(source)
     candidate_parameters = _parameters(candidate)
@@ -161,16 +174,17 @@ def run_af2_scaffold_static_audit(
     candidate.eval()
     with torch.inference_mode():
         stripped_eval = candidate(sample.clone())
-    stripped_output_exact = _equal(source_eval, stripped_eval)
+    stripped_output_difference = _max_abs_difference(source_eval, stripped_eval)
+    output_atol = CUDA_OUTPUT_ATOL if resolved_device.type == "cuda" else 0.0
 
     gates = {
         "source_is_native_af2_head": True,
-        "initial_train_output_exact": initial_train_exact,
-        "initial_eval_output_exact": initial_eval_exact,
+        "initial_train_output_numerically_consistent": initial_train_difference <= output_atol,
+        "initial_eval_output_numerically_consistent": initial_eval_difference <= output_atol,
         "all_three_levels_present": len(gradients) == 3,
         "all_three_levels_have_finite_gradients": all(gradients),
         "active_scaffold_changes_train_output": active_changes_train,
-        "active_scaffold_never_changes_eval_output": active_eval_still_exact,
+        "active_scaffold_never_changes_eval_output": active_eval_difference <= output_atol,
         "schedule_starts_exactly_one": config.strength(0) == 1.0,
         "schedule_zero_for_last_three_epochs": all(
             config.strength(epoch) == 0.0 for epoch in (27, 28, 29)
@@ -178,7 +192,7 @@ def run_af2_scaffold_static_audit(
         "stripped_parameter_count_equals_af2": stripped_parameters == source_parameters,
         "training_parameter_delta_is_only_scaffold": candidate_parameters - source_parameters == scaffold_parameters,
         "stripped_state_schema_equals_af2": stripped_schema_equal,
-        "stripped_output_exact": stripped_output_exact,
+        "stripped_output_numerically_consistent": stripped_output_difference <= output_atol,
         "no_roi_decoded_box_or_test_dependency": no_forbidden_dependency,
         "test_accessed": False,
     }
@@ -189,6 +203,13 @@ def run_af2_scaffold_static_audit(
         "checkpoint": str(checkpoint),
         "checkpoint_sha256": _sha256(checkpoint),
         "config": config.to_dict(),
+        "output_atol": output_atol,
+        "output_max_abs_differences": {
+            "initial_train": initial_train_difference,
+            "initial_eval": initial_eval_difference,
+            "active_eval": active_eval_difference,
+            "stripped_eval": stripped_output_difference,
+        },
         "parameters": {
             "source_af2": source_parameters,
             "training_candidate": candidate_parameters,
