@@ -2,7 +2,7 @@
 
 Date frozen: 2026-08-28  
 Branch: `codex/af2-complementary-mechanisms`  
-Status: **IMPLEMENTED — STATIC AUDIT REQUIRED BEFORE TRAINING**  
+Status: **SEED-42 COMPLETE — PASS; AF2SFS1 RETAINED**
 Evaluation: Faruq-v3 grouped development validation only  
 Locked test: **closed**
 
@@ -174,3 +174,15 @@ the existing AF2 method and closes these mechanisms.
 
 All training notebooks write `last.pt` into Drive, support same-run resume, and
 emit only a five-minute epoch status rather than a browser-heavy progress bar.
+
+## Completed seed-42 outcome
+
+The static audit passed and all four arms completed under the frozen contract.
+`AF2SFS1` passed the strict Macro route against `AF2CTRL`: +0.95 Macro point,
++0.31 Bottom-3 point, and -0.29 Worst-class point. `AF2FS1` and `AF2BHCL1`
+were rejected. The study decision is `PASS`, the only retained arm is
+`AF2SFS1`, and the next action is `FREEZE_PAIRED_CONFIRMATION_PROTOCOL`. Test
+was not opened.
+
+Result:
+`docs/FARUQ_V3_AF2_COMPLEMENTARY_MECHANISMS_RESULT_2026-08-28.md`.

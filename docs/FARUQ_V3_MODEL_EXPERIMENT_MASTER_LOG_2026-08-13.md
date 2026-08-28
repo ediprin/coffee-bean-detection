@@ -480,18 +480,20 @@ Protocol: `docs/FARUQ_V3_AF2_QUALITY_ALIGNMENT_PROTOCOL_2026-08-27.md`.
 
 ## AF2 complementary mechanisms
 
-**Status: protocol frozen and implementation complete; static audit required
-before training.** Three non-duplicative additions are screened against one
-matched AF2 continuation control: shared-P3 frequency selection (`AF2FS1`),
-shared-P3 space/frequency selection (`AF2SFS1`), and train-only balanced
-leaf/family contrastive supervision (`AF2BHCL1`). Every arm starts from the
-same AF2 seed-42 checkpoint and follows the same 30-epoch schedule.
+**Status: seed-42 completed -- PASS; `AF2SFS1` retained.** The static audit
+passed and the four matched 30-epoch arms completed. Against `AF2CTRL`
+(89.00% Macro, 83.88% Bottom-3, 83.55% Worst), the shared-P3
+space/frequency selector reached 89.96% Macro, 84.19% Bottom-3, and 83.25%
+Worst. Its deltas were +0.95, +0.31, and -0.29 points, respectively, so it
+passed the prospectively frozen strict Macro route. `AF2FS1` and `AF2BHCL1`
+were rejected.
 
-The feature candidates are zero-initialized and must reproduce AF2 exactly
-before training. Unlike prior classification-only corrections and post-hoc
-box/score swaps, they feed the same adapted P3 feature to both native branches.
-BHCL adds no inference parameters. The decision includes both the frozen Macro
-route and a lower-tail Pareto route; test remains closed.
+This is a seed-42 screening success, not a confirmed three-seed or test result.
+Only `AF2SFS1` may proceed after a paired seed-123/2026 confirmation protocol
+is frozen. Test remains closed.
 
 Protocol:
 `docs/FARUQ_V3_AF2_COMPLEMENTARY_MECHANISMS_PROTOCOL_2026-08-28.md`.
+
+Result:
+`docs/FARUQ_V3_AF2_COMPLEMENTARY_MECHANISMS_RESULT_2026-08-28.md`.
