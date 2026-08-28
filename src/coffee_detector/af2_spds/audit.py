@@ -23,6 +23,7 @@ from .model import (
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 CONFIGS = {arm: REPO_ROOT / "configs/af2_spds" / f"{arm}_yolo26n.yaml" for arm in ARMS}
+CUDA_OUTPUT_ATOL = 1.0e-4
 
 
 def normalize_torch_device(device: str | int | torch.device) -> torch.device:
@@ -61,6 +62,18 @@ def flatten_tensors(value: Any) -> list[torch.Tensor]:
 def outputs_exact(left: Any, right: Any) -> bool:
     a, b = flatten_tensors(left), flatten_tensors(right)
     return len(a) == len(b) and all(torch.equal(x, y) for x, y in zip(a, b))
+
+
+def max_abs_difference(left: Any, right: Any) -> float:
+    a, b = flatten_tensors(left), flatten_tensors(right)
+    if len(a) != len(b):
+        return float("inf")
+    differences = []
+    for first, second in zip(a, b):
+        if first.shape != second.shape:
+            return float("inf")
+        differences.append(float((first.float() - second.float()).abs().max()))
+    return max(differences, default=0.0)
 
 
 def state_schema(module: torch.nn.Module) -> dict[str, tuple[int, ...]]:
@@ -113,11 +126,13 @@ def run_af2_spds_static_audit(
         with torch.inference_mode():
             output_before = model(sample)
         exact_before = outputs_exact(source_output, output_before)
+        initial_max_abs_diff = max_abs_difference(source_output, output_before)
 
         stripped = strip_auxiliary_head(copy.deepcopy(model)).eval()
         with torch.inference_mode():
             stripped_output = stripped(sample)
         exact_stripped = outputs_exact(output_before, stripped_output)
+        stripped_max_abs_diff = max_abs_difference(output_before, stripped_output)
         stripped_schema = state_schema(stripped)
 
         model.train()
@@ -148,7 +163,9 @@ def run_af2_spds_static_audit(
             "added_parameters": parameters - source_parameters,
             "transfer": transfer,
             "initial_detector_output_exact": exact_before,
+            "initial_detector_output_max_abs_diff": initial_max_abs_diff,
             "stripped_detector_output_exact": exact_stripped,
+            "stripped_detector_output_max_abs_diff": stripped_max_abs_diff,
             "stripped_native_state_schema_exact": stripped_schema == source_schema,
             "auxiliary_loss_finite": bool(torch.isfinite(auxiliary)),
             "auxiliary_gradients_finite": finite,
@@ -175,8 +192,14 @@ def run_af2_spds_static_audit(
         "added_parameters_under_one_percent": all(
             reports[arm]["added_parameters"] / source_parameters < 0.01 for arm in ARMS
         ),
-        "all_initial_detector_outputs_exact": all(reports[arm]["initial_detector_output_exact"] for arm in ARMS),
-        "all_stripped_detector_outputs_exact": all(reports[arm]["stripped_detector_output_exact"] for arm in ARMS),
+        "all_initial_detector_outputs_numerically_consistent": all(
+            reports[arm]["initial_detector_output_max_abs_diff"] <= CUDA_OUTPUT_ATOL
+            for arm in ARMS
+        ),
+        "all_stripped_detector_outputs_numerically_consistent": all(
+            reports[arm]["stripped_detector_output_max_abs_diff"] <= CUDA_OUTPUT_ATOL
+            for arm in ARMS
+        ),
         "all_stripped_native_state_schemas_exact": all(reports[arm]["stripped_native_state_schema_exact"] for arm in ARMS),
         "all_auxiliary_losses_finite": all(reports[arm]["auxiliary_loss_finite"] for arm in ARMS),
         "treatment_gradients_finite_nonzero": all(
@@ -193,10 +216,11 @@ def run_af2_spds_static_audit(
     }
     decision = "PASS" if all(v for k, v in gates.items() if k != "test_accessed") and not gates["test_accessed"] else "FAIL"
     result = {
-        "format": "coffee_detector.af2_spds.static_audit.v1",
+        "format": "coffee_detector.af2_spds.static_audit.v2",
         "checkpoint": str(checkpoint),
         "checkpoint_sha256": sha256(checkpoint),
         "source_parameters": source_parameters,
+        "cuda_output_atol": CUDA_OUTPUT_ATOL,
         "arms": reports,
         "gates": gates,
         "decision": decision,

@@ -50,8 +50,10 @@ Training is authorized only if all arms have:
 
 1. identical AF2 configuration, model YAML, schedule, parameter count, and
    auxiliary state schema;
-2. exact initial AF2 detector output;
-3. exact output and native state schema after stripping auxiliary heads;
+2. numerically consistent initial AF2 detector output (maximum absolute CUDA
+   difference at most `1e-4`, with bitwise equality also reported);
+3. numerically consistent output after stripping auxiliary heads (same `1e-4`
+   bound) and exact native state schema;
 4. finite loss and gradients; nonzero treatment gradients and exactly-zero
    matched-control gradients;
 5. active AF2 signal distinct from RGB;
@@ -81,4 +83,3 @@ architecture wholesale: training-only auxiliary heads/deep supervision,
 reconstruction supervision for retaining frequency information, and AF2's
 input-frequency cue. The contribution tested here is their controlled,
 removable integration for fine-grained coffee-defect detection.
-

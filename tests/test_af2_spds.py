@@ -19,6 +19,7 @@ from coffee_detector.af2_spds import (
 from coffee_detector.experiments.run_faruq_v3_af2_spds_decision import (
     run_af2_spds_decision,
 )
+from coffee_detector.af2_spds.audit import CUDA_OUTPUT_ATOL, max_abs_difference
 
 
 MODEL_CFG = "configs/coffee_fg/models/yolo26n-p3.yaml"
@@ -52,6 +53,16 @@ def test_config_contract(arm, target):
 def test_config_rejects_mismatched_arm_target():
     with pytest.raises(ValueError, match="harus memakai"):
         AF2SPDSConfig.from_mapping({"arm": "AF2SPDS", "target": "rgb"})
+
+
+def test_static_audit_uses_explicit_cuda_numerical_bound():
+    reference = {"scores": torch.tensor([1.0]), "boxes": torch.tensor([2.0])}
+    equivalent = {
+        "scores": torch.tensor([1.0 + CUDA_OUTPUT_ATOL / 2]),
+        "boxes": torch.tensor([2.0]),
+    }
+    assert not torch.equal(reference["scores"], equivalent["scores"])
+    assert max_abs_difference(reference, equivalent) <= CUDA_OUTPUT_ATOL
 
 
 def test_multilevel_reconstruction_is_finite_and_differentiable():
