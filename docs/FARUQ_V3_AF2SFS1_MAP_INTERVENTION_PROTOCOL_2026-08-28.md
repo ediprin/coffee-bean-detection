@@ -52,6 +52,10 @@ checkpoint tensor drift in these groups:
 Tensor drift is descriptive. A large norm does not by itself prove that a
 parameter group caused an AP change.
 
+AP50 and AP75 must be read from Ultralytics `Metric.all_ap`; `Metric.ap` is the
+already-averaged per-class mAP and must not be reused as an IoU-specific
+column.
+
 ## Validity gates
 
 1. root-cause report is `INTERPRETABLE`, training false, and test false;

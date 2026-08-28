@@ -28,7 +28,10 @@ def _metric_payload(metrics, names: dict[int, str]) -> dict[str, Any]:
         raise RuntimeError("Validator tidak mengembalikan box AP")
     result.update(_classwise_summary(box, names))
     class_indices = [int(value) for value in np.asarray(box.ap_class_index).reshape(-1)]
-    matrix = np.asarray(box.ap, dtype=np.float64)
+    all_ap = getattr(box, "all_ap", None)
+    if all_ap is None:
+        raise RuntimeError("Validator tidak mengekspos matriks AP per IoU (all_ap)")
+    matrix = np.asarray(all_ap, dtype=np.float64)
     if matrix.ndim == 1:
         matrix = matrix[:, None]
     by_class = {}

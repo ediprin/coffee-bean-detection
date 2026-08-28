@@ -18,7 +18,16 @@ from coffee_detector.analysis.af2sfs1_map_intervention import (
 
 class _FakeBox:
     ap_class_index = np.asarray([0, 1])
-    ap = np.asarray([[0.8] * 10, [0.6] * 10])
+    all_ap = np.asarray(
+        [
+            [0.90, 0.88, 0.86, 0.84, 0.82, 0.80, 0.78, 0.76, 0.74, 0.72],
+            [0.70, 0.68, 0.66, 0.64, 0.62, 0.60, 0.58, 0.56, 0.54, 0.52],
+        ]
+    )
+
+    @property
+    def ap(self):
+        return self.all_ap.mean(axis=1)
 
 
 def test_metric_payload_preserves_per_iou_class_ap():
@@ -27,10 +36,10 @@ def test_metric_payload_preserves_per_iou_class_ap():
         box=_FakeBox(),
     )
     result = _metric_payload(metrics, {0: "a", 1: "b"})
-    assert result["macro_map50_95"] == pytest.approx(0.7)
-    assert result["macro_ap50"] == pytest.approx(0.7)
+    assert result["macro_map50_95"] == pytest.approx(0.71)
+    assert result["macro_ap50"] == pytest.approx(0.8)
     assert result["macro_ap75"] == pytest.approx(0.7)
-    assert result["ap_by_class_and_iou"]["a"]["map50_95"] == pytest.approx(0.8)
+    assert result["ap_by_class_and_iou"]["a"]["map50_95"] == pytest.approx(0.81)
 
 
 def test_map_decomposition_is_exact():
