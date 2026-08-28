@@ -81,4 +81,3 @@ def test_protocol_and_notebook_are_validation_only():
     assert "--authorize-training" not in source
     assert "--authorize-test" not in source
     assert "test/images" not in source
-
