@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 
 import yaml
-import torch
 
 from coffee_detector.af2_scaffold import (
     AF2ScaffoldConfig,
@@ -56,45 +55,16 @@ def _headline(metrics: dict) -> dict[str, float]:
     }
 
 
-def _flatten(value) -> list[torch.Tensor]:
-    if isinstance(value, torch.Tensor):
-        return [value]
-    if isinstance(value, dict):
-        result: list[torch.Tensor] = []
-        for key in sorted(value):
-            result.extend(_flatten(value[key]))
-        return result
-    if isinstance(value, (tuple, list)):
-        result = []
-        for item in value:
-            result.extend(_flatten(item))
-        return result
-    return []
-
-
-def _torch_device(value: str) -> torch.device:
-    return torch.device(f"cuda:{value}" if str(value).isdigit() else value)
-
-
-def _raw_export_max_abs_difference(wrapped_path: Path, native_path: Path, device: str) -> float:
+def _native_export_state_exact(wrapped_path: Path, native_path: Path) -> bool:
     from ultralytics import YOLO
 
-    resolved = _torch_device(device)
-    wrapped = YOLO(str(wrapped_path)).model.to(resolved).eval()
-    native = YOLO(str(native_path)).model.to(resolved).eval()
-    torch.manual_seed(20260828)
-    sample = torch.rand(1, 3, 64, 64, device=resolved)
-    with torch.inference_mode():
-        wrapped_output = _flatten(wrapped(sample.clone()))
-        native_output = _flatten(native(sample.clone()))
-    if len(wrapped_output) != len(native_output):
-        return float("inf")
-    differences = []
-    for left, right in zip(wrapped_output, native_output):
-        if left.shape != right.shape:
-            return float("inf")
-        differences.append(float((left.float() - right.float()).abs().max()))
-    return max(differences, default=0.0)
+    wrapped = YOLO(str(wrapped_path)).model.cpu()
+    strip_training_scaffold(wrapped)
+    native = YOLO(str(native_path)).model.cpu()
+    expected, observed = wrapped.state_dict(), native.state_dict()
+    return set(expected) == set(observed) and all(
+        expected[key].equal(observed[key]) for key in expected
+    )
 
 
 def _export_native_checkpoint(source: Path, output: Path) -> Path:
@@ -135,7 +105,7 @@ def run_faruq_v3_af2_scaffold_arm(
         raise FileNotFoundError("Dataset development atau checkpoint AF2 tidak lengkap")
     _read(grouped_summary, "Grouped summary")
     audit = _read(static_audit, "Static audit")
-    if audit.get("format") != "coffee_detector.af2_scaffold.static_audit.v1":
+    if audit.get("format") != "coffee_detector.af2_scaffold.static_audit.v2":
         raise RuntimeError("Schema static audit salah")
     if audit.get("decision") != "PASS" or not audit.get("training_authorized"):
         raise RuntimeError("Static audit belum PASS")
@@ -207,14 +177,9 @@ def run_faruq_v3_af2_scaffold_arm(
     if wrapped_report["metrics"].get("classes_without_ground_truth"):
         raise RuntimeError("Validation kehilangan kelas")
     _export_native_checkpoint(best, native)
-    raw_export_difference = _raw_export_max_abs_difference(best, native, device)
-    raw_export_atol = 1.0e-4 if _torch_device(device).type == "cuda" else 0.0
-    raw_export_consistent = raw_export_difference <= raw_export_atol
-    if not raw_export_consistent:
-        raise RuntimeError(
-            f"Export native berbeda dari bypass: max_abs={raw_export_difference}, "
-            f"atol={raw_export_atol}"
-        )
+    native_export_state_exact = _native_export_state_exact(best, native)
+    if not native_export_state_exact:
+        raise RuntimeError("Export native mengubah nilai state detector")
     native_report_path = output_root / "val_reports/AF2MTS1_seed42_native_val.json"
     native_report = evaluate(native, data_root, native_report_path, split="val", device=device)
     if native_report["metrics"].get("classes_without_ground_truth"):
@@ -234,9 +199,7 @@ def run_faruq_v3_af2_scaffold_arm(
         "metrics": native_report["metrics"],
         "wrapped_bypass_metrics": wrapped_report["metrics"],
         "native_export_deltas": export_deltas,
-        "native_export_raw_output_numerically_consistent": raw_export_consistent,
-        "native_export_raw_output_max_abs_difference": raw_export_difference,
-        "native_export_raw_output_atol": raw_export_atol,
+        "native_export_state_exact": native_export_state_exact,
         "training_checkpoint": str(best),
         "native_checkpoint": str(native),
         "native_checkpoint_sha256": _sha256(native),

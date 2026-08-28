@@ -539,9 +539,9 @@ Result:
 executed.** `AF2MTS1` extends the supported optimization-mediated mechanism to
 temporary P3/P4/P5 space/frequency scaffolds. Scaffolds are active only during
 training, cosine-decay to zero, and are bypassed for every validation forward.
-The completed checkpoint must be exported to a native AF2 head with numerically
-equal bypass output under the frozen CUDA tolerance and no inference parameter
-increase. This intentionally
+The completed checkpoint must be exported to a native AF2 head with exactly
+equal detector state tensors, validation-equivalent bypass output, and no
+inference parameter increase. This intentionally
 expensive direction receives one decisive seed-42 screen: at least 90.50%
 Macro, 84.50% Bottom-3, +1.50 Macro points over AF2CTRL, and no Worst-class
 drop. Passing does not authorize test access; failing stops this direction.

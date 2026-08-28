@@ -34,8 +34,8 @@ forward bypasses it exactly. Training strength is 1.0 through epoch 18,
 cosine-decays during epochs 19–27, and is exactly zero for epochs 28–30. The
 completed checkpoint is exported with the wrapper and all scaffold parameters
 removed. The exported model must reproduce bypass validation metrics within
-`1e-6`; separately loaded GPU raw tensors must agree within the predeclared
-`1e-4` CUDA tolerance already used by the earlier AF2 static audit.
+`1e-6`, and every exported native detector state tensor must equal the
+corresponding bypass detector tensor exactly.
 
 ## Fixed comparison
 
@@ -51,14 +51,14 @@ removed. The exported model must reproduce bypass validation metrics within
 
 Training is forbidden unless all gates pass:
 
-1. initial train-mode output is exactly the AF2 parent;
-2. eval output is exactly AF2 before and after artificial scaffold activation;
+1. zero-initialized train-mode scaffolds preserve the exact same P3/P4/P5
+   tensors presented to them;
+2. eval-mode scaffolds bypass the exact same P3/P4/P5 tensors even after
+   artificial scaffold activation;
 3. all P3/P4/P5 adapters receive finite gradients and can alter train output;
 4. schedule endpoints are exactly 1.0 and 0.0 as frozen above;
-5. native head schema is preserved and the stripped export contains no scaffold
-   parameters. CUDA output equivalence uses maximum absolute error `1e-4`
-   because separately loaded identical convolution graphs need not be bitwise
-   equal on GPU;
+5. native head schema and every native detector state value are preserved, and
+   the stripped export contains no scaffold parameters;
 6. no ROI, decoded-box dependency, test path, or test authorization exists.
 
 ## Seed-42 kill gate
@@ -71,6 +71,7 @@ Training is forbidden unless all gates pass:
 - Worst-class AP is not below AF2CTRL (83.54748589196677% raw reference);
 - all 21 validation classes are present;
 - stripped and wrapped-bypass validation metrics are equal within `1e-6`;
+- stripped and wrapped-bypass detector state tensors are exactly equal;
 - test was not accessed.
 
 Failure stops this multilevel-scaffold direction. Passing the screen only

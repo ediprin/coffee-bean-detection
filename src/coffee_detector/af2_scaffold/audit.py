@@ -22,7 +22,6 @@ from .model import (
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 MODEL_CFG = REPO_ROOT / "configs/coffee_fg/models/yolo26n-p3.yaml"
-CUDA_OUTPUT_ATOL = 1.0e-4
 
 
 def _sha256(path: Path) -> str:
@@ -41,45 +40,16 @@ def _device(value: str | int | torch.device) -> torch.device:
     return torch.device(str(value))
 
 
-def _flatten(value: Any) -> list[torch.Tensor]:
-    if isinstance(value, torch.Tensor):
-        return [value]
-    if isinstance(value, dict):
-        result: list[torch.Tensor] = []
-        for key in sorted(value):
-            result.extend(_flatten(value[key]))
-        return result
-    if isinstance(value, (tuple, list)):
-        result = []
-        for item in value:
-            result.extend(_flatten(item))
-        return result
-    return []
-
-
-def _equal(left: Any, right: Any) -> bool:
-    a, b = _flatten(left), _flatten(right)
-    return len(a) == len(b) and all(torch.equal(x, y) for x, y in zip(a, b))
-
-
-def _max_abs_difference(left: Any, right: Any) -> float:
-    a, b = _flatten(left), _flatten(right)
-    if len(a) != len(b):
-        return float("inf")
-    differences: list[float] = []
-    for first, second in zip(a, b):
-        if first.shape != second.shape:
-            return float("inf")
-        differences.append(float((first.float() - second.float()).abs().max()))
-    return max(differences, default=0.0)
-
-
-def _different(left: Any, right: Any) -> bool:
-    return not _equal(left, right)
-
-
 def _parameters(module: nn.Module) -> int:
     return sum(parameter.numel() for parameter in module.parameters())
+
+
+def _state_exact(left: nn.Module, right: nn.Module) -> bool:
+    first, second = left.state_dict(), right.state_dict()
+    return set(first) == set(second) and all(
+        torch.equal(first[key].detach().cpu(), second[key].detach().cpu())
+        for key in first
+    )
 
 
 def run_af2_scaffold_static_audit(
@@ -112,29 +82,17 @@ def run_af2_scaffold_static_audit(
     if not isinstance(head, TrainingOnlyMultilevelDetectHead):
         raise TypeError("Candidate kehilangan TrainingOnlyMultilevelDetectHead")
 
-    sample = torch.rand(1, 3, 64, 64, device=resolved_device)
-    source.train()
-    candidate.train()
-    with torch.no_grad():
-        source_train = source(sample.clone())
-        candidate_train = candidate(sample.clone())
-    initial_train_difference = _max_abs_difference(source_train, candidate_train)
-
-    source.eval()
-    candidate.eval()
-    with torch.inference_mode():
-        source_eval = source(sample.clone())
-        candidate_eval = candidate(sample.clone())
-    initial_eval_difference = _max_abs_difference(source_eval, candidate_eval)
-
     synthetic_features = [
         torch.rand(2, channel, max(3, 12 // (2**level)), max(3, 12 // (2**level)), device=resolved_device)
         for level, channel in enumerate(head.scaffold.channels)
     ]
-    head.base_head.eval()
     head.scaffold.train()
     with torch.no_grad():
-        inactive_head_output = head([value.clone() for value in synthetic_features])
+        initial_features = head.scaffold([value.clone() for value in synthetic_features])
+    initial_train_features_exact = all(
+        torch.equal(source_feature, adapted_feature)
+        for source_feature, adapted_feature in zip(synthetic_features, initial_features)
+    )
 
     gradients: list[bool] = []
     for adapter, channel in zip(head.scaffold.adapters, head.scaffold.channels):
@@ -151,15 +109,20 @@ def run_af2_scaffold_static_audit(
             )
         )
     head.set_scaffold_strength(1.0)
-    head.base_head.eval()
     head.scaffold.train()
     with torch.no_grad():
-        active_head_output = head([value.clone() for value in synthetic_features])
-    active_changes_train = _different(inactive_head_output, active_head_output)
-    candidate.eval()
-    with torch.inference_mode():
-        active_eval = candidate(sample.clone())
-    active_eval_difference = _max_abs_difference(source_eval, active_eval)
+        active_features = head.scaffold([value.clone() for value in synthetic_features])
+    active_changes_each_level = [
+        not torch.equal(source_feature, adapted_feature)
+        for source_feature, adapted_feature in zip(synthetic_features, active_features)
+    ]
+    head.scaffold.eval()
+    with torch.no_grad():
+        eval_features = head.scaffold([value.clone() for value in synthetic_features])
+    eval_features_exact = all(
+        torch.equal(source_feature, adapted_feature)
+        for source_feature, adapted_feature in zip(synthetic_features, eval_features)
+    )
 
     source_parameters = _parameters(source)
     candidate_parameters = _parameters(candidate)
@@ -171,20 +134,16 @@ def run_af2_scaffold_static_audit(
     strip_training_scaffold(candidate)
     stripped_parameters = _parameters(candidate)
     stripped_schema_equal = set(candidate.state_dict()) == set(source.state_dict())
-    candidate.eval()
-    with torch.inference_mode():
-        stripped_eval = candidate(sample.clone())
-    stripped_output_difference = _max_abs_difference(source_eval, stripped_eval)
-    output_atol = CUDA_OUTPUT_ATOL if resolved_device.type == "cuda" else 0.0
+    stripped_state_exact = _state_exact(candidate, source)
 
     gates = {
         "source_is_native_af2_head": True,
-        "initial_train_output_numerically_consistent": initial_train_difference <= output_atol,
-        "initial_eval_output_numerically_consistent": initial_eval_difference <= output_atol,
+        "source_af2_config_matches_candidate": afab.to_dict() == candidate.afab_config.to_dict(),
+        "initial_train_features_exact": initial_train_features_exact,
         "all_three_levels_present": len(gradients) == 3,
         "all_three_levels_have_finite_gradients": all(gradients),
-        "active_scaffold_changes_train_output": active_changes_train,
-        "active_scaffold_never_changes_eval_output": active_eval_difference <= output_atol,
+        "active_scaffold_changes_every_train_level": all(active_changes_each_level),
+        "active_scaffold_bypasses_every_eval_level_exactly": eval_features_exact,
         "schedule_starts_exactly_one": config.strength(0) == 1.0,
         "schedule_zero_for_last_three_epochs": all(
             config.strength(epoch) == 0.0 for epoch in (27, 28, 29)
@@ -192,24 +151,19 @@ def run_af2_scaffold_static_audit(
         "stripped_parameter_count_equals_af2": stripped_parameters == source_parameters,
         "training_parameter_delta_is_only_scaffold": candidate_parameters - source_parameters == scaffold_parameters,
         "stripped_state_schema_equals_af2": stripped_schema_equal,
-        "stripped_output_numerically_consistent": stripped_output_difference <= output_atol,
+        "stripped_detector_state_values_equal_af2": stripped_state_exact,
         "no_roi_decoded_box_or_test_dependency": no_forbidden_dependency,
         "test_accessed": False,
     }
     passed = all(value for key, value in gates.items() if key != "test_accessed") and not gates["test_accessed"]
     result = {
-        "format": "coffee_detector.af2_scaffold.static_audit.v1",
+        "format": "coffee_detector.af2_scaffold.static_audit.v2",
         "arm": config.arm,
         "checkpoint": str(checkpoint),
         "checkpoint_sha256": _sha256(checkpoint),
         "config": config.to_dict(),
-        "output_atol": output_atol,
-        "output_max_abs_differences": {
-            "initial_train": initial_train_difference,
-            "initial_eval": initial_eval_difference,
-            "active_eval": active_eval_difference,
-            "stripped_eval": stripped_output_difference,
-        },
+        "equivalence_method": "same_feature_identity_and_exact_stripped_state",
+        "active_changes_each_level": active_changes_each_level,
         "parameters": {
             "source_af2": source_parameters,
             "training_candidate": candidate_parameters,

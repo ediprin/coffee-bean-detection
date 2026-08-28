@@ -38,7 +38,7 @@ def run_af2_scaffold_decision(
     deltas = {key: candidate_values[key] - control_values[key] for key in METRICS}
     export_exact = (
         all(abs(float(value)) <= 1e-6 for value in candidate["native_export_deltas"].values())
-        and candidate.get("native_export_raw_output_numerically_consistent") is True
+        and candidate.get("native_export_state_exact") is True
     )
     criteria = {
         "macro_at_least_90_5_percent": candidate_values["macro_map50_95"] >= 0.905,
