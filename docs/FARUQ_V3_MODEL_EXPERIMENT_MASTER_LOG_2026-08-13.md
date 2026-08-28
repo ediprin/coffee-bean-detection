@@ -497,3 +497,17 @@ Protocol:
 
 Result:
 `docs/FARUQ_V3_AF2_COMPLEMENTARY_MECHANISMS_RESULT_2026-08-28.md`.
+
+### AF2SFS1 root-cause diagnostic authorization
+
+**Status: protocol frozen; validation-only implementation prepared; not yet
+executed.** Before additional seeds, the retained seed-42 checkpoint will be
+decomposed into raw localization, final proposal selection, conditional class
+accuracy, per-class AP, train-defined size strata, and P3 selector behavior.
+Frozen inference interventions compare the learned selector with adapter
+bypass, spatial-only, and frequency-only execution on the same checkpoint.
+This analysis performs no training, cannot select a replacement model, and
+keeps test closed.
+
+Protocol:
+`docs/FARUQ_V3_AF2SFS1_ROOT_CAUSE_PROTOCOL_2026-08-28.md`.
