@@ -150,6 +150,30 @@ def test_full_loss_backward_smoke(arm, target):
         assert any(torch.count_nonzero(gradient) > 0 for gradient in gradients)
 
 
+def test_validation_loss_is_native_when_auxiliary_decoders_are_inactive():
+    model = AF2SPDSDetectionModel(
+        MODEL_CFG,
+        nc=21,
+        verbose=False,
+        afab=AFABConfig(mode="af2"),
+        spds=AF2SPDSConfig(arm="AF2SPDS", target="af2_signal"),
+    )
+    model.args = SimpleNamespace(box=7.5, cls=0.5, dfl=1.5, epochs=30)
+    model.eval()
+    batch = {
+        "img": torch.rand(2, 3, 64, 64),
+        "batch_idx": torch.tensor([0.0, 1.0]),
+        "cls": torch.tensor([[1.0], [2.0]]),
+        "bboxes": torch.tensor([[0.4, 0.4, 0.2, 0.2], [0.6, 0.6, 0.2, 0.2]]),
+    }
+    with torch.no_grad():
+        predictions = model(batch["img"])
+        loss, items = model.loss(batch, predictions)
+    assert loss.shape == items.shape == (3,)
+    assert torch.isfinite(loss).all()
+    assert model.model[-1].last_auxiliary_predictions is None
+
+
 def test_stripped_model_preserves_output_and_native_state_schema():
     from coffee_detector.af2_spds.model import strip_auxiliary_head
 

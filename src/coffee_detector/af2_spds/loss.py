@@ -45,7 +45,13 @@ class AF2SPDSDetectionLoss:
                 assignments, loss, _ = super().get_assigned_targets_and_loss(preds, batch)
                 predictions = self.head.last_auxiliary_predictions
                 if predictions is None:
-                    raise RuntimeError("Auxiliary predictions tidak tersedia saat training")
+                    if model.training:
+                        raise RuntimeError("Auxiliary predictions tidak tersedia saat training")
+                    # Ultralytics computes validation loss from eval-mode raw
+                    # predictions. Auxiliary decoders are intentionally absent
+                    # in eval/inference, so validation reports native detection
+                    # loss only and never changes checkpoint selection metrics.
+                    return assignments, loss, loss.detach()
 
                 if self.spds.target == "none":
                     # Same decoder capacity and compute as treatment arms, but no
