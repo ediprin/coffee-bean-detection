@@ -213,6 +213,10 @@ def test_decision_requires_signal_specific_gain(tmp_path):
                 "bottom3_class_map50_95": bottom,
                 "worst_class_map50_95": worst,
                 "classes_without_ground_truth": [],
+                "map50_95_by_class": {
+                    f"class_{index:02d}": macro + index / 10000.0
+                    for index in range(21)
+                },
             },
             "test_images_accessed": False,
         }
@@ -220,6 +224,8 @@ def test_decision_requires_signal_specific_gain(tmp_path):
     result = run_af2_spds_decision(tmp_path / "runs", tmp_path / "decision.json")
     assert result["decision"] == "PASS"
     assert result["criteria"]["cue_specific_evidence"] is True
+    assert len(result["per_class"]) == 21
+    assert result["class_summary"]["spds_improved_vs_base"] == 21
 
 
 def test_colab_notebooks_are_separate_quiet_resumable_and_test_locked():
