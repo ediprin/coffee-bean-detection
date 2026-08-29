@@ -57,8 +57,25 @@ def test_prepare_af2rn_kaggle_validates_only_train(tmp_path, monkeypatch) -> Non
         stream.add(source, arcname=kaggle.DATASET_DIRNAME)
     d0 = input_root / kaggle.D0_NAME
     d0.write_bytes(b"checkpoint")
+    af2_result = input_root / kaggle.AF2_RESULT_NAME
+    af2_result.write_text(
+        json.dumps(
+            {
+                "candidate": {
+                    "AF2": {
+                        "macro_map50_95": 0.88,
+                        "bottom3_class_map50_95": 0.80,
+                        "worst_class_map50_95": 0.79,
+                    }
+                },
+                "test_images_accessed": False,
+            }
+        ),
+        encoding="utf-8",
+    )
     archive_sha = hashlib.sha256(archive.read_bytes()).hexdigest()
     d0_sha = hashlib.sha256(d0.read_bytes()).hexdigest()
+    af2_result_sha = hashlib.sha256(af2_result.read_bytes()).hexdigest()
     manifest = {
         "format": kaggle.MANIFEST_FORMAT,
         "artifacts": {
@@ -67,6 +84,10 @@ def test_prepare_af2rn_kaggle_validates_only_train(tmp_path, monkeypatch) -> Non
                 "sha256": archive_sha,
             },
             kaggle.D0_NAME: {"bytes": d0.stat().st_size, "sha256": d0_sha},
+            kaggle.AF2_RESULT_NAME: {
+                "bytes": af2_result.stat().st_size,
+                "sha256": af2_result_sha,
+            },
         },
         "checkpoint_validation": {
             kaggle.D0_NAME: {
@@ -95,6 +116,7 @@ def test_prepare_af2rn_kaggle_validates_only_train(tmp_path, monkeypatch) -> Non
 
     assert resolved_d0 == d0.resolve()
     assert contract["decision"] == "PASS"
+    assert Path(contract["af2_result"]) == af2_result.resolve()
     assert contract["validation_files_read"] is False
     assert contract["splits"]["train"]["annotations"] == 21
     assert contract["splits"]["val"]["source"] == (

@@ -3,7 +3,11 @@ from __future__ import annotations
 import pytest
 import torch
 
-from coffee_detector.af2_rn import AF2RNConfig, AF2RNInputEnhancer
+from coffee_detector.af2_rn import (
+    AF2RNConfig,
+    AF2RNInputEnhancer,
+    make_af2rn_trainer,
+)
 from coffee_detector.afab.operator import AFABConfig, AFABInputEnhancer
 
 
@@ -89,3 +93,8 @@ def test_dtype_is_preserved(dtype: torch.dtype) -> None:
     output = AF2RNInputEnhancer()(value)
     assert output.dtype == dtype
     assert torch.isfinite(output).all()
+
+
+def test_trainer_factory_preserves_distinct_runtime_class() -> None:
+    trainer = make_af2rn_trainer(AF2RNConfig())
+    assert trainer.__name__ == "AF2RNTrainer"

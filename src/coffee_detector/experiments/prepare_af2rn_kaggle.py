@@ -26,6 +26,7 @@ from coffee_detector.experiments.prepare_faruq_v3_kaggle import (
 
 
 D0_NAME = "D0_seed42_best.pt"
+AF2_RESULT_NAME = "lfdet_afab_seed42_screening.json"
 
 
 def _unique_file(root: Path, name: str) -> Path:
@@ -100,6 +101,7 @@ def prepare_af2rn_kaggle_input(
     manifest_path = _unique_file(input_root, MANIFEST_NAME)
     archive = _unique_file(input_root, ARCHIVE_NAME)
     d0_checkpoint = _unique_file(input_root, D0_NAME)
+    af2_result = _unique_file(input_root, AF2_RESULT_NAME)
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("format") != MANIFEST_FORMAT:
         raise RuntimeError(
@@ -114,8 +116,13 @@ def prepare_af2rn_kaggle_input(
     resolved_hashes = {
         ARCHIVE_NAME: sha256(archive),
         D0_NAME: sha256(d0_checkpoint),
+        AF2_RESULT_NAME: sha256(af2_result),
     }
-    for name, path in ((ARCHIVE_NAME, archive), (D0_NAME, d0_checkpoint)):
+    for name, path in (
+        (ARCHIVE_NAME, archive),
+        (D0_NAME, d0_checkpoint),
+        (AF2_RESULT_NAME, af2_result),
+    ):
         contract = artifacts.get(name)
         if not isinstance(contract, dict):
             raise RuntimeError(f"Manifest tidak memiliki kontrak {name}")
@@ -186,6 +193,8 @@ def prepare_af2rn_kaggle_input(
         "archive_sha256": ARCHIVE_SHA256,
         "d0_checkpoint": str(d0_checkpoint),
         "d0_checkpoint_sha256": resolved_hashes[D0_NAME],
+        "af2_result": str(af2_result),
+        "af2_result_sha256": resolved_hashes[AF2_RESULT_NAME],
         "manifest": str(manifest_path),
         "manifest_sha256": sha256(manifest_path),
         "data_root": str(data_root),

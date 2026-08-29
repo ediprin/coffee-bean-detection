@@ -633,3 +633,10 @@ The collision evidence and frozen protocol are:
   required input names and sizes before clone/install, inventories train only,
   and produces a downloadable audit ZIP without any training path:
   `notebooks/Faruq_V3_AF2RN_Static_Observability_Kaggle.ipynb`.
+- A separate Kaggle training notebook implements the frozen conditional path:
+  it repeats both pre-training gates, starts the 50-epoch AF2RN seed-42 run
+  from the explicit D0 seed-42 checkpoint only after both pass, saves
+  `last.pt`/`best.pt`, evaluates validation, and applies the frozen kill gate
+  against the manifest-verified historical AF2 result. It contains no test
+  route:
+  `notebooks/Faruq_V3_AF2RN_Seed42_Training_Kaggle.ipynb`.
