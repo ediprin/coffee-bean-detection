@@ -561,3 +561,45 @@ Protocol:
   (`AF2CUE1`) and late auxiliary-loss release (`AF2DECAY1`).
 - The factorization, seed-42 gate, and test lock are documented in
   `docs/FARUQ_V3_AF2_SPDS_REFINEMENT_PROTOCOL_2026-08-29.md`.
+
+## AF2-SPDS refinement seed-42 completed
+
+- `AF2CUE1`: Macro/Bottom-3/Worst = 89.31/83.96/83.58%.
+- `AF2DECAY1`: Macro/Bottom-3/Worst = 88.49/82.81/80.39%.
+- AF2CUE1 improved matched AF2BASE by +0.42/+3.12/+6.05 points, but its
+  Bottom-3 was 0.71 point below AF2SPDS. This exceeded the frozen 0.50-point
+  tolerance by 0.21 point, so it is recorded as a rejected near-miss rather
+  than retroactively retained.
+- AF2DECAY1 was lower than AF2SPDS on all headline metrics.
+- Formal aggregate decision: `FAIL_KILL_GATE`; retain original AF2; no test or
+  confirmatory extra seeds. Because AF2CUE1 missed only one gate by 0.21 point
+  while improving AF2BASE by +0.42/+3.12/+6.05 points, it is separately marked
+  `RETAIN_PARETO_EXPLORATORY` for validation-only per-class analysis. This does
+  not revise the frozen decision.
+- Result: `docs/FARUQ_V3_AF2_SPDS_REFINEMENT_RESULT_2026-08-29.md`.
+
+# 2026-08-29 — AF2 variant collision audit and AF2RN protocol
+
+**Status: repository-wide collision audit completed; AF2RN protocol frozen;
+training not yet authorized.** Completed and protocol-only AF2 work was
+cross-checked across the current tree and the historical AF2, CAFR,
+radial-wavelet, orientation-confirmation, feature-frequency-adapter, and
+parent-combination branches.
+
+The audit closes accidental repetition of AF1/AF12 high-pass masking,
+Hann-windowing, 180-degree folding, fixed radial bands, soft thresholds,
+luminance sharing, wavelet/phase-congruency fusion, trainable channel gates,
+feature adapters, auxiliary losses, and tested AF2/STB/IGEM/SAF compositions.
+
+One distinct hypothesis remains: `AF2RN` normalizes FFT magnitude by the
+median magnitude within the same integer annulus **before** forming the legacy
+360-bin angular density. Radius is used only as a nuisance-normalization index;
+it never masks, removes, or separately thresholds a radial band. All remaining
+AF2 behavior is held fixed.
+
+Training is blocked until a static and train-only observability audit passes.
+The collision evidence and frozen protocol are:
+
+- `docs/FARUQ_V3_AF2_VARIANT_COLLISION_MATRIX_2026-08-29.md`;
+- `docs/evidence/FARUQ_V3_AF2_VARIANT_COLLISION_MATRIX_2026-08-29.json`;
+- `docs/FARUQ_V3_AF2_RADIAL_NORMALIZED_ANGULAR_DENSITY_PROTOCOL_2026-08-29.md`.

@@ -1,0 +1,59 @@
+{
+  "format": "coffee_detector.af2_spds_refinement.seed42_decision.v1",
+  "date": "2026-08-29",
+  "values": {
+    "AF2BASE": {
+      "macro_map50_95": 0.8888761511444331,
+      "bottom3_class_map50_95": 0.8084262334129931,
+      "worst_class_map50_95": 0.7752998214662854
+    },
+    "AF2SPDS": {
+      "macro_map50_95": 0.8865075784880736,
+      "bottom3_class_map50_95": 0.8466814770817854,
+      "worst_class_map50_95": 0.8343657758422376
+    },
+    "AF2CUE1": {
+      "macro_map50_95": 0.8930612563629051,
+      "bottom3_class_map50_95": 0.8396091013248909,
+      "worst_class_map50_95": 0.8358034299034299
+    },
+    "AF2DECAY1": {
+      "macro_map50_95": 0.8849095517698496,
+      "bottom3_class_map50_95": 0.8280500514615202,
+      "worst_class_map50_95": 0.8038923560993665
+    }
+  },
+  "comparisons": {
+    "AF2CUE1": {
+      "versus_base": {
+        "macro_map50_95": 0.0041851052184720405,
+        "bottom3_class_map50_95": 0.031182867911897727,
+        "worst_class_map50_95": 0.06050360843714453
+      },
+      "versus_spds": {
+        "macro_map50_95": 0.0065536778748315205,
+        "bottom3_class_map50_95": -0.007072375756894567,
+        "worst_class_map50_95": 0.0014376540611923394
+      },
+      "decision": "REJECT_NEAR_MISS"
+    },
+    "AF2DECAY1": {
+      "versus_base": {
+        "macro_map50_95": -0.003966599374583435,
+        "bottom3_class_map50_95": 0.019623818048527086,
+        "worst_class_map50_95": 0.02859253463308109
+      },
+      "versus_spds": {
+        "macro_map50_95": -0.001598026718223955,
+        "bottom3_class_map50_95": -0.018631425620265207,
+        "worst_class_map50_95": -0.0304734197428711
+      },
+      "decision": "REJECT"
+    }
+  },
+  "retained": [],
+  "winner": null,
+  "decision": "FAIL_KILL_GATE",
+  "next": "RETAIN_ORIGINAL_AF2",
+  "test_opened": false
+}

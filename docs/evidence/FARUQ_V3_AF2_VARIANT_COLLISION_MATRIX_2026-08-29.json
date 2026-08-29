@@ -1,0 +1,234 @@
+{
+  "format": "coffee_detector.af2_variant_collision_matrix.v1",
+  "date": "2026-08-29",
+  "scope": "AF2 and directly adjacent frequency mechanisms inspected across repository history before AF2-RN authorization",
+  "authoritative_baseline": {
+    "arm": "AF2",
+    "mechanism": "patchwise RGB-independent angular-density Fourier filtering followed by raw-preserving residual gating",
+    "three_seed_means": {
+      "macro_map50_95": 0.8794,
+      "bottom3_class_map50_95": 0.7937,
+      "worst_class_map50_95": 0.7815
+    },
+    "decision": "PASS_RETAIN"
+  },
+  "completed_frontend_variants": [
+    {
+      "arm": "AF1",
+      "change": "adaptive circular high-pass from patch energy",
+      "radial_use": "hard low-frequency removal",
+      "status": "RETAIN_SEED42_DISCOVERY",
+      "collision_with_af2_rn": "none: AF2-RN removes no radial frequency"
+    },
+    {
+      "arm": "AF12",
+      "change": "AF1 high-pass followed sequentially by AF2 angular suppression",
+      "radial_use": "hard mask multiplied into AF2",
+      "status": "REJECT",
+      "collision_with_af2_rn": "none: AF2-RN has no AF1 mask or sequential mask intersection"
+    },
+    {
+      "arm": "AF2WIN",
+      "change": "sqrt-Hann analysis/synthesis and normalized overlap-add",
+      "status": "REJECT_SEED42",
+      "collision_with_af2_rn": "excluded: AF2-RN keeps the legacy rectangular window"
+    },
+    {
+      "arm": "AF2_ORIENT",
+      "change": "fold 360 signed directions into 180-degree orientation",
+      "status": "FAIL_THREE_SEED_CONFIRMATION",
+      "mean_delta_points": {
+        "macro": 0.32,
+        "bottom3": -0.12,
+        "worst": -1.50
+      },
+      "collision_with_af2_rn": "excluded: AF2-RN keeps 360 signed angular bins"
+    },
+    {
+      "arm": "AF2POL",
+      "change": "cumulative Hann plus orientation folding plus three radial bands",
+      "status": "REJECT_SEED42",
+      "metrics": {
+        "macro_map50_95": 0.879684,
+        "bottom3_class_map50_95": 0.832599,
+        "worst_class_map50_95": 0.831377
+      },
+      "collision_with_af2_rn": "none: AF2POL thresholds independent radial-band densities; AF2-RN only normalizes magnitude within a ring before one global angular density"
+    },
+    {
+      "arm": "AF2SOFT",
+      "change": "soft sigmoid angular suppression",
+      "status": "REJECT_SEED42",
+      "collision_with_af2_rn": "excluded: AF2-RN preserves the legacy hard threshold"
+    },
+    {
+      "arm": "AF2LUM_CAFr_C1",
+      "change": "luminance-derived gate shared by RGB",
+      "status": "REJECT_SEED42",
+      "collision_with_af2_rn": "excluded: AF2-RN remains RGB-channel independent"
+    },
+    {
+      "arm": "PCG1",
+      "change": "log-Gabor phase congruency alternative",
+      "status": "REJECT_SEED42",
+      "collision_with_af2_rn": "none: AF2-RN retains the legacy FFT magnitude and phase path"
+    },
+    {
+      "arm": "WAV1",
+      "change": "two-level Haar detail-energy alternative",
+      "status": "REJECT_BY_FROZEN_MACRO_GATE",
+      "metrics": {
+        "macro_map50_95": 0.884105,
+        "bottom3_class_map50_95": 0.832761,
+        "worst_class_map50_95": 0.820349
+      },
+      "collision_with_af2_rn": "none: AF2-RN adds no wavelet path"
+    },
+    {
+      "arm": "AF2_RADIAL_AF2RAD",
+      "change": "three fixed radial bands inside legacy AF2",
+      "status": "REJECT_REPLICATED_DIRECTION",
+      "best_recorded_metrics": {
+        "macro_map50_95": 0.86776,
+        "bottom3_class_map50_95": 0.76954,
+        "worst_class_map50_95": 0.72090
+      },
+      "collision_with_af2_rn": "none: fixed radial partitioning and per-band thresholding are prohibited in AF2-RN"
+    },
+    {
+      "arm": "AF2WAV",
+      "change": "pointwise max fusion of legacy AF2 and WAV1 cues",
+      "status": "REJECT_SEED42",
+      "collision_with_af2_rn": "none: AF2-RN has one cue and no cue fusion"
+    },
+    {
+      "arm": "AF2RADWAV",
+      "change": "radial AF2 plus WAV1 max-cue fusion",
+      "status": "REJECT_SEED42",
+      "collision_with_af2_rn": "none: both fixed radial masking and wavelet fusion are prohibited"
+    },
+    {
+      "arm": "CAFR_C2_C3_C4",
+      "change": "cumulative radial-directional, soft threshold, and unsigned orientation redesign",
+      "status": "REJECT_SEED42",
+      "collision_with_af2_rn": "excluded: AF2-RN changes none of these three factors"
+    }
+  ],
+  "completed_nonfrontend_adjacent_variants": [
+    {
+      "arm": "AF2R1",
+      "change": "illumination/recovery-conditioned residual gate",
+      "status": "REJECT_VS_MATCHED_CONTROL"
+    },
+    {
+      "arm": "AF2CAL3",
+      "change": "three trainable RGB residual scales",
+      "status": "REJECT_VS_MATCHED_CONTROL"
+    },
+    {
+      "arm": "AF2FFAB2",
+      "change": "bounded P3/P4/P5 high-frequency feature adapter",
+      "status": "PASS_THREE_SEED_VS_MATCHED_CONTINUATION_CONTROL",
+      "boundary": "validated Pareto refinement, not proven universally superior to original AF2; descriptive worst-class mean is 1.19 points lower"
+    },
+    {
+      "arm": "AF2RCC1",
+      "change": "recovered-cue classification calibration",
+      "status": "REJECT_SEED42"
+    },
+    {
+      "arm": "AF2DG_AF2FG_AF2DGFG",
+      "change": "domain-generalization consistency and fine-grained margin objectives",
+      "status": "REJECT_FACTORIAL"
+    },
+    {
+      "arm": "AF2CSD1",
+      "change": "class-selective low-rank bilinear classification residual",
+      "status": "REJECT_SEED42"
+    },
+    {
+      "arm": "AF2SFS1",
+      "change": "shared-P3 spatial/frequency selector",
+      "status": "RETAIN_SEED42_NOT_CONFIRMED",
+      "boundary": "root-cause audit indicates much of the completed gain is optimization-mediated"
+    },
+    {
+      "arm": "AF2SPDS",
+      "change": "removable signal-preservation deep supervision",
+      "status": "FAIL_FROZEN_MACRO_GATE",
+      "boundary": "large lower-tail gain remains mechanistically interesting"
+    },
+    {
+      "arm": "AF2_IGEM_STB_SAF_COMPOSITIONS",
+      "change": "direct or frozen-parent combinations with retained detector mechanisms",
+      "status": "REJECT_TESTED_FORMULATIONS"
+    },
+    {
+      "arm": "AF2_ORIENT_CMC0",
+      "change": "orientation frontend plus pointwise capacity control",
+      "status": "REJECT_SEED42"
+    }
+  ],
+  "completed_refinement_work": [
+    {
+      "arm": "AF2CUE1",
+      "status": "REJECT_NEAR_MISS_SEED42",
+      "boundary": "improved matched base by 0.42/3.12/6.05 Macro/Bottom-3/Worst points but lost 0.71 Bottom-3 point versus AF2SPDS, exceeding the frozen 0.50-point tolerance"
+    },
+    {
+      "arm": "AF2DECAY1",
+      "status": "REJECT_SEED42"
+    }
+  ],
+  "pending_or_nonresult_work": [
+    {
+      "arm": "AF2_UNIFORM_SOUP",
+      "status": "PROTOCOL_ONLY_IN_INSPECTED_HISTORY"
+    },
+    {
+      "arm": "AF2_CLAHE_CONTROL",
+      "status": "PROTOCOL_ONLY_IN_INSPECTED_HISTORY"
+    }
+  ],
+  "proposed_candidate": {
+    "arm": "AF2RN",
+    "name": "radially normalized angular density",
+    "unique_change": "normalize each FFT magnitude by the within-annulus median before accumulating the legacy 360-bin angular density; merge only a non-DC singleton outer annulus inward",
+    "kept_exactly_from_af2": [
+      "patch_size_32",
+      "overlap_0_50",
+      "rectangular_window",
+      "360_signed_direction_bins",
+      "entropy_conditioned_hard_threshold_gamma_0_10",
+      "RGB_independent_processing",
+      "original_phase",
+      "raw_preserving_residual_gate"
+    ],
+    "prohibited_components": [
+      "radial_band_masking",
+      "per_radial_band_thresholds",
+      "AF1_high_pass",
+      "orientation_folding",
+      "soft_threshold",
+      "luminance_shared_gate",
+      "wavelet_or_phase_congruency_fusion",
+      "trainable_frontend_parameters",
+      "feature_adapter",
+      "auxiliary_loss"
+    ],
+    "collision_decision": "NOVEL_WITHIN_REPOSITORY_HISTORY",
+    "training_status": "NOT_AUTHORIZED_UNTIL_STATIC_AND_TRAIN_ONLY_OBSERVABILITY_AUDIT_PASS"
+  },
+  "evidence_refs": [
+    "docs/FARUQ_V3_MODEL_EXPERIMENT_MASTER_LOG_2026-08-13.md",
+    "origin/agent/af2-continuation-confirmation:docs/FARUQ_V3_AF2_ISOLATED_RADIAL_ORIENTATION_RESULT_2026-08-21.md",
+    "origin/agent/af2-continuation-confirmation:docs/FARUQ_V3_AF2_ORIENT_PAIRED_CONFIRMATION_RESULT_2026-08-21.md",
+    "origin/agent/af2-rad-wavelet-refinement:docs/FARUQ_V3_AF2_RAD_WAVELET_REFINEMENT_RESULT_2026-08-19.md",
+    "origin/agent/cafr-yolo:docs/evidence/FARUQ_V3_CAFR_SEED42_SCREEN_2026-08-21.md",
+    "origin/codex/af2-feature-frequency-adapter:docs/FARUQ_V3_AF2_FFA_B2_PAIRED_CONFIRMATION_RESULT_2026-08-22.md",
+    "origin/codex/af2-igem-parent-confirmation:docs/FARUQ_V3_AF2FS_IGEM_PARENT_CONFIRMATION_RESULT_2026-08-24.md",
+    "docs/FARUQ_V3_AF2_COMPLEMENTARY_MECHANISMS_RESULT_2026-08-28.md",
+    "docs/FARUQ_V3_AF2_SPDS_RESULT_2026-08-29.md",
+    "docs/FARUQ_V3_AF2_SPDS_REFINEMENT_RESULT_2026-08-29.md"
+  ]
+}
