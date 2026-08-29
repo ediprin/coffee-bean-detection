@@ -5,7 +5,7 @@ never modify the tensors consumed by the native YOLO Detect head.
 """
 
 from .config import ARMS, AF2SPDSConfig
-from .loss import multilevel_reconstruction_loss
+from .loss import multilevel_reconstruction_loss, scheduled_auxiliary_gain
 from .model import (
     AF2SPDSDetectionModel,
     AuxiliaryReconstructionDetectHead,
@@ -23,4 +23,5 @@ __all__ = [
     "strip_auxiliary_head",
     "make_af2_spds_trainer",
     "multilevel_reconstruction_loss",
+    "scheduled_auxiliary_gain",
 ]

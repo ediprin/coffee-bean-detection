@@ -541,3 +541,23 @@ Protocol:
   `docs/FARUQ_V3_AF2_SIGNAL_PRESERVATION_DEEP_SUPERVISION_PROTOCOL_2026-08-29.md`.
 - Test remains locked; no result claim exists until all three reports and the
   decision artifact are present.
+
+## AF2-SPDS seed-42 completed
+
+- `AF2BASE`: Macro/Bottom-3/Worst = 88.89/80.84/77.53%.
+- `AF2RGBDS`: Macro/Bottom-3/Worst = 88.64/83.62/82.61%.
+- `AF2SPDS`: Macro/Bottom-3/Worst = 88.65/84.67/83.44%.
+- AF2-specific supervision added +1.05/+0.82 points Bottom-3/Worst over
+  generic RGB deep supervision, but lost 0.24 point Macro versus the matched
+  base and therefore failed the frozen gate.
+- Result and diagnosis:
+  `docs/FARUQ_V3_AF2_SPDS_RESULT_2026-08-29.md`.
+
+# 2026-08-29 — AF2-SPDS refinement protocol frozen (not yet trained)
+
+- Original AF2SPDS was cue-specific and strongly improved lower-tail metrics,
+  but missed its Macro-preservation gate by 0.14 point beyond tolerance.
+- Two isolated corrections are authorized: pure AF2-gate reconstruction
+  (`AF2CUE1`) and late auxiliary-loss release (`AF2DECAY1`).
+- The factorization, seed-42 gate, and test lock are documented in
+  `docs/FARUQ_V3_AF2_SPDS_REFINEMENT_PROTOCOL_2026-08-29.md`.

@@ -6,7 +6,7 @@ import torch
 from torch import nn
 
 from coffee_detector.afab.model import AFABDetectionModel
-from coffee_detector.afab.operator import AFABConfig
+from coffee_detector.afab.operator import AFABConfig, afab_gate, minmax_spatial
 
 from .config import AF2SPDSConfig
 from .loss import AF2SPDSDetectionLoss
@@ -85,6 +85,7 @@ class AF2SPDSDetectionModel(AFABDetectionModel):
     ) -> None:
         self.af2_spds_config = AF2SPDSConfig.from_mapping(spds)
         self.last_auxiliary_targets: dict[str, torch.Tensor] | None = None
+        self.af2_spds_epoch = 0
         super().__init__(cfg=cfg, ch=ch, nc=nc, verbose=verbose, afab=afab)
         self.model[-1] = AuxiliaryReconstructionDetectHead(
             self.model[-1], self.af2_spds_config
@@ -94,11 +95,16 @@ class AF2SPDSDetectionModel(AFABDetectionModel):
         enhancer = getattr(self, "afab", None)
         if enhancer is not None and isinstance(x, torch.Tensor):
             raw = x
-            enhanced = enhancer(raw)
+            # Compute recovery once, then expose the actual normalized AF2 gate
+            # separately from the RGB-modulated residual used by the first study.
+            recovered = enhancer.recover(raw)
+            gate = minmax_spatial(recovered, eps=enhancer.config.eps)
+            enhanced = afab_gate(raw, recovered, eps=enhancer.config.eps)
             if self.training:
                 self.last_auxiliary_targets = {
                     "rgb": raw.detach(),
                     "af2_signal": (enhanced - raw).detach(),
+                    "af2_gate": gate.detach(),
                 }
             else:
                 self.last_auxiliary_targets = None

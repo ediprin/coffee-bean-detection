@@ -1,9 +1,27 @@
 from __future__ import annotations
 
+import math
+
 import torch
 import torch.nn.functional as F
 
 from .config import AF2SPDSConfig
+
+
+def scheduled_auxiliary_gain(
+    config: AF2SPDSConfig, *, epoch: int, epochs: int
+) -> float:
+    gain = float(config.auxiliary_gain)
+    if config.auxiliary_schedule == "constant":
+        return gain
+    start = max(int(epochs) - 10, 0)
+    if int(epoch) <= start:
+        return gain
+    progress = min(
+        max((int(epoch) - start) / max(int(epochs) - 1 - start, 1), 0.0),
+        1.0,
+    )
+    return gain * 0.5 * (1.0 + math.cos(math.pi * progress))
 
 
 def multilevel_reconstruction_loss(
@@ -41,6 +59,13 @@ class AF2SPDSDetectionLoss:
                 self.head = head
                 self.spds = AF2SPDSConfig.from_mapping(model.af2_spds_config)
 
+            def auxiliary_gain(self) -> float:
+                return scheduled_auxiliary_gain(
+                    self.spds,
+                    epoch=int(getattr(model, "af2_spds_epoch", 0)),
+                    epochs=int(getattr(model.args, "epochs", 30)),
+                )
+
             def get_assigned_targets_and_loss(self, preds, batch):
                 assignments, loss, _ = super().get_assigned_targets_and_loss(preds, batch)
                 predictions = self.head.last_auxiliary_predictions
@@ -64,7 +89,7 @@ class AF2SPDSDetectionLoss:
                     auxiliary = multilevel_reconstruction_loss(
                         predictions, targets[self.spds.target]
                     )
-                loss[1] = loss[1] + float(self.spds.auxiliary_gain) * auxiliary
+                loss[1] = loss[1] + self.auxiliary_gain() * auxiliary
                 return assignments, loss, loss.detach()
 
         return _BoundAF2SPDSDetectionLoss()

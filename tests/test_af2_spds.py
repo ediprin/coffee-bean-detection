@@ -15,9 +15,13 @@ from coffee_detector.af2_spds import (
     AuxiliaryReconstructionDetectHead,
     load_af2_spds_weights,
     multilevel_reconstruction_loss,
+    scheduled_auxiliary_gain,
 )
 from coffee_detector.experiments.run_faruq_v3_af2_spds_decision import (
     run_af2_spds_decision,
+)
+from coffee_detector.experiments.run_faruq_v3_af2_spds_refinement_decision import (
+    run_af2_spds_refinement_decision,
 )
 from coffee_detector.af2_spds.audit import CUDA_OUTPUT_ATOL, max_abs_difference
 
@@ -53,6 +57,32 @@ def test_config_contract(arm, target):
 def test_config_rejects_mismatched_arm_target():
     with pytest.raises(ValueError, match="harus memakai"):
         AF2SPDSConfig.from_mapping({"arm": "AF2SPDS", "target": "rgb"})
+
+
+def test_refinement_config_is_factorized():
+    cue = AF2SPDSConfig.from_mapping(
+        {"arm": "AF2CUE1", "target": "af2_gate", "auxiliary_schedule": "constant"}
+    )
+    decay = AF2SPDSConfig.from_mapping(
+        {
+            "arm": "AF2DECAY1",
+            "target": "af2_signal",
+            "auxiliary_schedule": "cosine_last10",
+        }
+    )
+    assert cue.target == "af2_gate" and cue.auxiliary_schedule == "constant"
+    assert decay.target == "af2_signal" and decay.auxiliary_schedule == "cosine_last10"
+
+
+def test_cosine_schedule_releases_auxiliary_objective_at_end():
+    constant = AF2SPDSConfig(arm="AF2SPDS", target="af2_signal")
+    decay = AF2SPDSConfig(
+        arm="AF2DECAY1", target="af2_signal", auxiliary_schedule="cosine_last10"
+    )
+    assert scheduled_auxiliary_gain(constant, epoch=29, epochs=30) == pytest.approx(0.10)
+    assert scheduled_auxiliary_gain(decay, epoch=20, epochs=30) == pytest.approx(0.10)
+    assert scheduled_auxiliary_gain(decay, epoch=29, epochs=30) == pytest.approx(0.0)
+    assert scheduled_auxiliary_gain(decay, epoch=25, epochs=30) < 0.10
 
 
 def test_static_audit_uses_explicit_cuda_numerical_bound():
@@ -248,6 +278,60 @@ def test_colab_notebooks_are_separate_quiet_resumable_and_test_locked():
         assert "epochs%5==0" in source
         assert "test/images" not in source
         assert "--authorize-test" not in source
+
+
+def test_refinement_decision_accepts_macro_recovery_without_tail_loss(tmp_path):
+    original = tmp_path / "original" / "val_reports"
+    refinement = tmp_path / "refinement" / "val_reports"
+    original.mkdir(parents=True)
+    refinement.mkdir(parents=True)
+
+    def write(root, arm, values):
+        result_format = (
+            "coffee_detector.af2_spds.arm_result.v1"
+            if arm in {"AF2BASE", "AF2SPDS"}
+            else "coffee_detector.af2_spds_refinement.arm_result.v1"
+        )
+        (root / f"{arm}_seed42_result.json").write_text(
+            json.dumps(
+                {
+                    "format": result_format,
+                    "arm": arm,
+                    "seed": 42,
+                    "metrics": {
+                        "macro_map50_95": values[0],
+                        "bottom3_class_map50_95": values[1],
+                        "worst_class_map50_95": values[2],
+                        "classes_without_ground_truth": [],
+                    },
+                    "test_images_accessed": False,
+                }
+            )
+        )
+
+    write(original, "AF2BASE", (0.889, 0.808, 0.775))
+    write(original, "AF2SPDS", (0.887, 0.847, 0.834))
+    write(refinement, "AF2CUE1", (0.889, 0.846, 0.833))
+    write(refinement, "AF2DECAY1", (0.888, 0.840, 0.825))
+    result = run_af2_spds_refinement_decision(
+        tmp_path / "original", tmp_path / "refinement", tmp_path / "decision.json"
+    )
+    assert result["decision"] == "PASS"
+    assert result["winner"] == "AF2CUE1"
+
+
+def test_refinement_notebooks_are_parallel_quiet_and_locked():
+    for arm in ("AF2CUE1", "AF2DECAY1"):
+        path = Path("notebooks") / f"Faruq_V3_{arm}_Colab.ipynb"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        source = "\n".join("".join(cell.get("source", [])) for cell in payload["cells"])
+        for index, cell in enumerate(payload["cells"]):
+            if cell.get("cell_type") == "code":
+                compile("".join(cell["source"]), f"{path}:{index}", "exec")
+        assert f"ARM='{arm}'" in source
+        assert "--authorize-training" in source
+        assert "epochs%5==0" in source
+        assert "test/images" not in source and "--authorize-test" not in source
 
     audit = json.loads(
         (Path("notebooks") / "Faruq_V3_AF2_SPDS_Static_Audit_Colab.ipynb").read_text()

@@ -50,6 +50,13 @@ def make_af2_spds_trainer(
                 print(f"AF2-SPDS WEIGHT TRANSFER: {transfer}", flush=True)
             return model
 
+        def preprocess_batch(self, batch):
+            batch = super().preprocess_batch(batch)
+            from ultralytics.utils.torch_utils import de_parallel
+
+            de_parallel(self.model).af2_spds_epoch = int(self.epoch)
+            return batch
+
         def final_eval(self):
             from ultralytics.utils.torch_utils import strip_optimizer
 
