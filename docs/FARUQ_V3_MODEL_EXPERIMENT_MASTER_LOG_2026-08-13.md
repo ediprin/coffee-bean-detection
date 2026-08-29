@@ -628,3 +628,8 @@ The collision evidence and frozen protocol are:
 - Training remains blocked until both audit stages return `PASS`.
 - Notebook:
   `notebooks/Faruq_V3_AF2RN_Static_Observability_Colab.ipynb`.
+- A Kaggle counterpart now reuses the existing spectral-v2 private-input
+  contract (`.tar.bin`, explicit `D0_seed42_best.pt`, and SHA manifest), checks
+  required input names and sizes before clone/install, inventories train only,
+  and produces a downloadable audit ZIP without any training path:
+  `notebooks/Faruq_V3_AF2RN_Static_Observability_Kaggle.ipynb`.
