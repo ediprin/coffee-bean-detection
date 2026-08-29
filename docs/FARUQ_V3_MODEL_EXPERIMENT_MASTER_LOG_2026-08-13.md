@@ -616,3 +616,15 @@ The collision evidence and frozen protocol are:
   test unavailable.
 - Protocol:
   `docs/FARUQ_V3_AF2CUE1_PARENT_BOOTSTRAP_PROTOCOL_2026-08-29.md`.
+
+## AF2RN implementation and pre-training audit available
+
+- Added the parameter-free annulus-median normalized angular-density frontend,
+  detector wrapper, frozen YAML, static audit, and all-1,665-train-image
+  observability audit.
+- The audit reports spectral retention, angular occupancy, entropy/threshold,
+  AF2 mask agreement, low/mid/high radial retention, ringing proxy, and
+  per-class ground-truth-box cue strength without reading validation labels.
+- Training remains blocked until both audit stages return `PASS`.
+- Notebook:
+  `notebooks/Faruq_V3_AF2RN_Static_Observability_Colab.ipynb`.

@@ -81,6 +81,11 @@ Before training, the implementation must verify:
 - validation labels, validation metrics, and test files are not read by this
   observability audit.
 
+The train-only audit resizes each image deterministically to 128x128 for
+whole-image cue/ringing measurements and samples 16 evenly spaced overlapping
+32Ã—32 patches for spectral diagnostics. These constants are computation-only
+audit settings, frozen before execution, and are not training hyperparameters.
+
 Failure of any structural/non-degeneracy gate blocks training. The reported
 distributions are diagnostic and cannot be used to tune annulus definition,
 threshold, gamma, patch size, or overlap.
