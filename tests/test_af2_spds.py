@@ -85,6 +85,12 @@ def test_cosine_schedule_releases_auxiliary_objective_at_end():
     assert scheduled_auxiliary_gain(decay, epoch=25, epochs=30) < 0.10
 
 
+def test_trainer_epoch_hook_is_compatible_with_pinned_ultralytics():
+    source = Path("src/coffee_detector/af2_spds/trainer.py").read_text(encoding="utf-8")
+    assert "from ultralytics.utils.torch_utils import de_parallel" not in source
+    assert 'hasattr(self.model, "module")' in source
+
+
 def test_static_audit_uses_explicit_cuda_numerical_bound():
     reference = {"scores": torch.tensor([1.0]), "boxes": torch.tensor([2.0])}
     equivalent = {

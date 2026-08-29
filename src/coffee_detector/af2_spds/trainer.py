@@ -52,9 +52,11 @@ def make_af2_spds_trainer(
 
         def preprocess_batch(self, batch):
             batch = super().preprocess_batch(batch)
-            from ultralytics.utils.torch_utils import de_parallel
-
-            de_parallel(self.model).af2_spds_epoch = int(self.epoch)
+            # Ultralytics 8.4.96 exposes no ``de_parallel`` helper.  Directly
+            # unwrap DDP/DataParallel, matching the repository's other
+            # version-pinned trainers.
+            model = self.model.module if hasattr(self.model, "module") else self.model
+            model.af2_spds_epoch = int(self.epoch)
             return batch
 
         def final_eval(self):
