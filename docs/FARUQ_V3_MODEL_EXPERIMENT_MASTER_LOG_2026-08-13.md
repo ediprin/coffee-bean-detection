@@ -603,3 +603,16 @@ The collision evidence and frozen protocol are:
 - `docs/FARUQ_V3_AF2_VARIANT_COLLISION_MATRIX_2026-08-29.md`;
 - `docs/evidence/FARUQ_V3_AF2_VARIANT_COLLISION_MATRIX_2026-08-29.json`;
 - `docs/FARUQ_V3_AF2_RADIAL_NORMALIZED_ANGULAR_DENSITY_PROTOCOL_2026-08-29.md`.
+
+## AF2CUE1 paired parent-bootstrap protocol frozen
+
+- The class-composition bootstrap retained AF2CUE1 as a Pareto-exploratory
+  candidate but could not treat class AP values as independent observations.
+- A validation-only follow-up now freezes 1,000 paired bootstrap replicates at
+  the `source_parent_id` cluster level. All sibling images move together and
+  every replicate must preserve all 21 validation classes.
+- The audit reuses fixed AF2BASE, AF2SPDS, and AF2CUE1 seed-42 checkpoints. It
+  performs inference only, cannot revise the prior `FAIL_KILL_GATE`, and keeps
+  test unavailable.
+- Protocol:
+  `docs/FARUQ_V3_AF2CUE1_PARENT_BOOTSTRAP_PROTOCOL_2026-08-29.md`.
