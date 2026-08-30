@@ -1,5 +1,7 @@
 # Catatan Revisi 3.6 Rancangan Eksperimen
 
+> **Status: telah diterapkan ke naskah utama.** `BAB_III_METODOLOGI_PENELITIAN.md` adalah sumber keputusan aktif. Seed konfirmasi telah dibekukan menjadi $S_{conf}=\{123,2026,31415\}$; seed 42 tetap khusus tahap pengembangan/pemilihan konfigurasi. Kontrak input/output mengikuti `RESOLUSI_BLOCKER_TEKNIS_BAB_III.md`.
+
 Dokumen ini mencatat keputusan revisi untuk Subbab 3.6 sebelum perubahan diterapkan ke `BAB_III_METODOLOGI_PENELITIAN.md`.
 
 ## 3.6.1 Tahap I — Pembentukan Model Acuan
@@ -26,14 +28,14 @@ Dokumen ini mencatat keputusan revisi untuk Subbab 3.6 sebelum perubahan diterap
 ## 3.6.3 Tahap III — Pengujian Ulang dengan Beberapa Seed
 
 - Pisahkan seed pengembangan 42 dari seed konfirmasi utama.
-- Gunakan tiga seed konfirmasi baru yang belum pernah dipakai untuk memilih C*, misalnya `S_conf = {123, 2026, s3}`, dengan `s3` ditetapkan sebelum Tahap III dimulai.
+- Gunakan tiga seed konfirmasi baru yang belum pernah dipakai untuk memilih C*. Keputusan final pada naskah utama adalah `S_conf = {123, 2026, 31415}`.
 - Hasil seed 42 boleh dilaporkan sebagai hasil pengembangan, tetapi tidak dicampur ke rerata konfirmasi utama.
 - Pada setiap seed konfirmasi, B0-B3 dibangun langsung dari `yolo26n.pt` dengan kondisi awal parameter yang setara.
 - Gunakan perbandingan berpasangan per seed: `Δ_s = M_perlakuan,s - M_B0,s`.
 - Laporkan hasil per seed, rerata Δ, dan variasinya; fungsi multi-seed adalah melihat arah serta kestabilan efek.
 - Jika `C* = C0`, maka B2 dan B3 identik; tidak perlu menjalankan eksperimen duplikat.
 - CLAHE tetap dipertahankan sebagai kontrol konvensional.
-- Pastikan kontrak rentang numerik input antar kondisi konsisten dengan keputusan revisi 3.4.6.
+- Kontrak rentang numerik input/output mengikuti keputusan final retained AF2 pada dokumen resolusi blocker teknis.
 
 ## 3.6.4 Evaluasi pada Arsitektur Lain — Opsional
 
@@ -41,6 +43,7 @@ Dokumen ini mencatat keputusan revisi untuk Subbab 3.6 sebelum perubahan diterap
 - C* diterapkan tanpa tuning ulang khusus untuk RT-DETRv3-R18.
 - Samakan split data, konfigurasi preprocessing, definisi kelas, dan protokol evaluasi.
 - Hyperparameter training yang memang spesifik arsitektur boleh mengikuti konfigurasi tetap RT-DETRv3-R18, asalkan sama untuk kondisi tanpa dan dengan C*.
+- Jika analisis ini dilakukan, perbandingan sebaiknya berpasangan pada seed konfirmasi yang sama dengan eksperimen utama agar arah efek tidak didasarkan pada satu realisasi acak.
 - Hasil RT-DETR tidak digunakan untuk memilih ulang C*.
 - Eksperimen ini tetap opsional jika sumber daya komputasi tidak memadai.
 
@@ -57,8 +60,8 @@ Dokumen ini mencatat keputusan revisi untuk Subbab 3.6 sebelum perubahan diterap
 
 ## Ringkasan keputusan lintas 3.6
 
-Alur final yang dituju:
+Alur final:
 
-`development seed 42 → pilih C* → freeze C* → confirmation seeds baru → final test`
+`development seed 42 → pilih C* → freeze C* → S_conf {123, 2026, 31415} → final test`
 
-Dengan pemisahan ini, tahap pengembangan, konfirmasi, dan evaluasi akhir memiliki fungsi yang lebih jelas dan risiko bias seleksi dapat dikurangi.
+Dengan pemisahan ini, tahap pengembangan, konfirmasi, dan evaluasi akhir memiliki fungsi yang jelas dan risiko bias seleksi dapat dikurangi.
