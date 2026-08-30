@@ -118,5 +118,5 @@
 
   <rect x="78" y="785" width="844" height="82" rx="10" ry="10" fill="#f7f7f7" stroke="#999" stroke-width="1.4"/>
   <text class="tiny" x="500" y="817">C0 = konfigurasi referensi AFAB-2 yang diadaptasi; C1–C5 = variasi desain yang diuji secara bertahap.</text>
-  <text class="tiny" x="500" y="844">C* ditentukan dari data validasi sebelum pengujian multi-seed dan evaluasi data uji.</text>
+  <text class="tiny" x="500" y="844">C* ditentukan dari data validasi sebelum pelatihan ulang seed konfirmasi dan evaluasi data uji.</text>
 </svg>
