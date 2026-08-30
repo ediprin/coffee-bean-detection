@@ -595,7 +595,7 @@ $$
 
 yaitu rata-rata AP pada ambang IoU 0,50 sampai 0,95. Nilai $mAP_{50}$ digunakan sebagai metrik sekunder. Jumlah maksimum prediksi yang dievaluasi pada setiap citra ditetapkan sebesar 500 untuk seluruh kondisi.
 
-Evaluasi menggunakan Ultralytics 8.4.96 dengan aturan validator yang sama pada seluruh kondisi. Jika `conf` validasi tidak ditentukan secara eksplisit, validator detect menggunakan *prefilter* confidence 0,001; NMS menggunakan ambang IoU 0,7 dan `max_det=500`. Precision dan recall ringkasan Ultralytics diperoleh pada indeks confidence yang memaksimalkan kurva F1 rata-rata yang telah dihaluskan, sehingga operating point ringkasannya dapat berbeda antar model. Karena itu, precision dan recall diperlakukan sebagai metrik deskriptif sekunder dan tidak digunakan untuk memilih $C^*$.
+Evaluasi menggunakan Ultralytics 8.4.96 dengan aturan validator yang sama pada seluruh kondisi. Jika `conf` validasi tidak ditentukan secara eksplisit, validator detect menggunakan *prefilter* confidence 0,001. YOLO26 menggunakan mode `end2end=True`; pada jalur ini keluaran difilter berdasarkan confidence dan dibatasi oleh `max_det=500` tanpa NMS tambahan. Precision dan recall ringkasan Ultralytics diperoleh pada indeks confidence yang memaksimalkan kurva F1 rata-rata yang telah dihaluskan, sehingga operating point ringkasannya dapat berbeda antar model. Karena itu, precision dan recall diperlakukan sebagai metrik deskriptif sekunder dan tidak digunakan untuk memilih $C^*$.
 
 AP50–95 setiap kelas juga dilaporkan:
 
@@ -666,7 +666,7 @@ Seed visualisasi tidak dipilih berdasarkan heatmap yang paling menguntungkan. Ha
 
 ### 3.9.3 Visualisasi Hasil Deteksi
 
-Hasil $B_0$, $B_1$, $B_2$, dan $B_3$ dibandingkan pada citra yang sama menggunakan parameter prediksi identik, termasuk *confidence threshold*, ambang IoU yang relevan, dan `max_det`. Visualisasi utama menggunakan $s_{vis}=123$. Jika $C^*=C_0$, maka $B_2$ dan $B_3$ merupakan kondisi identik dan tidak ditampilkan sebagai dua metode berbeda.
+Hasil $B_0$, $B_1$, $B_2$, dan $B_3$ dibandingkan pada citra yang sama menggunakan parameter prediksi yang relevan secara identik, terutama *confidence threshold* dan `max_det`. Visualisasi utama menggunakan $s_{vis}=123$. Jika $C^*=C_0$, maka $B_2$ dan $B_3$ merupakan kondisi identik dan tidak ditampilkan sebagai dua metode berbeda.
 
 Contoh citra dipilih berdasarkan kategori analisis yang ditentukan sebelumnya, misalnya kasus seluruh model benar, seluruh model salah, perbedaan hasil antar kondisi, serta kelas dengan kinerja relatif tinggi atau rendah berdasarkan hasil evaluasi yang dilaporkan. Pendekatan ini digunakan untuk mengurangi *cherry-picking*.
 
@@ -678,7 +678,7 @@ $$
 \Delta AP_{c,s}=AP_{c,s}^{perlakuan}-AP_{c,s}^{B_0}.
 $$
 
-Rerata perubahan per kelas dihitung pada seed dalam $S_{conf}$. Nilai perubahan dilaporkan secara kontinu tanpa menetapkan threshold tambahan untuk melabeli kelas sebagai meningkat, stabil, atau menurun. Matriks kebingungan, FP, dan FN menggunakan prosedur evaluator, konfigurasi confidence/NMS, IoU/matching, `max_det`, dan versi perangkat lunak yang sama pada seluruh kondisi.
+Rerata perubahan per kelas dihitung pada seed dalam $S_{conf}$. Nilai perubahan dilaporkan secara kontinu tanpa menetapkan threshold tambahan untuk melabeli kelas sebagai meningkat, stabil, atau menurun. Matriks kebingungan, FP, dan FN menggunakan prosedur evaluator, konfigurasi confidence/post-processing, aturan matching evaluasi, `max_det`, dan versi perangkat lunak yang sama pada seluruh kondisi.
 
 Kelas dapat dikelompokkan secara deskriptif berdasarkan karakteristik visual utama yang diperlukan oleh definisi label, misalnya permukaan/warna, detail lokal, bentuk/integritas, tingkat keutuhan, atau ukuran fisik. Pemetaan kelas ke karakteristik tersebut ditetapkan sebelum hasil eksperimen diperiksa dan tidak digunakan untuk memilih konfigurasi. Satu kelas dapat dicatat memiliki lebih dari satu *cue* visual apabila definisinya memang memerlukan hal tersebut.
 
