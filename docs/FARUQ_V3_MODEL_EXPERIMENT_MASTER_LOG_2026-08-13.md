@@ -661,3 +661,26 @@ rescue, or test evaluation is authorized.
 
 - Result: `docs/FARUQ_V3_AF2RN_SEED42_RESULT_2026-08-30.md`.
 - Evidence: `docs/evidence/FARUQ_V3_AF2RN_SEED42_2026-08-30.json`.
+
+# 2026-08-30 — AF2-SFS-CUE direct single-arm protocol frozen
+
+The prior continuation studies suggested complementary signals from the P3
+space-frequency selector (`AF2SFS1`) and pure-gate multilevel auxiliary
+supervision (`AF2CUE1`), but neither continuation result establishes a clean
+direct-from-pretrained architectural gain.
+
+An economical one-arm screen is now frozen for `AF2SFSCUE1`. It starts from
+the official YOLO26n pretrained artifact, activates AF2 from the first batch,
+lets training-only CUE decoders observe untouched P3/P4/P5 features, and then
+applies an identity-initialized SFS residual to P3 before both native detection
+branches. It trains for at most 50 epochs at seed 42 and never loads a
+coffee-trained parent.
+
+Only this final combined candidate is trained initially. The completed
+AF2DIRECT seed-42 result is a historical same-protocol screening reference,
+not a same-runtime causal control. A matched AF2DIRECT rerun and component
+ablation are authorized only if the combined candidate first produces a large
+frozen screening signal. Test remains locked.
+
+- Protocol: `docs/FARUQ_V3_AF2_SFS_CUE_DIRECT_PROTOCOL_2026-08-30.md`.
+- Notebook: `notebooks/Faruq_V3_AF2_SFS_CUE_Direct_Seed42_Colab.ipynb`.
