@@ -686,3 +686,25 @@ frozen screening signal. Test remains locked.
 
 - Protocol: `docs/FARUQ_V3_AF2_SFS_CUE_DIRECT_PROTOCOL_2026-08-30.md`.
 - Notebook: `notebooks/Faruq_V3_AF2_SFS_CUE_Direct_Seed42_Colab.ipynb`.
+
+# 2026-08-30 — AF2-SFS-CUE direct seed-42 stopped
+
+**Status: completed — STOP_AFTER_SINGLE_ARM.** `AF2SFSCUE1` completed 50
+epochs from the frozen official YOLO26n source without a coffee-trained parent
+and without test access.
+
+| Model | Macro mAP50–95 | Bottom-3 | Worst class |
+|---|---:|---:|---:|
+| historical `AF2DIRECT` | 80.79% | 69.58% | 66.95% |
+| `AF2SFSCUE1` | 80.84% | 65.57% | 58.60% |
+| descriptive delta | +0.06 point | −4.02 points | −8.36 points |
+
+The combined direct arm preserved Macro but caused severe lower-tail negative
+transfer. It passed neither frozen promotion route. Therefore no same-runtime
+control, factorial ablation, extra seed, or test evaluation is authorized for
+this candidate. The failure is scoped to simultaneous from-first-batch
+activation; it does not erase the earlier matched-continuation evidence for
+`AF2SFS1` or `AF2CUE1`.
+
+- Result:
+  `docs/FARUQ_V3_AF2_SFS_CUE_DIRECT_SEED42_RESULT_2026-08-30.md`.
