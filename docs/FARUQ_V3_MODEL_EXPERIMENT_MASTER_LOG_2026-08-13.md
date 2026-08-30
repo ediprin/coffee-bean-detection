@@ -640,3 +640,24 @@ The collision evidence and frozen protocol are:
   against the manifest-verified historical AF2 result. It contains no test
   route:
   `notebooks/Faruq_V3_AF2RN_Seed42_Training_Kaggle.ipynb`.
+
+# 2026-08-30 — AF2RN seed-42 completed and rejected
+
+**Decision: FAIL; retain original AF2 and stop AF2RN.** The frozen 50-epoch
+seed-42 Kaggle run completed with all 21 validation classes present and test
+closed.
+
+| Model | Macro mAP50–95 | Bottom-3 | Worst class |
+|---|---:|---:|---:|
+| AF2C | 88.20% | 80.04% | 79.35% |
+| AF2RN | 85.11% | 75.33% | 72.16% |
+| Delta | −3.09 pp | −4.71 pp | −7.18 pp |
+
+AF2RN failed all three performance gates. The result rejects the specific
+hypothesis that annulus-median removal of the radial spectral baseline would
+improve AF2: the normalization instead removed useful fine-grained signal,
+especially for lower-tail classes. No extra seeds, post-failure tuning, fusion
+rescue, or test evaluation is authorized.
+
+- Result: `docs/FARUQ_V3_AF2RN_SEED42_RESULT_2026-08-30.md`.
+- Evidence: `docs/evidence/FARUQ_V3_AF2RN_SEED42_2026-08-30.json`.

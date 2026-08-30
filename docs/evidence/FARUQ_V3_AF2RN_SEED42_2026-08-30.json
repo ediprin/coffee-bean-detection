@@ -1,0 +1,33 @@
+{
+  "format": "coffee_detector.af2rn.seed42_decision.v1",
+  "seed": 42,
+  "values": {
+    "AF2C": {
+      "macro_map50_95": 0.8819734111428803,
+      "bottom3_class_map50_95": 0.8004276546678737,
+      "worst_class_map50_95": 0.7934699749241949
+    },
+    "AF2RN": {
+      "macro_map50_95": 0.8510658159933723,
+      "bottom3_class_map50_95": 0.7533002157129989,
+      "worst_class_map50_95": 0.7216347096838084
+    }
+  },
+  "deltas": {
+    "macro_map50_95": -0.030907595149508027,
+    "bottom3_class_map50_95": -0.04712743895487481,
+    "worst_class_map50_95": -0.07183526524038653
+  },
+  "criteria": {
+    "macro_gain_at_least_0_5_point": false,
+    "bottom3_not_lower": false,
+    "worst_drop_no_more_than_1_point": false,
+    "all_21_validation_classes_present": true,
+    "test_not_opened": true
+  },
+  "decision": "FAIL",
+  "next": "RETAIN_ORIGINAL_AF2_AND_STOP_AF2RN",
+  "test_opened": false,
+  "evidence_origin": "Kaggle seed-42 decision output supplied after the frozen AF2RN run completed",
+  "claim_boundary": "Seed-42 kill-gate result; no extra seeds, tuning, fusion rescue, or test evaluation is authorized"
+}
