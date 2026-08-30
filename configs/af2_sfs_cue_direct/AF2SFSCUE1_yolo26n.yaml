@@ -15,6 +15,7 @@ sfs_cue:
   lowpass_kernel: 3
   decoder_channels: 3
   auxiliary_gain: 0.10
+  signal_mix: 0.50
 train:
   epochs: 50
   imgsz: 640

@@ -28,15 +28,22 @@ It does not load any coffee-trained checkpoint.
 
 1. The frozen AF2 frontend is active from the first training batch.
 2. Training-only 1×1 decoders observe the untouched P3/P4/P5 features and
-   reconstruct the detached, pure normalized AF2 recovery gate with mean
-   Smooth-L1 loss and gain 0.10.
-3. After the CUE observation point, an identity-initialized P3 selector mixes a
+   predict one detached normalized AF2 recovery gate `g_hat`.
+3. The same prediction receives two factorized targets: pure CUE
+   `g_hat -> g` and appearance-conditioned SPDS
+   `resize(x) * g_hat -> resize(x * g)`. Their equal convex mixture retains a
+   total auxiliary gain of 0.10. There is no second SPDS decoder and therefore
+   no independent auxiliary representation competing with CUE.
+4. After the CUE/SPDS observation point, an identity-initialized P3 selector mixes a
    learnable local spatial path and a fixed local high-frequency residual.
-4. Both native box and class branches consume the same adapted P3.
-5. CUE decoders are inactive at inference; SFS remains active.
+5. Both native box and class branches consume the same adapted P3.
+6. Auxiliary decoders are inactive at inference; SFS remains active.
 
-The pre-SFS observation ordering is frozen to prevent CUE from directly
-forcing the selector output to reconstruct the frontend cue.
+The pre-SFS observation ordering is frozen to prevent auxiliary supervision
+from directly forcing the selector output. The factorization follows the AF2
+identity `AF2(x) - x = x * g`: CUE supplies the invariant frequency topology,
+whereas SPDS supplies RGB-conditioned emphasis that previously benefited the
+lower tail.
 
 ## Training contract
 

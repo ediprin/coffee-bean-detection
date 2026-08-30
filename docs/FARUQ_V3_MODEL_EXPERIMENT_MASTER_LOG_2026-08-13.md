@@ -671,9 +671,11 @@ direct-from-pretrained architectural gain.
 
 An economical one-arm screen is now frozen for `AF2SFSCUE1`. It starts from
 the official YOLO26n pretrained artifact, activates AF2 from the first batch,
-lets training-only CUE decoders observe untouched P3/P4/P5 features, and then
+lets training-only decoders observe untouched P3/P4/P5 features, and then
 applies an identity-initialized SFS residual to P3 before both native detection
-branches. It trains for at most 50 epochs at seed 42 and never loads a
+branches. One predicted gate is supervised jointly by the pure CUE target and
+the algebraically coupled SPDS target `x * gate`; no independent SPDS decoder
+is introduced. It trains for at most 50 epochs at seed 42 and never loads a
 coffee-trained parent.
 
 Only this final combined candidate is trained initially. The completed

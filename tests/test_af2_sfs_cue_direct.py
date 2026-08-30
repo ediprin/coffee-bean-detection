@@ -11,6 +11,7 @@ from coffee_detector.af2_sfs_cue import (
     AF2SFSCUEConfig,
     AF2SFSCUEDetectHead,
     AF2SFSCUEDetectionModel,
+    factorized_dual_cue_loss,
     load_af2_sfs_cue_weights,
 )
 from coffee_detector.afab.model import AFABDetectionModel
@@ -43,6 +44,24 @@ def test_config_is_frozen_single_arm():
         AF2SFSCUEConfig.from_mapping({"feature_level": 1})
     with pytest.raises(ValueError, match="auxiliary_gain"):
         AF2SFSCUEConfig.from_mapping({"auxiliary_gain": 0.2})
+    with pytest.raises(ValueError, match="signal_mix"):
+        AF2SFSCUEConfig.from_mapping({"signal_mix": 0.25})
+
+
+def test_factorized_dual_target_uses_one_gate_prediction_for_cue_and_spds():
+    predictions = [
+        torch.rand(2, 3, side, side, requires_grad=True) for side in (16, 8, 4)
+    ]
+    gate = torch.rand(2, 3, 64, 64)
+    raw = torch.rand(2, 3, 64, 64)
+    signal = raw * gate
+    combined, gate_loss, signal_loss = factorized_dual_cue_loss(
+        predictions, gate, raw, signal, signal_mix=0.50
+    )
+    torch.testing.assert_close(combined, 0.5 * gate_loss + 0.5 * signal_loss)
+    assert torch.isfinite(combined)
+    combined.backward()
+    assert all(value.grad is not None and torch.isfinite(value.grad).all() for value in predictions)
 
 
 def test_head_cue_reads_pre_adapter_and_sfs_starts_identity():
@@ -130,6 +149,8 @@ def test_combined_loss_is_finite_and_trains_cue_and_sfs():
     adapter_gradients = [parameter.grad for parameter in head.adapter.parameters()]
     assert any(g is not None and torch.count_nonzero(g) > 0 for g in decoder_gradients)
     assert any(g is not None and torch.count_nonzero(g) > 0 for g in adapter_gradients)
+    assert model.last_auxiliary_components is not None
+    assert set(model.last_auxiliary_components) == {"gate", "signal", "combined"}
 
 
 def test_screen_only_authorizes_followup_after_large_single_arm_signal():

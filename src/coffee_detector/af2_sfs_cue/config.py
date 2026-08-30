@@ -13,6 +13,7 @@ class AF2SFSCUEConfig:
     lowpass_kernel: int = 3
     decoder_channels: int = 3
     auxiliary_gain: float = 0.10
+    signal_mix: float = 0.50
 
     @classmethod
     def from_mapping(
@@ -29,6 +30,8 @@ class AF2SFSCUEConfig:
             raise ValueError("decoder CUE harus menghasilkan tiga channel")
         if result.auxiliary_gain != 0.10:
             raise ValueError("auxiliary_gain dikunci pada 0.10")
+        if result.signal_mix != 0.50:
+            raise ValueError("signal_mix dikunci pada 0.50")
         return result
 
     def to_dict(self) -> dict[str, Any]:

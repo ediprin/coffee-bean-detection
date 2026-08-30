@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 import torch
+import torch.nn.functional as F
 from torch import nn
 
 from coffee_detector.af2_complement.modules import SpaceFrequencySelectionResidual
-from coffee_detector.af2_spds.loss import multilevel_reconstruction_loss
 from coffee_detector.afab.model import AFABDetectionModel
 from coffee_detector.afab.operator import AFABConfig, afab_gate, minmax_spatial
 
@@ -89,6 +89,49 @@ class AF2SFSCUEDetectHead(nn.Module):
         self.base_head.fuse()
 
 
+def factorized_dual_cue_loss(
+    predictions: list[torch.Tensor],
+    gate_target: torch.Tensor,
+    raw_target: torch.Tensor,
+    signal_target: torch.Tensor,
+    *,
+    signal_mix: float = 0.50,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Couple CUE and SPDS through one predicted gate.
+
+    SPDS is not predicted by an independent decoder.  At each pyramid level it
+    is constrained to be ``resize(raw) * predicted_gate``.  This preserves the
+    RGB-conditioned weighting that helped the lower tail while preventing a
+    second auxiliary representation from competing with the pure AF2 gate.
+    """
+
+    if not predictions:
+        raise ValueError("Prediksi CUE kosong")
+    if not 0.0 <= signal_mix <= 1.0:
+        raise ValueError("signal_mix harus berada di [0,1]")
+    gate_losses = []
+    signal_losses = []
+    for prediction in predictions:
+        size = prediction.shape[-2:]
+        gate = F.interpolate(gate_target.float(), size=size, mode="area").to(
+            dtype=prediction.dtype
+        )
+        raw = F.interpolate(raw_target.float(), size=size, mode="area").to(
+            dtype=prediction.dtype
+        )
+        signal = F.interpolate(signal_target.float(), size=size, mode="area").to(
+            dtype=prediction.dtype
+        )
+        gate_losses.append(F.smooth_l1_loss(prediction, gate, reduction="mean"))
+        signal_losses.append(
+            F.smooth_l1_loss(raw * prediction, signal, reduction="mean")
+        )
+    gate_loss = torch.stack(gate_losses).mean()
+    signal_loss = torch.stack(signal_losses).mean()
+    combined = (1.0 - signal_mix) * gate_loss + signal_mix * signal_loss
+    return combined, gate_loss, signal_loss
+
+
 class AF2SFSCUEDetectionLoss:
     """Native detection loss plus the frozen pure-AF2-gate CUE objective."""
 
@@ -110,10 +153,23 @@ class AF2SFSCUEDetectionLoss:
                     if model.training:
                         raise RuntimeError("Prediksi CUE tidak tersedia saat training")
                     return assignments, loss, loss.detach()
-                target = model.last_af2_gate_target
-                if target is None:
-                    raise RuntimeError("Target pure AF2 gate tidak tersedia")
-                auxiliary = multilevel_reconstruction_loss(predictions, target)
+                gate = model.last_af2_gate_target
+                raw = model.last_raw_input_target
+                signal = model.last_af2_signal_target
+                if gate is None or raw is None or signal is None:
+                    raise RuntimeError("Target factorized CUE/SPDS tidak tersedia")
+                auxiliary, gate_loss, signal_loss = factorized_dual_cue_loss(
+                    predictions,
+                    gate,
+                    raw,
+                    signal,
+                    signal_mix=self.config.signal_mix,
+                )
+                model.last_auxiliary_components = {
+                    "gate": gate_loss.detach(),
+                    "signal": signal_loss.detach(),
+                    "combined": auxiliary.detach(),
+                }
                 loss[1] = loss[1] + self.config.auxiliary_gain * auxiliary
                 return assignments, loss, loss.detach()
 
@@ -134,6 +190,9 @@ class AF2SFSCUEDetectionModel(AFABDetectionModel):
     ) -> None:
         self.af2_sfs_cue_config = AF2SFSCUEConfig.from_mapping(sfs_cue)
         self.last_af2_gate_target: torch.Tensor | None = None
+        self.last_raw_input_target: torch.Tensor | None = None
+        self.last_af2_signal_target: torch.Tensor | None = None
+        self.last_auxiliary_components: dict[str, torch.Tensor] | None = None
         super().__init__(cfg=cfg, ch=ch, nc=nc, verbose=verbose, afab=afab)
         self.model[-1] = AF2SFSCUEDetectHead(
             self.model[-1], self.af2_sfs_cue_config
@@ -145,7 +204,15 @@ class AF2SFSCUEDetectionModel(AFABDetectionModel):
             recovered = enhancer.recover(x)
             gate = minmax_spatial(recovered, eps=enhancer.config.eps)
             enhanced = afab_gate(x, recovered, eps=enhancer.config.eps)
-            self.last_af2_gate_target = gate.detach() if self.training else None
+            if self.training:
+                self.last_af2_gate_target = gate.detach()
+                self.last_raw_input_target = x.detach()
+                self.last_af2_signal_target = (x * gate).detach()
+            else:
+                self.last_af2_gate_target = None
+                self.last_raw_input_target = None
+                self.last_af2_signal_target = None
+                self.last_auxiliary_components = None
             # Bypass AFABDetectionModel.predict so AF2 is applied exactly once.
             from ultralytics.nn.tasks import DetectionModel
 

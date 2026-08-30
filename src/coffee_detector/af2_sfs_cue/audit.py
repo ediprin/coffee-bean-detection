@@ -7,7 +7,6 @@ from typing import Any
 
 import torch
 
-from coffee_detector.af2_spds.loss import multilevel_reconstruction_loss
 from coffee_detector.experiments.run_faruq_v3_af2_direct import (
     AF2_CONFIG,
     MODEL_YAML,
@@ -23,6 +22,7 @@ from .model import (
     AF2SFSCUEDetectHead,
     AF2SFSCUEDetectionModel,
     canonical_native_state,
+    factorized_dual_cue_loss,
     load_af2_sfs_cue_weights,
 )
 
@@ -162,10 +162,18 @@ def run_af2_sfs_cue_direct_static_audit(
     _ = candidate(sample)
     predictions = head.last_auxiliary_predictions
     target = candidate.last_af2_gate_target
-    if predictions is None or target is None:
-        raise RuntimeError("CUE tidak aktif saat training")
+    raw = candidate.last_raw_input_target
+    signal = candidate.last_af2_signal_target
+    if predictions is None or target is None or raw is None or signal is None:
+        raise RuntimeError("Factorized CUE/SPDS tidak aktif saat training")
     cue_reads_pre_adapter = head.last_pre_adapter_features is not None
-    auxiliary = multilevel_reconstruction_loss(predictions, target)
+    auxiliary, gate_loss, signal_loss = factorized_dual_cue_loss(
+        predictions,
+        target,
+        raw,
+        signal,
+        signal_mix=combo.signal_mix,
+    )
     auxiliary.backward()
     decoder_gradients = [p.grad for p in head.decoders.parameters()]
     cue_gradients_valid = bool(
@@ -197,6 +205,11 @@ def run_af2_sfs_cue_direct_static_audit(
         "sfs_identity_initialized": bool(torch.count_nonzero(head.adapter.output.weight) == 0),
         "sfs_active_changes_detector_output": active_diff > 0.0,
         "cue_target_is_pure_normalized_gate": tuple(target.shape) == tuple(sample.shape),
+        "spds_target_equals_raw_times_gate": bool(torch.equal(signal, raw * target)),
+        "gate_and_signal_losses_finite": bool(
+            torch.isfinite(gate_loss) and torch.isfinite(signal_loss)
+        ),
+        "single_decoder_factorization": len(head.decoders) == 3,
         "cue_reads_pre_adapter_features": cue_reads_pre_adapter,
         "cue_gradients_finite_nonzero": cue_gradients_valid,
         "cue_inactive_during_inference": cue_inactive_at_inference,
