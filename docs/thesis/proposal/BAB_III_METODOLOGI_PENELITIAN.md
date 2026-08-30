@@ -5,7 +5,7 @@
 
 Penelitian ini menggunakan pendekatan eksperimen komparatif untuk menganalisis pengaruh prapemrosesan citra berbasis frekuensi-angular terhadap kinerja YOLO26n dalam mendeteksi cacat biji kopi yang memiliki perbedaan visual halus (*fine-grained*). Arsitektur YOLO26n dipertahankan tanpa perubahan pada perbandingan utama sehingga perbedaan antar kondisi eksperimen terutama berasal dari perlakuan terhadap citra masukan.
 
-Secara umum, penelitian meliputi pengumpulan dan anotasi dataset primer, audit kecukupan data per kelas, pembagian data berbasis kelompok sumber, pembentukan model acuan pengembangan, penerapan konfigurasi referensi prapemrosesan frekuensi-angular, pengujian variasi desain dan analisis sensitivitas terbatas, pemilihan konfigurasi $C^*$, pengujian konfirmasi beberapa *seed* terhadap YOLO26n tanpa prapemrosesan, CLAHE, konfigurasi referensi, dan konfigurasi terpilih, evaluasi akhir pada data uji, serta analisis per kelas, kesalahan, visual, dan efisiensi komputasi. Evaluasi pada arsitektur deteksi lain ditempatkan sebagai analisis tambahan apabila sumber daya memungkinkan.
+Secara umum, penelitian meliputi pengumpulan dan anotasi dataset primer, audit kecukupan data per kelas, pembagian data berbasis kelompok sumber, pembentukan model acuan pengembangan, penerapan konfigurasi referensi prapemrosesan frekuensi-angular, pengujian variasi desain dan analisis sensitivitas terbatas, pemilihan konfigurasi $C^*$, pelatihan ulang dengan beberapa *seed* konfirmasi untuk YOLO26n tanpa prapemrosesan, CLAHE, konfigurasi referensi, dan konfigurasi terpilih, evaluasi akhir pada data uji, serta analisis per kelas, kesalahan, visual, dan efisiensi komputasi. Evaluasi pada arsitektur deteksi lain ditempatkan sebagai analisis tambahan apabila sumber daya memungkinkan.
 
 Alur penelitian dirangkum pada Gambar 3.1.
 
@@ -47,11 +47,13 @@ Setiap citra direncanakan memuat banyak objek. Oleh karena itu, ukuran dataset d
 
 ### 3.2.2 Target Pengumpulan dan Pemeriksaan Kecukupan Data
 
-Target pengumpulan ditetapkan sekitar 180–220 citra sumber, dengan sasaran nominal sekitar 200 citra asli. Citra hasil augmentasi tidak dihitung sebagai data primer. Setiap citra direncanakan memuat sekitar 30–50 objek yang disusun dalam satu lapisan, dengan orientasi bervariasi dan tanpa tumpang tindih berat. Berdasarkan rancangan tersebut, jumlah anotasi objek diperkirakan berada pada kisaran:
+Target pengumpulan ditetapkan sekitar 180–220 citra sumber, dengan sasaran nominal sekitar 200 citra asli. Citra hasil augmentasi tidak dihitung sebagai data primer. Setiap citra direncanakan memuat sekitar 30–50 objek yang disusun dalam satu lapisan, dengan orientasi bervariasi dan tanpa tumpang tindih berat. Pada sasaran nominal 200 citra, jumlah anotasi objek diperkirakan berada pada kisaran:
 
 $$
 N_{box}\approx 6.000-10.000.
 $$
+
+Jika seluruh rentang rencana 180–220 citra dan 30–50 objek per citra digunakan, kisaran teoritisnya adalah sekitar 5.400–11.000 objek. Dengan demikian, 6.000–10.000 diperlakukan sebagai target nominal untuk sekitar 200 citra, bukan batas matematis seluruh skenario pengumpulan.
 
 Sebagai target operasional awal, setiap kelas yang dipertahankan diupayakan memiliki sekurang-kurangnya sekitar 200 objek asli, dengan sasaran ideal sekitar 300–500 objek, serta muncul pada sedikitnya sekitar 30 citra sumber berbeda. Angka tersebut merupakan target perencanaan penelitian, bukan batas universal kecukupan dataset deteksi objek. Sebagai pembanding, Bahy dan Rifai (2026) melaporkan 107 citra dengan 13.863 anotasi untuk deteksi 20 kelas SNI, sedangkan Tarekegn dan Debelee (2025) menggunakan 562 citra dengan 19.228 objek untuk 13 kelas cacat dan satu kelas normal.
 
@@ -98,7 +100,7 @@ $$
 =\varnothing.
 $$
 
-Selain menjaga pemisahan kelompok, pembagian mempertimbangkan distribusi kelas. Target sekitar lima citra sumber per kelas pada masing-masing validation dan test digunakan sebagai sasaran keterwakilan sepanjang dapat dipenuhi tanpa melanggar pemisahan `group_id`. Pemeriksaan citra identik menggunakan nilai *hash* dilakukan sebagai lapisan tambahan untuk mendeteksi duplikasi file; mekanisme utama pencegahan kebocoran tetap identitas sumber dan `group_id`.
+Selain menjaga pemisahan kelompok, pembagian mempertimbangkan distribusi kelas. Pada data validasi, setiap kelas ditargetkan muncul pada sedikitnya sekitar lima citra sumber. Pada data uji, target operasionalnya adalah sedikitnya 10 objek per kelas yang tersebar pada sedikitnya lima citra sumber, konsisten dengan Subbab 3.6.5. Target tersebut diterapkan sepanjang dapat dipenuhi tanpa melanggar pemisahan `group_id`. Pemeriksaan citra identik menggunakan nilai *hash* dilakukan sebagai lapisan tambahan untuk mendeteksi duplikasi file; mekanisme utama pencegahan kebocoran tetap identitas sumber dan `group_id`.
 
 Data validasi digunakan untuk penghentian dini, pembandingan konfigurasi prapemrosesan, analisis sensitivitas, dan pemilihan $C^*$. Data uji disisihkan sejak awal dan tidak digunakan untuk memilih ukuran patch, parameter $\gamma$, variasi prapemrosesan, maupun keputusan metodologis lainnya. Evaluasi data uji dilakukan setelah konfigurasi akhir dan prosedur evaluasi dibekukan.
 
@@ -377,41 +379,41 @@ $$
 Koordinat non-DC dibagi menjadi tiga pita radial:
 
 $$
-B_1: 0<\rho\le\frac{1}{3},
+\mathcal{R}_1: 0<\rho\le\frac{1}{3},
 $$
 
 $$
-B_2: \frac{1}{3}<\rho\le\frac{2}{3},
+\mathcal{R}_2: \frac{1}{3}<\rho\le\frac{2}{3},
 $$
 
 $$
-B_3: \frac{2}{3}<\rho\le1.
+\mathcal{R}_3: \frac{2}{3}<\rho\le1.
 $$
 
 Komponen DC ($\rho=0$) tidak dimasukkan ke statistik radial-angular, tetapi tetap dipertahankan untuk rekonstruksi. Ketiga pita merupakan kategori operasional rendah, menengah, dan tinggi berdasarkan radius ternormalisasi, bukan batas fisik yang dianggap optimal.
 
-Densitas untuk setiap kombinasi pita radial dan orientasi dihitung sebagai:
+Dengan $\ell\in\{1,2,3\}$ sebagai indeks pita radial, densitas untuk setiap kombinasi pita dan orientasi dihitung sebagai:
 
 $$
-D_i^c(b,k)=\sum_{(u,v)\in\Omega_{b,k}}A_i^c(u,v).
+D_i^c(\ell,k)=\sum_{(u,v)\in\Omega_{\ell,k}}A_i^c(u,v).
 $$
 
 Normalisasi, entropi, ambang, dan densitas relatif dihitung terpisah pada setiap pita:
 
 $$
-p_i^c(b,k)=\frac{D_i^c(b,k)}{\sum_jD_i^c(b,j)+\varepsilon},
+p_i^c(\ell,k)=\frac{D_i^c(\ell,k)}{\sum_jD_i^c(\ell,j)+\varepsilon},
 $$
 
 $$
-H_i^c(b)=-\sum_k p_i^c(b,k)\log\left(\max(p_i^c(b,k),\varepsilon)\right),
+H_i^c(\ell)=-\sum_k p_i^c(\ell,k)\log\left(\max(p_i^c(\ell,k),\varepsilon)\right),
 $$
 
 $$
-\tau_i^c(b)=\frac{\gamma}{1+\exp(-H_i^c(b))},
+\tau_i^c(\ell)=\frac{\gamma}{1+\exp(-H_i^c(\ell))},
 $$
 
 $$
-q_i^c(b,k)=\frac{D_i^c(b,k)}{\max_jD_i^c(b,j)+\varepsilon}.
+q_i^c(\ell,k)=\frac{D_i^c(\ell,k)}{\max_jD_i^c(\ell,j)+\varepsilon}.
 $$
 
 Dengan normalisasi per pita, $C_3$ menguji seleksi angular pada wilayah radial berbeda, bukan perbandingan energi absolut antarpita.
@@ -440,13 +442,13 @@ $$
 Y=0{,}2126R+0{,}7152G+0{,}0722B.
 $$
 
-Gate yang dihasilkan diterapkan bersama pada ketiga kanal RGB, sehingga citra keluaran tetap RGB. Secara konseptual:
+Gate yang dihasilkan diterapkan bersama pada ketiga kanal RGB, sehingga citra keluaran tetap RGB. Secara konseptual, sebelum pemetaan akhir ke kontrak skala masukan model:
 
 $$
 R'=R(1+G_Y),\qquad G'=G(1+G_Y),\qquad B'=B(1+G_Y).
 $$
 
-Dengan gate yang sama, rasio antar-kanal lokal dipertahankan selama penyebut tidak nol. Variasi ini menguji apakah satu panduan luminansi bersama lebih sesuai daripada pembobotan yang dihitung independen pada setiap kanal. Kontrak skala keluaran mengikuti aturan yang sama dengan konfigurasi lain.
+Pada tahap residual tersebut, gate yang sama mempertahankan rasio antar-kanal lokal selama penyebut tidak nol. Pemetaan keluaran berikutnya, seperti *clipping* atau renormalisasi apabila dipilih pada kontrak implementasi, dapat mengubah rasio tersebut; karena itu klaim preservasi rasio dibatasi pada operasi residual. Variasi ini menguji apakah satu panduan luminansi bersama lebih sesuai daripada pembobotan yang dihitung independen pada setiap kanal. Kontrak skala keluaran mengikuti aturan yang sama dengan konfigurasi lain.
 
 ### 3.5.6 Analisis Sensitivitas Terbatas
 
@@ -476,7 +478,7 @@ Parameter $\gamma$ mengatur skala ambang adaptif, sedangkan $T$ mengatur lebar t
 
 ## 3.6 Rancangan Eksperimen
 
-Eksperimen dibagi menjadi tahap pengembangan, pemilihan konfigurasi, konfirmasi beberapa *seed*, dan evaluasi akhir. Evaluasi pada arsitektur lain ditempatkan sebagai analisis tambahan.
+Eksperimen dibagi menjadi tahap pengembangan, pemilihan konfigurasi, pelatihan ulang beberapa *seed* konfirmasi, dan evaluasi akhir. Evaluasi pada arsitektur lain ditempatkan sebagai analisis tambahan.
 
 ### 3.6.1 Tahap I — Pembentukan Model Acuan Pengembangan
 
@@ -508,11 +510,11 @@ $$
 
 Dalam penelitian ini, selisih absolut $mAP_{50:95}<0{,}001$ pada skala 0–1 diperlakukan sebagai perbedaan praktis yang sangat kecil untuk keperluan aturan pemilihan konfigurasi. Jika kondisi tersebut terjadi, dipilih konfigurasi dengan $AP_{\mathcal H}$ lebih tinggi. Jika masih seri, dipilih konfigurasi dengan median waktu pemrosesan total *end-to-end* yang lebih rendah berdasarkan protokol Subbab 3.11.
 
-Analisis sensitivitas pada Subbab 3.5.6 dilakukan setelah $C_{str}$ ditetapkan. Konfigurasi akhir $C^*$ dipilih dari $C_{str}$ dan seluruh varian sensitivitas yang benar-benar telah dievaluasi menggunakan urutan kriteria yang sama. Jika analisis sensitivitas tidak dilakukan, maka $C^*=C_{str}$. Setelah Tahap II, $C^*$ dibekukan dan tidak dipilih ulang berdasarkan hasil konfirmasi atau data uji. $C^*$ boleh sama dengan $C_0$.
+Analisis sensitivitas pada Subbab 3.5.6 dilakukan setelah $C_{str}$ ditetapkan. Konfigurasi akhir $C^*$ dipilih dari $C_{str}$ dan seluruh varian sensitivitas yang benar-benar telah dievaluasi menggunakan urutan kriteria yang sama. Jika analisis sensitivitas tidak dilakukan, maka $C^*=C_{str}$. Setelah Tahap II, $C^*$ dibekukan dan tidak dipilih ulang berdasarkan hasil pelatihan ulang seed konfirmasi atau data uji. $C^*$ boleh sama dengan $C_0$.
 
-### 3.6.3 Tahap III — Pengujian Konfirmasi dengan Beberapa Seed
+### 3.6.3 Tahap III — Pelatihan Ulang dengan Beberapa Seed Konfirmasi
 
-Setelah $C^*$ dibekukan, kondisi utama diuji menggunakan seed konfirmasi yang tidak digunakan pada pemilihan konfigurasi. Seed konfirmasi ditetapkan sebagai:
+Setelah $C^*$ dibekukan, kondisi utama dilatih ulang menggunakan seed konfirmasi yang tidak digunakan pada pemilihan konfigurasi. Tahap ini digunakan untuk menilai kestabilan hasil terhadap variasi seed pada data validasi; data uji tetap tertutup sampai Subbab 3.6.5. Seed konfirmasi ditetapkan sebagai:
 
 $$
 S_{conf}=\{123,2026,31415\}.
@@ -529,13 +531,13 @@ Kondisi yang dibandingkan adalah:
 
 Pada setiap seed, seluruh kondisi dibangun langsung dari `yolo26n.pt` dengan inisialisasi model yang setara. Dengan demikian, perbedaan utama antar kondisi berasal dari perlakuan terhadap citra masukan. Jika $C^*=C_0$, maka $B_2$ dan $B_3$ identik dan run duplikat tidak dilakukan.
 
-Untuk metrik $M$, perubahan terhadap baseline dihitung secara berpasangan:
+Untuk metrik validasi $M$, perubahan terhadap baseline dihitung secara berpasangan:
 
 $$
 \Delta_s=M_{perlakuan,s}-M_{B_0,s}.
 $$
 
-Hasil dilaporkan per seed beserta rerata dan variasinya. Seed 42 dapat dilaporkan terpisah sebagai hasil pengembangan, tetapi tidak dicampur ke rerata konfirmasi utama.
+Hasil validasi dilaporkan per seed beserta rerata dan variasinya. Seed 42 dapat dilaporkan terpisah sebagai hasil pengembangan, tetapi tidak dicampur ke rerata seed konfirmasi.
 
 ### 3.6.4 Evaluasi pada Arsitektur Lain — Opsional
 
@@ -549,7 +551,7 @@ Data uji disisihkan sejak awal dan tidak digunakan untuk pengembangan metode, pe
 
 Sebelum eksperimen utama, keterwakilan kelas pada data uji diperiksa menggunakan anotasi *ground truth*. Sebagai kriteria operasional penelitian, setiap kelas ditargetkan memiliki sedikitnya 10 objek pada sedikitnya 5 citra sumber, tanpa adanya `group_id` yang sama dengan data pengembangan. Jika dukungan tersebut belum terpenuhi, pengumpulan data atau komposisi pembagian kelompok diperbaiki sebelum eksperimen utama dilakukan. Validasi silang berbasis kelompok tidak digunakan sebagai *fallback* otomatis setelah $C^*$ dipilih.
 
-Data uji hanya digunakan setelah $C^*$, seed konfirmasi, aturan pemilihan checkpoint, metrik, dan prosedur evaluasi dibekukan. Kondisi utama kemudian dievaluasi pada data uji yang sama menggunakan seed dalam $S_{conf}$. Setelah data uji dibuka, tidak dilakukan perubahan metode, parameter, atau pemilihan ulang konfigurasi berdasarkan hasil tersebut.
+Data uji hanya digunakan setelah $C^*$, seed konfirmasi, aturan pemilihan checkpoint, metrik, dan prosedur evaluasi dibekukan. Checkpoint terpilih dari kondisi utama pada setiap seed dalam $S_{conf}$ kemudian dievaluasi pada data uji yang sama. Setelah data uji dibuka, tidak dilakukan perubahan metode, parameter, atau pemilihan ulang konfigurasi berdasarkan hasil tersebut.
 
 ## 3.7 Konfigurasi Pelatihan
 
@@ -625,13 +627,13 @@ $$
 
 $AP_{worst}$ digunakan untuk mendeteksi penurunan ekstrem pada satu kelas dan tidak menjadi dasar utama pemilihan konfigurasi.
 
-Pada pengujian konfirmasi, setiap metrik dilaporkan per seed beserta rata-rata dan simpangan baku. Selisih terhadap baseline juga dilaporkan secara berpasangan:
+Pada Tahap III, metrik validasi dilaporkan per seed beserta rata-rata dan simpangan baku. Selisih terhadap baseline juga dilaporkan secara berpasangan:
 
 $$
 \Delta_s=M_{perlakuan,s}-M_{B_0,s},
 $$
 
-beserta $\overline{\Delta}$ dan $SD(\Delta)$ pada $S_{conf}$.
+beserta $\overline{\Delta}$ dan $SD(\Delta)$ pada $S_{conf}$. Pada evaluasi akhir, pola pelaporan per-seed yang sama diterapkan pada data uji tanpa pemilihan ulang konfigurasi.
 
 Jika jumlah kelompok independen pada data uji memungkinkan resampling yang bermakna, ketidakpastian perbedaan antar kondisi dianalisis menggunakan *paired bootstrap* berbasis `group_id`. Pada setiap replikasi, kelompok sumber yang sama diambil dengan pengembalian untuk seluruh kondisi yang dibandingkan. Untuk beberapa seed konfirmasi, selisih dihitung pada setiap seed kemudian dirata-ratakan pada replikasi yang sama. Interval tersebut terutama digunakan untuk merefleksikan ketidakpastian akibat sampel data uji. Jika jumlah kelompok terlalu sedikit, keterbatasan tersebut dilaporkan dan bootstrap tidak dijadikan dasar inferensi.
 
@@ -674,7 +676,7 @@ Contoh citra dipilih berdasarkan kategori analisis yang ditentukan sebelumnya, m
 
 ## 3.10 Analisis Kesalahan dan Kinerja Per Kelas
 
-Analisis per kelas dilakukan menggunakan $AP_{c,50:95}$, matriks kebingungan, *false positive*, dan *false negative*. Pada pengujian beberapa seed, perubahan AP setiap kelas terhadap baseline dilaporkan secara berpasangan:
+Analisis per kelas dilakukan menggunakan $AP_{c,50:95}$, matriks kebingungan, *false positive*, dan *false negative*. Pada seed konfirmasi, perubahan AP setiap kelas terhadap baseline dilaporkan secara berpasangan:
 
 $$
 \Delta AP_{c,s}=AP_{c,s}^{perlakuan}-AP_{c,s}^{B_0}.
