@@ -606,7 +606,7 @@ $$
 Kelompok tiga kelas sulit ditetapkan satu kali dari model acuan pengembangan pada data validasi:
 
 $$
-\mathcal{H}=\operatorname{Bottom3}\left(AP_{c,50:95}^{val}(B_0^{dev})\right),
+\mathcal{H}=\mathrm{Bottom3}\left(AP_{c,50:95}^{val}(B_0^{dev})\right),
 $$
 
 dengan $s_{dev}=42$. Setelah ditetapkan, $\mathcal H$ dibekukan untuk seluruh perbandingan berikutnya. Rerata AP kelompok tersebut dihitung sebagai:
