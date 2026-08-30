@@ -27,6 +27,9 @@ from .model import (
 )
 
 
+CUDA_OUTPUT_ATOL = 1.0e-4
+
+
 def _normalize_device(value: str | int | torch.device) -> torch.device:
     if isinstance(value, torch.device):
         return value
@@ -148,6 +151,8 @@ def run_af2_sfs_cue_direct_static_audit(
         expected = reference(sample)
         observed = candidate(sample)
     initial_diff = _max_abs(expected, observed)
+    initial_bitwise_exact = initial_diff == 0.0
+    output_atol = 0.0 if target_device.type == "cpu" else CUDA_OUTPUT_ATOL
 
     head = candidate.model[-1]
     if not isinstance(head, AF2SFSCUEDetectHead):
@@ -201,7 +206,7 @@ def run_af2_sfs_cue_direct_static_audit(
         "same_50_epoch_schedule_as_direct": payload.get("train") == af2_payload.get("train"),
         "native_state_keys_exact": native_keys_exact,
         "native_state_tensors_exact": native_tensors_exact,
-        "initial_detector_output_exact": initial_diff == 0.0,
+        "initial_detector_output_numerically_equivalent": initial_diff <= output_atol,
         "sfs_identity_initialized": bool(torch.count_nonzero(head.adapter.output.weight) == 0),
         "sfs_active_changes_detector_output": active_diff > 0.0,
         "cue_target_is_pure_normalized_gate": tuple(target.shape) == tuple(sample.shape),
@@ -233,6 +238,8 @@ def run_af2_sfs_cue_direct_static_audit(
         "training_only_added_parameters": training_added - inference_added,
         "inference_added_parameters": inference_added,
         "initial_output_max_abs_diff": initial_diff,
+        "initial_output_bitwise_exact": initial_bitwise_exact,
+        "initial_output_atol": output_atol,
         "active_output_max_abs_diff": active_diff,
         "weight_transfer": transfer,
         "gates": gates,

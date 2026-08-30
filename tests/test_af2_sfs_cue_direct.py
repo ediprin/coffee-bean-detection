@@ -14,6 +14,7 @@ from coffee_detector.af2_sfs_cue import (
     factorized_dual_cue_loss,
     load_af2_sfs_cue_weights,
 )
+from coffee_detector.af2_sfs_cue.audit import CUDA_OUTPUT_ATOL
 from coffee_detector.afab.model import AFABDetectionModel
 from coffee_detector.afab.operator import AFABConfig
 from coffee_detector.experiments.run_faruq_v3_af2_sfs_cue_direct import _screen
@@ -46,6 +47,11 @@ def test_config_is_frozen_single_arm():
         AF2SFSCUEConfig.from_mapping({"auxiliary_gain": 0.2})
     with pytest.raises(ValueError, match="signal_mix"):
         AF2SFSCUEConfig.from_mapping({"signal_mix": 0.25})
+
+
+def test_gpu_output_tolerance_is_strict_but_accepts_observed_fft_roundoff():
+    assert 3.0517578125e-05 <= CUDA_OUTPUT_ATOL
+    assert CUDA_OUTPUT_ATOL < 1.0e-3
 
 
 def test_factorized_dual_target_uses_one_gate_prediction_for_cue_and_spds():
