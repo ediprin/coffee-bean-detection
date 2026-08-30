@@ -9,12 +9,13 @@ from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Cm, Pt
+from docx.shared import Pt
 
 FONT = "Times New Roman"
 
-# Identify the formal thesis tables by their header row. This is deliberately
-# deterministic so every generated DOCX receives the same caption numbering.
+# Identify formal thesis tables by their header row. The pruned proposal keeps
+# one canonical table for each distinct purpose and does not repeat B0-B3 in
+# the seed-confirmation subsection.
 CAPTIONS = {
     ("No.", "Penulis dan Tahun", "Sumber Publikasi/Venue", "Fokus Penelitian", "Metode/Model", "Kontribusi terhadap Penelitian"):
         "Tabel 2.1: Penelitian Terkait",
@@ -22,10 +23,8 @@ CAPTIONS = {
         "Tabel 3.1: Kondisi Utama Eksperimen",
     ("Konfigurasi", "Perubahan utama", "Tujuan pengujian"):
         "Tabel 3.2: Variasi Desain Prapemrosesan",
-    ("Kode", "Kondisi"):
-        "Tabel 3.3: Kondisi Pengujian Ulang dengan Beberapa Seed",
     ("Parameter", "Nilai"):
-        "Tabel 3.4: Konfigurasi Utama Pelatihan YOLO26n",
+        "Tabel 3.3: Konfigurasi Utama Pelatihan YOLO26n",
 }
 
 
@@ -68,9 +67,9 @@ def set_caption_format(paragraph, caption_style) -> None:
     paragraph.style = caption_style
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     pf = paragraph.paragraph_format
-    pf.first_line_indent = Cm(0)
-    pf.left_indent = Cm(0)
-    pf.right_indent = Cm(0)
+    pf.first_line_indent = None
+    pf.left_indent = None
+    pf.right_indent = None
     pf.line_spacing = 1.0
     pf.space_before = Pt(6)
     pf.space_after = Pt(3)
@@ -96,36 +95,16 @@ def insert_caption_before(doc, table, caption_text: str, caption_style):
     prev_text = paragraph_text(prev_node) if prev_node is not None else ""
 
     if re.match(r"^Tabel\s+\d+\.\d+", prev_text, re.I):
-        # Reuse an existing caption paragraph and normalize numbering/title.
         paragraph = next(p for p in doc.paragraphs if p._p is prev_node)
         paragraph.text = caption_text
         set_caption_format(paragraph, caption_style)
         return paragraph
 
-    # Insert a new paragraph immediately before the table.
     paragraph = doc.add_paragraph()
     paragraph.text = caption_text
     set_caption_format(paragraph, caption_style)
     table._tbl.addprevious(paragraph._p)
     return paragraph
-
-
-def update_training_reference(doc):
-    old = "Konfigurasi utama pelatihan YOLO26n ditunjukkan pada Tabel 3.3."
-    new = "Konfigurasi utama pelatihan YOLO26n ditunjukkan pada Tabel 3.4."
-    changed = 0
-    for paragraph in doc.paragraphs:
-        if old in paragraph.text:
-            paragraph.text = paragraph.text.replace(old, new)
-            # Preserve body formatting after replacing text, including all four
-            # explicit Word font mappings so the global TNR smoke test remains valid.
-            paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-            paragraph.paragraph_format.first_line_indent = Cm(1.27)
-            paragraph.paragraph_format.line_spacing = 1.5
-            for run in paragraph.runs:
-                set_run_font(run)
-            changed += 1
-    return changed
 
 
 def apply(input_path: Path, output_path: Path) -> None:
@@ -151,8 +130,6 @@ def apply(input_path: Path, output_path: Path) -> None:
         raise RuntimeError(f"Unmapped regular thesis table headers: {unknown}")
     if len(found) != len(CAPTIONS):
         raise RuntimeError(f"Expected {len(CAPTIONS)} regular thesis tables, found {len(found)}: {found}")
-
-    update_training_reference(doc)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(output_path)
