@@ -708,3 +708,27 @@ activation; it does not erase the earlier matched-continuation evidence for
 
 - Result:
   `docs/FARUQ_V3_AF2_SFS_CUE_DIRECT_SEED42_RESULT_2026-08-30.md`.
+
+# 2026-08-30 — AF2 Curriculum-SFS seed-42 protocol frozen
+
+The failed direct `AF2SFSCUE1` result and the successful staged AF2 evidence
+identify optimization order—not another frontend—as the remaining actionable
+hypothesis. A single validation-only `AF2CURR1` arm is now frozen.
+
+`AF2CURR1` starts from the exact historical AF2 seed-42 parent used by the
+completed `AF2CTRL` continuation control. Over the same 30-epoch schedule it
+holds SFS and auxiliary supervision at zero for five epochs, ramps SFS and the
+pure AF2-gate loss for ten epochs, holds them for five epochs, then releases
+the auxiliary loss over the final ten epochs. Per batch, a detached nonnegative
+gradient-cosine gate prevents the privileged auxiliary update from opposing
+the native detection objective. The decoders are removed at inference; the
+770-parameter SFS remains.
+
+Only `AF2CURR1` is trained. The runner rejects a historical `AF2CTRL` whose
+parent-checkpoint SHA differs, keeps test unavailable, and stops after seed 42
+unless either the frozen Macro or lower-tail Pareto route passes.
+
+- Protocol:
+  `docs/FARUQ_V3_AF2_CURRICULUM_SFS_PROTOCOL_2026-08-30.md`.
+- Notebook:
+  `notebooks/Faruq_V3_AF2_Curriculum_SFS_Seed42_Colab.ipynb`.
