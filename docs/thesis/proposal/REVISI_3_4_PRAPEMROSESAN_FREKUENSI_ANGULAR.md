@@ -1,5 +1,7 @@
 # Catatan Revisi Subbab 3.4 — Prapemrosesan Citra Berbasis Frekuensi-Angular
 
+> **Status: historis / superseded.** Catatan ini merekam keputusan saat peninjauan awal dan bukan lagi sumber kontrak metodologi final. Keputusan final mengikuti `BAB_III_METODOLOGI_PENELITIAN.md` dan `RESOLUSI_BLOCKER_TEKNIS_BAB_III.md`. Secara khusus, retained AF2 memetakan koordinat DC ke bin angular `0` sebagai konvensi diskret dan menggunakan residual tanpa clipping/renormalisasi pasca-residual, sehingga butir lama mengenai pengecualian DC dan kontrak output yang belum ditetapkan tidak lagi berlaku.
+
 Dokumen ini mencatat keputusan revisi untuk Subbab 3.4 sebelum diterapkan ke naskah utama BAB III.
 
 ## 1. Pembuka Subbab 3.4
