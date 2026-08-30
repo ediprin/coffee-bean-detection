@@ -137,9 +137,9 @@ Wavelet tidak dimasukkan sebagai pembanding utama karena menambah ruang keputusa
 
 Prapemrosesan mengadaptasi prinsip pemrosesan frekuensi lokal dan distribusi angular pada AFAB-2 yang diperkenalkan oleh Xu et al. (2025). Penelitian tidak mengadopsi keseluruhan LFDet ataupun AFAB-1, tetapi menggunakan mekanisme angular AFAB-2 sebagai konfigurasi referensi prapemrosesan sebelum YOLO26n.
 
-Komponen yang mengacu pada AFAB-2 meliputi analisis frekuensi lokal per patch, pembentukan distribusi densitas angular, entropi untuk membentuk ambang adaptif, penekanan respons angular berdensitas rendah, pembobotan amplitudo, rekonstruksi dengan fase yang dipertahankan, serta penggabungan hasil rekonstruksi dengan representasi spasial. Pemrosesan per kanal RGB, diskretisasi angular, overlap patch, konstanta stabilitas numerik, aturan padding, penggabungan patch, dan variasi $C_1$ sampai $C_5$ merupakan keputusan adaptasi penelitian.
+Komponen yang mengacu pada AFAB-2 meliputi analisis frekuensi lokal per patch, pembentukan distribusi densitas angular, entropi untuk membentuk ambang adaptif, penekanan respons angular berdensitas rendah, pembobotan amplitudo, rekonstruksi dengan fase yang dipertahankan, serta penggabungan hasil rekonstruksi dengan representasi spasial. Pemrosesan per kanal RGB, diskretisasi angular, overlap patch, konstanta stabilitas numerik, aturan padding, penggabungan patch, konvensi diskret komponen DC, dan variasi $C_1$ sampai $C_5$ merupakan keputusan adaptasi penelitian.
 
-Pada pelatihan, augmentasi umum diterapkan terlebih dahulu. CLAHE atau *frontend* frekuensi-angular kemudian diterapkan pada antarmuka yang setara sebelum citra diteruskan ke YOLO26n. Konversi internal yang diperlukan suatu *frontend* hanya dilakukan di dalam kondisi tersebut, kemudian keluarannya dikembalikan ke representasi RGB *floating point* dengan kontrak skala masukan model yang sama. Kedua prapemrosesan tidak mengubah geometri kotak pembatas.
+Pada pelatihan dan validasi, pipeline YOLO membentuk tensor RGB *floating point* dan menormalkan intensitas dasar ke rentang $[0,1]$ sebelum tensor diteruskan ke model. Kondisi $B_0$ menggunakan tensor tersebut secara langsung. CLAHE dan *frontend* frekuensi-angular diterapkan pada posisi konseptual yang sama setelah augmentasi umum dan sebelum detector. Konversi internal yang hanya diperlukan oleh suatu *frontend* menjadi bagian dari perlakuan tersebut. Kontrak keluaran frekuensi-angular mengikuti residual gate pada Subbab 3.4.6 dan tidak diberi normalisasi pasca-residual tambahan. Kedua prapemrosesan tidak mengubah geometri kotak pembatas.
 
 Secara umum, proses frekuensi-angular terdiri atas pembentukan patch lokal, transformasi Fourier, distribusi angular, ambang berbasis entropi, pembobotan respons spektral, transformasi balik, rekonstruksi patch, normalisasi respons, dan penggabungan residual.
 
@@ -193,16 +193,16 @@ Amplitudo digunakan untuk membentuk distribusi spektral, sedangkan fase dipertah
 
 ### 3.4.3 Distribusi Angular
 
-Untuk koordinat frekuensi non-DC, sudut dihitung relatif terhadap pusat spektrum:
+Sudut setiap koordinat frekuensi dihitung relatif terhadap pusat spektrum:
 
 $$
 \theta(u,v)=\mathrm{atan2}(v-v_c,u-u_c)\bmod 2\pi.
 $$
 
-Pada konfigurasi referensi $C_0$, domain $[0,2\pi)$ didiskretkan menjadi 360 interval angular. Densitas kanal $c$ dihitung hanya untuk koordinat dengan radius $r(u,v)>0$:
+Pada konfigurasi referensi $C_0$, domain $[0,2\pi)$ didiskretkan menjadi 360 interval angular. Densitas kanal $c$ dihitung sebagai:
 
 $$
-D_i^c(k)=\sum_{(u,v):b(u,v)=k,\,r(u,v)>0}A_i^c(u,v).
+D_i^c(k)=\sum_{(u,v):b(u,v)=k}A_i^c(u,v).
 $$
 
 Densitas tersebut dinormalisasi menjadi:
@@ -217,7 +217,7 @@ $$
 \varepsilon=10^{-8}.
 $$
 
-Perhitungan dilakukan terpisah pada kanal R, G, dan B. Diskretisasi 360 interval, konstanta $\varepsilon$, dan pemrosesan per kanal merupakan keputusan implementasi penelitian. Komponen DC tidak digunakan dalam pembentukan distribusi angular karena tidak memiliki arah, tetapi tetap dipertahankan pada spektrum untuk rekonstruksi.
+Perhitungan dilakukan terpisah pada kanal R, G, dan B. Diskretisasi 360 interval, konstanta $\varepsilon$, pemrosesan per kanal, dan pemetaan koordinat pusat spektrum ke bin angular $0$ merupakan keputusan implementasi transfer yang dibekukan untuk $C_0$. Pemetaan DC ke bin $0$ hanya merupakan konvensi indeks diskret dan tidak dimaksudkan sebagai interpretasi bahwa komponen DC memiliki arah fisik tertentu.
 
 ### 3.4.4 Ambang Adaptif Berdasarkan Entropi
 
@@ -239,7 +239,7 @@ $$
 \gamma=0{,}10.
 $$
 
-Bentuk ambang mengacu pada mekanisme AFAB-2, sedangkan $\gamma=0{,}10$ digunakan sebagai konfigurasi referensi awal dan kesesuaiannya terhadap citra biji kopi diperiksa melalui analisis sensitivitas terbatas. Karena $H_i^c\ge0$:
+Bentuk ambang mengacu pada mekanisme AFAB-2. Nilai $\gamma=0{,}10$ dipakai pada $C_0$ dan kesesuaiannya terhadap citra biji kopi diperiksa melalui analisis sensitivitas terbatas. Karena $H_i^c\ge0$:
 
 $$
 \frac{\gamma}{2}\le\tau_i^c<\gamma.
@@ -265,19 +265,13 @@ q_i^c(k), & q_i^c(k)>\tau_i^c.
 \end{cases}
 $$
 
-Untuk koordinat non-DC, bobot diterapkan sebagai:
+Bobot diterapkan pada seluruh koefisien Fourier berdasarkan bin angularnya:
 
 $$
-\widetilde F_i^c(u,v)=F_i^c(u,v)\,w_i^c(b(u,v)),\qquad r(u,v)>0.
+\widetilde F_i^c(u,v)=F_i^c(u,v)\,w_i^c(b(u,v)).
 $$
 
-Komponen DC dipertahankan tanpa pembobotan angular:
-
-$$
-\widetilde F_i^c(u_c,v_c)=F_i^c(u_c,v_c).
-$$
-
-Respons di atas ambang dibobot berdasarkan densitas relatifnya, bukan dipertahankan utuh. Karena $0\le w_i^c(k)\le1$, tahap ini menekan, menghilangkan, atau mempertahankan amplitudo tanpa memperbesar koefisien Fourier di atas nilai asal.
+Respons di atas ambang dibobot berdasarkan densitas relatifnya, bukan dipertahankan utuh. Karena $0\le w_i^c(k)\le1$, tahap ini menekan, menghilangkan, atau mempertahankan amplitudo tanpa memperbesar koefisien Fourier di atas nilai asal. Komponen DC mengikuti bobot bin $0$ sesuai konvensi diskret $C_0$.
 
 ### 3.4.6 Rekonstruksi dan Penggabungan Residual
 
@@ -307,11 +301,11 @@ $$
 \boxed{I'^c=I^c+I^c\odot G^c}.
 $$
 
-Operasi tersebut mempertahankan ukuran spasial $H\times W$, sehingga koordinat bounding box tidak berubah. Karena bentuk residual dapat mengubah rentang numerik keluaran, aturan pemetaan keluaran ke skala masukan YOLO26n ditetapkan pada tahap verifikasi implementasi sebelum eksperimen utama dan kemudian dikunci untuk seluruh kondisi. Pilihan implementasi, misalnya *clipping*, renormalisasi, atau posisi *frontend* terhadap normalisasi masukan, tidak diubah berdasarkan hasil validasi atau data uji. Tujuannya adalah memastikan bahwa perbandingan tidak dipengaruhi oleh perbedaan skala intensitas yang tidak terkontrol.
+Kontrak ini mengikuti retained AF2 operator yang digunakan dalam eksperimen repo. Tidak dilakukan *clipping* atau renormalisasi tambahan setelah residual. Jika tensor masukan berada pada $[0,1]$, keluaran secara teoritis berada pada $[0,2]$. Perubahan skala tersebut diperlakukan sebagai bagian dari frontend AF2 lengkap, bukan sebagai post-processing yang dituning terpisah. Ukuran spasial tetap $H\times W$ sehingga koordinat *bounding box* tidak berubah.
 
 ## 3.5 Analisis Variasi Desain Prapemrosesan
 
-Optimasi dilakukan secara bertahap melalui konfigurasi $C_0$ sampai $C_5$. Setiap konfigurasi menambahkan satu perubahan terhadap konfigurasi sebelumnya sehingga selisih antar tahap digunakan untuk mengamati pengaruh tambahan dari perubahan tersebut. Rancangan ini bukan eksperimen faktorial seluruh kombinasi faktor.
+Optimasi dilakukan secara bertahap melalui konfigurasi $C_0$ sampai $C_5$. Setiap konfigurasi menambahkan satu perubahan terhadap konfigurasi sebelumnya sehingga selisih antar tahap digunakan untuk mengamati pengaruh tambahan dari perubahan tersebut. Rancangan ini bukan eksperimen faktorial seluruh kombinasi faktor. Seluruh konfigurasi mewarisi kontrak keluaran residual tanpa *clipping* dari $C_0$ agar perubahan antar tahap berasal dari struktur prapemrosesan yang diuji.
 
 $$
 C_0\rightarrow C_1\rightarrow C_2\rightarrow C_3\rightarrow C_4\rightarrow C_5.
@@ -362,7 +356,7 @@ $$
 \Delta\theta=\frac{180^\circ}{180}=1^\circ.
 $$
 
-Dengan demikian, dua arah yang berbeda $180^\circ$ diperlakukan sebagai orientasi yang sama. Komponen DC tetap tidak dimasukkan ke statistik orientasi. Karena grid Fourier bersifat diskret, sebagian interval dapat tidak terisi; bin tidak digabung secara bergantung-data agar resolusi nominal tetap konsisten.
+Dengan demikian, dua arah yang berbeda $180^\circ$ diperlakukan sebagai orientasi yang sama. Konvensi diskret DC tetap diwarisi dari konfigurasi sebelumnya dan ditempatkan pada bin orientasi $0$ agar perbandingan $C_1$ dengan $C_2$ hanya mengubah representasi arah menjadi orientasi. Karena grid Fourier bersifat diskret, sebagian interval dapat tidak terisi; bin tidak digabung secara bergantung-data agar resolusi nominal tetap konsisten.
 
 ### 3.5.3 Variasi Radial-Angular
 
@@ -376,10 +370,10 @@ $$
 \rho(u,v)=\frac{r(u,v)}{r_{max}},\qquad 0\le\rho\le1.
 $$
 
-Koordinat non-DC dibagi menjadi tiga pita radial:
+Spektrum dibagi menjadi tiga pita radial:
 
 $$
-\mathcal{R}_1: 0<\rho\le\frac{1}{3},
+\mathcal{R}_1: 0\le\rho\le\frac{1}{3},
 $$
 
 $$
@@ -390,7 +384,7 @@ $$
 \mathcal{R}_3: \frac{2}{3}<\rho\le1.
 $$
 
-Komponen DC ($\rho=0$) tidak dimasukkan ke statistik radial-angular, tetapi tetap dipertahankan untuk rekonstruksi. Ketiga pita merupakan kategori operasional rendah, menengah, dan tinggi berdasarkan radius ternormalisasi, bukan batas fisik yang dianggap optimal.
+Komponen DC ($\rho=0$) ditempatkan pada $\mathcal R_1$ dan bin orientasi $0$, sehingga $C_3$ menambahkan pemisahan radial tanpa sekaligus mengubah konvensi DC. Ketiga pita merupakan kategori operasional rendah, menengah, dan tinggi berdasarkan radius ternormalisasi, bukan batas fisik yang dianggap optimal.
 
 Dengan $\ell\in\{1,2,3\}$ sebagai indeks pita radial, densitas untuk setiap kombinasi pita dan orientasi dihitung sebagai:
 
@@ -442,13 +436,13 @@ $$
 Y=0{,}2126R+0{,}7152G+0{,}0722B.
 $$
 
-Gate yang dihasilkan diterapkan bersama pada ketiga kanal RGB, sehingga citra keluaran tetap RGB. Secara konseptual, sebelum pemetaan akhir ke kontrak skala masukan model:
+Gate yang dihasilkan diterapkan bersama pada ketiga kanal RGB, sehingga citra keluaran tetap RGB. Secara konseptual:
 
 $$
 R'=R(1+G_Y),\qquad G'=G(1+G_Y),\qquad B'=B(1+G_Y).
 $$
 
-Pada tahap residual tersebut, gate yang sama mempertahankan rasio antar-kanal lokal selama penyebut tidak nol. Pemetaan keluaran berikutnya, seperti *clipping* atau renormalisasi apabila dipilih pada kontrak implementasi, dapat mengubah rasio tersebut; karena itu klaim preservasi rasio dibatasi pada operasi residual. Variasi ini menguji apakah satu panduan luminansi bersama lebih sesuai daripada pembobotan yang dihitung independen pada setiap kanal. Kontrak skala keluaran mengikuti aturan yang sama dengan konfigurasi lain.
+Karena gate yang sama digunakan pada ketiga kanal dan tidak ada *clipping* pasca-residual, rasio antar-kanal lokal dipertahankan selama penyebut tidak nol. Variasi ini menguji apakah satu panduan luminansi bersama lebih sesuai daripada pembobotan yang dihitung independen pada setiap kanal.
 
 ### 3.5.6 Analisis Sensitivitas Terbatas
 
@@ -566,16 +560,18 @@ Konfigurasi utama pelatihan YOLO26n ditunjukkan pada Tabel 3.3.
 | Ukuran masukan | 640 × 640 piksel |
 | Epoch maksimum | 50 |
 | Ukuran batch | 16 |
-| Penghentian dini | 15 epoch tanpa peningkatan |
-| Optimizer | Auto |
+| Penghentian dini | 15 epoch tanpa peningkatan $mAP_{50:95}^{val}$ |
+| Optimizer | Auto pada Ultralytics 8.4.96; ter-resolve ke AdamW pada rancangan ini |
 | Seed pengembangan | 42 |
 | Seed konfirmasi | 123, 2026, 31415 |
 
-Seluruh kondisi pada tahap yang sama menggunakan pembagian data, augmentasi, ukuran masukan, ukuran batch, batas epoch, penghentian dini, dan lingkungan komputasi yang sama. Model tidak harus berhenti pada epoch yang sama karena penghentian dini mengikuti kinerja validasi masing-masing run.
+Seluruh kondisi pada tahap yang sama menggunakan pembagian data, augmentasi, ukuran masukan, ukuran batch, batas epoch, penghentian dini, dan lingkungan komputasi yang sama. Model tidak harus berhenti pada epoch yang sama karena penghentian dini mengikuti $mAP_{50:95}$ validasi masing-masing run.
 
 Batas maksimum 50 epoch diverifikasi terlebih dahulu pada baseline pengembangan. Jika kurva validasi masih jelas membaik ketika mencapai batas tersebut, batas maksimum dinaikkan sebelum eksperimen utama dan nilai baru diterapkan sama pada seluruh kondisi. Jika batch 16 tidak dapat digunakan pada kondisi paling berat, satu ukuran batch yang layak ditetapkan sebelum eksperimen utama dan digunakan sama pada seluruh kondisi.
 
-Versi Ultralytics dikunci selama eksperimen. Jika `optimizer=Auto` digunakan, optimizer dan parameter aktual yang dipilih secara internal dicatat dan diperiksa agar konsisten antar kondisi. Kriteria pemilihan checkpoint `best.pt` dan penghentian dini diverifikasi pada versi perangkat lunak yang digunakan serta diterapkan identik pada seluruh run. Jika mekanisme bawaan menggunakan fungsi *fitness* yang tidak identik dengan $mAP_{50:95}$, kriteria aktual tersebut dicatat secara eksplisit; aturan tidak diubah berdasarkan hasil data uji.
+Eksperimen utama menggunakan Ultralytics 8.4.96. Pada versi ini, *fitness* deteksi menggunakan bobot $[0,0,0,1]$ untuk precision, recall, $mAP_{50}$, dan $mAP_{50:95}$, sehingga *fitness* sama dengan $mAP_{50:95}$. Checkpoint `best.pt` disimpan ketika *fitness* mencapai nilai terbaik, sedangkan early stopping menggunakan *fitness* yang sama. Dengan demikian, pemilihan checkpoint dan penghentian dini selaras dengan metrik utama penelitian.
+
+Pada `optimizer=Auto`, Ultralytics 8.4.96 memilih AdamW apabila jumlah iterasi yang dihitung untuk pemilihan optimizer tidak melebihi 10.000, dan MuSGD jika lebih besar. Dengan rancangan sekitar 70% dari 180–220 citra, batch 16, `nbs=64`, dan 50 epoch, nilai tersebut jauh di bawah 10.000 sehingga `Auto` ter-resolve ke AdamW. Learning rate aktual mengikuti aturan Auto berdasarkan jumlah kelas final $C$ dan dicatat bersama optimizer aktual pada setiap run; untuk $C=21$, nilai awalnya adalah 0,0004.
 
 Parameter implementasi lain seperti *data loader*, *cache*, *mosaic*, dan konfigurasi prediksi ditetapkan secara tetap dan dicatat, tetapi tidak diperlakukan sebagai faktor penelitian.
 
@@ -599,7 +595,7 @@ $$
 
 yaitu rata-rata AP pada ambang IoU 0,50 sampai 0,95. Nilai $mAP_{50}$ digunakan sebagai metrik sekunder. Jumlah maksimum prediksi yang dievaluasi pada setiap citra ditetapkan sebesar 500 untuk seluruh kondisi.
 
-Presisi dan *recall* dihitung menggunakan prosedur evaluator dan *operating point* yang sama pada versi Ultralytics yang dikunci. *Operating point* aktual dicatat dan tidak dituning untuk masing-masing kondisi.
+Evaluasi menggunakan Ultralytics 8.4.96 dengan aturan validator yang sama pada seluruh kondisi. Jika `conf` validasi tidak ditentukan secara eksplisit, validator detect menggunakan *prefilter* confidence 0,001; NMS menggunakan ambang IoU 0,7 dan `max_det=500`. Precision dan recall ringkasan Ultralytics diperoleh pada indeks confidence yang memaksimalkan kurva F1 rata-rata yang telah dihaluskan, sehingga operating point ringkasannya dapat berbeda antar model. Karena itu, precision dan recall diperlakukan sebagai metrik deskriptif sekunder dan tidak digunakan untuk memilih $C^*$.
 
 AP50–95 setiap kelas juga dilaporkan:
 
@@ -682,7 +678,7 @@ $$
 \Delta AP_{c,s}=AP_{c,s}^{perlakuan}-AP_{c,s}^{B_0}.
 $$
 
-Rerata perubahan per kelas dihitung pada seed dalam $S_{conf}$. Nilai perubahan dilaporkan secara kontinu tanpa menetapkan threshold tambahan untuk melabeli kelas sebagai meningkat, stabil, atau menurun. Matriks kebingungan, FP, dan FN menggunakan prosedur evaluator, confidence threshold, IoU/matching, `max_det`, dan versi perangkat lunak yang sama pada seluruh kondisi.
+Rerata perubahan per kelas dihitung pada seed dalam $S_{conf}$. Nilai perubahan dilaporkan secara kontinu tanpa menetapkan threshold tambahan untuk melabeli kelas sebagai meningkat, stabil, atau menurun. Matriks kebingungan, FP, dan FN menggunakan prosedur evaluator, konfigurasi confidence/NMS, IoU/matching, `max_det`, dan versi perangkat lunak yang sama pada seluruh kondisi.
 
 Kelas dapat dikelompokkan secara deskriptif berdasarkan karakteristik visual utama yang diperlukan oleh definisi label, misalnya permukaan/warna, detail lokal, bentuk/integritas, tingkat keutuhan, atau ukuran fisik. Pemetaan kelas ke karakteristik tersebut ditetapkan sebelum hasil eksperimen diperiksa dan tidak digunakan untuk memilih konfigurasi. Satu kelas dapat dicatat memiliki lebih dari satu *cue* visual apabila definisinya memang memerlukan hal tersebut.
 
@@ -702,7 +698,7 @@ Jumlah parameter model dan *peak allocated GPU memory* dilaporkan sebagai inform
 
 ## 3.12 Lingkungan Implementasi
 
-Implementasi penelitian menggunakan Python, PyTorch, dan Ultralytics YOLO. Versi perangkat lunak dikunci sebelum eksperimen utama dan tidak diubah selama perbandingan. Ultralytics 8.4.96 digunakan pada eksperimen utama apabila hasil verifikasi implementasi akhir menggunakan versi tersebut. Informasi versi Python, PyTorch, Ultralytics, CUDA/driver, sistem operasi, CPU, GPU, RAM, dan perangkat keras utama dicatat.
+Implementasi penelitian menggunakan Python, PyTorch, dan Ultralytics YOLO. Eksperimen utama menggunakan **Ultralytics 8.4.96**, dan versi perangkat lunak tidak diubah selama perbandingan. Informasi versi Python, PyTorch, CUDA/driver, sistem operasi, CPU, GPU, RAM, dan perangkat keras utama dicatat.
 
 Setiap run ditautkan dengan identitas *commit* keseluruhan kode eksperimen, konfigurasi run, serta manifest pembagian dataset berbasis `group_id` yang digunakan. Dengan demikian, model, seed, konfigurasi prapemrosesan, parameter $m$, $\gamma$, $T$ bila relevan, konfigurasi pelatihan, dan pembagian data dapat ditelusuri kembali.
 
