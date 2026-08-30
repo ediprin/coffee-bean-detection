@@ -1,5 +1,7 @@
 # Catatan Revisi Subbab 3.5 — Analisis Variasi Desain Prapemrosesan
 
+> **Status: historis / superseded pada detail kontrak DC dan output.** Rangkaian keputusan desain C0–C5 tetap relevan, tetapi keputusan final mengikuti `BAB_III_METODOLOGI_PENELITIAN.md` dan `RESOLUSI_BLOCKER_TEKNIS_BAB_III.md`. Retained AF2 mempertahankan konvensi DC pada bin `0`; C2 dan C3 tidak mengubah konvensi tersebut. Seluruh C0–C5 juga mewarisi residual tanpa clipping/renormalisasi pasca-residual.
+
 Dokumen ini mencatat keputusan revisi untuk Subbab 3.5 sebelum perubahan diterapkan ke naskah utama BAB III.
 
 ## Prinsip Umum
@@ -63,4 +65,4 @@ Dokumen ini mencatat keputusan revisi untuk Subbab 3.5 sebelum perubahan diterap
 
 ## Status
 
-Catatan ini belum mengubah naskah utama BAB III. Revisi akan diterapkan setelah seluruh bagian metodologi selesai ditinjau agar struktur dan istilah dapat diperbarui secara konsisten.
+Catatan ini dipertahankan sebagai riwayat peninjauan. Untuk keputusan metodologi aktif, gunakan naskah utama BAB III dan dokumen resolusi blocker teknis.
