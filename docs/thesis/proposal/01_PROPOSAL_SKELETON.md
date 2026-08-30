@@ -21,6 +21,8 @@ docs/thesis/proposal/
 
 BAB I–III duplikat yang sebelumnya berada di root repository telah dihapus. Semua agent yang mengerjakan proposal harus membaca dan mengubah file di `docs/thesis/proposal/`. Generator DOCX juga hanya membaca naskah formal dari direktori tersebut.
 
+Untuk keputusan metodologi aktif, `BAB_III_METODOLOGI_PENELITIAN.md` merupakan sumber utama. `RESOLUSI_BLOCKER_TEKNIS_BAB_III.md` dan `AUDIT_FINAL_BAB_III.md` mencatat hasil verifikasi yang melandasi kontrak final. Dokumen `REVISI_*.md` dipertahankan sebagai riwayat peninjauan dan tidak mengalahkan keputusan pada naskah utama apabila terdapat perbedaan historis.
+
 ## 2. BAB I — Pendahuluan
 
 Authority: `docs/thesis/proposal/BAB_I_PENDAHULUAN.md`.
@@ -85,7 +87,8 @@ Guardrail penting:
 - Syauqi et al. (2025) diperlakukan sebagai pipeline prapemrosesan komposit, sehingga hasilnya tidak boleh diatribusikan kepada CLAHE saja;
 - wavelet merupakan alternatif transformasi multiskala yang relevan, tetapi bukan baseline utama penelitian;
 - RT-DETRv3-R18 hanya menjadi dasar evaluasi transfer antararsitektur yang bersifat tambahan;
-- literatur tidak digunakan untuk mengklaim bahwa cacat biji kopi memiliki *frequency signature* yang unik.
+- literatur tidak digunakan untuk mengklaim bahwa cacat biji kopi memiliki *frequency signature* yang unik;
+- visualisasi aktivasi bersifat analisis pendukung dan tidak digunakan sebagai bukti kausal atau dasar pemilihan konfigurasi.
 
 ## 4. BAB III — Metodologi Penelitian
 
@@ -96,12 +99,13 @@ Struktur formal saat ini:
 ```text
 3.1 Rancangan Umum Penelitian
 3.2 Dataset Penelitian
-    3.2.1 Sumber, Target Jumlah, dan Karakteristik Dataset Primer
-    3.2.2 Pemeriksaan Kecukupan Data dan Penetapan Kelas
-    3.2.3 Pembagian Data dan Pencegahan Kebocoran
-    3.2.4 Augmentasi Data
+    3.2.1 Sumber dan Karakteristik Dataset Primer
+    3.2.2 Target Pengumpulan dan Pemeriksaan Kecukupan Data
+    3.2.3 Akuisisi Citra dan Anotasi
+    3.2.4 Pembagian Data dan Pencegahan Kebocoran
+    3.2.5 Augmentasi Data
 3.3 Model Dasar YOLO26n
-    3.3.1 Model Acuan dan Pembanding
+    3.3.1 Kondisi Eksperimen Utama dan Pembanding
 3.4 Prapemrosesan Citra Berbasis Frekuensi-Angular
     3.4.1 Pembentukan Patch Lokal
     3.4.2 Transformasi Fourier
@@ -117,9 +121,9 @@ Struktur formal saat ini:
     3.5.5 Variasi Panduan Luminansi
     3.5.6 Analisis Sensitivitas Terbatas
 3.6 Rancangan Eksperimen
-    3.6.1 Tahap I — Pembentukan Model Acuan
+    3.6.1 Tahap I — Pembentukan Model Acuan Pengembangan
     3.6.2 Tahap II — Pengujian Variasi Prapemrosesan
-    3.6.3 Tahap III — Pengujian Ulang dengan Beberapa Seed
+    3.6.3 Tahap III — Pelatihan Ulang dengan Beberapa Seed Konfirmasi
     3.6.4 Evaluasi pada Arsitektur Lain — Opsional
     3.6.5 Evaluasi Akhir pada Data Uji
 3.7 Konfigurasi Pelatihan
@@ -134,34 +138,36 @@ Alur Gambar 3.1 harus mengikuti urutan:
 
 ```text
 Pengumpulan dataset primer
-→ anotasi dan pemeriksaan kecukupan
-→ pembagian data
-→ pembentukan model acuan YOLO26n
+→ anotasi dan pemeriksaan kecukupan data
+→ pembagian data berbasis kelompok sumber
+→ pembentukan model acuan pengembangan
 → konfigurasi referensi C0
 → pengujian variasi desain C0–C5
 → pemilihan C*
-→ pengujian ulang beberapa seed (B0, B1, B2, B3)
+→ pelatihan ulang beberapa seed konfirmasi (B0, B1, B2, B3)
 → evaluasi akhir pada data uji
 → analisis per kelas, kesalahan, visual, dan efisiensi
 → kesimpulan
 ```
 
-CLAHE tidak ditempatkan sebagai tahap optimasi sebelum C0; CLAHE merupakan kondisi pembanding B1 pada pengujian ulang utama.
+CLAHE tidak ditempatkan sebagai tahap optimasi sebelum C0; CLAHE merupakan kondisi pembanding B1 pada pelatihan ulang utama.
 
 Rancangan dataset primer yang berlaku:
 
 ```text
 Target citra sumber      : sekitar 180–220, nominal sekitar 200
 Target kelas awal        : 20 cacat fisik/benda asing + 1 normal
-Target anotasi total     : sekitar 6.000–10.000 objek
+Target anotasi nominal   : sekitar 6.000–10.000 objek pada sasaran ~200 citra
+Rentang teoritis rencana : sekitar 5.400–11.000 objek untuk 180–220 citra × 30–50 objek
 Minimum awal per kelas   : sekitar 200 objek asli
 Target ideal per kelas   : sekitar 300–500 objek
 Kemunculan per kelas     : sedikitnya sekitar 30 citra sumber
 Split awal               : sekitar 70% / 15% / 15%
-Representasi val/test    : diupayakan ≥5 citra sumber per kelas pada masing-masing bagian
+Target validasi          : setiap kelas diupayakan muncul pada ≥5 citra sumber
+Target data uji          : ≥10 objek per kelas pada ≥5 citra sumber
 ```
 
-Jumlah kelas akhir tidak dipaksakan menjadi 21 apabila data primer untuk kelas tertentu tidak memenuhi kriteria kecukupan yang ditetapkan sebelum pelatihan. Split harus berbasis kelompok sumber/spesimen dan sekaligus mempertimbangkan distribusi kelas; bukan sekadar random split terhadap citra atau kelompok.
+Jumlah kelas akhir tidak dipaksakan menjadi 21 apabila data primer untuk kelas tertentu tidak memenuhi kriteria kecukupan yang ditetapkan sebelum split dan pelatihan. Audit kecukupan menggunakan jumlah objek, jumlah citra sumber, dan jumlah kelompok sumber per kelas. Split dilakukan berdasarkan `group_id`; citra atau spesimen yang berkaitan tidak boleh tersebar ke train, validation, dan test. Augmentasi hanya dilakukan pada data pelatihan setelah split dibekukan.
 
 Pembanding utama:
 
@@ -172,18 +178,19 @@ B2 = konfigurasi frekuensi-angular referensi C0 + YOLO26n
 B3 = konfigurasi terpilih C* + YOLO26n
 ```
 
-Konfigurasi referensi C0 harus konsisten dengan keputusan implementasi yang telah diaudit:
+Konfigurasi referensi C0 harus konsisten dengan keputusan implementasi retained AF2 yang telah diaudit:
 
+- input adalah tensor RGB floating point pada rentang dasar `[0,1]` setelah preprocessing umum YOLO;
 - patch `m=32`, overlap 50%, stride 16;
 - *replicate padding* untuk melengkapi grid patch dan hasil dipotong kembali ke ukuran asli;
 - FFT ortonormal, spektrum dipusatkan dengan FFT shift dan dikembalikan dengan inverse FFT shift;
 - distribusi angular 360 interval pada `[0,2π)` dan pemrosesan RGB per kanal;
-- titik pusat/DC dipetakan ke interval angular pertama sebagai aturan indeks, bukan sebagai klaim arah fisik;
+- titik pusat/DC dipetakan ke bin angular `0` sebagai konvensi indeks implementasi, bukan sebagai klaim arah fisik;
 - `gamma=0,10`, `epsilon=1e-8`;
-- bobot referensi berada pada `[0,1]` sehingga tahap spektral melakukan seleksi/penekanan, bukan amplifikasi koefisien;
+- bobot referensi berada pada `[0,1]` sehingga tahap spektral melakukan seleksi/penekanan, bukan amplifikasi koefisien Fourier di atas nilai asal;
 - rekonstruksi overlap pada C0 menggunakan perataan daerah tumpang tindih;
 - gate dinormalisasi min–maks per citra/per kanal;
-- residual `I' = I + I⊙G` tidak diikuti clipping tambahan; untuk input dasar `[0,1]`, keluaran teoritis dapat mencapai `[0,2]`.
+- residual `I' = I + I⊙G` tidak diikuti clipping atau renormalisasi tambahan; untuk input dasar `[0,1]`, keluaran teoritis berada pada `[0,2]`.
 
 Konfigurasi variasi prapemrosesan diuji secara bertahap dan kumulatif:
 
@@ -195,41 +202,55 @@ Keputusan desain yang berlaku adalah:
 
 ```text
 C1 = periodic square-root Hann + normalized overlap-add
-C2 = orientasi tak bertanda pada [0, π) dengan 180 interval; resolusi tetap 1°/interval
+C2 = orientasi tak bertanda pada [0, π) dengan 180 interval; resolusi nominal 1°/interval
 C3 = tiga pita radial radius ternormalisasi: [0,1/3], (1/3,2/3], (2/3,1]
 C4 = ambang lunak sigmoid; T=0,02 merupakan nilai awal, bukan nilai optimum dari literatur
 C5 = panduan luminansi bersama menggunakan koefisien ITU-R BT.709-6
 ```
 
-Desain lama berupa 16 orientasi dan pembagian radial berbasis kuantil grid tidak lagi berlaku. Pada C3, entropi, ambang adaptif, dan normalisasi densitas dihitung secara terpisah di setiap pita radial.
+Konvensi DC diwariskan antarkonfigurasi agar satu tahap tidak mengubah dua faktor sekaligus. Pada C3, DC berada pada pita radial pertama dan bin orientasi 0. Entropi, ambang adaptif, dan normalisasi densitas dihitung secara terpisah di setiap pita radial.
 
 Analisis sensitivitas bersifat terbatas dan satu-parameter-pada-satu-waktu, bukan pencarian faktorial penuh:
 
 ```text
 m     ∈ {16, 32, 64}
 gamma ∈ {0,05, 0,10, 0,15}
-T     ∈ {0,01, 0,02, 0,05}
+T     ∈ {0,01, 0,02, 0,05}  # hanya jika konfigurasi memakai ambang lunak
 ```
 
-Jika `m` berubah, overlap tetap 50% sehingga `stride=m/2`. Parameter lain tetap pada nilai referensi selama satu sweep. Nilai terbaik dari sweep yang berbeda tidak boleh digabungkan menjadi konfigurasi baru kecuali kombinasi tersebut benar-benar didefinisikan dan diuji pada data pengembangan sebelum multi-seed dan sebelum data uji digunakan.
+Jika `m` berubah, overlap tetap 50% sehingga `stride=m/2`. Parameter lain tetap pada nilai referensi selama satu sweep. Nilai terbaik dari sweep yang berbeda tidak boleh digabungkan menjadi konfigurasi baru kecuali kombinasi tersebut benar-benar didefinisikan dan diuji pada data pengembangan sebelum seed konfirmasi dan sebelum data uji digunakan.
 
 Hubungan `C0 → C1 → ... → C5` menunjukkan akumulasi keputusan desain, bukan pewarisan bobot model antar konfigurasi.
 
-Tahap I membentuk model acuan dari `yolo26n.pt` untuk memperoleh baseline validasi, menentukan kelompok tiga kelas sulit, dan memeriksa pipeline. **Checkpoint model acuan tidak digunakan sebagai bobot awal C0–C5.**
+Tahap I membentuk `B0_dev` langsung dari `yolo26n.pt` menggunakan seed pengembangan 42 untuk memperoleh baseline validasi, menetapkan kelompok tiga kelas sulit, dan memeriksa pipeline. **Checkpoint model acuan tidak digunakan sebagai bobot awal C0–C5.**
 
-Tahap II mengharuskan setiap C0–C5 dibangun kembali langsung dari `yolo26n.pt` menggunakan seed pengembangan 42 dengan kondisi inisialisasi yang dipasangkan. Kandidat struktur dipilih sebagai `C_str` berdasarkan mAP50–95 validation. Selisih absolut mAP50–95 kurang dari 0,001 pada skala 0–1 diperlakukan sebagai seri; pemecah seri berikutnya adalah AP kelompok tiga kelas sulit, kemudian waktu pemrosesan total.
+Tahap II mengharuskan setiap C0–C5 dibangun kembali langsung dari `yolo26n.pt` menggunakan seed pengembangan 42 dengan prosedur inisialisasi yang setara. Kandidat struktur dipilih sebagai `C_str` berdasarkan mAP50–95 validation. Selisih absolut mAP50–95 kurang dari 0,001 pada skala 0–1 diperlakukan sebagai seri operasional; pemecah seri berikutnya adalah `AP_H`, kemudian median latency total *end-to-end* berdasarkan protokol efisiensi.
 
-Jika sensitivitas dilakukan, final `C*` dipilih hanya dari `C_str` dan varian sensitivitas yang benar-benar telah dievaluasi menggunakan aturan yang sama. Jika sensitivitas tidak dilakukan, `C*=C_str`.
+Jika sensitivitas dilakukan, final `C*` dipilih hanya dari `C_str` dan varian sensitivitas yang benar-benar telah dievaluasi menggunakan aturan yang sama. Jika sensitivitas tidak dilakukan, `C*=C_str`. Setelah Tahap II, `C*` dibekukan dan tidak dipilih ulang berdasarkan seed konfirmasi atau data uji.
 
-Tahap III menguji ulang B0–B3 pada seed 42, 123, dan 2026. Pada setiap seed seluruh kondisi kembali dibangun dari `yolo26n.pt`; tidak ada pewarisan checkpoint screening. Setelah konfigurasi dan aturan evaluasi dibekukan, seluruh checkpoint B0–B3 untuk ketiga seed dievaluasi pada data uji yang sama.
+Tahap III menggunakan seed konfirmasi yang tidak dipakai untuk memilih `C*`:
 
-RT-DETRv3-R18 hanya merupakan evaluasi tambahan. `C*` dan parameter prapemrosesan tidak boleh dituning ulang khusus untuk RT-DETR.
+```text
+S_conf = {123, 2026, 31415}
+```
 
-Metrik utama adalah mAP50–95. Precision/recall mengikuti prosedur evaluasi Ultralytics yang sama dan bersifat sekunder. Kelompok tiga kelas sulit ditentukan sekali dari model acuan pada validation lalu dibekukan. `AP_worst` hanya indikator tambahan. Jika bootstrap dilakukan, gunakan *paired bootstrap* berbasis kelompok sumber.
+Pada setiap seed, B0–B3 dibangun kembali langsung dari `yolo26n.pt`; seed pengembangan 42 tidak dimasukkan ke rerata konfirmasi. Jika `C*=C0`, B2 dan B3 identik sehingga run duplikat tidak dilakukan. Data uji tetap tertutup selama Tahap III dan baru digunakan setelah `C*`, seed, checkpoint rule, metrik, dan prosedur evaluasi dibekukan. Checkpoint terpilih dari setiap seed konfirmasi kemudian dievaluasi pada data uji yang sama.
 
-Visualisasi utama B0/B1/B2/B3 menggunakan seed 42 yang ditetapkan sebelumnya, bukan seed yang dipilih setelah melihat visual. Eigen-CAM diperlakukan sebagai visualisasi respons internal/aktivasi fitur, bukan diklaim sebagai bukti kausal atau selalu class-specific.
+RT-DETRv3-R18 hanya merupakan evaluasi tambahan. `C*` dan parameter prapemrosesan tidak boleh dituning ulang khusus untuk RT-DETR. Konfigurasi pelatihan yang spesifik RT-DETR harus ditetapkan sama untuk pasangan tanpa prapemrosesan dan dengan `C*`.
 
-Benchmark efisiensi utama menggunakan input 640×640 dan batch 1 pada perangkat/presisi yang sama. Waktu I/O umum dikeluarkan dari perbandingan frontend, sinkronisasi CUDA dilakukan untuk timing GPU, dan memori dilaporkan sebagai peak allocated GPU memory. Jumlah warm-up dan pengulangan harus dibekukan sebelum benchmark.
+Eksperimen utama menggunakan Ultralytics 8.4.96. Untuk deteksi pada versi ini, fitness sama dengan mAP50–95 sehingga `best.pt` dan early stopping selaras dengan metrik utama. `optimizer=Auto` ter-resolve ke AdamW pada skala eksperimen yang direncanakan; optimizer dan learning rate aktual tetap dicatat untuk setiap run. YOLO26 menggunakan jalur `end2end=True`, sehingga output utama tidak menggunakan NMS tambahan seperti head YOLO konvensional.
+
+Metrik utama adalah mAP50–95. mAP50, precision, dan recall bersifat sekunder. Precision/recall ringkasan Ultralytics berasal dari operating point maksimum kurva F1 rata-rata, sedangkan `conf=0.001` pada validator hanya berfungsi sebagai prefilter. Kelompok tiga kelas sulit ditentukan sekali dari `B0_dev` pada validation lalu dibekukan. `AP_worst` hanya indikator tambahan. Pada seed konfirmasi, hasil dan delta terhadap B0 dilaporkan secara berpasangan. Jika bootstrap dilakukan, gunakan *paired bootstrap* berbasis `group_id` dan jangan menjadikannya inferensi utama jika jumlah kelompok independen terlalu sedikit.
+
+Visualisasi utama B0/B1/B2/B3 menggunakan seed konfirmasi yang telah ditetapkan sebelumnya:
+
+```text
+s_vis = 123
+```
+
+Metode visualisasi aktivasi harus diverifikasi kompatibel dengan YOLO26n sebelum digunakan. Eigen-CAM merupakan kandidat utama, bukan metode yang dipaksakan; metode, target layer, ukuran masukan, dan normalisasi heatmap harus sama antar kondisi. Jika `C*=C0`, kondisi identik tidak perlu divisualisasikan dua kali. Visualisasi tidak digunakan sebagai bukti kausal tunggal.
+
+Benchmark efisiensi utama menggunakan input 640×640 dan batch 1 pada perangkat/presisi yang sama. Dilaporkan `t_pra`, `t_model`, dan latency total *end-to-end* yang diukur langsung. Seluruh overhead khusus frontend, termasuk konversi dan transfer perangkat yang diperlukan, masuk ke biaya metode. Waktu I/O umum dikeluarkan, sinkronisasi GPU dilakukan pada batas timing, dan pekerjaan CPU tercakup dalam wall-clock timing apabila relevan. Median latency total menjadi ukuran utama efisiensi dan tie-break operasional. Jumlah warm-up dan pengulangan dibekukan sebelum benchmark. *Peak allocated GPU memory* dan jumlah parameter dilaporkan sebagai informasi tambahan.
 
 ## 5. Daftar Pustaka dan Source Audit
 
