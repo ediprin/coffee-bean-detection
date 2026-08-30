@@ -41,7 +41,7 @@
   <rect class="box" x="50" y="366" width="700" height="78" fill="#f3ecfb" stroke="#7552a6"/>
   <circle cx="98" cy="405" r="24" fill="#ffffff" stroke="#7552a6" stroke-width="2"/>
   <text class="step" x="98" y="405">04</text>
-  <text class="label" x="420" y="405">Pembentukan model acuan YOLO26n</text>
+  <text class="label" x="420" y="405">Pembentukan model acuan pengembangan</text>
   <line class="arrow" x1="400" y1="444" x2="400" y2="468"/>
 
   <!-- 5 -->
@@ -69,7 +69,7 @@
   <rect class="box" x="50" y="822" width="700" height="92" fill="#fff0f2" stroke="#d75d70"/>
   <circle cx="98" cy="868" r="24" fill="#ffffff" stroke="#d75d70" stroke-width="2"/>
   <text class="step" x="98" y="868">08</text>
-  <text class="label" x="430" y="858"><tspan x="430" dy="-10">Pengujian ulang beberapa seed</tspan><tspan x="430" dy="27">(B0: YOLO26n, B1: CLAHE, B2: C0, B3: C*)</tspan></text>
+  <text class="label" x="430" y="858"><tspan x="430" dy="-10">Pelatihan ulang beberapa seed konfirmasi</tspan><tspan x="430" dy="27">(B0: YOLO26n, B1: CLAHE, B2: C0, B3: C*)</tspan></text>
   <line class="arrow" x1="400" y1="914" x2="400" y2="938"/>
 
   <!-- 9 -->
