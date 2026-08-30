@@ -195,6 +195,93 @@ def _format_source_code_blocks(doc) -> None:
             run.font.size = Pt(12)
 
 
+def _set_cell_width(cell, width_cm: float) -> None:
+    """Set a deterministic cell width in twips for Word and LibreOffice."""
+    width = Cm(width_cm)
+    cell.width = width
+    tc_pr = cell._tc.get_or_add_tcPr()
+    tc_w = tc_pr.find(qn("w:tcW"))
+    if tc_w is None:
+        tc_w = OxmlElement("w:tcW")
+        tc_pr.append(tc_w)
+    tc_w.set(qn("w:w"), str(width.twips))
+    tc_w.set(qn("w:type"), "dxa")
+
+
+def _format_related_research_table(doc) -> None:
+    """Give Tabel 2.1 readable column proportions inside the 14 cm text area.
+
+    The six-column related-research table contains long venue and contribution
+    text. Generic autofit gives those columns nearly equal widths, which makes
+    LibreOffice split ordinary words character-by-character. Use a fixed 14 cm
+    layout and 9 pt table text so the table remains readable without changing
+    its content or forcing a landscape section.
+    """
+    widths_cm = (0.65, 1.65, 2.20, 2.20, 2.15, 5.15)
+
+    for table in doc.tables:
+        if not table.rows or len(table.columns) != 6:
+            continue
+        headers = [cell.text.strip().replace("\n", " ") for cell in table.rows[0].cells]
+        is_related_table = (
+            headers[0].startswith("No")
+            and "Penulis" in headers[1]
+            and "Venue" in headers[2]
+            and "Fokus" in headers[3]
+            and "Metode" in headers[4]
+            and "Kontribusi" in headers[5]
+        )
+        if not is_related_table:
+            continue
+
+        table.autofit = False
+        tbl_pr = table._tbl.tblPr
+
+        layout = tbl_pr.find(qn("w:tblLayout"))
+        if layout is None:
+            layout = OxmlElement("w:tblLayout")
+            tbl_pr.append(layout)
+        layout.set(qn("w:type"), "fixed")
+
+        tbl_w = tbl_pr.find(qn("w:tblW"))
+        if tbl_w is None:
+            tbl_w = OxmlElement("w:tblW")
+            tbl_pr.append(tbl_w)
+        tbl_w.set(qn("w:w"), str(Cm(sum(widths_cm)).twips))
+        tbl_w.set(qn("w:type"), "dxa")
+
+        grid_cols = table._tbl.tblGrid.gridCol_lst
+        for index, grid_col in enumerate(grid_cols[: len(widths_cm)]):
+            grid_col.set(qn("w:w"), str(Cm(widths_cm[index]).twips))
+
+        for row in table.rows:
+            for column_index, cell in enumerate(row.cells):
+                _set_cell_width(cell, widths_cm[column_index])
+                for paragraph in cell.paragraphs:
+                    paragraph.paragraph_format.first_line_indent = Cm(0)
+                    paragraph.paragraph_format.left_indent = Cm(0)
+                    paragraph.paragraph_format.right_indent = Cm(0)
+                    paragraph.paragraph_format.space_before = Pt(0)
+                    paragraph.paragraph_format.space_after = Pt(0)
+                    paragraph.paragraph_format.line_spacing = 1.0
+                    paragraph.alignment = (
+                        WD_ALIGN_PARAGRAPH.CENTER
+                        if column_index in (0, 1)
+                        else WD_ALIGN_PARAGRAPH.LEFT
+                    )
+                    for run in paragraph.runs:
+                        run.font.name = FONT_NAME
+                        run.font.size = Pt(9)
+
+        for cell in table.rows[0].cells:
+            for paragraph in cell.paragraphs:
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                for run in paragraph.runs:
+                    run.bold = True
+                    run.font.size = Pt(9)
+        break
+
+
 def finalize(input_path: Path, output_path: Path) -> None:
     doc = Document(input_path)
 
@@ -209,6 +296,7 @@ def finalize(input_path: Path, output_path: Path) -> None:
             normal_tables += 1
 
     _format_source_code_blocks(doc)
+    _format_related_research_table(doc)
     _force_style_fonts(doc)
     _set_math_default_font(doc)
     _force_font_in_root(doc.element)
