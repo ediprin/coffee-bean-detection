@@ -27,14 +27,14 @@ Deteksi cacat biji kopi dengan jumlah kategori yang rinci memiliki tantangan kar
 
 Batasan penelitian ini adalah:
 
-1. Penelitian berfokus pada *object detection* biji kopi hijau menggunakan dataset primer. Daftar kelas awal menargetkan 20 kategori cacat fisik dan benda asing yang digunakan dalam SNI 2907:2008 serta satu kelas biji normal; jumlah kelas akhir ditetapkan setelah pemeriksaan kecukupan data.
+1. Penelitian berfokus pada *object detection* biji kopi hijau. **robusta_SNI_Dataset** digunakan sebagai dataset utama dengan 21 kelas yang dapat dipetakan ke taksonomi SNI, sedangkan Capstone, Lulus, dan Niacubilla digunakan sebagai dataset konfirmasi dengan taksonomi masing-masing. Dataset tidak digabungkan.
 2. Model utama adalah YOLO26n. RT-DETRv3-R18 hanya digunakan sebagai analisis tambahan apabila sumber daya memungkinkan.
 3. Pengembangan metode difokuskan pada prapemrosesan citra berbasis frekuensi-angular tanpa memodifikasi *backbone*, *neck*, atau *detection head* YOLO26n pada eksperimen utama.
 4. Optimasi dibatasi pada variasi desain dan parameter prapemrosesan yang ditetapkan dalam metodologi, bukan pencarian *global optimum* seluruh konfigurasi.
 5. YOLO26n tanpa prapemrosesan digunakan sebagai acuan dan CLAHE sebagai pembanding peningkatan kontras lokal.
 6. Metrik utama kinerja deteksi adalah mAP50–95; mAP50, *precision*, *recall*, dan AP per kelas digunakan sebagai metrik tambahan.
 7. Efisiensi dievaluasi melalui waktu prapemrosesan, waktu inferensi, latency *end-to-end*, throughput/FPS pada protokol yang sama, dan *peak allocated GPU memory*. Jumlah parameter model dilaporkan sebagai informasi tambahan.
-8. Akuisisi citra utama dilakukan pada kondisi yang dikendalikan, meliputi latar belakang, posisi kamera, jarak pengambilan, dan pencahayaan. Kesimpulan utama dibatasi pada kondisi akuisisi yang sebanding.
+8. Informasi varietas kopi pada sebagian dataset konfirmasi tidak tersedia secara eksplisit. Oleh karena itu, evaluasi lintas dataset digunakan untuk menilai konsistensi metode pada sumber data yang berbeda, bukan untuk membandingkan performa antarvarietas kopi.
 9. Penelitian tidak membahas cita rasa, proses *roasting*, atau keseluruhan proses penentuan grade mutu kopi.
 
 ## 1.4 Tujuan Penelitian
