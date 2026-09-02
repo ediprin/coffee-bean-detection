@@ -1,15 +1,14 @@
 # Varian Strategi Dataset Proposal
 
-Status: **WORKING VARIANTS — BUKAN SOURCE FORMAL**
+Status: **V2 DIPROMOSIKAN KE SOURCE FORMAL**
 
-Dokumen ini memisahkan dua alternatif rancangan dataset tanpa mengubah source formal pada `docs/thesis/proposal/`.
+Dokumen ini mencatat dua rancangan dataset yang pernah disiapkan untuk proposal.
 
 ## Versi 1 — Dataset Primer
 
 Source:
 
 - `docs/thesis/proposal/variants/V1_DATASET_PRIMER.md`
-- implementasi formal saat ini tetap `docs/thesis/proposal/BAB_III_METODOLOGI_PENELITIAN.md`
 
 Karakter utama:
 
@@ -26,6 +25,7 @@ Karakter utama:
 Source:
 
 - `docs/thesis/proposal/variants/V2_MULTI_DATASET_PUBLIK.md`
+- implementasi formal: `docs/thesis/proposal/BAB_III_METODOLOGI_PENELITIAN.md`
 
 Karakter utama:
 
@@ -52,8 +52,8 @@ Karakter utama:
 
 ## Aturan Source-of-Truth
 
-1. Selama belum ada keputusan eksplisit, **V1 tetap source formal aktif**.
-2. File pada folder `variants/` tidak masuk build proposal formal dan tidak mengubah citation gate.
-3. Jika V2 dipilih, BAB I, BAB II, BAB III, Gambar 3.1, bibliography, dan audit formal harus disinkronkan sebagai satu perubahan terkontrol.
+1. **V2 menjadi rancangan dataset formal aktif pada BAB III.**
+2. V1 tetap disimpan sebagai varian historis dan tidak menjadi source formal aktif.
+3. File pada folder `variants/` tidak masuk build proposal formal secara langsung.
 4. Dataset konfirmasi harus diperiksa sebelum digunakan agar versi, anotasi, pembagian data, dan sumbernya jelas.
 5. Dataset klasifikasi tanpa bounding box tidak masuk benchmark utama deteksi kecuali terdapat prosedur konversi yang dapat dipertanggungjawabkan sebelum eksperimen.
