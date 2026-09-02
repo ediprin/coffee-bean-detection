@@ -67,13 +67,20 @@ Augmentasi diterapkan hanya pada data pelatihan. Data validasi dan pengujian tid
 
 Pengembangan metode dilakukan hanya pada **robusta_SNI_Dataset**. YOLO26n tanpa prapemrosesan digunakan sebagai baseline, kemudian konfigurasi referensi dan variasi prapemrosesan frekuensi-angular dibandingkan pada data pelatihan dan validasi hingga diperoleh konfigurasi final $C^*$.
 
-Pada tahap ini tetap digunakan kondisi utama $B_0$, $B_1$, $B_2$, dan $B_3$ sesuai rancangan eksperimen utama.
+Pada tahap ini digunakan kondisi $B_0$, $B_1$, $B_2$, dan $B_3$ sesuai rancangan eksperimen utama.
 
 ### 3.2 Tahap Konfirmasi Lintas Dataset
 
-Setelah $C^*$ ditetapkan, konfigurasi tersebut dibekukan. Pada Capstone, Lulus, dan Niacubilla hanya dibandingkan **baseline YOLO26n ($B_0$)** dan **YOLO26n dengan konfigurasi final $C^*$ ($B_3$)**.
+Setelah $C^*$ ditetapkan, konfigurasi tersebut dibekukan. Pada dataset konfirmasi hanya dibandingkan baseline YOLO26n ($B_0$) dan YOLO26n dengan konfigurasi final $C^*$ ($B_3$).
 
-Kedua kondisi dilatih secara terpisah pada masing-masing dataset dari bobot awal resmi YOLO26n yang sama dan menggunakan seed konfirmasi yang sama. Konfigurasi $C^*$ tidak dipilih ulang berdasarkan hasil dataset konfirmasi.
+| Dataset | Kondisi yang dibandingkan |
+|---|---|
+| robusta_SNI_Dataset | $B_0$, $B_1$, $B_2$, $B_3$ |
+| Coffee Bean Defect (Capstone) | $B_0$ dan $B_3$ |
+| Green Coffee Bean Defects (Lulus) | $B_0$ dan $B_3$ |
+| Coffee Bean Defects (Niacubilla) | $B_0$ dan $B_3$ |
+
+Pada setiap dataset publik, $B_0$ dan $B_3$ dilatih dari bobot awal resmi YOLO26n yang sama dengan seed konfirmasi yang sama. Konfigurasi $C^*$ tidak dipilih ulang berdasarkan hasil dataset konfirmasi.
 
 ### 3.3 Evaluasi Akhir
 
@@ -85,11 +92,9 @@ Test set digunakan setelah konfigurasi metode, aturan pelatihan, seed, dan prose
 
 Metrik utama adalah **mAP50–95**, sedangkan **mAP50, precision, recall**, dan AP per kelas digunakan sebagai metrik pendukung.
 
-Pada **robusta_SNI_Dataset**, evaluasi mencakup seluruh kondisi eksperimen utama. Pada Capstone, Lulus, dan Niacubilla, evaluasi difokuskan pada perbandingan $B_0$ dan $B_3$.
+Pada robusta_SNI_Dataset, evaluasi mencakup seluruh kondisi eksperimen utama. Pada Capstone, Lulus, dan Niacubilla, evaluasi difokuskan pada perubahan kinerja $B_3$ terhadap $B_0$ pada dataset yang sama.
 
-Untuk setiap dataset konfirmasi, hasil beberapa seed diringkas dengan nilai rata-rata dan simpangan baku. Pengaruh prapemrosesan dinilai dari selisih kinerja $B_3$ terhadap $B_0$ pada dataset yang sama. Nilai mAP absolut antar-dataset tidak dibandingkan secara langsung karena jumlah kelas dan karakteristik data berbeda.
-
-Konsistensi lintas dataset ditunjukkan dari arah dan besar perubahan kinerja pada Capstone, Lulus, dan Niacubilla setelah menggunakan konfigurasi $C^*$ yang sama.
+Hasil beberapa seed diringkas dengan rata-rata dan simpangan baku. Nilai mAP absolut antar-dataset tidak dibandingkan secara langsung karena jumlah kelas dan karakteristik datanya berbeda. Konsistensi metode dinilai dari arah perubahan kinerja pada ketiga dataset konfirmasi.
 
 ---
 
