@@ -80,21 +80,21 @@ Setelah $C^*$ ditetapkan, konfigurasi tersebut dibekukan. Pada dataset konfirmas
 | Green Coffee Bean Defects (Lulus) | $B_0$ dan $B_3$ |
 | Coffee Bean Defects (Niacubilla) | $B_0$ dan $B_3$ |
 
-Pada setiap dataset publik, $B_0$ dan $B_3$ dilatih dari bobot awal resmi YOLO26n yang sama dengan seed konfirmasi yang sama. Konfigurasi $C^*$ tidak dipilih ulang berdasarkan hasil dataset konfirmasi.
+Pada setiap dataset konfirmasi, $B_0$ dan $B_3$ dilatih ulang secara terpisah dari bobot awal resmi `yolo26n.pt` menggunakan seed konfirmasi **123, 2026, dan 31415**. Konfigurasi $C^*$ tidak dipilih ulang berdasarkan hasil dataset konfirmasi.
 
 ### 3.3 Evaluasi Akhir
 
-Test set digunakan setelah konfigurasi metode, aturan pelatihan, seed, dan prosedur evaluasi ditetapkan. Hasil pada setiap dataset dilaporkan secara terpisah.
+Test set digunakan setelah konfigurasi metode, seed, aturan checkpoint, dan prosedur evaluasi ditetapkan. Hasil pada setiap dataset dilaporkan secara terpisah dan tidak digunakan untuk memilih ulang konfigurasi.
 
 ---
 
-## 4. Evaluasi Multi-Dataset
+## 4. Evaluasi Hasil
 
 Metrik utama adalah **mAP50–95**, sedangkan **mAP50, precision, recall**, dan AP per kelas digunakan sebagai metrik pendukung.
 
-Pada robusta_SNI_Dataset, evaluasi mencakup seluruh kondisi eksperimen utama. Pada Capstone, Lulus, dan Niacubilla, evaluasi difokuskan pada perubahan kinerja $B_3$ terhadap $B_0$ pada dataset yang sama.
+Pada **robusta_SNI_Dataset**, evaluasi mencakup seluruh kondisi eksperimen utama. Pada **Capstone, Lulus, dan Niacubilla**, evaluasi difokuskan pada perubahan kinerja model dengan $C^*$ terhadap baseline pada dataset yang sama.
 
-Hasil beberapa seed diringkas dengan rata-rata dan simpangan baku. Nilai mAP absolut antar-dataset tidak dibandingkan secara langsung karena jumlah kelas dan karakteristik datanya berbeda. Konsistensi metode dinilai dari arah perubahan kinerja pada ketiga dataset konfirmasi.
+Hasil beberapa seed dilaporkan sebagai rata-rata dan simpangan baku. Nilai mAP absolut antar-dataset tidak dibandingkan secara langsung karena jumlah kelas dan karakteristik datanya berbeda. Konsistensi metode dinilai dari arah perubahan kinerja pada ketiga dataset konfirmasi.
 
 ---
 
