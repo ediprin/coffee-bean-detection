@@ -19,12 +19,16 @@ FONT = "Times New Roman"
 CAPTIONS = {
     ("No.", "Penulis dan Tahun", "Sumber Publikasi/Venue", "Fokus Penelitian", "Metode/Model", "Relevansi dengan Penelitian"):
         "Tabel 2.1: Penelitian Terkait",
+    ("Dataset", "Sumber", "Peran"):
+        "Tabel 3.1: Sumber dan Peran Dataset Penelitian",
+    ("Dataset", "Versi", "Task", "Jumlah kelas"):
+        "Tabel 3.2: Dataset Publik untuk Konfirmasi",
     ("Kode", "Kondisi", "Peran dalam eksperimen"):
-        "Tabel 3.1: Kondisi Utama Eksperimen",
+        "Tabel 3.3: Kondisi Utama Eksperimen",
     ("Konfigurasi", "Perubahan utama", "Tujuan pengujian"):
-        "Tabel 3.2: Variasi Desain Prapemrosesan",
+        "Tabel 3.4: Variasi Desain Prapemrosesan",
     ("Parameter", "Nilai"):
-        "Tabel 3.3: Konfigurasi Utama Pelatihan YOLO26n",
+        "Tabel 3.5: Konfigurasi Utama Pelatihan YOLO26n",
 }
 
 
