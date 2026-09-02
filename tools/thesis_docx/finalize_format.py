@@ -52,20 +52,12 @@ def _set_table_borders(table, visible: bool) -> None:
     tbl_pr = table._tbl.tblPr
 
     if visible:
-        # TableGrid makes borders deterministic in Microsoft Word, while the
-        # explicit table/cell borders below ensure the same result in other
-        # renderers such as LibreOffice.
         _set_table_style(table, "TableGrid")
     else:
-        # Equation numbering uses a synthetic layout table. Removing the style
-        # prevents Word/LibreOffice from drawing a residual bottom rule.
         _set_table_style(table, None)
 
     _replace_borders(tbl_pr, "w:tblBorders", TABLE_EDGES, visible)
 
-    # Explicit cell borders override inherited/default table formatting. This is
-    # intentionally applied to every cell so no individual row/column can lose a
-    # border because of a Word table style or theme override.
     for row in table.rows:
         for cell in row.cells:
             tc_pr = cell._tc.get_or_add_tcPr()
@@ -73,12 +65,7 @@ def _set_table_borders(table, visible: bool) -> None:
 
 
 def _is_equation_layout_table(table) -> bool:
-    """Identify only the synthetic 1x3 table used to center and number equations.
-
-    Ordinary thesis tables can legitimately contain inline OMML symbols such as B_0,
-    C_0, or gamma. Presence of math alone therefore must not classify a normal table
-    as an equation-layout table.
-    """
+    """Identify only the synthetic 1x3 table used to center and number equations."""
     if len(table.rows) != 1 or len(table.columns) != 3:
         return False
     has_math = bool(
@@ -105,7 +92,6 @@ def _ensure_rfonts(r_pr) -> None:
 
 
 def _force_font_in_root(root) -> None:
-    # Normal Word runs, including field results, table text, headers and footers.
     for run in root.iter(qn("w:r")):
         r_pr = run.find(qn("w:rPr"))
         if r_pr is None:
@@ -113,8 +99,6 @@ def _force_font_in_root(root) -> None:
             run.insert(0, r_pr)
         _ensure_rfonts(r_pr)
 
-    # OMML equation runs. Word can still fall back for unsupported mathematical
-    # glyphs, but the DOCX explicitly requests Times New Roman at run level.
     for math_run in root.iter(qn("m:r")):
         r_pr = math_run.find(qn("w:rPr"))
         if r_pr is None:
@@ -128,8 +112,6 @@ def _force_font_in_root(root) -> None:
 
 def _force_style_fonts(doc) -> None:
     styles_root = doc.styles.element
-
-    # Document-wide default run properties.
     doc_defaults = styles_root.find(qn("w:docDefaults"))
     if doc_defaults is None:
         doc_defaults = OxmlElement("w:docDefaults")
@@ -144,8 +126,6 @@ def _force_style_fonts(doc) -> None:
         r_pr_default.append(r_pr)
     _ensure_rfonts(r_pr)
 
-    # Force every Word style to request Times New Roman so generated TOC/list
-    # entries and other automatic field content do not revert to theme fonts.
     for style in styles_root.findall(qn("w:style")):
         r_pr = style.find(qn("w:rPr"))
         if r_pr is None:
@@ -168,12 +148,7 @@ def _set_math_default_font(doc) -> None:
 
 
 def _format_source_code_blocks(doc) -> None:
-    """Make Markdown fenced flow diagrams readable in Word.
-
-    Pandoc preserves alignment spaces in Source Code paragraphs. With a proportional
-    thesis font those spaces become very wide and can split each line across the page.
-    Collapse alignment whitespace while preserving line breaks and arrows.
-    """
+    """Make Markdown fenced flow diagrams readable in Word."""
     for paragraph in doc.paragraphs:
         if paragraph.style.name != "Source Code":
             continue
@@ -209,13 +184,7 @@ def _set_cell_width(cell, width_cm: float) -> None:
 
 
 def _format_equation_layout_table(table) -> None:
-    """Lock the synthetic equation-number table to the full 14 cm text width.
-
-    python-docx ``cell.width`` alone does not reliably update ``tblGrid``. LibreOffice
-    can therefore redistribute the three cells almost evenly, leaving the center math
-    cell too narrow and visually clipping otherwise valid OMML equations. Fix the table
-    grid, table width, and every cell width explicitly.
-    """
+    """Lock the synthetic equation-number table to the full 14 cm text width."""
     widths_cm = (0.5, 12.0, 1.5)
     table.autofit = False
     tbl_pr = table._tbl.tblPr
@@ -248,14 +217,7 @@ def _format_equation_layout_table(table) -> None:
 
 
 def _format_related_research_table(doc) -> None:
-    """Give Tabel 2.1 readable column proportions inside the 14 cm text area.
-
-    The six-column related-research table contains long venue and contribution
-    text. Generic autofit gives those columns nearly equal widths, which makes
-    LibreOffice split ordinary words character-by-character. Use a fixed 14 cm
-    layout and 9 pt table text so the table remains readable without changing
-    its content or forcing a landscape section.
-    """
+    """Give Tabel 2.1 readable column proportions inside the 14 cm text area."""
     widths_cm = (0.65, 1.65, 2.20, 2.20, 2.15, 5.15)
 
     for table in doc.tables:
@@ -268,7 +230,7 @@ def _format_related_research_table(doc) -> None:
             and "Venue" in headers[2]
             and "Fokus" in headers[3]
             and "Metode" in headers[4]
-            and "Kontribusi" in headers[5]
+            and ("Kontribusi" in headers[5] or "Relevansi" in headers[5])
         )
         if not is_related_table:
             continue
@@ -341,7 +303,6 @@ def finalize(input_path: Path, output_path: Path) -> None:
     _set_math_default_font(doc)
     _force_font_in_root(doc.element)
 
-    # Header/footer PAGE fields are stored in separate document parts.
     seen_parts = set()
     for section in doc.sections:
         for container in (
@@ -361,8 +322,6 @@ def finalize(input_path: Path, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(output_path)
 
-    # Complete and normalize the four formal table captions before the static
-    # Daftar Tabel is materialized. Equation-layout tables are not touched.
     ensure_table_captions(output_path, output_path)
 
     print(
