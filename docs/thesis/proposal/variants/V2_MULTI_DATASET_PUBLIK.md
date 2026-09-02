@@ -92,9 +92,9 @@ Test set digunakan setelah konfigurasi metode, seed, aturan checkpoint, dan pros
 
 Metrik utama adalah **mAP50–95**, sedangkan **mAP50, precision, recall**, dan AP per kelas digunakan sebagai metrik pendukung.
 
-Pada **robusta_SNI_Dataset**, evaluasi mencakup seluruh kondisi eksperimen utama. Pada **Capstone, Lulus, dan Niacubilla**, evaluasi difokuskan pada perubahan kinerja model dengan $C^*$ terhadap baseline pada dataset yang sama.
+Pada **robusta_SNI_Dataset**, evaluasi digunakan untuk menilai baseline, pembanding CLAHE, konfigurasi referensi, dan konfigurasi frekuensi-angular terpilih. Pada **Capstone, Lulus, dan Niacubilla**, evaluasi difokuskan pada selisih kinerja $B_3$ terhadap $B_0$ pada dataset yang sama.
 
-Hasil beberapa seed dilaporkan sebagai rata-rata dan simpangan baku. Nilai mAP absolut antar-dataset tidak dibandingkan secara langsung karena jumlah kelas dan karakteristik datanya berbeda. Konsistensi metode dinilai dari arah perubahan kinerja pada ketiga dataset konfirmasi.
+Hasil setiap seed dilaporkan beserta rata-rata dan simpangan bakunya. Konsistensi lintas dataset dinilai dari arah dan besarnya perubahan kinerja pada ketiga dataset konfirmasi. Nilai mAP absolut antar-dataset tidak dibandingkan secara langsung karena jumlah kelas dan karakteristik data berbeda.
 
 ---
 
