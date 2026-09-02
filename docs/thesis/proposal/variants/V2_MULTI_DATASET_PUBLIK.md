@@ -1,8 +1,8 @@
 # V2 — Multi-Dataset Publik
 
-Status: **WORKING VARIANT — NOT FORMAL**
+Status: **PROMOTED TO FORMAL BAB III**
 
-Dokumen ini merupakan alternatif rancangan dataset untuk proposal tesis. Selama belum dipromosikan secara eksplisit, source formal proposal tetap menggunakan V1.
+Dokumen ini menyimpan rancangan kerja V2 yang telah disinkronkan ke `docs/thesis/proposal/BAB_III_METODOLOGI_PENELITIAN.md`.
 
 ## 1. Prinsip Utama
 
