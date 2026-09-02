@@ -20,6 +20,7 @@ Aturan keras:
 | García et al. (2019) | COF-17 | FINAL — OFFICIAL VERIFIED | MDPI Applied Sciences | Aman |
 | Hong et al. (2026) | COF-01 | FINAL — OFFICIAL VERIFIED | Elsevier / Current Research in Food Science | Aman |
 | Bahy dan Rifai (2026) | COF-02 | FINAL — OFFICIAL VERIFIED | IJoICT official article/PDF | Aman |
+| Samudra dan Rachmawati (2025) | COF-03 | FINAL — PRIMARY PUBLISHER PDF VERIFIED | IEEE ICoDSA primary paper | Aman; dipakai untuk contoh kebingungan black vs partially black yang dikaitkan dengan visual similarity |
 | Hebert dan Alamsyah (2026) | COF-04 | FINAL — OFFICIAL VERIFIED | INOVTEK Polbeng official page | Aman |
 | Jundullah et al. (2026) | COF-05 | FINAL — OFFICIAL VERIFIED | Brilliance official page + primary PDF | Aman; klaim per kelas harus mengikuti paper |
 | Gope et al. (2024) | COF-06 | FINAL — OFFICIAL VERIFIED | Nature / Scientific Reports | Aman |
@@ -29,8 +30,6 @@ Aturan keras:
 | Jiao et al. (2025) | COF-12 | FINAL — OFFICIAL VERIFIED | PLOS ONE | Aman |
 | Hu et al. (2025) | COF-13 | FINAL — OFFICIAL VERIFIED | Elsevier / LWT | Aman |
 | Tarekegn dan Debelee (2025) | COF-18 | FINAL — OFFICIAL VERIFIED | Tech Science Press / Journal on Artificial Intelligence | Aman; digunakan untuk konteks skala dataset deteksi primer |
-
-`COF-03` / Samudra dan Rachmawati (2025) tetap merupakan sumber primer yang telah diverifikasi di backend, tetapi **tidak lagi disitasi pada BAB I–III formal** dan karena itu tidak masuk daftar pustaka proposal saat ini.
 
 ## B. Object detection, fine-grained, preprocessing, teori, dan evaluasi
 
@@ -71,18 +70,18 @@ Aturan keras:
 
 ## D. Status daftar pustaka
 
-Set formal saat ini berjumlah **37 sumber unik**.
+Set formal saat ini berjumlah **38 sumber unik**.
 
 Audit dua arah yang harus berlaku pada snapshot ini:
 
-- `cited → bibliography`: **37/37**;
-- `bibliography → cited`: **37/37**;
+- `cited → bibliography`: **38/38**;
+- `bibliography → cited`: **38/38**;
 - cited source tanpa bibliography: **0**;
 - bibliography entry tanpa sitasi formal: **0**.
 
 Perubahan terbaru pada sinkronisasi ini:
 
-- masuk ke set formal: `STD-02` International Telecommunication Union (2015) karena BAB III menggunakan koefisien BT.709 pada variasi luminansi;
-- `COF-03` Samudra & Rachmawati (2025) dan `EVAL-01` Lin et al. (2014) tetap backend-only pada snapshot formal saat ini.
+- `COF-03` Samudra dan Rachmawati (2025) masuk ke set formal karena sekarang disitasi pada Tabel 2.1 sebagai bukti langsung kemiripan visual antarkelas pada deteksi cacat kopi;
+- `EVAL-01` Lin et al. (2014) tetap backend-only pada snapshot formal saat ini.
 
 Kondisi ini hanya berlaku untuk snapshot naskah saat ini. Penambahan, penghapusan, atau perubahan sitasi pada BAB I–III wajib memicu audit ulang metadata dan audit dua arah.
