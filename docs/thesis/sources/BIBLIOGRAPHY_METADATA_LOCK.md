@@ -47,6 +47,13 @@ Dokumen ini mengunci metadata bibliografis untuk sumber yang benar-benar disitas
 - *International Journal on ICT*, 12(1), 29–42.
 - DOI `10.21108/ijoict.v12i1.10584`.
 
+### COF-03 — LOCKED
+- Melyna Nura Samudra; Ema Rachmawati. 2025.
+- *Deep Learning-Based Defect Detection in Arabica Green Coffee Beans Using LSKNet*.
+- *2025 International Conference on Data Science and Its Applications (ICoDSA)*, 692–697.
+- DOI `10.1109/ICoDSA67155.2025.11157423`.
+- Authority: primary IEEE conference paper/full text; bibliographic metadata cross-checked against conference record.
+
 ### COF-04 — LOCKED
 - Hocwin Hebert; Derry Alamsyah. 2026.
 - *Detection of Coffee Bean Defects in Speciality Coffee Association Standards using YOLOv12*.
@@ -257,7 +264,6 @@ Dokumen ini mengunci metadata bibliografis untuk sumber yang benar-benar disitas
 
 Sumber berikut tetap terverifikasi untuk kebutuhan audit atau konteks internal, tetapi tidak disitasi pada snapshot BAB I–III saat ini:
 
-- `COF-03` — Samudra dan Rachmawati (2025), LSKNet coffee defect detection;
 - `EVAL-01` — Lin et al. (2014), Microsoft COCO;
 - `XAI-02` — Grad-CAM++.
 
@@ -265,10 +271,10 @@ Mereka tidak masuk `DAFTAR_PUSTAKA.md` selama tidak mempunyai sitasi formal pada
 
 ## F. Current Readiness
 
-Set formal saat ini berjumlah **37 sumber unik**.
+Set formal saat ini berjumlah **38 sumber unik**.
 
-- cited → bibliography: **37/37**;
-- bibliography → cited: **37/37**;
+- cited → bibliography: **38/38**;
+- bibliography → cited: **38/38**;
 - metadata formal yang masih perlu ditebak: **0**;
 - sumber backend-only tidak dihitung dalam set formal.
 
