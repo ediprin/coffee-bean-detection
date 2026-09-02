@@ -1,0 +1,127 @@
+format: coffee_detector.public_dataset_registry.v1
+frozen_at: '2026-09-02'
+purpose: thesis-proposal-v2-public-multidataset-eligibility
+minimum_independent_lineages: 3
+minimum_source_images: 100
+
+# dataset_root and archive_path are intentionally null. Supply local paths with
+# --dataset-root CODE=PATH and --archive CODE=PATH. A URL is not evidence that
+# the exact bytes audited later are the same bytes described here.
+datasets:
+  - code: jimmy_v1
+    task: object_detection
+    owner: jimmy-74920
+    project: green-coffee-bean-defects-pmxsf
+    version: 1
+    source_url: https://universe.roboflow.com/jimmy-74920/green-coffee-bean-defects-pmxsf/dataset/1
+    license: CC BY 4.0
+    dataset_root:
+    archive_path:
+    archive_sha256:
+    declared_augmentation: none reported
+    ambiguous_classes: []
+    notes:
+      - Exact v1 page reports only six images (one train and five test); expected to fail the minimum-source gate.
+      - The project overview count must not substitute for a frozen export version.
+
+  - code: capstone_v1
+    task: object_detection
+    owner: capstone-2-wwe5t
+    project: coffee-bean-defect-a0vno
+    version: 1
+    source_url: https://universe.roboflow.com/capstone-2-wwe5t/coffee-bean-defect-a0vno/dataset/1
+    license: CC BY 4.0
+    dataset_root:
+    archive_path:
+    archive_sha256:
+    declared_augmentation: none reported; auto-orient and stretch resize 512x512
+    ambiguous_classes: []
+    notes:
+      - Exact v1 page reports 966 images assigned entirely to train; grouped train/val/test rebuild is required.
+      - Overview and model-version image counts disagree, so only an export hash can freeze the version.
+
+  - code: lulus_v1
+    task: object_detection
+    owner: lulus-vpibo
+    project: green-coffee-bean-defects
+    version: 1
+    source_url: https://universe.roboflow.com/lulus-vpibo/green-coffee-bean-defects/dataset/1
+    license: CC BY 4.0
+    dataset_root:
+    archive_path:
+    archive_sha256:
+    declared_augmentation: none reported
+    ambiguous_classes: []
+    notes:
+      - Exact v1 page reports 360 images split 252/72/36.
+
+  - code: niacubilla_v1
+    task: object_detection
+    owner: niacubilla
+    project: coffee-bean-defects
+    version: 1
+    source_url: https://universe.roboflow.com/niacubilla/coffee-bean-defects/dataset/1
+    license: CC BY 4.0
+    dataset_root:
+    archive_path:
+    archive_sha256:
+    declared_augmentation: none reported
+    ambiguous_classes: []
+    notes:
+      - Exact v1 page previously reported 900 images split 626/172/102; re-verify at acquisition.
+      - A similarly named sibling project/version exists and must not be silently substituted.
+
+  - code: dwi_unfrozen
+    task: object_detection
+    owner: dwi-adityaa
+    project: coffee-green-bean-defect-xdmvu
+    version:
+    source_url: https://universe.roboflow.com/dwi-adityaa/coffee-green-bean-defect-xdmvu
+    license: CC BY 4.0
+    dataset_root:
+    archive_path:
+    archive_sha256:
+    declared_augmentation: unknown
+    ambiguous_classes:
+      - objects
+    notes:
+      - Overview reports 421 images and eight classes, but no version is frozen here.
+
+  - code: faruq_public_unfrozen
+    task: object_detection
+    owner: faruq-reybi
+    project: robusta_sni_dataset
+    version:
+    source_url: https://universe.roboflow.com/faruq-reybi/robusta_sni_dataset
+    license: CC BY 4.0
+    dataset_root:
+    archive_path:
+    archive_sha256:
+    declared_augmentation: unknown
+    ambiguous_classes: []
+    notes:
+      - Public overview is instance segmentation and currently exposes no frozen dataset version.
+      - Polygon-to-box conversion requires its own frozen manifest if used for detection.
+
+  - code: coffee_standard_v8
+    task: object_detection
+    owner: tes-rcphs
+    project: coffee-detection-with-standard
+    version: 8
+    source_url: https://universe.roboflow.com/tes-rcphs/coffee-detection-with-standard/dataset/8
+    license: CC BY 4.0
+    dataset_root:
+    archive_path:
+    archive_sha256: 5529de365ad888406b5534a5d1bf5a4a29c9937bc095b16174f8516d396bb1fc
+    declared_augmentation: audit required
+    ambiguous_classes:
+      - Biji Berjamur -Moldy Bean-
+      - Biji Berkulit Ari
+      - Brown Yellow -Sour Bean-
+      - Kerikil
+      - Ranting Ukuran Besar
+      - Ranting Ukuran Kecil
+      - Ranting Ukuran Sedang
+    notes:
+      - Existing raw audit found 993 images, 13926 boxes, and 14 Roboflow-parent groups crossing splits.
+      - Only 18 of 25 classes map directly to the frozen SNI21 ontology.
