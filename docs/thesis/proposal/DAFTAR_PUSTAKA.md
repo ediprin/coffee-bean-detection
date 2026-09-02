@@ -56,6 +56,8 @@ Redmon, J., Divvala, S., Girshick, R., & Farhadi, A. (2016). You only look once:
 
 Ren, S., He, K., Girshick, R., & Sun, J. (2015). Faster R-CNN: Towards real-time object detection with region proposal networks. *Advances in Neural Information Processing Systems, 28*, 91–99.
 
+Samudra, M. N., & Rachmawati, E. (2025). Deep learning-based defect detection in Arabica green coffee beans using LSKNet. In *2025 International Conference on Data Science and Its Applications (ICoDSA)* (pp. 692–697). IEEE. https://doi.org/10.1109/ICoDSA67155.2025.11157423
+
 Selvaraju, R. R., Cogswell, M., Das, A., Vedantam, R., Parikh, D., & Batra, D. (2017). Grad-CAM: Visual explanations from deep networks via gradient-based localization. In *Proceedings of the IEEE International Conference on Computer Vision* (pp. 618–626). https://doi.org/10.1109/ICCV.2017.74
 
 Syauqi, F., Oktiana, M., Muchtar, K., Bahri, A., & Razali, S. (2025). Edge AI-based defect detection in white pepper (*Piper nigrum* L.) using CLAHE-based pre-processing and YOLO. In *2025 IEEE International Conference on Networking, Intelligent Systems, and IoT (ICONS-IoT)* (pp. 18–23). IEEE. https://doi.org/10.1109/ICONS-IOT65216.2025.11211242
