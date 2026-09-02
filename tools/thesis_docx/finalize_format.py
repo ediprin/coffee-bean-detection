@@ -245,7 +245,7 @@ def _format_equation_layout_table(table) -> None:
 
 def _format_related_research_table(doc) -> None:
     """Give Tabel 2.1 readable column proportions and keep each study row intact."""
-    widths_cm = (0.55, 1.75, 2.55, 2.10, 1.95, 5.10)
+    widths_cm = (0.75, 1.85, 2.20, 2.20, 2.00, 5.00)
 
     for table in doc.tables:
         if not table.rows or len(table.columns) != 6:
