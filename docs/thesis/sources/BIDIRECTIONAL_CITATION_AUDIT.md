@@ -12,18 +12,18 @@ Jika manuscript berubah, audit ini harus dijalankan ulang.
 
 ## Hasil audit dua arah
 
-- Unique cited-source set: **37 sumber**.
-- Entri pada `DAFTAR_PUSTAKA.md`: **37 sumber**.
-- `cited → bibliography`: **37/37 terpetakan**.
-- `bibliography → cited`: **37/37 terpetakan**.
+- Unique cited-source set: **38 sumber**.
+- Entri pada `DAFTAR_PUSTAKA.md`: **38 sumber**.
+- `cited → bibliography`: **38/38 terpetakan**.
+- `bibliography → cited`: **38/38 terpetakan**.
 - Uncited bibliography entries: **0**.
 - Cited sources tanpa bibliography entry: **0**.
 
 Perubahan terbaru:
 
-- `STD-02` International Telecommunication Union (2015) masuk ke set formal karena BAB III menggunakan koefisien ITU-R BT.709-6 untuk variasi panduan luminansi;
-- `COF-18` Tarekegn & Debelee (2025) dan `DET-04` Wang et al. (2025) tetap berada pada set formal;
-- `COF-03` Samudra & Rachmawati (2025), `EVAL-01` Lin et al. (2014), dan `XAI-02` Grad-CAM++ tetap backend-only.
+- `COF-03` Samudra & Rachmawati (2025) masuk ke set formal karena disitasi pada Tabel 2.1 sebagai bukti langsung kebingungan antarkelas kopi yang dikaitkan dengan visual similarity;
+- `STD-02` International Telecommunication Union (2015), `COF-18` Tarekegn & Debelee (2025), dan `DET-04` Wang et al. (2025) tetap berada pada set formal;
+- `EVAL-01` Lin et al. (2014) dan `XAI-02` Grad-CAM++ tetap backend-only.
 
 ## Cross-check set formal
 
@@ -34,6 +34,7 @@ Perubahan terbaru:
 | COF-17 | García et al. (2019) | Ada | Official publisher |
 | COF-01 | Hong et al. (2026) | Ada | Official publisher + primary full text |
 | COF-02 | Bahy dan Rifai (2026) | Ada | Official journal + primary full text |
+| COF-03 | Samudra dan Rachmawati (2025) | Ada | Primary IEEE conference paper/full text |
 | COF-04 | Hebert dan Alamsyah (2026) | Ada | Official journal + primary full text |
 | COF-05 | Jundullah et al. (2026) | Ada | Official journal + primary full text |
 | COF-06 | Gope et al. (2024) | Ada | Official publisher |
@@ -71,7 +72,6 @@ Perubahan terbaru:
 
 | Key | Sumber | Alasan tidak masuk bibliography formal saat ini |
 |---|---|---|
-| COF-03 | Samudra & Rachmawati (2025) | Tidak mempunyai sitasi author–year pada BAB I–III saat ini |
 | EVAL-01 | Lin et al. (2014) | Sumber evaluasi backend, tetapi tidak disitasi formal pada naskah |
 | XAI-02 | Grad-CAM++ | Tidak lagi disitasi eksplisit |
 
@@ -80,6 +80,7 @@ Perubahan terbaru:
 Audit bibliografis dua arah **bukan** bukti bahwa setiap klaim telah diverifikasi sampai halaman dan persamaan. Guardrail yang berlaku:
 
 - AFAB-2 mengikuti Xu et al. (2025): distribusi angular Eq. (9), entropi/ambang/pembobotan Eq. (10)–(13); Eq. (14) pada paper adalah bagian CGFI dan tidak boleh diatribusikan kepada AFAB-2;
+- Samudra & Rachmawati (2025) hanya digunakan untuk bukti tiga kelas dan kebingungan black vs partially black yang dikaitkan dengan visual similarity; jangan digeneralisasi ke seluruh taksonomi kopi;
 - Syauqi et al. (2025) tetap disebut sebagai pipeline komposit, bukan bukti CLAHE-only;
 - angka dataset Tarekegn & Debelee mengikuti full text primer;
 - RT-DETRv3 dipakai sebagai dasar evaluasi tambahan, bukan klaim superioritas arsitektur;
