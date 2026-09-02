@@ -82,11 +82,21 @@ Kedua kondisi dilatih secara terpisah pada masing-masing dataset dari bobot awal
 
 Test set digunakan setelah konfigurasi metode, aturan pelatihan, dan prosedur evaluasi ditetapkan. Hasil pada setiap dataset dilaporkan secara terpisah.
 
-Konsistensi metode dinilai dari perubahan kinerja $B_3$ terhadap $B_0$ pada dataset yang sama. Nilai mAP absolut antar-dataset tidak digunakan sebagai dasar perbandingan karena jumlah kelas dan karakteristik data berbeda.
+---
+
+## 4. Evaluasi Multi-Dataset
+
+Metrik utama yang digunakan adalah **mAP50–95**, dengan **mAP50, precision, recall**, dan AP per kelas sebagai metrik pendukung.
+
+Pada robusta_SNI_Dataset, evaluasi digunakan untuk menilai hasil utama metode pada 21 kelas SNI. Pada Capstone, Lulus, dan Niacubilla, evaluasi difokuskan pada perbandingan antara baseline $B_0$ dan konfigurasi final $B_3$ pada dataset yang sama.
+
+Pengaruh prapemrosesan dinilai dari selisih kinerja $B_3$ terhadap $B_0$. Hasil setiap dataset tetap dilaporkan secara terpisah karena jumlah kelas dan karakteristik citra berbeda. Dengan demikian, nilai mAP absolut Capstone, Lulus, dan Niacubilla tidak dibandingkan langsung satu sama lain.
+
+Konsistensi lintas dataset ditunjukkan apabila konfigurasi final memberikan arah perubahan yang serupa pada beberapa dataset konfirmasi.
 
 ---
 
-## 4. Batas Klaim
+## 5. Batas Klaim
 
 Jika hasil pada beberapa dataset menunjukkan arah peningkatan yang konsisten, penelitian dapat menyatakan bahwa konfigurasi prapemrosesan frekuensi-angular memiliki konsistensi lintas dataset yang ditinjau.
 
