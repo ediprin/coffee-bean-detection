@@ -17,7 +17,7 @@ FONT = "Times New Roman"
 # one canonical table for each distinct purpose and does not repeat B0-B3 in
 # the seed-confirmation subsection.
 CAPTIONS = {
-    ("No.", "Penulis dan Tahun", "Sumber Publikasi/Venue", "Fokus Penelitian", "Metode/Model", "Kontribusi terhadap Penelitian"):
+    ("No.", "Penulis dan Tahun", "Sumber Publikasi/Venue", "Fokus Penelitian", "Metode/Model", "Relevansi dengan Penelitian"):
         "Tabel 2.1: Penelitian Terkait",
     ("Kode", "Kondisi", "Peran dalam eksperimen"):
         "Tabel 3.1: Kondisi Utama Eksperimen",
