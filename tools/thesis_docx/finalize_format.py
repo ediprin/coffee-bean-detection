@@ -50,14 +50,8 @@ def _set_table_style(table, style_name: str | None) -> None:
 
 def _set_table_borders(table, visible: bool) -> None:
     tbl_pr = table._tbl.tblPr
-
-    if visible:
-        _set_table_style(table, "TableGrid")
-    else:
-        _set_table_style(table, None)
-
+    _set_table_style(table, "TableGrid" if visible else None)
     _replace_borders(tbl_pr, "w:tblBorders", TABLE_EDGES, visible)
-
     for row in table.rows:
         for cell in row.cells:
             tc_pr = cell._tc.get_or_add_tcPr()
@@ -170,6 +164,30 @@ def _format_source_code_blocks(doc) -> None:
             run.font.size = Pt(12)
 
 
+def _restore_false_table_caption_paragraphs(doc) -> None:
+    """Restore prose beginning with a table number that Pandoc post-formatting mistook for a caption."""
+    for paragraph in doc.paragraphs:
+        if paragraph.style.name != "Caption Table":
+            continue
+        match = re.match(r"^Tabel\s+(\d+\.\d+):\s+([a-z].*)$", paragraph.text.strip())
+        if not match:
+            continue
+        paragraph.text = f"Tabel {match.group(1)} {match.group(2)}"
+        paragraph.style = doc.styles["Normal"]
+        paragraph.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        pf = paragraph.paragraph_format
+        pf.first_line_indent = Cm(1.27)
+        pf.left_indent = Cm(0)
+        pf.right_indent = Cm(0)
+        pf.line_spacing = 1.5
+        pf.space_before = Pt(0)
+        pf.space_after = Pt(0)
+        for run in paragraph.runs:
+            run.font.name = FONT_NAME
+            run.font.size = Pt(12)
+            run.bold = False
+
+
 def _set_cell_width(cell, width_cm: float) -> None:
     """Set a deterministic cell width in twips for Word and LibreOffice."""
     width = Cm(width_cm)
@@ -181,6 +199,15 @@ def _set_cell_width(cell, width_cm: float) -> None:
         tc_pr.append(tc_w)
     tc_w.set(qn("w:w"), str(width.twips))
     tc_w.set(qn("w:type"), "dxa")
+
+
+def _prevent_row_split(row) -> None:
+    tr_pr = row._tr.get_or_add_trPr()
+    cant_split = tr_pr.find(qn("w:cantSplit"))
+    if cant_split is None:
+        cant_split = OxmlElement("w:cantSplit")
+        tr_pr.append(cant_split)
+    cant_split.set(qn("w:val"), "true")
 
 
 def _format_equation_layout_table(table) -> None:
@@ -217,8 +244,8 @@ def _format_equation_layout_table(table) -> None:
 
 
 def _format_related_research_table(doc) -> None:
-    """Give Tabel 2.1 readable column proportions inside the 14 cm text area."""
-    widths_cm = (0.65, 1.65, 2.20, 2.20, 2.15, 5.15)
+    """Give Tabel 2.1 readable column proportions and keep each study row intact."""
+    widths_cm = (0.55, 1.75, 2.55, 2.10, 1.95, 5.10)
 
     for table in doc.tables:
         if not table.rows or len(table.columns) != 6:
@@ -256,6 +283,7 @@ def _format_related_research_table(doc) -> None:
             grid_col.set(qn("w:w"), str(Cm(widths_cm[index]).twips))
 
         for row in table.rows:
+            _prevent_row_split(row)
             for column_index, cell in enumerate(row.cells):
                 _set_cell_width(cell, widths_cm[column_index])
                 for paragraph in cell.paragraphs:
@@ -298,6 +326,7 @@ def finalize(input_path: Path, output_path: Path) -> None:
             normal_tables += 1
 
     _format_source_code_blocks(doc)
+    _restore_false_table_caption_paragraphs(doc)
     _format_related_research_table(doc)
     _force_style_fonts(doc)
     _set_math_default_font(doc)
