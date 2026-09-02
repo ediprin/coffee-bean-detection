@@ -93,15 +93,13 @@ Empat kondisi utama adalah:
 | $B_2$ | $C_0$ + YOLO26n | Konfigurasi referensi frekuensi-angular |
 | $B_3$ | $C^*$ + YOLO26n | Konfigurasi frekuensi-angular terpilih |
 
-CLAHE diterapkan pada kanal luminansi dengan *clip limit* 2,0 dan kisi 8 × 8 sebagai kontrol tetap. Perbandingan $B_2-B_0$ mengukur efek konfigurasi referensi, $B_3-B_2$ efek optimasi desain, dan $B_3-B_1$ perbedaan terhadap peningkatan kontras lokal. Jika konfigurasi referensi menjadi yang terbaik, maka $C^*=C_0$.
-
-Wavelet tidak menjadi pembanding utama. RT-DETRv3-R18 dapat digunakan sebagai analisis tambahan lintas arsitektur setelah $C^*$ ditetapkan.
+CLAHE diterapkan pada kanal luminansi dengan *clip limit* 2,0 dan kisi 8 × 8 sebagai kontrol tetap. Perbandingan $B_2-B_0$ mengukur efek *frontend* frekuensi-angular referensi, $B_3-B_2$ efek optimasi desain, dan $B_3-B_1$ perbedaan terhadap peningkatan kontras lokal. Jika konfigurasi referensi menjadi yang terbaik, maka $C^*=C_0$.
 
 ## 3.4 Prapemrosesan Citra Berbasis Frekuensi-Angular
 
 Prapemrosesan mengadaptasi mekanisme angular AFAB-2 dari Xu et al. (2025), yaitu analisis frekuensi lokal per patch, pembentukan distribusi angular, ambang adaptif berbasis entropi, pembobotan amplitudo, rekonstruksi dengan fase asli, dan penggabungan residual. Diskretisasi angular, pemrosesan per kanal RGB, overlap patch, padding, penggabungan patch, konvensi DC, dan variasi $C_1$ sampai $C_5$ merupakan keputusan adaptasi penelitian.
 
-Pada pipeline YOLO, citra telah menjadi tensor RGB *floating point* pada rentang $[0,1]$ sebelum masuk model. CLAHE dan *frontend* frekuensi-angular ditempatkan setelah augmentasi umum dan sebelum detektor. Kontrak keluaran frekuensi-angular mengikuti Subbab 3.4.6.
+Pada pipeline YOLO, citra telah menjadi tensor RGB *floating point* pada rentang $[0,1]$ sebelum masuk model. *Frontend* frekuensi-angular ditempatkan setelah augmentasi umum dan sebelum detektor. Kontrak keluaran mengikuti Subbab 3.4.6.
 
 ![Arsitektur integrasi prapemrosesan frekuensi-angular dengan YOLO26n](assets/arsitektur_frekuensi_yolo26.svg){width=12.5cm}
 
@@ -131,13 +129,13 @@ Ukuran patch mengikuti konfigurasi referensi Xu et al. (2025), sedangkan overlap
 
 ### 3.4.2 Transformasi Fourier
 
-Untuk patch ke-$i$ dan kanal ke-$c$:
+Untuk patch ke-$i$ dan kanal ke-$c$, transformasi Fourier ortonormal dihitung lalu pusat spektrum dipindahkan ke tengah dengan *FFT shift*:
 
 $$
-F_i^c(u,v)=\mathcal{F}_2\{P_i^c\}(u,v).
+F_i^c(u,v)=\mathrm{fftshift}\!\left(\mathcal{F}_{2,\mathrm{ortho}}\{P_i^c\}\right)(u,v).
 $$
 
-Spektrum dinormalisasi secara ortonormal dan dipusatkan dengan *FFT shift*. Amplitudo dan fase dihitung sebagai:
+Amplitudo dan fase pada spektrum terpusat dihitung sebagai:
 
 $$
 A_i^c(u,v)=|F_i^c(u,v)|,
@@ -147,7 +145,7 @@ $$
 \phi_i^c(u,v)=\arg F_i^c(u,v).
 $$
 
-Amplitudo digunakan dalam analisis spektral, sedangkan fase dipertahankan untuk rekonstruksi. Sebelum transformasi balik, spektrum dikembalikan melalui *inverse FFT shift*.
+Amplitudo digunakan dalam analisis spektral, sedangkan fase dipertahankan untuk rekonstruksi. Sebelum transformasi balik, spektrum terpusat dikembalikan ke susunan indeks FFT dengan *inverse FFT shift* sebagaimana dituliskan pada Subbab 3.4.6.
 
 ### 3.4.3 Distribusi Angular
 
@@ -231,10 +229,14 @@ Karena $0\le w_i^c(k)\le1$, tahap ini tidak memperbesar amplitudo Fourier di ata
 
 ### 3.4.6 Rekonstruksi dan Penggabungan Residual
 
-Spektrum berbobot dikembalikan ke domain spasial:
+Spektrum berbobot dikembalikan ke susunan indeks FFT sebelum transformasi balik:
 
 $$
-\widetilde P_i^c=\mathrm{Re}\left\{\mathcal{F}_2^{-1}(\widetilde F_i^c)\right\}.
+\widetilde P_i^c=
+\mathrm{Re}\left\{
+\mathcal{F}_{2,\mathrm{ortho}}^{-1}
+\left[\mathrm{ifftshift}(\widetilde F_i^c)\right]
+\right\}.
 $$
 
 Pada $C_0$, kontribusi patch yang bertumpang tindih dirata-ratakan menjadi respons $R_{FA}$. Respons tersebut dinormalisasi per citra dan kanal:
@@ -255,7 +257,7 @@ $$
 \boxed{I'^c=I^c+I^c\odot G^c}.
 $$
 
-Setelah residual tidak dilakukan *clipping* atau renormalisasi tambahan. Untuk $I\in[0,1]$, rentang teoritis keluaran adalah $[0,2]$. Ukuran spasial tetap $H\times W$.
+Setelah residual tidak dilakukan *clipping* atau renormalisasi tambahan. Untuk $I\in[0,1]$, rentang teoritis keluaran adalah $[0,2]$. Ukuran spasial tetap $H\times W$. Karena kontrak ini mengubah distribusi nilai masukan sekaligus respons spektralnya, perbandingan terhadap $B_0$ diinterpretasikan sebagai efek *frontend* frekuensi-angular secara keseluruhan.
 
 ## 3.5 Analisis Variasi Desain Prapemrosesan
 
@@ -390,10 +392,10 @@ $$
 Y=0{,}2126R+0{,}7152G+0{,}0722B.
 $$
 
-Satu gate luminansi diterapkan pada ketiga kanal:
+Satu gate luminansi $M_Y$ diterapkan pada ketiga kanal:
 
 $$
-R'=R(1+G_Y),\qquad G'=G(1+G_Y),\qquad B'=B(1+G_Y).
+R'=R(1+M_Y),\qquad G'=G(1+M_Y),\qquad B'=B(1+M_Y).
 $$
 
 Dengan gate yang sama dan tanpa *clipping* pasca-residual, rasio antar-kanal lokal dipertahankan selama penyebut tidak nol.
@@ -440,13 +442,20 @@ Model ini digunakan untuk menetapkan kinerja dasar validasi, menentukan kelompok
 
 ### 3.6.2 Tahap II — Pengujian Variasi Prapemrosesan
 
-Konfigurasi $C_0$ sampai $C_5$ dilatih dengan *seed* 42. Kandidat struktur dipilih berdasarkan validasi:
+Konfigurasi $C_0$ sampai $C_5$ dilatih dengan *seed* 42. Untuk setiap konfigurasi, didefinisikan:
 
 $$
-C_{str}=\arg\max_{C_j,\,j\in\{0,\ldots,5\}}mAP_{50:95}^{val}(C_j).
+m_j=mAP_{50:95}^{val}(C_j),\qquad
+m_{max}=\max_j m_j.
 $$
 
-Selisih absolut $mAP_{50:95}<0{,}001$ pada skala 0–1 diperlakukan sebagai perbedaan praktis yang sangat kecil. Pada kondisi tersebut dipilih konfigurasi dengan $AP_{\mathcal H}$ lebih tinggi; jika masih seri, digunakan median latency *end-to-end* yang lebih rendah berdasarkan Subbab 3.11.
+Konfigurasi yang berada kurang dari 0,001 dari nilai validasi tertinggi dimasukkan ke himpunan kandidat:
+
+$$
+\mathcal{C}_{tie}=\{C_j\mid m_{max}-m_j<0{,}001\}.
+$$
+
+Jika $\mathcal{C}_{tie}$ hanya berisi satu konfigurasi, konfigurasi tersebut menjadi $C_{str}$. Jika terdapat lebih dari satu kandidat, dipilih konfigurasi dengan $AP_{\mathcal H}$ tertinggi; jika masih seri, digunakan median latency *end-to-end* yang lebih rendah berdasarkan Subbab 3.11.
 
 Analisis sensitivitas pada Subbab 3.5.6 dilakukan setelah $C_{str}$ ditetapkan. Konfigurasi akhir $C^*$ dipilih dari konfigurasi yang benar-benar telah dievaluasi menggunakan urutan kriteria yang sama, kemudian dibekukan sebelum tahap konfirmasi dan pengujian.
 
@@ -458,13 +467,7 @@ $$
 S_{conf}=\{123,2026,31415\}.
 $$
 
-Jika $C^*=C_0$, run duplikat $B_2$ dan $B_3$ tidak dilakukan. Untuk metrik validasi $M$, perubahan terhadap baseline dihitung secara berpasangan:
-
-$$
-\Delta_s=M_{perlakuan,s}-M_{B_0,s}.
-$$
-
-Hasil dilaporkan per seed beserta rerata dan variasinya. Seed 42 dilaporkan terpisah sebagai hasil pengembangan.
+Jika $C^*=C_0$, run duplikat $B_2$ dan $B_3$ tidak dilakukan. Hasil setiap *seed* dilaporkan secara berpasangan terhadap baseline menggunakan prosedur pada Subbab 3.8. Seed 42 dilaporkan terpisah sebagai hasil pengembangan.
 
 ### 3.6.4 Evaluasi pada Arsitektur Lain — Opsional
 
@@ -485,14 +488,14 @@ Konfigurasi utama YOLO26n ditunjukkan pada Tabel 3.3.
 | Model | YOLO26n |
 | Bobot awal | `yolo26n.pt` pralatih resmi |
 | Ukuran masukan | 640 × 640 piksel |
-| Epoch maksimum | 50 |
-| Ukuran batch | 16 |
+| Epoch maksimum | 50 pada preflight baseline; nilai final dibekukan sebelum eksperimen utama |
+| Ukuran batch | 16 sebagai target; satu nilai final bersama dibekukan sebelum eksperimen utama |
 | Penghentian dini | 15 epoch tanpa peningkatan $mAP_{50:95}^{val}$ |
 | Optimizer | Auto pada Ultralytics 8.4.96; ter-resolve ke AdamW pada rancangan ini |
 | Seed pengembangan | 42 |
 | Seed konfirmasi | 123, 2026, 31415 |
 
-Seluruh kondisi menggunakan pembagian data, augmentasi, ukuran masukan, batch, batas epoch, penghentian dini, dan lingkungan komputasi yang sama. Batas 50 epoch diperiksa pada baseline pengembangan; jika masih memotong tren perbaikan validasi, batas dinaikkan sebelum eksperimen utama dan diterapkan sama pada seluruh kondisi. Prinsip yang sama berlaku jika batch 16 perlu disesuaikan karena keterbatasan memori.
+Preflight dilakukan pada baseline pengembangan sebelum eksperimen utama. Jika batas 50 epoch masih memotong tren perbaikan validasi, satu batas epoch yang lebih tinggi ditetapkan dan kemudian digunakan pada seluruh kondisi. Jika batch 16 tidak dapat digunakan secara konsisten karena keterbatasan memori, satu ukuran batch yang layak dipilih dan dibekukan untuk seluruh kondisi utama. Setelah eksperimen utama dimulai, kedua nilai tersebut tidak diubah antarkondisi.
 
 Eksperimen menggunakan Ultralytics 8.4.96. Pada versi ini, `best.pt` dan penghentian dini untuk deteksi mengikuti *fitness* yang sama dengan $mAP_{50:95}$. `optimizer=Auto` ter-resolve ke AdamW pada rancangan ini; optimizer, learning rate aktual, dan parameter implementasi penting dicatat pada setiap run.
 
