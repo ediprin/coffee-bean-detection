@@ -28,7 +28,7 @@ Penelitian menggunakan empat dataset deteksi cacat biji kopi. **robusta_SNI_Data
 
 **robusta_SNI_Dataset** tersedia dalam format *instance segmentation* dan mencakup 21 kelas yang dapat dipetakan ke taksonomi SNI. Dalam penelitian ini anotasi objek digunakan sebagai *bounding box* untuk tugas deteksi.
 
-Dataset telah disusun ulang dengan pembagian terkelompok berdasarkan sumber citra. Data pengembangan terdiri atas **1.665 citra pelatihan dengan 2.986 objek** dan **294 citra validasi dengan 526 objek**. Seluruh 21 kelas terdapat pada data pelatihan dan validasi. Data uji dipisahkan dari tahap pengembangan dan digunakan setelah konfigurasi penelitian dibekukan.
+Dataset disusun ulang dengan pembagian terkelompok berdasarkan sumber citra. Pada rancangan proposal, data dibagi menjadi **70% pelatihan, 15% validasi, dan 15% pengujian**. Jumlah akhir citra dan objek pada setiap bagian akan disesuaikan setelah pembagian dataset dibekukan.
 
 Dataset ini menjadi satu-satunya dataset untuk memilih konfigurasi prapemrosesan frekuensi-angular.
 
@@ -46,9 +46,9 @@ Setiap dataset mempertahankan taksonomi kelasnya sendiri dan tidak disatukan den
 
 ### 3.2.4 Pembagian Data
 
-Setiap dataset menggunakan data pelatihan, validasi, dan pengujian. Data pelatihan digunakan untuk melatih model, data validasi digunakan untuk pemantauan pelatihan dan pemilihan *checkpoint*, sedangkan data pengujian digunakan untuk evaluasi akhir.
+Seluruh dataset menggunakan proporsi pembagian yang sama, yaitu **70% data pelatihan, 15% data validasi, dan 15% data pengujian**. Data pelatihan digunakan untuk melatih model, data validasi digunakan untuk pemantauan pelatihan dan pemilihan *checkpoint*, sedangkan data pengujian digunakan untuk evaluasi akhir.
 
-Pada **robusta_SNI_Dataset**, pembagian dilakukan secara terkelompok untuk mencegah citra yang berasal dari sumber yang sama berada pada *split* berbeda. Dataset publik menggunakan *split* yang telah diperiksa; jika *split* bawaan tidak memenuhi kebutuhan penelitian, pembagian disusun ulang sebelum eksperimen.
+Pada **robusta_SNI_Dataset**, pembagian dilakukan secara terkelompok untuk mencegah citra yang berasal dari sumber yang sama berada pada *split* berbeda. Prinsip yang sama diterapkan pada dataset publik ketika terdapat citra yang berasal dari sumber atau hasil augmentasi yang sama.
 
 Konfigurasi prapemrosesan hanya dipilih menggunakan data pelatihan dan validasi **robusta_SNI_Dataset**. Data validasi pada dataset konfirmasi tidak digunakan untuk mengubah struktur atau parameter prapemrosesan yang telah dibekukan.
 
