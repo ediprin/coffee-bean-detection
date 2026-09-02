@@ -22,6 +22,7 @@ Dokumen ini mencatat sumber resmi atau primer yang boleh mendukung artefak forma
 | COF-17 | FINAL — OFFICIAL VERIFIED | MDPI Applied Sciences | García et al. (2019). |
 | COF-01 | FINAL — OFFICIAL VERIFIED | Elsevier / CRFS | Hong et al. (2026), improved YOLOv10 coffee defect detection. |
 | COF-02 | FINAL — OFFICIAL VERIFIED | IJoICT official article/PDF | Bahy & Rifai (2026), 20-category SNI-based detection. |
+| COF-03 | FINAL — PRIMARY PUBLISHER PDF VERIFIED | IEEE ICoDSA primary paper | Samudra & Rachmawati (2025); aman untuk contoh kebingungan black vs partially black yang dikaitkan penulis dengan visual similarity. |
 | COF-04 | FINAL — OFFICIAL VERIFIED | INOVTEK official page | Hebert & Alamsyah (2026). |
 | COF-05 | FINAL — OFFICIAL VERIFIED | Brilliance official article/PDF | Jundullah et al. (2026); klaim per kelas harus mengikuti tabel/diskusi primer. |
 | COF-06 | FINAL — OFFICIAL VERIFIED | Nature / Scientific Reports | Gope et al. (2024). |
@@ -61,7 +62,6 @@ Sumber berikut tetap boleh digunakan untuk audit/konteks internal tetapi tidak b
 
 | Key | Sumber | Status |
 |---|---|---|
-| COF-03 | Samudra & Rachmawati (2025), LSKNet coffee defect detection | PRIMARY PUBLISHER PDF VERIFIED |
 | EVAL-01 | Lin et al. (2014), Microsoft COCO | OFFICIAL VERIFIED |
 | XAI-02 | Grad-CAM++ | PRIMARY VERIFIED / OPTIONAL |
 
@@ -77,4 +77,4 @@ Sumber berikut tetap boleh digunakan untuk audit/konteks internal tetapi tidak b
 
 ## D. Status formal
 
-Set sitasi formal saat ini: **37 sumber unik**. `CITATION_CROSSWALK.md`, `BIBLIOGRAPHY_METADATA_LOCK.md`, `DAFTAR_PUSTAKA.md`, dan `BIDIRECTIONAL_CITATION_AUDIT.md` harus mengikuti angka yang sama.
+Set sitasi formal saat ini: **38 sumber unik**. `CITATION_CROSSWALK.md`, `BIBLIOGRAPHY_METADATA_LOCK.md`, `DAFTAR_PUSTAKA.md`, dan `BIDIRECTIONAL_CITATION_AUDIT.md` harus mengikuti angka yang sama.
