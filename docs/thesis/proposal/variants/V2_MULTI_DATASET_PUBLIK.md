@@ -20,10 +20,10 @@ Dataset utama penelitian adalah **robusta_SNI_Dataset**, sedangkan **Coffee Bean
 
 | Dataset | Sumber | Peran |
 |---|---|---|
-| robusta_SNI_Dataset | Roboflow Universe | Dataset utama untuk pengembangan dan pemilihan konfigurasi prapemrosesan |
-| Coffee Bean Defect (Capstone) | Roboflow Universe | Dataset konfirmasi I |
-| Green Coffee Bean Defects (Lulus) | Roboflow Universe | Dataset konfirmasi II |
-| Coffee Bean Defects (Niacubilla) | Roboflow Universe | Dataset konfirmasi III |
+| robusta_SNI_Dataset | [Roboflow Universe](https://universe.roboflow.com/faruq-reybi/robusta_sni_dataset) | Dataset utama untuk pengembangan dan pemilihan konfigurasi prapemrosesan |
+| Coffee Bean Defect (Capstone) | [Roboflow Universe](https://universe.roboflow.com/capstone-2-wwe5t/coffee-bean-defect-a0vno/dataset/1) | Dataset konfirmasi I |
+| Green Coffee Bean Defects (Lulus) | [Roboflow Universe](https://universe.roboflow.com/lulus-vpibo/green-coffee-bean-defects/dataset/1) | Dataset konfirmasi II |
+| Coffee Bean Defects (Niacubilla) | [Roboflow Universe](https://universe.roboflow.com/niacubilla/coffee-bean-defects/dataset/1) | Dataset konfirmasi III |
 
 ### 2.2 Dataset Utama robusta_SNI_Dataset
 
@@ -37,11 +37,11 @@ Dataset ini menjadi satu-satunya dataset untuk memilih konfigurasi prapemrosesan
 
 Tiga dataset publik digunakan untuk melihat apakah pengaruh metode tetap konsisten pada sumber data yang berbeda. Dataset tersebut tidak digunakan untuk memilih ulang konfigurasi prapemrosesan.
 
-| Dataset | Task | Jumlah kelas | Penggunaan |
-|---|---|---:|---|
-| Coffee Bean Defect (Capstone) | Object detection | 14 | Konfirmasi lintas dataset |
-| Green Coffee Bean Defects (Lulus) | Object detection | 6 | Konfirmasi lintas dataset |
-| Coffee Bean Defects (Niacubilla) | Object detection | 9 | Konfirmasi lintas dataset |
+| Dataset | Versi | Task | Jumlah kelas | Penggunaan |
+|---|---:|---|---:|---|
+| Coffee Bean Defect (Capstone) | 1 | Object detection | 14 | Konfirmasi lintas dataset |
+| Green Coffee Bean Defects (Lulus) | 1 | Object detection | 6 | Konfirmasi lintas dataset |
+| Coffee Bean Defects (Niacubilla) | 1 | Object detection | 9 | Konfirmasi lintas dataset |
 
 Setiap dataset mempertahankan taksonomi kelasnya sendiri dan tidak disatukan dengan kelas pada robusta_SNI_Dataset.
 
