@@ -1,94 +1,71 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1240" viewBox="0 0 800 1240">
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1500" viewBox="0 0 1000 1500">
   <defs>
-    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
-      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#6b7280" flood-opacity="0.18"/>
-    </filter>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,5 L0,10 z" fill="#222"/>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,5 L0,10 z" fill="#252525"/>
     </marker>
     <style>
-      .box { stroke-width: 2.2; rx: 16; ry: 16; filter: url(#shadow); }
-      .label { font-family: 'Times New Roman', serif; font-size: 23px; font-weight: 700; fill: #171717; text-anchor: middle; dominant-baseline: middle; }
-      .step { font-family: 'Times New Roman', serif; font-size: 18px; font-weight: 700; fill: #17324d; text-anchor: middle; dominant-baseline: middle; }
-      .arrow { stroke: #222; stroke-width: 2.6; marker-end: url(#arrow); }
+      .title { font-family:'Times New Roman',serif; font-size:25px; font-weight:700; fill:#111; text-anchor:middle; }
+      .sub { font-family:'Times New Roman',serif; font-size:19px; fill:#222; text-anchor:middle; }
+      .step { stroke-width:2.6; rx:18; ry:18; }
+      .blue { fill:#dcecff; stroke:#245a9a; }
+      .green { fill:#e1f2dc; stroke:#387532; }
+      .gold { fill:#fff0bd; stroke:#b27a00; }
+      .violet { fill:#eadff7; stroke:#7247a2; }
+      .cyan { fill:#dff3f4; stroke:#1f7f83; }
+      .orange { fill:#ffe2c7; stroke:#c96c00; }
+      .rose { fill:#f9dce2; stroke:#c4485c; }
+      .arrow { stroke:#252525; stroke-width:3; fill:none; marker-end:url(#arrow); }
     </style>
   </defs>
 
-  <rect x="0" y="0" width="800" height="1240" fill="#ffffff"/>
+  <rect width="1000" height="1500" fill="#ffffff"/>
 
-  <!-- 1 -->
-  <rect class="box" x="50" y="30" width="700" height="78" fill="#eaf4ff" stroke="#24558a"/>
-  <circle cx="98" cy="69" r="24" fill="#ffffff" stroke="#24558a" stroke-width="2"/>
-  <text class="step" x="98" y="69">01</text>
-  <text class="label" x="420" y="69">Pengumpulan dataset primer biji kopi</text>
-  <line class="arrow" x1="400" y1="108" x2="400" y2="132"/>
+  <rect class="step blue" x="70" y="30" width="860" height="100"/>
+  <text class="title" x="500" y="70">Persiapan robusta_SNI_Dataset</text>
+  <text class="sub" x="500" y="102">dataset utama, 21 kelas</text>
 
-  <!-- 2 -->
-  <rect class="box" x="50" y="142" width="700" height="78" fill="#edf8ea" stroke="#537d45"/>
-  <circle cx="98" cy="181" r="24" fill="#ffffff" stroke="#537d45" stroke-width="2"/>
-  <text class="step" x="98" y="181">02</text>
-  <text class="label" x="420" y="181">Anotasi dan pemeriksaan kecukupan data per kelas</text>
-  <line class="arrow" x1="400" y1="220" x2="400" y2="244"/>
+  <line class="arrow" x1="500" y1="130" x2="500" y2="157"/>
+  <rect class="step green" x="70" y="165" width="860" height="100"/>
+  <text class="title" x="500" y="205">Pembagian data secara terkelompok</text>
+  <text class="sub" x="500" y="237">train, validation, dan test</text>
 
-  <!-- 3 -->
-  <rect class="box" x="50" y="254" width="700" height="78" fill="#fff7df" stroke="#d89c25"/>
-  <circle cx="98" cy="293" r="24" fill="#ffffff" stroke="#d89c25" stroke-width="2"/>
-  <text class="step" x="98" y="293">03</text>
-  <text class="label" x="420" y="293">Pembagian data pelatihan, validasi, dan pengujian</text>
-  <line class="arrow" x1="400" y1="332" x2="400" y2="356"/>
+  <line class="arrow" x1="500" y1="265" x2="500" y2="292"/>
+  <rect class="step gold" x="70" y="300" width="860" height="100"/>
+  <text class="title" x="500" y="340">Pembentukan baseline YOLO26n</text>
+  <text class="sub" x="500" y="372">model acuan tanpa prapemrosesan tambahan</text>
 
-  <!-- 4 -->
-  <rect class="box" x="50" y="366" width="700" height="78" fill="#f3ecfb" stroke="#7552a6"/>
-  <circle cx="98" cy="405" r="24" fill="#ffffff" stroke="#7552a6" stroke-width="2"/>
-  <text class="step" x="98" y="405">04</text>
-  <text class="label" x="420" y="405">Pembentukan model acuan pengembangan</text>
-  <line class="arrow" x1="400" y1="444" x2="400" y2="468"/>
+  <line class="arrow" x1="500" y1="400" x2="500" y2="427"/>
+  <rect class="step orange" x="70" y="435" width="860" height="105"/>
+  <text class="title" x="500" y="476">Pengujian prapemrosesan frekuensi-angular</text>
+  <text class="sub" x="500" y="508">variasi C0–C5 pada dataset utama</text>
 
-  <!-- 5 -->
-  <rect class="box" x="50" y="478" width="700" height="86" fill="#e9f4ff" stroke="#4383b9"/>
-  <circle cx="98" cy="521" r="24" fill="#ffffff" stroke="#4383b9" stroke-width="2"/>
-  <text class="step" x="98" y="521">05</text>
-  <text class="label" x="430" y="511"><tspan x="430" dy="-10">Konfigurasi referensi prapemrosesan</tspan><tspan x="430" dy="27">frekuensi-angular (C0)</tspan></text>
-  <line class="arrow" x1="400" y1="564" x2="400" y2="588"/>
+  <line class="arrow" x1="500" y1="540" x2="500" y2="567"/>
+  <rect class="step cyan" x="70" y="575" width="860" height="100"/>
+  <text class="title" x="500" y="615">Pemilihan dan pembekuan C*</text>
+  <text class="sub" x="500" y="647">konfigurasi final prapemrosesan</text>
 
-  <!-- 6 -->
-  <rect class="box" x="50" y="598" width="700" height="78" fill="#fff0e8" stroke="#df7f32"/>
-  <circle cx="98" cy="637" r="24" fill="#ffffff" stroke="#df7f32" stroke-width="2"/>
-  <text class="step" x="98" y="637">06</text>
-  <text class="label" x="420" y="637">Pengujian variasi desain prapemrosesan (C0-C5)</text>
-  <line class="arrow" x1="400" y1="676" x2="400" y2="700"/>
+  <line class="arrow" x1="500" y1="675" x2="500" y2="702"/>
+  <rect class="step violet" x="70" y="710" width="860" height="110"/>
+  <text class="title" x="500" y="750">Persiapan dataset konfirmasi</text>
+  <text class="sub" x="500" y="783">Capstone, Lulus, dan Niacubilla</text>
 
-  <!-- 7 -->
-  <rect class="box" x="50" y="710" width="700" height="78" fill="#e9f7f7" stroke="#4c9ba0"/>
-  <circle cx="98" cy="749" r="24" fill="#ffffff" stroke="#4c9ba0" stroke-width="2"/>
-  <text class="step" x="98" y="749">07</text>
-  <text class="label" x="420" y="749">Pemilihan konfigurasi C*</text>
-  <line class="arrow" x1="400" y1="788" x2="400" y2="812"/>
+  <line class="arrow" x1="500" y1="820" x2="500" y2="847"/>
+  <rect class="step rose" x="70" y="855" width="860" height="115"/>
+  <text class="title" x="500" y="897">Pelatihan terpisah pada setiap dataset konfirmasi</text>
+  <text class="sub" x="500" y="930">baseline YOLO26n dibandingkan dengan C* + YOLO26n</text>
 
-  <!-- 8 -->
-  <rect class="box" x="50" y="822" width="700" height="92" fill="#fff0f2" stroke="#d75d70"/>
-  <circle cx="98" cy="868" r="24" fill="#ffffff" stroke="#d75d70" stroke-width="2"/>
-  <text class="step" x="98" y="868">08</text>
-  <text class="label" x="430" y="858"><tspan x="430" dy="-10">Pelatihan ulang beberapa seed konfirmasi</tspan><tspan x="430" dy="27">(B0: YOLO26n, B1: CLAHE, B2: C0, B3: C*)</tspan></text>
-  <line class="arrow" x1="400" y1="914" x2="400" y2="938"/>
+  <line class="arrow" x1="500" y1="970" x2="500" y2="997"/>
+  <rect class="step green" x="70" y="1005" width="860" height="110"/>
+  <text class="title" x="500" y="1047">Evaluasi akhir pada test set</text>
+  <text class="sub" x="500" y="1080">dilakukan setelah protokol eksperimen dibekukan</text>
 
-  <!-- 9 -->
-  <rect class="box" x="50" y="948" width="700" height="78" fill="#eaf4ff" stroke="#4383b9"/>
-  <circle cx="98" cy="987" r="24" fill="#ffffff" stroke="#4383b9" stroke-width="2"/>
-  <text class="step" x="98" y="987">09</text>
-  <text class="label" x="420" y="987">Evaluasi akhir pada data uji</text>
-  <line class="arrow" x1="400" y1="1026" x2="400" y2="1050"/>
+  <line class="arrow" x1="500" y1="1115" x2="500" y2="1142"/>
+  <rect class="step blue" x="70" y="1150" width="860" height="110"/>
+  <text class="title" x="500" y="1192">Analisis hasil</text>
+  <text class="sub" x="500" y="1225">kinerja per dataset dan konsistensi lintas dataset</text>
 
-  <!-- 10 -->
-  <rect class="box" x="50" y="1060" width="700" height="78" fill="#edf8ea" stroke="#537d45"/>
-  <circle cx="98" cy="1099" r="24" fill="#ffffff" stroke="#537d45" stroke-width="2"/>
-  <text class="step" x="98" y="1099">10</text>
-  <text class="label" x="420" y="1099">Analisis per kelas, kesalahan, visual, dan efisiensi</text>
-  <line class="arrow" x1="400" y1="1138" x2="400" y2="1162"/>
-
-  <!-- 11 -->
-  <rect class="box" x="50" y="1172" width="700" height="58" fill="#fff0f0" stroke="#dd5555"/>
-  <circle cx="98" cy="1201" r="20" fill="#ffffff" stroke="#dd5555" stroke-width="2"/>
-  <text class="step" x="98" y="1201">11</text>
-  <text class="label" x="420" y="1201">Kesimpulan</text>
+  <line class="arrow" x1="500" y1="1260" x2="500" y2="1287"/>
+  <rect class="step gold" x="70" y="1295" width="860" height="105"/>
+  <text class="title" x="500" y="1337">Kesimpulan</text>
+  <text class="sub" x="500" y="1370">pengaruh prapemrosesan frekuensi-angular terhadap YOLO26n</text>
 </svg>
