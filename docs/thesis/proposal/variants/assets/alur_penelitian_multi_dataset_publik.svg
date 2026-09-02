@@ -4,8 +4,8 @@
       <path d="M0,0 L10,5 L0,10 z" fill="#252525"/>
     </marker>
     <style>
-      .title { font-family:'Times New Roman',serif; font-size:26px; font-weight:700; fill:#111; text-anchor:middle; }
-      .sub { font-family:'Times New Roman',serif; font-size:20px; fill:#222; text-anchor:middle; }
+      .title { font-family:'Times New Roman',serif; font-size:25px; font-weight:700; fill:#111; text-anchor:middle; }
+      .sub { font-family:'Times New Roman',serif; font-size:19px; fill:#222; text-anchor:middle; }
       .step { stroke-width:2.6; rx:18; ry:18; }
       .blue { fill:#dcecff; stroke:#245a9a; }
       .green { fill:#e1f2dc; stroke:#387532; }
@@ -15,78 +15,57 @@
       .orange { fill:#ffe2c7; stroke:#c96c00; }
       .rose { fill:#f9dce2; stroke:#c4485c; }
       .arrow { stroke:#252525; stroke-width:3; fill:none; marker-end:url(#arrow); }
-      .icon { fill:none; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
     </style>
   </defs>
 
-  <rect x="0" y="0" width="1000" height="1500" fill="#ffffff"/>
+  <rect width="1000" height="1500" fill="#ffffff"/>
 
-  <rect class="step blue" x="70" y="35" width="860" height="100"/>
-  <circle cx="125" cy="85" r="24" class="icon" stroke="#245a9a"/>
-  <path d="M109 85h32 M125 69v32" class="icon" stroke="#245a9a"/>
-  <text class="title" x="535" y="78">Candidate pool dataset publik</text>
-  <text class="sub" x="535" y="108">dataset deteksi cacat biji kopi dari beberapa sumber</text>
+  <rect class="step blue" x="70" y="30" width="860" height="100"/>
+  <text class="title" x="500" y="70">Persiapan robusta_SNI_Dataset</text>
+  <text class="sub" x="500" y="102">dataset utama, 21 kelas</text>
 
-  <line class="arrow" x1="500" y1="135" x2="500" y2="166"/>
-  <rect class="step green" x="70" y="175" width="860" height="110"/>
-  <rect x="105" y="205" width="42" height="50" rx="4" class="icon" stroke="#387532"/>
-  <path d="M115 230l9 9 17-20" class="icon" stroke="#387532"/>
-  <text class="title" x="535" y="218">Audit provenance, lisensi, versi, anotasi, dan duplikasi</text>
-  <text class="sub" x="535" y="250">exact hash, near-duplicate, fork/derivatif, dan kualitas bounding box</text>
+  <line class="arrow" x1="500" y1="130" x2="500" y2="157"/>
+  <rect class="step green" x="70" y="165" width="860" height="100"/>
+  <text class="title" x="500" y="205">Pembagian data secara terkelompok</text>
+  <text class="sub" x="500" y="237">train, validation, dan test</text>
 
-  <line class="arrow" x1="500" y1="285" x2="500" y2="316"/>
-  <rect class="step gold" x="70" y="325" width="860" height="105"/>
-  <path d="M104 390h48 M104 370h48 M104 350h48" class="icon" stroke="#b27a00"/>
-  <circle cx="118" cy="350" r="5" fill="#b27a00"/><circle cx="138" cy="370" r="5" fill="#b27a00"/><circle cx="125" cy="390" r="5" fill="#b27a00"/>
-  <text class="title" x="535" y="368">Pembekuan dataset independen dan split leakage-safe</text>
-  <text class="sub" x="535" y="399">setiap dataset mempertahankan ruang kelasnya sendiri</text>
+  <line class="arrow" x1="500" y1="265" x2="500" y2="292"/>
+  <rect class="step gold" x="70" y="300" width="860" height="100"/>
+  <text class="title" x="500" y="340">Pembentukan baseline YOLO26n</text>
+  <text class="sub" x="500" y="372">model acuan tanpa prapemrosesan tambahan</text>
 
-  <line class="arrow" x1="500" y1="430" x2="500" y2="461"/>
-  <rect class="step violet" x="70" y="470" width="860" height="105"/>
-  <circle cx="127" cy="521" r="27" class="icon" stroke="#7247a2"/>
-  <path d="M127 494v54 M100 521h54" class="icon" stroke="#7247a2"/>
-  <text class="title" x="535" y="513">Pemilihan dataset pengembangan Ddev</text>
-  <text class="sub" x="535" y="544">berdasarkan kualitas data, bukan hasil model</text>
+  <line class="arrow" x1="500" y1="400" x2="500" y2="427"/>
+  <rect class="step orange" x="70" y="435" width="860" height="105"/>
+  <text class="title" x="500" y="476">Pengujian prapemrosesan frekuensi-angular</text>
+  <text class="sub" x="500" y="508">variasi C0–C5 pada dataset utama</text>
 
-  <line class="arrow" x1="500" y1="575" x2="500" y2="606"/>
-  <rect class="step blue" x="70" y="615" width="860" height="105"/>
-  <path d="M106 668l20-28 20 28-20 28z" class="icon" stroke="#245a9a"/>
-  <circle cx="126" cy="668" r="8" fill="#245a9a"/>
-  <text class="title" x="535" y="657">Pembentukan model acuan YOLO26n pada Ddev</text>
-  <text class="sub" x="535" y="688">baseline pengembangan menggunakan seed 42</text>
+  <line class="arrow" x1="500" y1="540" x2="500" y2="567"/>
+  <rect class="step cyan" x="70" y="575" width="860" height="100"/>
+  <text class="title" x="500" y="615">Pemilihan dan pembekuan C*</text>
+  <text class="sub" x="500" y="647">konfigurasi final prapemrosesan</text>
 
-  <line class="arrow" x1="500" y1="720" x2="500" y2="751"/>
-  <rect class="step cyan" x="70" y="760" width="860" height="105"/>
-  <circle cx="126" cy="812" r="28" class="icon" stroke="#1f7f83"/>
-  <circle cx="126" cy="812" r="13" class="icon" stroke="#1f7f83"/>
-  <path d="M126 775v20 M126 829v20 M89 812h20 M143 812h20" class="icon" stroke="#1f7f83"/>
-  <text class="title" x="535" y="802">Konfigurasi referensi frekuensi-angular C0</text>
-  <text class="sub" x="535" y="833">frontend pada ruang citra masukan</text>
+  <line class="arrow" x1="500" y1="675" x2="500" y2="702"/>
+  <rect class="step violet" x="70" y="710" width="860" height="110"/>
+  <text class="title" x="500" y="750">Persiapan dataset konfirmasi</text>
+  <text class="sub" x="500" y="783">Capstone, Lulus, dan Niacubilla</text>
 
-  <line class="arrow" x1="500" y1="865" x2="500" y2="896"/>
-  <rect class="step orange" x="70" y="905" width="860" height="105"/>
-  <path d="M102 940h50 M102 960h50 M102 980h50" class="icon" stroke="#c96c00"/>
-  <circle cx="120" cy="940" r="6" fill="#c96c00"/><circle cx="138" cy="960" r="6" fill="#c96c00"/><circle cx="113" cy="980" r="6" fill="#c96c00"/>
-  <text class="title" x="535" y="947">Pengujian variasi C0–C5 hanya pada Ddev</text>
-  <text class="sub" x="535" y="978">termasuk analisis sensitivitas terbatas</text>
+  <line class="arrow" x1="500" y1="820" x2="500" y2="847"/>
+  <rect class="step rose" x="70" y="855" width="860" height="115"/>
+  <text class="title" x="500" y="897">Pelatihan terpisah pada setiap dataset konfirmasi</text>
+  <text class="sub" x="500" y="930">baseline YOLO26n dibandingkan dengan C* + YOLO26n</text>
 
-  <line class="arrow" x1="500" y1="1010" x2="500" y2="1041"/>
-  <rect class="step cyan" x="70" y="1050" width="860" height="105"/>
-  <path d="M106 1099l20-18 20 18-7 27h-26z" class="icon" stroke="#1f7f83"/>
-  <path d="M126 1081v45" class="icon" stroke="#1f7f83"/>
-  <text class="title" x="535" y="1092">Pemilihan dan pembekuan konfigurasi C*</text>
-  <text class="sub" x="535" y="1123">C* tidak dituning ulang pada dataset eksternal</text>
+  <line class="arrow" x1="500" y1="970" x2="500" y2="997"/>
+  <rect class="step green" x="70" y="1005" width="860" height="110"/>
+  <text class="title" x="500" y="1047">Evaluasi akhir pada test set</text>
+  <text class="sub" x="500" y="1080">dilakukan setelah protokol eksperimen dibekukan</text>
 
-  <line class="arrow" x1="500" y1="1155" x2="500" y2="1186"/>
-  <rect class="step rose" x="70" y="1195" width="860" height="115"/>
-  <path d="M100 1250a26 26 0 1 0 12-22" class="icon" stroke="#c4485c"/>
-  <path d="M102 1226l14 1-5 13" class="icon" stroke="#c4485c"/>
-  <text class="title" x="535" y="1238">Konfirmasi multi-dataset dengan beberapa seed</text>
-  <text class="sub" x="535" y="1271">B0, B1, B2, dan B3 pada setiap dataset; C* tetap</text>
+  <line class="arrow" x1="500" y1="1115" x2="500" y2="1142"/>
+  <rect class="step blue" x="70" y="1150" width="860" height="110"/>
+  <text class="title" x="500" y="1192">Analisis hasil</text>
+  <text class="sub" x="500" y="1225">kinerja per dataset dan konsistensi lintas dataset</text>
 
-  <line class="arrow" x1="500" y1="1310" x2="500" y2="1341"/>
-  <rect class="step blue" x="70" y="1350" width="860" height="105"/>
-  <path d="M104 1415v-32 M124 1415v-48 M144 1415v-66" class="icon" stroke="#245a9a"/>
-  <text class="title" x="535" y="1392">Evaluasi akhir dan analisis lintas dataset</text>
-  <text class="sub" x="535" y="1423">mAP, paired delta, hard-class, kesalahan, visual, dan efisiensi</text>
+  <line class="arrow" x1="500" y1="1260" x2="500" y2="1287"/>
+  <rect class="step gold" x="70" y="1295" width="860" height="105"/>
+  <text class="title" x="500" y="1337">Kesimpulan</text>
+  <text class="sub" x="500" y="1370">pengaruh prapemrosesan frekuensi-angular terhadap YOLO26n</text>
 </svg>
