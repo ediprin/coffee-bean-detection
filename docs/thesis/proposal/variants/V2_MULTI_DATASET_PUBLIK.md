@@ -71,28 +71,25 @@ Pada tahap ini tetap digunakan kondisi utama $B_0$, $B_1$, $B_2$, dan $B_3$ sesu
 
 ### 3.2 Tahap Konfirmasi Lintas Dataset
 
-Setelah $C^*$ ditetapkan, konfigurasi tersebut dibekukan. Pada Capstone, Lulus, dan Niacubilla hanya dilakukan perbandingan antara:
+Setelah $C^*$ ditetapkan, konfigurasi tersebut dibekukan. Pada Capstone, Lulus, dan Niacubilla hanya dibandingkan **baseline YOLO26n ($B_0$)** dan **YOLO26n dengan konfigurasi final $C^*$ ($B_3$)**.
 
-- **baseline YOLO26n ($B_0$)**; dan
-- **YOLO26n dengan konfigurasi final $C^*$ ($B_3$)**.
-
-Kedua kondisi dilatih secara terpisah pada masing-masing dataset dari bobot awal resmi YOLO26n yang sama. Konfigurasi $C^*$ tidak dipilih ulang berdasarkan hasil dataset konfirmasi.
+Kedua kondisi dilatih secara terpisah pada masing-masing dataset dari bobot awal resmi YOLO26n yang sama dan menggunakan seed konfirmasi yang sama. Konfigurasi $C^*$ tidak dipilih ulang berdasarkan hasil dataset konfirmasi.
 
 ### 3.3 Evaluasi Akhir
 
-Test set digunakan setelah konfigurasi metode, aturan pelatihan, dan prosedur evaluasi ditetapkan. Hasil pada setiap dataset dilaporkan secara terpisah.
+Test set digunakan setelah konfigurasi metode, aturan pelatihan, seed, dan prosedur evaluasi ditetapkan. Hasil pada setiap dataset dilaporkan secara terpisah.
 
 ---
 
 ## 4. Evaluasi Multi-Dataset
 
-Metrik utama yang digunakan adalah **mAP50–95**, dengan **mAP50, precision, recall**, dan AP per kelas sebagai metrik pendukung.
+Metrik utama adalah **mAP50–95**, sedangkan **mAP50, precision, recall**, dan AP per kelas digunakan sebagai metrik pendukung.
 
-Pada robusta_SNI_Dataset, evaluasi digunakan untuk menilai hasil utama metode pada 21 kelas SNI. Pada Capstone, Lulus, dan Niacubilla, evaluasi difokuskan pada perbandingan antara baseline $B_0$ dan konfigurasi final $B_3$ pada dataset yang sama.
+Pada **robusta_SNI_Dataset**, evaluasi mencakup seluruh kondisi eksperimen utama. Pada Capstone, Lulus, dan Niacubilla, evaluasi difokuskan pada perbandingan $B_0$ dan $B_3$.
 
-Pengaruh prapemrosesan dinilai dari selisih kinerja $B_3$ terhadap $B_0$. Hasil setiap dataset tetap dilaporkan secara terpisah karena jumlah kelas dan karakteristik citra berbeda. Dengan demikian, nilai mAP absolut Capstone, Lulus, dan Niacubilla tidak dibandingkan langsung satu sama lain.
+Untuk setiap dataset konfirmasi, hasil beberapa seed diringkas dengan nilai rata-rata dan simpangan baku. Pengaruh prapemrosesan dinilai dari selisih kinerja $B_3$ terhadap $B_0$ pada dataset yang sama. Nilai mAP absolut antar-dataset tidak dibandingkan secara langsung karena jumlah kelas dan karakteristik data berbeda.
 
-Konsistensi lintas dataset ditunjukkan apabila konfigurasi final memberikan arah perubahan yang serupa pada beberapa dataset konfirmasi.
+Konsistensi lintas dataset ditunjukkan dari arah dan besar perubahan kinerja pada Capstone, Lulus, dan Niacubilla setelah menggunakan konfigurasi $C^*$ yang sama.
 
 ---
 
