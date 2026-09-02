@@ -5,7 +5,7 @@
 
 Penelitian ini menggunakan eksperimen komparatif untuk menganalisis pengaruh prapemrosesan citra berbasis frekuensi-angular terhadap kinerja YOLO26n pada deteksi *fine-grained* cacat biji kopi. Arsitektur YOLO26n dipertahankan pada perbandingan utama, sedangkan perlakuan eksperimen diberikan pada citra masukan.
 
-Tahapan penelitian mencakup pengumpulan dan anotasi dataset primer, pembagian data berbasis kelompok sumber, pembentukan model acuan, pengujian variasi prapemrosesan, pemilihan konfigurasi $C^*$, pelatihan ulang dengan beberapa *seed* konfirmasi, evaluasi akhir, serta analisis per kelas, visual, kesalahan, dan efisiensi komputasi. Alur penelitian ditunjukkan pada Gambar 3.1.
+Tahapan penelitian mencakup persiapan **robusta_SNI_Dataset** sebagai dataset utama, pembentukan model acuan, pengujian variasi prapemrosesan, pemilihan konfigurasi $C^*$, konfirmasi pada tiga dataset publik, evaluasi akhir, serta analisis per kelas, visual, kesalahan, dan efisiensi komputasi. Konfigurasi $C^*$ dipilih hanya pada dataset utama, kemudian dibekukan sebelum digunakan pada dataset konfirmasi. Alur penelitian ditunjukkan pada Gambar 3.1.
 
 ![Alur penelitian](assets/alur_penelitian.svg){width=12.5cm}
 
@@ -13,74 +13,52 @@ Gambar 3.1 Alur Penelitian
 
 ## 3.2 Dataset Penelitian
 
-### 3.2.1 Sumber dan Karakteristik Dataset Primer
+### 3.2.1 Sumber dan Peran Dataset
 
-Penelitian menggunakan **dataset primer** untuk deteksi objek multikelas pada biji kopi hijau. Daftar kelas awal menargetkan 20 kategori cacat fisik dan benda asing yang digunakan dalam penilaian SNI 2907:2008 ditambah satu kelas biji normal:
+Penelitian menggunakan empat dataset deteksi cacat biji kopi. **robusta_SNI_Dataset** digunakan sebagai dataset utama untuk pengembangan dan pemilihan konfigurasi prapemrosesan, sedangkan **Coffee Bean Defect (Capstone)**, **Green Coffee Bean Defects (Lulus)**, dan **Coffee Bean Defects (Niacubilla)** digunakan sebagai dataset konfirmasi. Setiap dataset digunakan secara terpisah dan tidak digabungkan karena memiliki sumber, jumlah kelas, dan karakteristik citra yang berbeda.
 
-$$
-C_{target}=21.
-$$
+| Dataset | Sumber | Peran |
+|---|---|---|
+| robusta_SNI_Dataset | Roboflow Universe | Dataset utama |
+| Coffee Bean Defect (Capstone) | Roboflow Universe | Dataset konfirmasi I |
+| Green Coffee Bean Defects (Lulus) | Roboflow Universe | Dataset konfirmasi II |
+| Coffee Bean Defects (Niacubilla) | Roboflow Universe | Dataset konfirmasi III |
 
-Jumlah kelas final ditetapkan setelah audit kecukupan data dan sebelum pembagian dataset serta pelatihan utama. Setiap citra direncanakan memuat banyak objek, sehingga skala dataset dinilai berdasarkan jumlah citra sumber, jumlah objek, distribusi per kelas, dan penyebaran pada kelompok sumber independen. Informasi asal fisik sampel, lot/batch, dan sumber pengadaan dicatat sesuai kondisi pengumpulan aktual.
+### 3.2.2 Dataset Utama robusta_SNI_Dataset
 
-### 3.2.2 Target Pengumpulan dan Pemeriksaan Kecukupan Data
+**robusta_SNI_Dataset** tersedia dalam format *instance segmentation* dan mencakup 21 kelas yang dapat dipetakan ke taksonomi SNI. Dalam penelitian ini anotasi objek digunakan sebagai *bounding box* untuk tugas deteksi.
 
-Target pengumpulan adalah sekitar 180–220 citra sumber dengan sasaran nominal sekitar 200 citra asli. Setiap citra direncanakan memuat sekitar 30–50 objek dalam satu lapisan, sehingga pada sasaran nominal tersebut jumlah anotasi diperkirakan sekitar:
+Dataset telah disusun ulang dengan pembagian terkelompok berdasarkan sumber citra. Data pengembangan terdiri atas **1.665 citra pelatihan dengan 2.986 objek** dan **294 citra validasi dengan 526 objek**. Seluruh 21 kelas terdapat pada data pelatihan dan validasi. Data uji dipisahkan dari tahap pengembangan dan digunakan setelah konfigurasi penelitian dibekukan.
 
-$$
-N_{box}\approx 6.000-10.000.
-$$
+Dataset ini menjadi satu-satunya dataset untuk memilih konfigurasi prapemrosesan frekuensi-angular.
 
-Sebagai target operasional, setiap kelas diupayakan memiliki sekurang-kurangnya sekitar 200 objek asli, dengan sasaran ideal sekitar 300–500 objek, serta muncul pada sekitar 30 citra sumber berbeda. Sebagai pembanding skala, Bahy dan Rifai (2026) melaporkan 107 citra dengan 13.863 anotasi untuk 20 kelas SNI, sedangkan Tarekegn dan Debelee (2025) menggunakan 562 citra dengan 19.228 objek untuk 13 kelas cacat dan satu kelas normal.
+### 3.2.3 Dataset Publik untuk Konfirmasi
 
-Sebelum pembagian data, distribusi setiap kelas diaudit berdasarkan:
+Tiga dataset publik digunakan untuk mengevaluasi konsistensi metode pada sumber data yang berbeda.
 
-$$
-N_{obj,c},\qquad N_{img,c},\qquad N_{group,c},
-$$
+| Dataset | Task | Jumlah kelas |
+|---|---|---:|
+| Coffee Bean Defect (Capstone) | Object detection | 14 |
+| Green Coffee Bean Defects (Lulus) | Object detection | 6 |
+| Coffee Bean Defects (Niacubilla) | Object detection | 9 |
 
-dengan $N_{obj,c}$ sebagai jumlah objek asli kelas $c$, $N_{img,c}$ jumlah citra sumber yang memuat kelas $c$, dan $N_{group,c}$ jumlah kelompok sumber independen yang mengandung kelas $c$.
+Setiap dataset mempertahankan taksonomi kelasnya sendiri dan tidak disatukan dengan kelas pada **robusta_SNI_Dataset**. Informasi varietas kopi pada sebagian dataset publik tidak dinyatakan secara eksplisit oleh sumber dataset. Oleh karena itu, dataset publik digunakan untuk mengevaluasi konsistensi metode pada sumber data yang berbeda, bukan untuk membandingkan performa antarvarietas kopi.
 
-Kelas yang belum memenuhi target pengumpulan diprioritaskan untuk penambahan data. Jika kecukupan tetap tidak terpenuhi, kelas tersebut tidak dimasukkan ke evaluasi utama kecuali terdapat dasar taksonomi yang membenarkan penggabungan. Jumlah kelas final ditetapkan sebelum pembagian dataset dan pelatihan:
+### 3.2.4 Pembagian Data
 
-$$
-C\le C_{target},
-$$
+Setiap dataset menggunakan data pelatihan, validasi, dan pengujian. Data pelatihan digunakan untuk melatih model, data validasi digunakan untuk pemantauan pelatihan dan pemilihan *checkpoint*, sedangkan data pengujian digunakan untuk evaluasi akhir.
 
-dengan target utama $C=21$ apabila seluruh kelas memiliki data yang memadai.
+Pada **robusta_SNI_Dataset**, pembagian dilakukan secara terkelompok untuk mencegah citra yang berasal dari sumber yang sama berada pada *split* berbeda. Dataset publik menggunakan *split* yang telah diperiksa; jika *split* bawaan tidak memenuhi kebutuhan penelitian, pembagian disusun ulang sebelum eksperimen.
 
-### 3.2.3 Akuisisi Citra dan Anotasi
-
-Pengambilan citra direncanakan secara tegak lurus dari atas menggunakan latar belakang polos dan tidak reflektif, dengan posisi kamera, jarak, dan pencahayaan yang dikendalikan. Biji disusun dalam satu lapisan dengan orientasi bervariasi.
-
-Setiap sesi pengambilan dan citra sumber memiliki identitas yang dapat ditelusuri. Citra dari sesi, susunan objek, atau kelompok spesimen fisik yang berkaitan diberi `group_id` yang sama. Satu `group_id` merepresentasikan unit sumber yang tidak boleh dipisah antar-*split*.
-
-Kategori yang definisinya bergantung pada ukuran fisik dilengkapi referensi skala. Setiap objek diberi *bounding box* dan label kelas berdasarkan definisi operasional yang ditetapkan sebelum anotasi. Sampel yang meragukan ditinjau ulang, dan validasi label direncanakan melibatkan praktisi atau validator yang memahami penilaian fisik mutu kopi.
-
-### 3.2.4 Pembagian Data dan Pencegahan Kebocoran
-
-Dataset dibagi sebelum augmentasi dengan target sekitar 70% pelatihan, 15% validasi, dan 15% pengujian. Proporsi dapat bergeser sedikit untuk menjaga keterwakilan kelas tanpa melanggar pemisahan kelompok sumber.
-
-Pembagian dilakukan berdasarkan `group_id`. Seluruh citra dari sumber atau spesimen yang berkaitan ditempatkan pada bagian data yang sama, sehingga:
-
-$$
-\mathcal{G}_{train}\cap\mathcal{G}_{val}
-=\mathcal{G}_{train}\cap\mathcal{G}_{test}
-=\mathcal{G}_{val}\cap\mathcal{G}_{test}
-=\varnothing.
-$$
-
-Pada validasi, setiap kelas ditargetkan muncul pada sedikitnya sekitar lima citra sumber. Pada data uji, target operasional adalah sedikitnya 10 objek per kelas yang tersebar pada sedikitnya lima citra sumber. Pemeriksaan *hash* digunakan sebagai lapisan tambahan untuk mendeteksi file identik.
-
-Data validasi digunakan untuk penghentian dini, pembandingan konfigurasi, analisis sensitivitas, dan pemilihan $C^*$. Data uji disisihkan sampai konfigurasi akhir dan prosedur evaluasi dibekukan.
+Konfigurasi prapemrosesan hanya dipilih menggunakan data pelatihan dan validasi **robusta_SNI_Dataset**. Data validasi pada dataset konfirmasi tidak digunakan untuk mengubah struktur atau parameter prapemrosesan yang telah dibekukan.
 
 ### 3.2.5 Augmentasi Data
 
-Augmentasi hanya diterapkan pada data pelatihan setelah pembagian sumber selesai. Validasi dan pengujian menggunakan citra asli. Konfigurasi augmentasi dibuat sama pada seluruh kondisi YOLO26n yang dibandingkan. CLAHE dan prapemrosesan frekuensi-angular diperlakukan sebagai perlakuan eksperimen pada citra masukan, bukan sebagai augmentasi dataset.
+Augmentasi diterapkan hanya pada data pelatihan. Data validasi dan pengujian tidak menerima augmentasi pelatihan. Pada setiap dataset, baseline dan model dengan prapemrosesan menggunakan perlakuan augmentasi yang sama agar perbandingan tetap setara.
 
 ## 3.3 Model Dasar YOLO26n
 
-YOLO26n digunakan sebagai model utama dengan bobot pralatih resmi `yolo26n.pt`. Setelah jumlah kelas final ditetapkan, bagian keluaran disesuaikan dengan $C$. *Backbone*, *neck*, dan *detection head* tidak dimodifikasi pada eksperimen utama, dan prapemrosesan tidak menambahkan parameter trainable.
+YOLO26n digunakan sebagai model utama dengan bobot pralatih resmi `yolo26n.pt`. Pada setiap dataset, bagian keluaran disesuaikan dengan jumlah kelas dataset yang digunakan. *Backbone*, *neck*, dan *detection head* tidak dimodifikasi pada eksperimen utama, dan prapemrosesan tidak menambahkan parameter trainable.
 
 ### 3.3.1 Kondisi Eksperimen Utama dan Pembanding
 
@@ -428,11 +406,11 @@ Seluruh kandidat ditetapkan sebelum eksperimen sensitivitas dan dievaluasi pada 
 
 ## 3.6 Rancangan Eksperimen
 
-Eksperimen dibagi menjadi tahap pengembangan, pemilihan konfigurasi, pelatihan ulang dengan *seed* konfirmasi, dan evaluasi akhir. Seluruh run YOLO26n pada tahap utama dimulai dari `yolo26n.pt` dengan prosedur inisialisasi keluaran yang setara; tidak ada pewarisan checkpoint antarkondisi.
+Eksperimen dibagi menjadi tahap pengembangan pada **robusta_SNI_Dataset**, pemilihan konfigurasi, konfirmasi lintas dataset, dan evaluasi akhir. Seluruh run YOLO26n dimulai dari `yolo26n.pt`; tidak ada pewarisan checkpoint antarkondisi maupun antardataset.
 
 ### 3.6.1 Tahap I — Pembentukan Model Acuan Pengembangan
 
-Model acuan pengembangan $B_0^{dev}$ dilatih dengan:
+Model acuan pengembangan $B_0^{dev}$ dilatih pada **robusta_SNI_Dataset** dengan:
 
 $$
 s_{dev}=42.
@@ -442,7 +420,7 @@ Model ini digunakan untuk menetapkan kinerja dasar validasi, menentukan kelompok
 
 ### 3.6.2 Tahap II — Pengujian Variasi Prapemrosesan
 
-Konfigurasi $C_0$ sampai $C_5$ dilatih dengan *seed* 42. Untuk setiap konfigurasi, didefinisikan:
+Konfigurasi $C_0$ sampai $C_5$ diuji hanya pada **robusta_SNI_Dataset** dengan *seed* 42. Untuk setiap konfigurasi, didefinisikan:
 
 $$
 m_j=mAP_{50:95}^{val}(C_j),\qquad
@@ -459,15 +437,17 @@ Jika $\mathcal{C}_{tie}$ hanya berisi satu konfigurasi, konfigurasi tersebut men
 
 Analisis sensitivitas pada Subbab 3.5.6 dilakukan setelah $C_{str}$ ditetapkan. Konfigurasi akhir $C^*$ dipilih dari konfigurasi yang benar-benar telah dievaluasi menggunakan urutan kriteria yang sama, kemudian dibekukan sebelum tahap konfirmasi dan pengujian.
 
-### 3.6.3 Tahap III — Pelatihan Ulang dengan Beberapa Seed Konfirmasi
+### 3.6.3 Tahap III — Konfirmasi dengan Beberapa Seed
 
-Kondisi utama pada Subbab 3.3.1 dilatih ulang menggunakan:
+Pada **robusta_SNI_Dataset**, kondisi $B_0$, $B_1$, $B_2$, dan $B_3$ dilatih ulang menggunakan:
 
 $$
 S_{conf}=\{123,2026,31415\}.
 $$
 
-Jika $C^*=C_0$, run duplikat $B_2$ dan $B_3$ tidak dilakukan. Hasil setiap *seed* dilaporkan secara berpasangan terhadap baseline menggunakan prosedur pada Subbab 3.8. Seed 42 dilaporkan terpisah sebagai hasil pengembangan.
+Jika $C^*=C_0$, run duplikat $B_2$ dan $B_3$ tidak dilakukan. Seed 42 dilaporkan terpisah sebagai hasil pengembangan.
+
+Pada **Capstone, Lulus, dan Niacubilla**, konfirmasi difokuskan pada $B_0$ dan $B_3$. Kedua kondisi dilatih ulang secara terpisah dari bobot awal resmi `yolo26n.pt` dengan *seed* konfirmasi yang sama. Konfigurasi $C^*$ tidak dipilih ulang berdasarkan hasil dataset konfirmasi.
 
 ### 3.6.4 Evaluasi pada Arsitektur Lain — Opsional
 
@@ -475,7 +455,7 @@ Sebagai analisis tambahan, RT-DETRv3-R18 dapat dibandingkan tanpa prapemrosesan 
 
 ### 3.6.5 Evaluasi Akhir pada Data Uji
 
-Data uji mengikuti pembagian dan kriteria keterwakilan pada Subbab 3.2.4. Setelah $C^*$, seed konfirmasi, aturan checkpoint, metrik, dan prosedur evaluasi dibekukan, checkpoint dari setiap seed dalam $S_{conf}$ dievaluasi pada data uji yang sama. Tidak dilakukan perubahan metode atau pemilihan ulang konfigurasi berdasarkan hasil uji.
+Data uji pada setiap dataset digunakan setelah $C^*$, seed konfirmasi, aturan checkpoint, metrik, dan prosedur evaluasi dibekukan. Hasil pengujian tidak digunakan untuk mengubah metode atau memilih ulang konfigurasi.
 
 ## 3.7 Konfigurasi Pelatihan
 
@@ -517,15 +497,9 @@ $$
 Recall=\frac{TP}{TP+FN}.
 $$
 
-Seluruh kondisi dievaluasi dengan Ultralytics 8.4.96 dan `max_det=500`. Precision dan *recall* ringkasan mengikuti operating point evaluator dan diperlakukan sebagai metrik deskriptif sekunder.
+Seluruh kondisi dievaluasi dengan Ultralytics 8.4.96 dan `max_det=500`. AP50–95 setiap kelas juga dilaporkan.
 
-AP50–95 setiap kelas dilaporkan sebagai:
-
-$$
-AP_{c,50:95},\qquad c=1,\ldots,C.
-$$
-
-Kelompok tiga kelas sulit ditetapkan dari baseline pengembangan pada data validasi:
+Pada **robusta_SNI_Dataset**, evaluasi mencakup $B_0$, $B_1$, $B_2$, dan $B_3$. Kelompok tiga kelas sulit ditetapkan dari baseline pengembangan pada data validasi:
 
 $$
 \mathcal{H}=\mathrm{Bottom3}\left(AP_{c,50:95}^{val}(B_0^{dev})\right),
@@ -543,15 +517,15 @@ $$
 AP_{worst}=\min_c AP_{c,50:95}.
 $$
 
-Pada seed konfirmasi, setiap metrik dilaporkan per seed beserta rata-rata dan simpangan baku. Selisih terhadap baseline dihitung secara berpasangan:
+Pada **Capstone, Lulus, dan Niacubilla**, evaluasi difokuskan pada perubahan $B_3$ terhadap $B_0$ pada dataset yang sama. Untuk dataset $d$ dan *seed* $s$:
 
 $$
-\Delta_s=M_{perlakuan,s}-M_{B_0,s},
+\Delta_{d,s}=M_{B_3,d,s}-M_{B_0,d,s}.
 $$
 
-beserta $\overline{\Delta}$ dan $SD(\Delta)$ pada $S_{conf}$.
+Hasil setiap *seed* dilaporkan beserta rata-rata dan simpangan baku. Konsistensi lintas dataset dinilai dari arah dan besarnya perubahan kinerja pada masing-masing dataset konfirmasi. Nilai mAP absolut antar-dataset tidak dibandingkan secara langsung karena jumlah kelas dan karakteristik data berbeda.
 
-Jika jumlah kelompok independen pada data uji memungkinkan, ketidakpastian perbedaan antar kondisi dianalisis dengan *paired bootstrap* berbasis `group_id`. Kelompok yang sama di-*resample* untuk seluruh kondisi; selisih dihitung per seed dan dirata-ratakan pada replikasi yang sama.
+Jika jumlah kelompok independen pada data uji utama memungkinkan, ketidakpastian perbedaan antar kondisi dianalisis dengan *paired bootstrap* berbasis kelompok sumber.
 
 ## 3.9 Analisis Visual
 
@@ -580,7 +554,7 @@ $$
 
 ### 3.9.3 Visualisasi Hasil Deteksi
 
-Hasil $B_0$, $B_1$, $B_2$, dan $B_3$ dibandingkan pada citra yang sama dengan parameter prediksi yang sama, terutama *confidence threshold* dan `max_det`. Jika $C^*=C_0$, kondisi identik tidak ditampilkan dua kali.
+Pada **robusta_SNI_Dataset**, hasil $B_0$, $B_1$, $B_2$, dan $B_3$ dibandingkan pada citra yang sama dengan parameter prediksi yang sama. Pada dataset konfirmasi, visualisasi difokuskan pada $B_0$ dan $B_3$. Jika $C^*=C_0$, kondisi identik tidak ditampilkan dua kali.
 
 Contoh mencakup kasus seluruh model benar, seluruh model salah, perbedaan hasil antar kondisi, serta kelas dengan kinerja relatif tinggi atau rendah berdasarkan evaluasi yang dilaporkan.
 
@@ -612,4 +586,4 @@ Jumlah parameter model dan *peak allocated GPU memory* dilaporkan sebagai inform
 
 Implementasi menggunakan Python, PyTorch, dan Ultralytics 8.4.96. Versi Python, PyTorch, CUDA/driver, sistem operasi, CPU, GPU, RAM, dan perangkat keras utama dicatat.
 
-Setiap run ditautkan dengan *commit* kode eksperimen, konfigurasi run, dan manifest pembagian dataset berbasis `group_id`. Seed serta pengaturan reproducibility Python/PyTorch/CUDA diterapkan secara konsisten pada seluruh kondisi. Jika RT-DETRv3-R18 digunakan, versi kode, bobot pralatih, dan konfigurasi pelatihannya dicatat terpisah.
+Setiap run ditautkan dengan *commit* kode eksperimen, konfigurasi run, dan manifest pembagian dataset. Seed serta pengaturan reproducibility Python/PyTorch/CUDA diterapkan secara konsisten pada seluruh kondisi. Jika RT-DETRv3-R18 digunakan, versi kode, bobot pralatih, dan konfigurasi pelatihannya dicatat terpisah.
