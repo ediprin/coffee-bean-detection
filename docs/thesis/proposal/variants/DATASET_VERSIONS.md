@@ -21,7 +21,7 @@ Karakter utama:
 - kontrol terbesar terhadap akuisisi, anotasi, kelas, dan pencegahan leakage;
 - biaya terbesar berada pada pengumpulan data, anotasi, validasi label, dan kecukupan kelas langka.
 
-## Versi 2 — Multi-Dataset Publik
+## Versi 2 — Dataset Utama + Konfirmasi Multi-Dataset
 
 Source:
 
@@ -29,33 +29,31 @@ Source:
 
 Karakter utama:
 
-- tidak melakukan pengumpulan dataset primer sebagai sumber utama;
-- menggunakan beberapa dataset publik deteksi cacat biji kopi hijau yang lolos audit provenance, lisensi, anotasi, dan duplikasi;
-- dataset **tidak langsung digabung menjadi satu label space**;
-- setiap dataset diperlakukan sebagai benchmark independen dengan kelasnya sendiri;
-- satu dataset pengembangan digunakan untuk memilih konfigurasi `C*`;
-- `C*` kemudian dibekukan dan diuji pada dataset publik lain sebagai konfirmasi lintas dataset;
-- kontribusi utama dinilai dari konsistensi delta `B3-B0` lintas dataset dan seed.
+- **robusta_SNI_Dataset** digunakan sebagai dataset utama untuk pengembangan dan pemilihan konfigurasi `C*`;
+- **Coffee Bean Defect (Capstone)**, **Green Coffee Bean Defects (Lulus)**, dan **Coffee Bean Defects (Niacubilla)** digunakan sebagai dataset konfirmasi;
+- setiap dataset digunakan secara terpisah dengan kelasnya masing-masing dan tidak digabung menjadi satu dataset;
+- `C*` dipilih hanya pada robusta_SNI_Dataset, kemudian dibekukan;
+- pada dataset konfirmasi hanya dibandingkan baseline YOLO26n (`B0`) dengan konfigurasi final (`B3`);
+- model dilatih kembali pada masing-masing dataset dari bobot awal resmi yang sama;
+- hasil lintas dataset digunakan untuk menilai konsistensi pengaruh metode, bukan generalisasi antarvarietas kopi.
 
 ## Perbedaan Inti
 
-| Aspek | V1 Dataset Primer | V2 Multi-Dataset Publik |
+| Aspek | V1 Dataset Primer | V2 Dataset Utama + Konfirmasi |
 |---|---|---|
-| Sumber data | Dikumpulkan sendiri | Beberapa dataset publik |
-| Kontrol akuisisi | Tinggi | Terbatas pada data yang tersedia |
-| Kontrol anotasi | Tinggi | Perlu audit dan koreksi bila diizinkan |
-| Taksonomi | Dapat dirancang dari awal | Berbeda antar-dataset |
-| Risiko leakage | Dikendalikan melalui `group_id` saat akuisisi | Perlu audit hash, pHash, versi, fork, dan augmentasi |
-| Risiko duplikasi | Relatif rendah | Tinggi karena dataset publik dapat merupakan fork/derivatif |
-| Kebutuhan harmonisasi kelas | Rendah | Tinggi jika dipaksa merge; karena itu tidak dilakukan pada analisis utama |
-| Uji generalisasi | Terbatas pada satu domain akuisisi | Lebih kuat karena lintas dataset/domain |
-| Beban kerja | Akuisisi + anotasi tinggi | Audit provenance + data engineering tinggi |
-| Klaim yang paling kuat | Kontrol eksperimental pada satu dataset primer | Konsistensi efek metode pada beberapa dataset independen |
+| Sumber data | Dikumpulkan sendiri | Dataset yang telah tersedia |
+| Dataset pengembangan | Dataset primer | robusta_SNI_Dataset |
+| Dataset konfirmasi | Tidak ada | Capstone, Lulus, Niacubilla |
+| Taksonomi | Dirancang dari awal | Berbeda antar-dataset |
+| Penggabungan dataset | Tidak relevan | Tidak dilakukan |
+| Pemilihan `C*` | Pada dataset primer | Hanya pada robusta_SNI_Dataset |
+| Uji tambahan | Beberapa seed pada satu dataset | Baseline vs `C*` pada tiga dataset lain |
+| Klaim utama | Efek metode pada dataset primer | Efek metode pada dataset utama dan konsistensinya pada dataset lain |
 
 ## Aturan Source-of-Truth
 
 1. Selama belum ada keputusan eksplisit, **V1 tetap source formal aktif**.
 2. File pada folder `variants/` tidak masuk build proposal formal dan tidak mengubah citation gate.
 3. Jika V2 dipilih, BAB I, BAB II, BAB III, Gambar 3.1, bibliography, dan audit formal harus disinkronkan sebagai satu perubahan terkontrol.
-4. Dataset publik tidak boleh dinyatakan independen hanya karena memiliki nama atau workspace berbeda. Provenance dan kemiripan isi wajib diaudit terlebih dahulu.
-5. Dataset klasifikasi tanpa bounding box tidak masuk benchmark utama deteksi kecuali terdapat prosedur konversi yang dapat dipertanggungjawabkan dan dibekukan sebelum eksperimen.
+4. Dataset konfirmasi harus diperiksa sebelum digunakan agar versi, anotasi, pembagian data, dan sumbernya jelas.
+5. Dataset klasifikasi tanpa bounding box tidak masuk benchmark utama deteksi kecuali terdapat prosedur konversi yang dapat dipertanggungjawabkan sebelum eksperimen.
