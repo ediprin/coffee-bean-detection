@@ -19,10 +19,10 @@ Penelitian menggunakan empat dataset deteksi cacat biji kopi. **robusta_SNI_Data
 
 | Dataset | Sumber | Peran |
 |---|---|---|
-| robusta_SNI_Dataset | Roboflow Universe | Dataset utama |
-| Coffee Bean Defect (Capstone) | Roboflow Universe | Dataset konfirmasi I |
-| Green Coffee Bean Defects (Lulus) | Roboflow Universe | Dataset konfirmasi II |
-| Coffee Bean Defects (Niacubilla) | Roboflow Universe | Dataset konfirmasi III |
+| robusta_SNI_Dataset | [Roboflow Universe](https://universe.roboflow.com/faruq-reybi/robusta_sni_dataset) | Dataset utama |
+| Coffee Bean Defect (Capstone) | [Roboflow Universe](https://universe.roboflow.com/capstone-2-wwe5t/coffee-bean-defect-a0vno/dataset/1) | Dataset konfirmasi I |
+| Green Coffee Bean Defects (Lulus) | [Roboflow Universe](https://universe.roboflow.com/lulus-vpibo/green-coffee-bean-defects/dataset/1) | Dataset konfirmasi II |
+| Coffee Bean Defects (Niacubilla) | [Roboflow Universe](https://universe.roboflow.com/niacubilla/coffee-bean-defects/dataset/1) | Dataset konfirmasi III |
 
 ### 3.2.2 Dataset Utama robusta_SNI_Dataset
 
@@ -36,11 +36,11 @@ Dataset ini menjadi satu-satunya dataset untuk memilih konfigurasi prapemrosesan
 
 Tiga dataset publik digunakan untuk mengevaluasi konsistensi metode pada sumber data yang berbeda.
 
-| Dataset | Task | Jumlah kelas |
-|---|---|---:|
-| Coffee Bean Defect (Capstone) | Object detection | 14 |
-| Green Coffee Bean Defects (Lulus) | Object detection | 6 |
-| Coffee Bean Defects (Niacubilla) | Object detection | 9 |
+| Dataset | Versi | Task | Jumlah kelas |
+|---|---:|---|---:|
+| Coffee Bean Defect (Capstone) | 1 | Object detection | 14 |
+| Green Coffee Bean Defects (Lulus) | 1 | Object detection | 6 |
+| Coffee Bean Defects (Niacubilla) | 1 | Object detection | 9 |
 
 Setiap dataset mempertahankan taksonomi kelasnya sendiri dan tidak disatukan dengan kelas pada **robusta_SNI_Dataset**. Informasi varietas kopi pada sebagian dataset publik tidak dinyatakan secara eksplisit oleh sumber dataset. Oleh karena itu, dataset publik digunakan untuk mengevaluasi konsistensi metode pada sumber data yang berbeda, bukan untuk membandingkan performa antarvarietas kopi.
 
