@@ -208,6 +208,45 @@ def _set_cell_width(cell, width_cm: float) -> None:
     tc_w.set(qn("w:type"), "dxa")
 
 
+def _format_equation_layout_table(table) -> None:
+    """Lock the synthetic equation-number table to the full 14 cm text width.
+
+    python-docx ``cell.width`` alone does not reliably update ``tblGrid``. LibreOffice
+    can therefore redistribute the three cells almost evenly, leaving the center math
+    cell too narrow and visually clipping otherwise valid OMML equations. Fix the table
+    grid, table width, and every cell width explicitly.
+    """
+    widths_cm = (0.5, 12.0, 1.5)
+    table.autofit = False
+    tbl_pr = table._tbl.tblPr
+
+    layout = tbl_pr.find(qn("w:tblLayout"))
+    if layout is None:
+        layout = OxmlElement("w:tblLayout")
+        tbl_pr.append(layout)
+    layout.set(qn("w:type"), "fixed")
+
+    tbl_w = tbl_pr.find(qn("w:tblW"))
+    if tbl_w is None:
+        tbl_w = OxmlElement("w:tblW")
+        tbl_pr.append(tbl_w)
+    tbl_w.set(qn("w:w"), str(Cm(sum(widths_cm)).twips))
+    tbl_w.set(qn("w:type"), "dxa")
+
+    grid_cols = table._tbl.tblGrid.gridCol_lst
+    for index, grid_col in enumerate(grid_cols[: len(widths_cm)]):
+        grid_col.set(qn("w:w"), str(Cm(widths_cm[index]).twips))
+
+    for row in table.rows:
+        for index, cell in enumerate(row.cells):
+            _set_cell_width(cell, widths_cm[index])
+            for paragraph in cell.paragraphs:
+                paragraph.paragraph_format.first_line_indent = Cm(0)
+                paragraph.paragraph_format.left_indent = Cm(0)
+                paragraph.paragraph_format.right_indent = Cm(0)
+                paragraph.paragraph_format.line_spacing = 1.0
+
+
 def _format_related_research_table(doc) -> None:
     """Give Tabel 2.1 readable column proportions inside the 14 cm text area.
 
@@ -290,6 +329,7 @@ def finalize(input_path: Path, output_path: Path) -> None:
     for table in doc.tables:
         if _is_equation_layout_table(table):
             _set_table_borders(table, visible=False)
+            _format_equation_layout_table(table)
             equation_tables += 1
         else:
             _set_table_borders(table, visible=True)
@@ -321,9 +361,8 @@ def finalize(input_path: Path, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     doc.save(output_path)
 
-    # Complete and normalize the five formal table captions before the static
-    # Daftar Tabel is materialized. This also fixes the BAB III sequence to
-    # Tabel 3.1, 3.2, 3.3, and 3.4 without touching equation-layout tables.
+    # Complete and normalize the four formal table captions before the static
+    # Daftar Tabel is materialized. Equation-layout tables are not touched.
     ensure_table_captions(output_path, output_path)
 
     print(
