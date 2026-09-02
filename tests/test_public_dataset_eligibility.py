@@ -221,3 +221,27 @@ def test_rejected_and_missing_pool_entries_do_not_block_three_clean_lineages(tmp
     assert report["audited_dataset_count"] == 4
     assert report["eligible_lineage_count"] == 3
     assert report["decision"] == "PASS_V2_DATASET_GATE"
+
+
+def test_three_reviewable_lineages_yield_review_not_failure(tmp_path: Path, monkeypatch) -> None:
+    specs = []
+    for index, code in enumerate(("a", "b", "c"), start=1):
+        root = tmp_path / code
+        _write_dataset(root, index * 53)
+        specs.append(_spec(tmp_path, code, root))
+
+    from coffee_detector.analysis import public_dataset_eligibility as module
+
+    original = module._near_pairs
+
+    def fake_near(records, threshold, **kwargs):
+        if kwargs.get("cross_split_only") and records and records[0].dataset in {"b", "c"}:
+            return [(0, 1, 1, 1.0)]
+        return original(records, threshold, **kwargs)
+
+    monkeypatch.setattr(module, "_near_pairs", fake_near)
+    report = _run(tmp_path, specs)
+
+    assert report["eligible_lineage_count"] == 1
+    assert report["potential_lineage_count"] == 3
+    assert report["decision"] == "REVIEW_DUPLICATE_LINEAGE"

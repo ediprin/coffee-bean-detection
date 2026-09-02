@@ -32,6 +32,7 @@ from coffee_detector.dataset import (
 REPORT_FORMAT = "coffee_detector.public_dataset_eligibility.v1"
 REGISTRY_FORMAT = "coffee_detector.public_dataset_registry.v1"
 ELIGIBLE_AFTER_REBUILD = {"PASS_AS_IS", "REBUILD_GROUPED_SPLIT"}
+POTENTIALLY_ELIGIBLE = ELIGIBLE_AFTER_REBUILD | {"REVIEW_NEAR_DUPLICATES"}
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -534,16 +535,29 @@ def audit_public_dataset_registry(
     eligible_codes = {
         row["code"] for row in dataset_reports if row["status"] in ELIGIBLE_AFTER_REBUILD
     }
+    potential_codes = {
+        row["code"] for row in dataset_reports if row["status"] in POTENTIALLY_ELIGIBLE
+    }
     eligible_components = [
         sorted(code for code in component if code in eligible_codes)
         for component in cross["exact_hash_lineage_components"]
     ]
     eligible_components = [component for component in eligible_components if component]
+    potential_components = [
+        sorted(code for code in component if code in potential_codes)
+        for component in cross["exact_hash_lineage_components"]
+    ]
+    potential_components = [component for component in potential_components if component]
     acquired = len(records_by_dataset)
     eligible_near_candidates = sum(
         row["pairs"]
         for row in cross["near_candidates_by_dataset_pair"]
         if set(row["datasets"]).issubset(eligible_codes)
+    )
+    potential_near_candidates = sum(
+        row["pairs"]
+        for row in cross["near_candidates_by_dataset_pair"]
+        if set(row["datasets"]).issubset(potential_codes)
     )
     minimum_lineages = int(payload.get("minimum_independent_lineages", 3))
     if eligible_near_candidates:
@@ -552,6 +566,11 @@ def audit_public_dataset_registry(
     elif len(eligible_components) >= minimum_lineages:
         decision = "PASS_V2_DATASET_GATE"
         next_action = "rebuild_required_splits_then_freeze_dataset_manifests"
+    elif len(potential_components) >= minimum_lineages and any(
+        row["status"] == "REVIEW_NEAR_DUPLICATES" for row in dataset_reports
+    ):
+        decision = "REVIEW_DUPLICATE_LINEAGE"
+        next_action = "review_within_split_candidates_then_rebuild_grouped_splits"
     elif acquired < minimum_lineages:
         decision = "INCOMPLETE_ACQUISITION"
         next_action = "acquire_and_sha256_freeze_missing_dataset_versions"
@@ -573,9 +592,13 @@ def audit_public_dataset_registry(
         "dataset_count": len(specs),
         "audited_dataset_count": acquired,
         "eligible_dataset_codes": sorted(eligible_codes),
+        "potential_dataset_codes": sorted(potential_codes),
         "eligible_lineage_count": len(eligible_components),
+        "potential_lineage_count": len(potential_components),
         "eligible_near_cross_dataset_candidates": eligible_near_candidates,
+        "potential_near_cross_dataset_candidates": potential_near_candidates,
         "eligible_exact_hash_lineages": eligible_components,
+        "potential_exact_hash_lineages": potential_components,
         "datasets": dataset_reports,
         "cross_dataset": cross,
         "decision": decision,
