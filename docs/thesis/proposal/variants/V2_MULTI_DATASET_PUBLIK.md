@@ -61,15 +61,28 @@ Augmentasi diterapkan hanya pada data pelatihan. Data validasi dan pengujian tid
 
 ---
 
-## 3. Rancangan Penggunaan Dataset dalam Eksperimen
+## 3. Rancangan Eksperimen Multi-Dataset
 
-Tahap pengembangan dilakukan pada **robusta_SNI_Dataset**. Baseline YOLO26n dan variasi prapemrosesan frekuensi-angular dibandingkan pada data pelatihan dan validasi untuk memperoleh konfigurasi final $C^*$.
+### 3.1 Tahap Pengembangan
 
-Setelah $C^*$ ditetapkan, struktur dan parameter prapemrosesan dibekukan. Selanjutnya, baseline dan model dengan $C^*$ dilatih secara terpisah pada Capstone, Lulus, dan Niacubilla dari bobot awal resmi YOLO26n yang sama.
+Pengembangan metode dilakukan hanya pada **robusta_SNI_Dataset**. YOLO26n tanpa prapemrosesan digunakan sebagai baseline, kemudian konfigurasi referensi dan variasi prapemrosesan frekuensi-angular dibandingkan pada data pelatihan dan validasi hingga diperoleh konfigurasi final $C^*$.
 
-Dengan demikian, evaluasi lintas dataset tidak menguji checkpoint robusta_SNI_Dataset secara zero-shot. Evaluasi tersebut menguji apakah konfigurasi prapemrosesan yang dipilih pada dataset utama tetap memberikan pengaruh yang konsisten ketika digunakan pada dataset kopi lain.
+Pada tahap ini tetap digunakan kondisi utama $B_0$, $B_1$, $B_2$, dan $B_3$ sesuai rancangan eksperimen utama.
 
-Perbandingan utama pada dataset konfirmasi adalah perubahan kinerja model dengan $C^*$ terhadap baseline pada dataset yang sama. Nilai mAP absolut antar-dataset tidak dibandingkan secara langsung karena jumlah kelas dan karakteristik datanya berbeda.
+### 3.2 Tahap Konfirmasi Lintas Dataset
+
+Setelah $C^*$ ditetapkan, konfigurasi tersebut dibekukan. Pada Capstone, Lulus, dan Niacubilla hanya dilakukan perbandingan antara:
+
+- **baseline YOLO26n ($B_0$)**; dan
+- **YOLO26n dengan konfigurasi final $C^*$ ($B_3$)**.
+
+Kedua kondisi dilatih secara terpisah pada masing-masing dataset dari bobot awal resmi YOLO26n yang sama. Konfigurasi $C^*$ tidak dipilih ulang berdasarkan hasil dataset konfirmasi.
+
+### 3.3 Evaluasi Akhir
+
+Test set digunakan setelah konfigurasi metode, aturan pelatihan, dan prosedur evaluasi ditetapkan. Hasil pada setiap dataset dilaporkan secara terpisah.
+
+Konsistensi metode dinilai dari perubahan kinerja $B_3$ terhadap $B_0$ pada dataset yang sama. Nilai mAP absolut antar-dataset tidak digunakan sebagai dasar perbandingan karena jumlah kelas dan karakteristik data berbeda.
 
 ---
 
