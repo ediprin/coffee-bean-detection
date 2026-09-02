@@ -202,3 +202,22 @@ def test_archive_extraction_is_hash_bound_and_nested_root_is_discovered(tmp_path
 
     assert report["datasets"][0]["status"] == "PASS_AS_IS"
     assert report["datasets"][0]["dataset_root"].endswith("export\\nested") or report["datasets"][0]["dataset_root"].endswith("export/nested")
+
+
+def test_rejected_and_missing_pool_entries_do_not_block_three_clean_lineages(tmp_path: Path) -> None:
+    specs = []
+    for index, code in enumerate(("a", "b", "c"), start=1):
+        root = tmp_path / code
+        _write_dataset(root, index * 43)
+        specs.append(_spec(tmp_path, code, root))
+    rejected_root = tmp_path / "rejected"
+    _write_dataset(rejected_root, 211)
+    specs.append(_spec(tmp_path, "rejected", rejected_root, ambiguous=["objects"]))
+    missing = _spec(tmp_path, "missing", tmp_path / "not-there")
+    specs.append(missing)
+
+    report = _run(tmp_path, specs)
+
+    assert report["audited_dataset_count"] == 4
+    assert report["eligible_lineage_count"] == 3
+    assert report["decision"] == "PASS_V2_DATASET_GATE"

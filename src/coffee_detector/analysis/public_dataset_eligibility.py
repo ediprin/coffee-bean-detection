@@ -540,35 +540,41 @@ def audit_public_dataset_registry(
     ]
     eligible_components = [component for component in eligible_components if component]
     acquired = len(records_by_dataset)
-    pending_near = cross["near_cross_dataset_candidates"] > 0
-    if acquired < len(specs):
+    eligible_near_candidates = sum(
+        row["pairs"]
+        for row in cross["near_candidates_by_dataset_pair"]
+        if set(row["datasets"]).issubset(eligible_codes)
+    )
+    minimum_lineages = int(payload.get("minimum_independent_lineages", 3))
+    if eligible_near_candidates:
+        decision = "REVIEW_DUPLICATE_LINEAGE"
+        next_action = "review_perceptual_candidates_and_freeze_lineage_clusters"
+    elif len(eligible_components) >= minimum_lineages:
+        decision = "PASS_V2_DATASET_GATE"
+        next_action = "rebuild_required_splits_then_freeze_dataset_manifests"
+    elif acquired < minimum_lineages:
         decision = "INCOMPLETE_ACQUISITION"
         next_action = "acquire_and_sha256_freeze_missing_dataset_versions"
-    elif any(row["status"] == "REJECT" for row in dataset_reports):
+    elif not eligible_codes and any(row["status"] == "REJECT" for row in dataset_reports):
         decision = "FAIL_DATASET_ELIGIBILITY"
         next_action = "remove_or_resolve_rejected_datasets"
     elif any(row["status"] == "HOLD_METADATA" for row in dataset_reports):
         decision = "HOLD_METADATA_VERIFICATION"
         next_action = "freeze_version_license_and_verified_archive_sha256"
-    elif pending_near or any(row["status"] == "REVIEW_NEAR_DUPLICATES" for row in dataset_reports):
-        decision = "REVIEW_DUPLICATE_LINEAGE"
-        next_action = "review_perceptual_candidates_and_freeze_lineage_clusters"
-    elif len(eligible_components) < int(payload.get("minimum_independent_lineages", 3)):
+    else:
         decision = "FAIL_MINIMUM_INDEPENDENT_LINEAGES"
         next_action = "retain_formal_primary_dataset_variant"
-    else:
-        decision = "PASS_V2_DATASET_GATE"
-        next_action = "rebuild_required_splits_then_freeze_dataset_manifests"
 
     report = {
         "format": REPORT_FORMAT,
         "registry": str(registry_path),
-        "minimum_independent_lineages": int(payload.get("minimum_independent_lineages", 3)),
+        "minimum_independent_lineages": minimum_lineages,
         "minimum_source_images": minimum_source_images,
         "dataset_count": len(specs),
         "audited_dataset_count": acquired,
         "eligible_dataset_codes": sorted(eligible_codes),
         "eligible_lineage_count": len(eligible_components),
+        "eligible_near_cross_dataset_candidates": eligible_near_candidates,
         "eligible_exact_hash_lineages": eligible_components,
         "datasets": dataset_reports,
         "cross_dataset": cross,
