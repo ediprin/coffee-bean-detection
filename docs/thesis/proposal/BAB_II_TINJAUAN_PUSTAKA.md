@@ -131,7 +131,7 @@ Muhammad dan Yeasin (2020) memperkenalkan *Eigen-CAM*, yang menggunakan komponen
 
 ## 2.10 Penelitian Terkait
 
-Penelitian yang relevan mencakup deteksi cacat biji kopi, prapemrosesan sebelum model deteksi, dan pemrosesan frekuensi pada tugas *fine-grained* atau deteksi objek. Ringkasannya ditunjukkan pada Tabel 2.1.
+Tabel 2.1 merangkum penelitian inti yang digunakan untuk membangun posisi penelitian, meliputi deteksi cacat biji kopi, prapemrosesan sebelum detektor, serta pemrosesan frekuensi pada tugas *fine-grained* atau deteksi objek.
 
 ### Tabel 2.1 Penelitian Terkait
 
