@@ -41,7 +41,7 @@ YOLO26 merupakan keluarga model *real-time vision* yang diperkenalkan oleh Joche
 
 Arsitektur deteksi YOLO26 tetap menggunakan alur *backbone*, *neck*, dan *detection head*, dengan prediksi pada beberapa tingkat fitur. Keluarga ini tersedia dalam beberapa skala model; varian YOLO26n digunakan sebagai model utama dalam penelitian ini.
 
-Sebagai keluarga pembanding, Wang et al. (2025) mengembangkan RT-DETRv3 sebagai detektor Transformer end-to-end berbasis RT-DETR dengan tambahan supervisi positif yang lebih padat pada pelatihan. Varian R18 digunakan hanya untuk analisis lintas arsitektur setelah konfigurasi prapemrosesan utama ditetapkan.
+Wang et al. (2025) mengembangkan RT-DETRv3 sebagai detektor Transformer end-to-end berbasis RT-DETR dengan tambahan supervisi positif yang lebih padat pada pelatihan. Arsitektur ini memberikan pembanding dari keluarga detektor Transformer end-to-end terhadap keluarga YOLO.
 
 ## 2.6 Fine-Grained Object Detection
 
@@ -113,7 +113,7 @@ $$
 
 Representasi radial mengelompokkan informasi berdasarkan jarak dari pusat spektrum, sedangkan representasi angular mengelompokkannya berdasarkan arah. Cao et al. (2019) menggunakan distribusi radial dan angular energi spektrum Fourier untuk analisis tekstur *remote sensing*, sementara Zhang dan Tan (2003) menunjukkan penggunaan distribusi orientasi spektral sebagai ciri diskriminatif pada klasifikasi tekstur.
 
-Pada *fine-grained object detection*, Xu et al. (2025) mengembangkan *Adaptive Frequency Augmentation Branch* (AFAB). AFAB menggunakan DFT berbasis patch; AFAB-1 menerapkan penyaring lolos-tinggi adaptif, sedangkan AFAB-2 menyesuaikan amplitudo berdasarkan distribusi angular sebelum rekonstruksi dengan fase asli. Penelitian ini mengambil prinsip AFAB-2 sebagai konfigurasi referensi untuk pemrosesan frekuensi-angular pada ruang citra masukan.
+Pada *fine-grained object detection*, Xu et al. (2025) mengembangkan *Adaptive Frequency Augmentation Branch* (AFAB). AFAB menggunakan DFT berbasis patch; AFAB-1 menerapkan penyaring lolos-tinggi adaptif, sedangkan AFAB-2 menyesuaikan amplitudo berdasarkan distribusi angular sebelum rekonstruksi dengan fase asli. Mekanisme AFAB-2 menjadi rujukan utama bagi pemrosesan frekuensi-angular yang dikaji dalam penelitian ini.
 
 Istilah *frekuensi-angular* dalam penelitian ini merujuk pada representasi Fourier lokal dan analisis amplitudo berdasarkan arah, bukan orientasi kotak pembatas atau *oriented object detection*.
 
@@ -127,7 +127,7 @@ Perbedaan posisi tersebut penting karena prapemrosesan pada ruang masukan dapat 
 
 Visualisasi aktivasi digunakan untuk membantu menginterpretasikan respons internal jaringan terhadap suatu prediksi. Selvaraju et al. (2017) memperkenalkan *Gradient-weighted Class Activation Mapping* (Grad-CAM), yang menggunakan gradien target prediksi terhadap peta fitur untuk membentuk peta aktivasi *class-discriminative*.
 
-Muhammad dan Yeasin (2020) memperkenalkan *Eigen-CAM*, yang menggunakan komponen utama dari representasi fitur dan tidak bergantung pada *backpropagation gradient* maupun *class relevance score*. Eigen-CAM menjadi kandidat utama untuk analisis visual, sedangkan Grad-CAM dapat digunakan apabila target prediksi dan aliran gradien pada YOLO26n dapat didefinisikan secara konsisten. Metode akhir ditentukan setelah kompatibilitas teknis diverifikasi.
+Muhammad dan Yeasin (2020) memperkenalkan *Eigen-CAM*, yang menggunakan komponen utama dari representasi fitur dan tidak bergantung pada *backpropagation gradient* maupun *class relevance score*. Kedua pendekatan memberikan cara berbeda untuk memvisualisasikan respons fitur model terhadap citra masukan.
 
 ## 2.10 Penelitian Terkait
 
@@ -152,7 +152,6 @@ Penelitian yang relevan mencakup deteksi cacat biji kopi, prapemrosesan sebelum 
 | 13 | Li et al. (2025) | *Digital Signal Processing* | Deteksi objek pada pencahayaan rendah | Fourier enhancement + YOLO | Menunjukkan pemrosesan Fourier pada citra masukan sebelum model deteksi. |
 | 14 | Xu et al. (2025) | *Neural Networks* | Fine-grained aircraft detection | LFDet dengan AFAB | Menunjukkan penggunaan pemrosesan frekuensi lokal dan distribusi angular pada tugas fine-grained detection. |
 | 15 | Xie et al. (2025) | *IEEE Transactions on Circuits and Systems for Video Technology* | Fine-grained object detection | DRNet | Menunjukkan kebutuhan representasi diskriminatif pada deteksi kategori yang saling berdekatan. |
-| 16 | Wang et al. (2025) | WACV 2025 | Real-time end-to-end object detection | RT-DETRv3 | Menjadi dasar pilihan RT-DETRv3-R18 sebagai evaluasi lintas arsitektur yang bersifat tambahan. |
-| 17 | **Penelitian yang Diusulkan** | — | Deteksi fine-grained cacat biji kopi | Prapemrosesan frekuensi-angular + YOLO26n, dengan CLAHE sebagai pembanding | Menganalisis variasi desain prapemrosesan pada citra masukan menggunakan dataset primer, lalu mengevaluasi kinerja deteksi dan biaya komputasi. |
+| 16 | Wang et al. (2025) | WACV 2025 | Real-time end-to-end object detection | RT-DETRv3 | Memberikan contoh detektor Transformer end-to-end real-time sebagai keluarga pembanding arsitektural. |
 
 Tabel tersebut memperlihatkan dua posisi utama penelitian: tantangan diskriminasi antarkelas pada deteksi cacat kopi dan penggunaan prapemrosesan/frekuensi sebelum detektor pada domain lain. Penelitian ini menguji hubungan keduanya melalui prapemrosesan frekuensi-angular sebelum YOLO26n pada dataset primer cacat biji kopi.
