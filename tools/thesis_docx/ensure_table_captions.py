@@ -31,6 +31,11 @@ CAPTIONS = {
         "Tabel 3.5: Konfigurasi Utama Pelatihan YOLO26n",
 }
 
+TEXT_REPLACEMENTS = {
+    "Konfigurasi utama YOLO26n ditunjukkan pada Tabel 3.3.":
+        "Konfigurasi utama YOLO26n ditunjukkan pada Tabel 3.5.",
+}
+
 
 def set_run_font(run, *, bold=None) -> None:
     run.font.name = FONT
@@ -116,6 +121,13 @@ def apply(input_path: Path, output_path: Path) -> None:
     if "Caption Table" not in doc.styles:
         raise RuntimeError("Caption Table style is missing")
     caption_style = doc.styles["Caption Table"]
+
+    for paragraph in doc.paragraphs:
+        replacement = TEXT_REPLACEMENTS.get(paragraph.text.strip())
+        if replacement:
+            paragraph.text = replacement
+            for run in paragraph.runs:
+                set_run_font(run)
 
     found = []
     unknown = []
