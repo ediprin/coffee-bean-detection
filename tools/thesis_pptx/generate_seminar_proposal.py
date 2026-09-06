@@ -25,13 +25,16 @@ import re
 from pathlib import Path
 
 from pptx import Presentation
-from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.util import Pt
 
 
-# 17 output slides -> 1-based slide number in the provided visual template.
-# The mapping follows the closest visual archetype in the reference deck.
-TEMPLATE_MAP = [1, 2, 3, 4, 5, 6, 7, 9, 9, 10, 11, 12, 11, 12, 15, 17, 13]
+# 16 output slides -> 1-based slide number in the provided visual template.
+# The mapping follows the closest visual archetype in the reference deck:
+# 1 cover, 2 agenda, 3 intro, 4 problem, 5 scope, 6 related work,
+# 7 concept, 9 dataset, 10 experiment setup, 11/12 workflow diagrams,
+# 15 objective, 17 evaluation, 13 closing.
+TEMPLATE_MAP = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 11, 12, 15, 17, 13]
+EXPECTED_SLIDES = len(TEMPLATE_MAP)
 
 
 def parse_source(path: Path) -> list[dict]:
@@ -59,7 +62,6 @@ def clone_slide(prs: Presentation, source_slide):
     blank_layout = prs.slide_layouts[6]
     new_slide = prs.slides.add_slide(blank_layout)
 
-    # Remove default shapes, if any.
     for shape in list(new_slide.shapes):
         sp = shape._element
         sp.getparent().remove(sp)
@@ -68,19 +70,18 @@ def clone_slide(prs: Presentation, source_slide):
         new_el = copy.deepcopy(shape.element)
         new_slide.shapes._spTree.insert_element_before(new_el, "p:extLst")
 
-    # Copy relationships needed by images and other visual elements.
     for rel in source_slide.part.rels.values():
         if "notesSlide" in rel.reltype:
             continue
-        if rel.is_external:
-            new_slide.part.rels.add_relationship(rel.reltype, rel.target_ref, rel.rId, is_external=True)
-        else:
-            try:
+        try:
+            if rel.is_external:
+                new_slide.part.rels.add_relationship(
+                    rel.reltype, rel.target_ref, rel.rId, is_external=True
+                )
+            else:
                 new_slide.part.rels.add_relationship(rel.reltype, rel._target, rel.rId)
-            except Exception:
-                # Most decorative shapes need no relationship. Image relationships
-                # are normally already represented by copied package parts.
-                pass
+        except Exception:
+            pass
     return new_slide
 
 
@@ -96,7 +97,6 @@ def text_shapes(slide):
     for shape in slide.shapes:
         if getattr(shape, "has_text_frame", False):
             shapes.append(shape)
-    # Reading order approximation: top-to-bottom, then left-to-right.
     return sorted(shapes, key=lambda s: (s.top, s.left))
 
 
@@ -110,9 +110,7 @@ def clean_md(s: str) -> str:
 
 
 def body_chunks(body: str) -> list[str]:
-    """Split markdown body into useful visual chunks without inventing content."""
     body = clean_md(body)
-    # Keep table as one chunk; otherwise split by blank lines.
     chunks = [c.strip() for c in re.split(r"\n\s*\n", body) if c.strip()]
     return chunks
 
@@ -132,39 +130,28 @@ def set_text(shape, text: str, *, size: float | None = None, bold: bool | None =
                 run.font.bold = bold
 
 
-def clear_all_text(slide):
-    for shape in text_shapes(slide):
-        shape.text_frame.clear()
-
-
 def fill_generic(slide, slide_data: dict):
-    """Replace template text while preserving visual containers and their styles."""
     shapes = text_shapes(slide)
     if not shapes:
         return
 
     title = slide_data["title"]
     chunks = body_chunks(slide_data["body"])
-
-    # Find likely title shape: one of the uppermost text containers.
     title_shape = min(shapes, key=lambda s: (s.top, -s.width))
     if title:
         set_text(title_shape, title)
 
     remaining = [s for s in shapes if s is not title_shape]
-    # Prefer larger containers for longer chunks.
     remaining = sorted(remaining, key=lambda s: (s.top, s.left))
 
     for shape in remaining:
         shape.text_frame.clear()
 
     if not remaining:
-        # Cover slide: put the body into the title frame after a blank line.
         if chunks:
             set_text(title_shape, title + "\n\n" + "\n".join(chunks))
         return
 
-    # If content has more chunks than containers, merge overflow into last box.
     for i, chunk in enumerate(chunks):
         target = remaining[min(i, len(remaining) - 1)]
         if i < len(remaining):
@@ -179,7 +166,6 @@ def fill_cover(slide, data: dict):
     for s in shapes:
         s.text_frame.clear()
     chunks = body_chunks(data["body"])
-    # Reference slide 1 has a dominant title plus smaller identity fields.
     if shapes:
         ordered = sorted(shapes, key=lambda s: (s.top, s.left))
         set_text(ordered[0], data["title"])
@@ -205,7 +191,7 @@ def fill_slide(slide, data: dict):
     n = data["number"]
     if n == 1:
         fill_cover(slide, data)
-    elif n in (3,):
+    elif n == 3:
         fill_three_points(slide, data)
     else:
         fill_generic(slide, data)
@@ -213,22 +199,21 @@ def fill_slide(slide, data: dict):
 
 def build(template: Path, source: Path, output: Path):
     slides_data = parse_source(source)
-    if len(slides_data) != 17:
-        raise ValueError(f"Expected 17 slide sections, found {len(slides_data)}")
-    if len(TEMPLATE_MAP) != len(slides_data):
-        raise ValueError("TEMPLATE_MAP must match slide-source count")
+    if len(slides_data) != EXPECTED_SLIDES:
+        raise ValueError(
+            f"Expected {EXPECTED_SLIDES} slide sections based on TEMPLATE_MAP, "
+            f"found {len(slides_data)}. Update TEMPLATE_MAP if the Markdown slide count changes."
+        )
 
     prs = Presentation(str(template))
     original = list(prs.slides)
     if len(original) < max(TEMPLATE_MAP):
         raise ValueError("Template does not contain all referenced archetype slides")
 
-    # Append clones in requested order.
     generated = []
     for source_idx in TEMPLATE_MAP:
         generated.append(clone_slide(prs, original[source_idx - 1]))
 
-    # Delete original template slides from the front. Delete index 0 repeatedly.
     for _ in range(len(original)):
         delete_slide(prs, 0)
 
@@ -242,12 +227,22 @@ def build(template: Path, source: Path, output: Path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--template", type=Path, required=True,
-                        help="Reference PPTX whose visual format is reused")
-    parser.add_argument("--source", type=Path,
-                        default=Path("docs/thesis/proposal/PPT_SEMINAR_PROPOSAL.md"))
-    parser.add_argument("--output", type=Path,
-                        default=Path("build/seminar_proposal_kopi.pptx"))
+    parser.add_argument(
+        "--template",
+        type=Path,
+        required=True,
+        help="Reference PPTX whose visual format is reused",
+    )
+    parser.add_argument(
+        "--source",
+        type=Path,
+        default=Path("docs/thesis/proposal/PPT_SEMINAR_PROPOSAL.md"),
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("build/seminar_proposal_kopi.pptx"),
+    )
     args = parser.parse_args()
     build(args.template, args.source, args.output)
 
