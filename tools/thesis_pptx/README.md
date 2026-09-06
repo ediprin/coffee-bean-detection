@@ -9,6 +9,7 @@ Generator ini membuat PPT seminar proposal dari `docs/thesis/proposal/PPT_SEMINA
 - `PPT_SEMINAR_PROPOSAL.md` hanya berisi teks ringkas untuk presentasi.
 - Template PPTX menjadi sumber format visual: ukuran slide, tema, warna, latar, dekorasi, dan komposisi dasar.
 - Generator memakai ulang slide-slide template sebagai archetype layout dan mengganti teksnya.
+- Jumlah slide utama saat ini adalah **16 slide**; catatan penyaji/backup tidak digenerate sebagai slide utama.
 
 ## Persiapan
 
@@ -46,3 +47,5 @@ kemudian jalankan generator kembali. Jangan mengubah BAB I–III hanya untuk men
 ## Catatan
 
 Generator sengaja mempertahankan teks slide agar ringkas. Rumusan Masalah dan Tujuan Penelitian menggunakan bentuk naratif, sedangkan Batasan Masalah dan rincian eksperimen dapat menggunakan bullet/tabel sesuai kebutuhan presentasi.
+
+Jika jumlah slide utama di Markdown berubah, sesuaikan `TEMPLATE_MAP` pada `tools/thesis_pptx/generate_seminar_proposal.py` agar urutan slide tetap mengikuti archetype visual PPT referensi.
