@@ -39,7 +39,7 @@
 Inspeksi mutu biji kopi hijau masih banyak bergantung pada pengamatan visual, sehingga konsistensinya dapat dipengaruhi pengalaman dan kondisi pemeriksa.
 
 **02**  
-Deteksi otomatis menjadi lebih menantang ketika kategori cacat semakin rinci karena beberapa kelas memiliki perbedaan visual yang kecil pada warna, tekstur, bentuk, dan detail lokal.
+Deteksi otomatis menjadi lebih menantang ketika kategori cacat semakin rinci karena beberapa kelas memiliki kemiripan pada warna, tekstur, bentuk, dan detail lokal.
 
 **03**  
 Kondisi tersebut mendorong kebutuhan representasi citra yang lebih diskriminatif untuk deteksi *fine-grained* cacat biji kopi.
@@ -50,7 +50,7 @@ Kondisi tersebut mendorong kebutuhan representasi citra yang lebih diskriminatif
 
 ### Rumusan Masalah
 
-Deteksi *fine-grained* cacat biji kopi menghadapi kemiripan visual antarkelas, sementara pemanfaatan informasi frekuensi dan arah pada citra sebelum proses deteksi masih perlu dikaji lebih lanjut. Penelitian ini mengkaji penerapan dan optimasi prapemrosesan frekuensi-angular pada YOLO26n serta pengaruhnya terhadap kinerja deteksi dan biaya komputasi.
+Deteksi *fine-grained* cacat biji kopi menghadapi kemiripan visual antarkelas, sedangkan pemanfaatan informasi frekuensi-angular sebelum proses deteksi masih terbatas. Penelitian ini mengkaji penerapan dan optimasinya pada YOLO26n terhadap kinerja deteksi dan biaya komputasi.
 
 ---
 
@@ -58,12 +58,12 @@ Deteksi *fine-grained* cacat biji kopi menghadapi kemiripan visual antarkelas, s
 
 ### Batasan Masalah
 
-- Penelitian berfokus pada *object detection* biji kopi hijau.
-- Dataset utama adalah **robusta_SNI_Dataset** dengan 21 kelas yang dapat dipetakan ke taksonomi SNI; dataset Capstone, Lulus, dan Niacubilla digunakan sebagai konfirmasi dan tidak digabungkan.
-- Model utama adalah **YOLO26n**; RT-DETRv3-R18 bersifat opsional.
-- Pengembangan difokuskan pada prapemrosesan frekuensi-angular tanpa memodifikasi *backbone*, *neck*, atau *detection head* pada eksperimen utama.
-- Baseline utama adalah YOLO26n tanpa prapemrosesan dan CLAHE + YOLO26n.
-- Metrik utama adalah **mAP50–95**; efisiensi dinilai secara *end-to-end*.
+- Deteksi *fine-grained* cacat biji kopi hijau.
+- Dataset utama **robusta_SNI_Dataset (21 kelas)**.
+- Dataset Capstone, Lulus, dan Niacubilla sebagai konfirmasi.
+- Model utama **YOLO26n** tanpa modifikasi *backbone*, *neck*, dan *head*.
+- Optimasi difokuskan pada **prapemrosesan frekuensi-angular**.
+- Evaluasi utama menggunakan **mAP50–95** dan biaya komputasi *end-to-end*.
 
 ---
 
