@@ -135,15 +135,18 @@ Persiapan robusta_SNI_Dataset
 
 ### Dataset Penelitian
 
-**Dataset Utama**  
-**robusta_SNI_Dataset** — 21 kelas; tersedia sebagai *instance segmentation* dan anotasi digunakan sebagai *bounding box*. Dataset ini menjadi satu-satunya dataset untuk memilih C*.
+| Dataset | Jumlah citra sumber | Jumlah kelas | Task sumber | Peran |
+|---|---:|---:|---|---|
+| **robusta_SNI_Dataset** | **2.148** | **21** | Instance segmentation → bounding box | Pengembangan dan pemilihan C* |
+| Capstone | 966 | 14 | Object detection | Konfirmasi |
+| Lulus | 1.002 | 6 | Object detection | Konfirmasi |
+| Niacubilla | 1.800 | 9 | Object detection | Konfirmasi |
 
-**Dataset Konfirmasi**
-- Coffee Bean Defect (Capstone) — 14 kelas.
-- Green Coffee Bean Defects (Lulus) — 6 kelas.
-- Coffee Bean Defects (Niacubilla) — 9 kelas.
+**Split target:** 70% train · 15% validation · 15% test.  
+**Setiap dataset digunakan secara terpisah dan tidak digabungkan.**  
+C* dipilih hanya pada **robusta_SNI_Dataset** dan tidak dituning ulang pada dataset konfirmasi.
 
-**Split:** 70% train, 15% validation, 15% test. Setiap dataset digunakan secara terpisah.
+*Catatan:* jumlah di atas adalah jumlah citra yang ditampilkan pada sumber Roboflow saat verifikasi proposal; jumlah akhir citra/objek per split dicatat setelah manifest data dibekukan.
 
 ---
 
