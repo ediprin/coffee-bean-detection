@@ -3,6 +3,7 @@
 > Sumber isi ilmiah: `docs/thesis/proposal/` pada branch `proposal/thesis-foundation`.
 > Dokumen ini adalah sumber teks ringkas untuk presentasi. Naskah formal BAB I–III tetap menjadi sumber utama apabila terdapat perbedaan.
 > Rumusan masalah dan tujuan penelitian ditulis naratif, bukan per poin.
+> Deck visual menggunakan font **Poppins** untuk seluruh teks.
 
 ---
 
@@ -17,255 +18,217 @@
 [Dosen Pembimbing 1]  
 [Dosen Pembimbing 2]
 
-**Seminar Proposal**
+**Seminar Proposal Tesis**
 
 ---
 
-## SLIDE 02 — PEMBAHASAN MATERI
+## SLIDE 02 — LATAR BELAKANG
 
-### Pembahasan Materi
+### Latar Belakang
 
-**01** Pendahuluan  
-**02** Penelitian Terdahulu  
-**03** Metodologi Penelitian
+Pemeriksaan fisik biji kopi masih dapat bergantung pada pengamatan manusia sehingga konsistensinya dipengaruhi pengalaman, kondisi pengamatan, pelatihan, dan beban kerja pemeriksa.
 
----
+*Object detection* memungkinkan model mengenali kategori cacat sekaligus lokasi objek pada citra. Namun, pada susunan kategori yang lebih rinci, perbedaan kinerja antarkelas menjadi lebih terlihat karena beberapa cacat memiliki kemiripan warna, tekstur, bentuk, atau tanda lokal kecil.
 
-## SLIDE 03 — PENDAHULUAN
-
-### Pendahuluan
-
-**01**  
-Inspeksi mutu biji kopi hijau masih banyak bergantung pada pengamatan visual, sehingga konsistensinya dapat dipengaruhi pengalaman dan kondisi pemeriksa.
-
-**02**  
-Deteksi otomatis menjadi lebih menantang ketika kategori cacat semakin rinci karena beberapa kelas memiliki kemiripan pada warna, tekstur, bentuk, dan detail lokal.
-
-**03**  
-Kondisi tersebut mendorong kebutuhan representasi citra yang lebih diskriminatif untuk deteksi *fine-grained* cacat biji kopi.
+**Inti masalah:** detektor memerlukan representasi citra yang cukup diskriminatif untuk membedakan cacat yang berdekatan secara visual.
 
 ---
 
-## SLIDE 04 — RUMUSAN MASALAH
+## SLIDE 03 — RUMUSAN MASALAH
 
 ### Rumusan Masalah
 
-Deteksi *fine-grained* cacat biji kopi menghadapi kemiripan visual antarkelas, sedangkan pemanfaatan informasi frekuensi-angular sebelum proses deteksi masih terbatas. Penelitian ini mengkaji penerapan dan optimasinya pada YOLO26n terhadap kinerja deteksi dan biaya komputasi.
+Deteksi cacat biji kopi dengan jumlah kategori yang rinci memiliki tantangan karena beberapa jenis cacat mempunyai karakteristik visual yang relatif serupa sehingga kemampuan model dalam mengenali setiap kelas dapat berbeda. Dalam literatur biji kopi yang ditinjau, peningkatan kinerja umumnya dilakukan melalui modifikasi komponen di dalam model, sedangkan pengolahan citra berdasarkan informasi frekuensi dan arah sebelum proses deteksi masih perlu dikaji lebih lanjut pada kasus cacat biji kopi.
+
+**Fokus penelitian:** penerapan prapemrosesan citra berbasis frekuensi-angular pada YOLO26n, variasi desainnya, dan pengaruhnya terhadap deteksi *fine-grained* cacat biji kopi.
 
 ---
 
-## SLIDE 05 — BATASAN MASALAH
+## SLIDE 04 — TUJUAN, BATASAN, DAN MANFAAT PENELITIAN
 
-### Batasan Masalah
+### Tujuan, Batasan, dan Manfaat Penelitian
 
-- Deteksi *fine-grained* cacat biji kopi hijau.
-- Dataset utama **robusta_SNI_Dataset (21 kelas)**.
-- Dataset Capstone, Lulus, dan Niacubilla sebagai konfirmasi.
-- Model utama **YOLO26n** tanpa modifikasi *backbone*, *neck*, dan *head*.
-- Optimasi difokuskan pada **prapemrosesan frekuensi-angular**.
-- Evaluasi utama menggunakan **mAP50–95** dan biaya komputasi *end-to-end*.
+**Tujuan Penelitian**  
+Menerapkan dan menganalisis prapemrosesan citra berbasis frekuensi-angular pada YOLO26n, menentukan konfigurasi dari variasi desain yang diuji, serta mengevaluasi pengaruhnya terhadap kinerja deteksi dan biaya komputasi.
+
+**Batasan Masalah**
+- *Object detection* biji kopi hijau.
+- YOLO26n sebagai model utama.
+- Prapemrosesan frekuensi-angular tanpa modifikasi *backbone*, *neck*, atau *detection head*.
+- Dataset utama dan konfirmasi digunakan secara terpisah.
+
+**Manfaat Penelitian**  
+Kajian empiris mengenai prapemrosesan frekuensi-angular untuk deteksi *fine-grained* cacat biji kopi, termasuk pengaruh pada kinerja keseluruhan, kelas sulit, dan biaya komputasi.
 
 ---
 
-## SLIDE 06 — PENELITIAN TERDAHULU
+## SLIDE 05 — PENELITIAN TERKAIT: BIJI KOPI
 
-### Penelitian Terdahulu
+### Penelitian Terkait — Biji Kopi
 
-| Penelitian | Pendekatan | Fokus |
+| Penelitian | Metode/Model | Relevansi |
 |---|---|---|
-| Hong et al. (2026) | Improved YOLOv10 | Deteksi cacat kopi |
-| Jiao et al. (2025) | Multistage fusion + attention | Diskriminasi fitur cacat kopi |
-| Li et al. (2025) | Fourier preprocessing + YOLO | Pemrosesan spektral sebelum deteksi |
-| Xu et al. (2025) | AFAB | Frekuensi-angular untuk *fine-grained detection* |
+| Hong et al. (2026) | Improved YOLOv10 | Deteksi 7 kategori cacat kopi; analisis kebingungan antarkelas. |
+| Bahy & Rifai (2026) | Lightweight YOLOv5s | Deteksi 20 kategori fisik berbasis SNI; kinerja antarkelas heterogen. |
+| Tarekegn & Debelee (2025) | KN-YOLOv8 | Deteksi 13 kelas cacat dan satu kelas normal; dataset multiobjek berskala anotasi besar. |
+| Samudra & Rachmawati (2025) | LSKNet + Oriented R-CNN | Deteksi 3 kelas Arabika berbasis SNI; kebingungan *black* dan *partially black*. |
 
-**Gap:** penelitian pada kopi lebih banyak mengembangkan representasi internal model, sedangkan pemanfaatan prapemrosesan frekuensi-angular sebelum detektor belum dikaji secara khusus.
-
----
-
-## SLIDE 07 — MENGAPA FREKUENSI-ANGULAR?
-
-### Mengapa Frekuensi-Angular?
-
-**Fine-grained defect**  
-→ perbedaan kecil pada tekstur dan pola permukaan
-
-**Frequency**  
-→ menangkap karakteristik perubahan dan detail visual
-
-**Angular**  
-→ menangkap distribusi respons berdasarkan arah
-
-**Hipotesis penelitian:** representasi tersebut dapat membantu menghasilkan masukan yang lebih diskriminatif bagi detektor.
+**Pesan utama:** literatur kopi menunjukkan kelayakan deteksi berbasis YOLO, tetapi performa dapat berbeda antarkelas ketika kategori semakin rinci.
 
 ---
 
-## SLIDE 08 — DATASET PENELITIAN
+## SLIDE 06 — PENELITIAN TERKAIT: BIJI KOPI DAN RESEARCH GAP
+
+### Penelitian Terkait — Biji Kopi dan Research Gap
+
+| Penelitian | Metode/Model | Relevansi |
+|---|---|---|
+| Jundullah et al. (2026) | YOLOv8s | Deteksi multikelas cacat dan kontaminan; ketimpangan kinerja antarkelas. |
+| Hebert & Alamsyah (2026) | YOLOv12 | Deteksi 15 kategori cacat; beberapa kelas memiliki AP lebih rendah. |
+| Kesiman et al. (2023) | MobileNet / InceptionResNetV2 | Klasifikasi berbasis SNI; peningkatan dari 3 ke 17 kelas menaikkan kesulitan diskriminasi. |
+| Gope et al. (2024) | Perbandingan varian YOLO | Menunjukkan kelayakan keluarga YOLO pada deteksi biji kopi hijau. |
+
+**Research gap:** penelitian deteksi cacat kopi yang ditinjau terutama meningkatkan kinerja melalui pemilihan atau modifikasi model. Mekanisme frekuensi-angular belum dievaluasi sebagai prapemrosesan citra masukan untuk deteksi *fine-grained* cacat biji kopi dalam literatur yang ditinjau.
+
+---
+
+## SLIDE 07 — LANDASAN PRAPEMROSESAN DAN REPRESENTASI FREKUENSI
+
+### Landasan Prapemrosesan dan Representasi Frekuensi
+
+**Fine-Grained Object Detection**  
+Kategori berdekatan secara visual membutuhkan representasi yang lebih diskriminatif.
+
+**Input-Space Preprocessing**  
+Transformasi citra sebelum detektor dapat dinilai dari efeknya pada tugas deteksi.
+
+**Frequency–Angular Representation**  
+Amplitudo Fourier dapat dianalisis berdasarkan radius dan arah relatif terhadap pusat spektrum.
+
+**Catatan:** frekuensi-angular merujuk pada representasi Fourier lokal dan analisis amplitudo berdasarkan arah, bukan *oriented bounding box*.
+
+---
+
+## SLIDE 08 — RANCANGAN UMUM PENELITIAN
+
+### Rancangan Umum Penelitian
+
+Penelitian menggunakan eksperimen komparatif untuk menganalisis pengaruh prapemrosesan citra berbasis frekuensi-angular terhadap kinerja YOLO26n pada deteksi *fine-grained* cacat biji kopi. Arsitektur YOLO26n dipertahankan pada perbandingan utama, sedangkan perlakuan eksperimen diberikan pada citra masukan.
+
+Alur umum:
+
+```text
+Persiapan robusta_SNI_Dataset
+→ Model acuan B0 dev
+→ Uji variasi C0–C5
+→ Pilih dan bekukan C*
+→ Konfirmasi lintas dataset
+→ Evaluasi akhir
+```
+
+**Kontrak utama:** *backbone*, *neck*, dan *detection head* YOLO26n tidak dimodifikasi.  
+**Anti-leakage:** C* dipilih hanya pada dataset utama, lalu dibekukan sebelum konfirmasi.
+
+---
+
+## SLIDE 09 — DATASET PENELITIAN
 
 ### Dataset Penelitian
 
 **Dataset Utama**  
-**robusta_SNI_Dataset** — 21 kelas  
-Pengembangan dan pemilihan **C\***
+**robusta_SNI_Dataset** — 21 kelas; tersedia sebagai *instance segmentation* dan anotasi digunakan sebagai *bounding box*. Dataset ini menjadi satu-satunya dataset untuk memilih C*.
 
-**Dataset Konfirmasi**  
-Capstone — 14 kelas  
-Lulus — 6 kelas  
-Niacubilla — 9 kelas
+**Dataset Konfirmasi**
+- Coffee Bean Defect (Capstone) — 14 kelas.
+- Green Coffee Bean Defects (Lulus) — 6 kelas.
+- Coffee Bean Defects (Niacubilla) — 9 kelas.
 
-**Split 70% train · 15% validation · 15% test**  
-Setiap dataset digunakan secara terpisah.
+**Split:** 70% train, 15% validation, 15% test. Setiap dataset digunakan secara terpisah.
 
 ---
 
-## SLIDE 09 — METODOLOGI PENELITIAN
+## SLIDE 10 — PRAPEMROSESAN CITRA BERBASIS FREKUENSI-ANGULAR
 
-### Metodologi Penelitian
+### Prapemrosesan Citra Berbasis Frekuensi-Angular
 
-Empat kondisi eksperimen utama:
-
-**B0** — YOLO26n  
-**B1** — CLAHE → YOLO26n  
-**B2** — C0 → YOLO26n  
-**B3** — C* → YOLO26n
-
-**B2 − B0** → efek *frequency-angular reference frontend*  
-**B3 − B2** → efek optimasi desain  
-**B3 − B1** → perbandingan terhadap CLAHE
-
----
-
-## SLIDE 10 — ALUR PRAPEMROSESAN
-
-### Alur Prapemrosesan Frekuensi-Angular
+Prapemrosesan mengadaptasi mekanisme angular AFAB-2 sebagai *frontend* pada ruang masukan. Tahapan utama:
 
 ```text
-Citra RGB
-   ↓
-Patch Lokal
-   ↓
-FFT 2D
-   ↓
-Analisis Amplitudo & Arah
-   ↓
-Adaptive Spectral Weighting
-   ↓
-Inverse FFT
-   ↓
-Rekonstruksi
-   ↓
-Residual Fusion
-   ↓
-YOLO26n
+Citra RGB → Patch lokal → FFT 2D → Amplitudo dan fase
+→ Distribusi angular → Ambang adaptif → Pembobotan spektral
+→ Inverse FFT → Rekonstruksi → Residual fusion
 ```
 
-**I′ = I + I ⊙ G**
+Persamaan residual utama:
 
-**Parameter-free frontend · YOLO26n tidak dimodifikasi**
+$$
+I'^c = I^c + I^c \odot G^c
+$$
 
----
-
-## SLIDE 11 — OPTIMASI DESAIN
-
-### Optimasi Desain
-
-**C0** — Reference frequency-angular  
-↓  
-**C1** — + Hann window  
-↓  
-**C2** — + Unsigned orientation  
-↓  
-**C3** — + Radial bands  
-↓  
-**C4** — + Soft threshold  
-↓  
-**C5** — + Luminance guidance  
-↓  
-**C\*** — konfigurasi terpilih
-
-Setiap konfigurasi menambahkan satu perubahan utama secara kumulatif.
+Fase asli dipertahankan untuk rekonstruksi, sedangkan respons spektral membentuk gate G. Prapemrosesan tidak menambahkan parameter trainable.
 
 ---
 
-## SLIDE 12 — ALUR PENELITIAN
+## SLIDE 11 — ANALISIS VARIASI DESAIN PRAPEMROSESAN
 
-### Alur Penelitian
+### Analisis Variasi Desain Prapemrosesan
 
-```text
-robusta_SNI_Dataset
-        ↓
-Split 70 / 15 / 15
-        ↓
-Baseline B0
-        ↓
-Tetapkan Hard Classes
-        ↓
-Evaluasi C0–C5
-        ↓
-Sensitivity Analysis
-        ↓
-Pilih & Bekukan C*
-        ↓
-Multi-seed Confirmation
-        ↓
-Final Test
-```
+| Kode | Perubahan utama | Tujuan pengujian |
+|---|---|---|
+| C0 | Konfigurasi frekuensi-angular referensi | Menjadi acuan prapemrosesan. |
+| C1 | Fungsi jendela Hann | Menguji pengaruh batas patch. |
+| C2 | Orientasi tak bertanda | Menguji arah dan orientasi. |
+| C3 | Tiga pita radial | Menguji seleksi angular pada wilayah radial berbeda. |
+| C4 | Ambang lunak | Menguji pembobotan bertahap di sekitar ambang. |
+| C5 | Panduan luminansi | Menguji kebutuhan pembobotan RGB terpisah. |
 
-**Test set tidak digunakan untuk memilih C\*.**
+Seluruh konfigurasi menggunakan kontrak residual C0 yang sama dan ditambahkan secara kumulatif.
 
 ---
 
-## SLIDE 13 — KONFIRMASI LINTAS DATASET
+## SLIDE 12 — RANCANGAN EKSPERIMEN
 
-### Konfirmasi Lintas Dataset
+### Rancangan Eksperimen
 
-```text
-             C* dibekukan
-                  ↓
-       ┌──────────┼──────────┐
-       ↓          ↓          ↓
-   Capstone     Lulus    Niacubilla
-   14 kelas     6 kelas     9 kelas
-       ↓          ↓          ↓
-    B0 vs B3   B0 vs B3   B0 vs B3
-```
+Empat kondisi utama:
 
-**Seeds: 123 · 2026 · 31415**
+| Kode | Kondisi | Peran |
+|---|---|---|
+| B0 | YOLO26n | Kondisi acuan. |
+| B1 | CLAHE + YOLO26n | Kontrol peningkatan kontras lokal. |
+| B2 | C0 + YOLO26n | Frontend frekuensi-angular referensi. |
+| B3 | C* + YOLO26n | Konfigurasi frekuensi-angular terpilih. |
 
-**Tidak ada retuning C\*** pada dataset konfirmasi.
+Perbandingan B2−B0 mengukur efek *frontend* referensi, B3−B2 mengukur efek optimasi desain, dan B3−B1 membandingkan konfigurasi terpilih terhadap CLAHE.
+
+C* dipilih pada validation set robusta_SNI_Dataset, lalu dibekukan sebelum konfirmasi dan test akhir. Seluruh run dimulai dari bobot awal `yolo26n.pt`.
 
 ---
 
-## SLIDE 14 — TUJUAN PENELITIAN
+## SLIDE 13 — EVALUASI KINERJA DETEKSI DAN EFISIENSI KOMPUTASI
 
-### Tujuan Penelitian
+### Evaluasi Kinerja Deteksi dan Efisiensi Komputasi
 
-Menganalisis dan mengoptimasi prapemrosesan citra berbasis frekuensi-angular pada YOLO26n untuk deteksi *fine-grained* cacat biji kopi serta mengevaluasi pengaruhnya terhadap kinerja deteksi dan biaya komputasi.
+**Kinerja Deteksi**
+- mAP50–95 sebagai metrik utama.
+- mAP50, precision, dan recall sebagai metrik tambahan.
 
----
+**Fine-Grained / Per Kelas**
+- AP per kelas.
+- AP_H untuk tiga kelas sulit.
+- AP_worst, confusion matrix, FP, dan FN.
 
-## SLIDE 15 — EVALUASI PENELITIAN
+**Efisiensi Komputasi**
+- waktu prapemrosesan t_pra;
+- waktu inferensi model t_model;
+- latency end-to-end t_total;
+- FPS dan peak GPU memory.
 
-### Evaluasi Penelitian
-
-**Deteksi**  
-- mAP50–95
-- mAP50
-- Precision & Recall
-
-**Fine-grained**  
-- AP per kelas
-- AP_H
-- AP_worst
-
-**Efisiensi**  
-- Preprocessing time
-- End-to-end latency
-- FPS
-- Peak GPU memory
+**Prinsip evaluasi:** hasil test tidak digunakan untuk memilih ulang metode; biaya FFT dan seluruh operasi frontend masuk dalam latency end-to-end.
 
 ---
 
-## SLIDE 16 — PENUTUP
+## SLIDE 14 — PENUTUP
 
 ### TERIMA KASIH
 
@@ -275,7 +238,7 @@ Menganalisis dan mengoptimasi prapemrosesan citra berbasis frekuensi-angular pad
 
 # Catatan Penyaji / Backup
 
-## A. Pemilihan C*
+## A. Detail Pemilihan C*
 
 Konfigurasi C0–C5 dibandingkan pada validation set dataset utama. Kandidat dengan selisih kurang dari 0,001 terhadap mAP50–95 tertinggi masuk kelompok *tie*. Jika lebih dari satu kandidat, digunakan AP kelompok tiga kelas sulit, kemudian median *end-to-end latency* sebagai *tie-break* berikutnya.
 
@@ -286,15 +249,11 @@ Konfigurasi C0–C5 dibandingkan pada validation set dataset utama. Kandidat den
 - jika menggunakan soft threshold: `T ∈ {0.01, 0.02, 0.05}`;
 - overlap tetap 50%.
 
-## C. Radial-Angular
-
-Pada C3, spektrum dibagi menjadi tiga pita radial. Distribusi angular, normalisasi, entropi, dan ambang dihitung terpisah pada setiap pita sehingga seleksi orientasi dilakukan relatif terhadap wilayah frekuensi yang berbeda.
-
-## D. Kontrak Eksperimen
+## C. Kontrak Eksperimen
 
 Seluruh run YOLO26n dimulai dari bobot resmi `yolo26n.pt`. Tidak ada pewarisan checkpoint antarkondisi atau antardataset. C* hanya dipilih pada dataset utama dan dibekukan sebelum konfirmasi.
 
-## E. Detail Metode untuk Backup Slide
+## D. Backup Metode
 
 - FFT, amplitudo, dan fase.
 - Entropy-based adaptive threshold.
@@ -302,6 +261,4 @@ Seluruh run YOLO26n dimulai dari bobot resmi `yolo26n.pt`. Tidak ada pewarisan c
 - Tiga radial bands pada C3.
 - Luminance guidance pada C5.
 - Alasan pemilihan CLAHE sebagai baseline konvensional.
-- Aturan pemilihan C* dan sensitivity analysis.
 - Protokol pengukuran latency end-to-end.
-- Alasan penggunaan YOLO26n sebagai detektor utama.
