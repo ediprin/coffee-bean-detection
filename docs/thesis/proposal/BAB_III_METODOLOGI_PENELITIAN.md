@@ -17,16 +17,18 @@ Gambar 3.1 Alur Penelitian
 
 Penelitian menggunakan empat dataset deteksi cacat biji kopi. **robusta_SNI_Dataset** digunakan sebagai dataset utama untuk pengembangan dan pemilihan konfigurasi prapemrosesan, sedangkan **Coffee Bean Defect (Capstone)**, **Green Coffee Bean Defects (Lulus)**, dan **Coffee Bean Defects (Niacubilla)** digunakan sebagai dataset konfirmasi. Setiap dataset digunakan secara terpisah dan tidak digabungkan karena memiliki sumber, jumlah kelas, dan karakteristik citra yang berbeda.
 
-| Dataset | Sumber | Peran |
-|---|---|---|
-| robusta_SNI_Dataset | [Roboflow Universe](https://universe.roboflow.com/faruq-reybi/robusta_sni_dataset) | Dataset utama |
-| Coffee Bean Defect (Capstone) | [Roboflow Universe](https://universe.roboflow.com/capstone-2-wwe5t/coffee-bean-defect-a0vno/dataset/1) | Dataset konfirmasi I |
-| Green Coffee Bean Defects (Lulus) | [Roboflow Universe](https://universe.roboflow.com/lulus-vpibo/green-coffee-bean-defects/dataset/1) | Dataset konfirmasi II |
-| Coffee Bean Defects (Niacubilla) | [Roboflow Universe](https://universe.roboflow.com/niacubilla/coffee-bean-defects/dataset/1) | Dataset konfirmasi III |
+| Dataset | Sumber | Task sumber | Jumlah citra sumber | Jumlah kelas | Peran |
+|---|---|---|---:|---:|---|
+| robusta_SNI_Dataset | [Roboflow Universe](https://universe.roboflow.com/faruq-reybi/robusta_sni_dataset) | Instance segmentation | 2.148 | 21 | Dataset utama |
+| Coffee Bean Defect (Capstone) | [Roboflow Universe](https://universe.roboflow.com/capstone-2-wwe5t/coffee-bean-defect-a0vno) | Object detection | 966 | 14 | Dataset konfirmasi I |
+| Green Coffee Bean Defects (Lulus) | [Roboflow Universe](https://universe.roboflow.com/lulus-vpibo/green-coffee-bean-defects) | Object detection | 1.002 | 6 | Dataset konfirmasi II |
+| Coffee Bean Defects (Niacubilla) | [Roboflow Universe](https://universe.roboflow.com/niacubilla/coffee-bean-defects) | Object detection | 1.800 | 9 | Dataset konfirmasi III |
+
+Jumlah citra pada tabel merupakan jumlah yang ditampilkan pada halaman proyek Roboflow Universe saat verifikasi proposal pada 6 September 2026. Jumlah akhir citra dan objek yang benar-benar digunakan dalam eksperimen akan dicatat setelah ekspor dataset, pemeriksaan integritas data, konversi anotasi yang diperlukan, dan pembagian data dibekukan dalam manifest penelitian.
 
 ### 3.2.2 Dataset Utama robusta_SNI_Dataset
 
-**robusta_SNI_Dataset** tersedia dalam format *instance segmentation* dan mencakup 21 kelas yang dapat dipetakan ke taksonomi SNI. Dalam penelitian ini anotasi objek digunakan sebagai *bounding box* untuk tugas deteksi.
+**robusta_SNI_Dataset** tersedia dalam format *instance segmentation*, memuat **2.148 citra sumber**, dan mencakup 21 kelas yang dapat dipetakan ke taksonomi SNI. Dalam penelitian ini anotasi objek digunakan sebagai *bounding box* untuk tugas deteksi.
 
 Dataset disusun ulang dengan pembagian terkelompok berdasarkan sumber citra. Pada rancangan proposal, data dibagi menjadi **70% pelatihan, 15% validasi, dan 15% pengujian**. Jumlah akhir citra dan objek pada setiap bagian akan disesuaikan setelah pembagian dataset dibekukan.
 
@@ -36,11 +38,11 @@ Dataset ini menjadi satu-satunya dataset untuk memilih konfigurasi prapemrosesan
 
 Tiga dataset publik digunakan untuk mengevaluasi konsistensi metode pada sumber data yang berbeda.
 
-| Dataset | Versi | Task | Jumlah kelas |
-|---|---:|---|---:|
-| Coffee Bean Defect (Capstone) | 1 | Object detection | 14 |
-| Green Coffee Bean Defects (Lulus) | 1 | Object detection | 6 |
-| Coffee Bean Defects (Niacubilla) | 1 | Object detection | 9 |
+| Dataset | Task | Jumlah citra sumber | Jumlah kelas |
+|---|---|---:|---:|
+| Coffee Bean Defect (Capstone) | Object detection | 966 | 14 |
+| Green Coffee Bean Defects (Lulus) | Object detection | 1.002 | 6 |
+| Coffee Bean Defects (Niacubilla) | Object detection | 1.800 | 9 |
 
 Setiap dataset mempertahankan taksonomi kelasnya sendiri dan tidak disatukan dengan kelas pada **robusta_SNI_Dataset**. Informasi varietas kopi pada sebagian dataset publik tidak dinyatakan secara eksplisit oleh sumber dataset. Oleh karena itu, dataset publik digunakan untuk mengevaluasi konsistensi metode pada sumber data yang berbeda, bukan untuk membandingkan performa antarvarietas kopi.
 
