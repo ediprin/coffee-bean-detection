@@ -23,6 +23,7 @@ from coffee_detector.data.prepare_coffee_standard_primary import (
 
 
 FORMAT = "coffee_detector.coffee_standard_j25_source_split.v1"
+TRAIN_SIBLINGS_FORMAT = "coffee_detector.coffee_standard_j25_source_split.train_siblings.v2"
 
 
 def _sha256_bytes(value: bytes) -> str:
@@ -69,16 +70,32 @@ def prepare_j25_source_split(
     *,
     seed: int = 42,
     expected_sha256: str = AUTHOR_ARCHIVE_SHA256,
+    retain_train_siblings: bool = False,
 ) -> dict:
     archive_path = Path(archive_path).expanduser().resolve()
     output_root = Path(output_root).expanduser().resolve()
     archive_sha = _sha256_file(archive_path)
     if archive_sha != expected_sha256.lower():
         raise RuntimeError(f"SHA arsip penulis berubah: {archive_sha}")
-    summary_path = output_root / "coffee_standard_j25_source_split_summary.json"
+    summary_name = (
+        "coffee_standard_j25_train_siblings_summary.json"
+        if retain_train_siblings
+        else "coffee_standard_j25_source_split_summary.json"
+    )
+    manifest_name = (
+        "coffee_standard_j25_train_siblings_manifest.json"
+        if retain_train_siblings
+        else "coffee_standard_j25_source_split_manifest.json"
+    )
+    selected_format = TRAIN_SIBLINGS_FORMAT if retain_train_siblings else FORMAT
+    summary_path = output_root / summary_name
     if summary_path.is_file():
         cached = json.loads(summary_path.read_text(encoding="utf-8"))
-        if cached.get("source_archive_sha256") == archive_sha and cached.get("seed") == seed:
+        if (
+            cached.get("source_archive_sha256") == archive_sha
+            and cached.get("seed") == seed
+            and cached.get("format") == selected_format
+        ):
             cached["summary"] = str(summary_path)
             return cached
         raise RuntimeError("Output lama berbeda kontrak")
@@ -151,12 +168,17 @@ def prepare_j25_source_split(
         assignment, optimizer = grouped_three_way_assignment(components, seed=seed, restarts=128)
         manifest = []
         split_class_counts = {split: Counter() for split in ("train", "val", "test")}
-        split_counts = Counter()
+        split_identity_counts = Counter()
+        split_image_counts = Counter()
         for component in components:
             identity = component["component_id"]
             split = assignment[identity]
             row = representatives[identity]
-            label_bytes = archive.read(row["label_member"])
+            extraction_rows = (
+                sorted(groups[identity], key=lambda item: item["image_member"])
+                if retain_train_siblings and split == "train"
+                else [row]
+            )
             manifest.append(
                 {
                     "component_id": identity,
@@ -165,21 +187,40 @@ def prepare_j25_source_split(
                     "source_derivatives": component["source_derivatives"],
                     "representative_image_member": row["image_member"],
                     "representative_label_member": row["label_member"],
+                    "development_image_members": (
+                        [item["image_member"] for item in extraction_rows]
+                        if split != "test"
+                        else []
+                    ),
                 }
             )
-            split_counts[split] += 1
-            for class_id, count in enumerate(component["class_counts"]):
-                split_class_counts[split][class_id] += count
+            split_identity_counts[split] += 1
+            evaluation_rows = extraction_rows if split == "train" else [row]
+            split_image_counts[split] += len(evaluation_rows)
+            for selected in evaluation_rows:
+                selected_label_bytes = archive.read(selected["label_member"])
+                selected_counts = Counter(
+                    int(line.split()[0])
+                    for line in selected_label_bytes.decode("utf-8").splitlines()
+                    if line.strip()
+                )
+                split_class_counts[split].update(selected_counts)
             if split == "test":
                 continue
-            filename = f"{identity}{PurePosixPath(row['image_member']).suffix.lower()}"
-            image_target = output_root / split / "images" / filename
-            label_target = output_root / split / "labels" / f"{identity}.txt"
-            image_target.parent.mkdir(parents=True, exist_ok=True)
-            label_target.parent.mkdir(parents=True, exist_ok=True)
-            with archive.open(row["image_member"]) as source, image_target.open("wb") as target:
-                shutil.copyfileobj(source, target)
-            label_target.write_bytes(label_bytes)
+            for derivative_index, selected in enumerate(extraction_rows):
+                suffix = PurePosixPath(selected["image_member"]).suffix.lower()
+                stem = (
+                    f"{identity}_{derivative_index:02d}"
+                    if len(extraction_rows) > 1
+                    else identity
+                )
+                image_target = output_root / split / "images" / f"{stem}{suffix}"
+                label_target = output_root / split / "labels" / f"{stem}.txt"
+                image_target.parent.mkdir(parents=True, exist_ok=True)
+                label_target.parent.mkdir(parents=True, exist_ok=True)
+                with archive.open(selected["image_member"]) as source, image_target.open("wb") as target:
+                    shutil.copyfileobj(source, target)
+                label_target.write_bytes(archive.read(selected["label_member"]))
 
     data_yaml = {
         "path": str(output_root),
@@ -190,7 +231,7 @@ def prepare_j25_source_split(
     (output_root / "data.yaml").write_text(
         yaml.safe_dump(data_yaml, sort_keys=False, allow_unicode=True), encoding="utf-8"
     )
-    (output_root / "coffee_standard_j25_source_split_manifest.json").write_text(
+    (output_root / manifest_name).write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     source_distribution = Counter(component["source_derivatives"] for component in components)
@@ -209,22 +250,38 @@ def prepare_j25_source_split(
         "all_25_classes_in_locked_test": set(split_class_counts["test"]) == set(range(25)),
         "development_root_has_no_test_images": not (output_root / "test").exists(),
         "development_yaml_has_no_test_key": "test" not in data_yaml,
+        "train_siblings_retained_only_in_train": (
+            not retain_train_siblings
+            or (
+                split_image_counts["train"] == 695
+                and split_image_counts["val"] == split_identity_counts["val"]
+                and split_image_counts["test"] == split_identity_counts["test"]
+            )
+        ),
     }
     payload = {
-        "format": FORMAT,
+        "format": selected_format,
         "decision": "PASS" if all(gates.values()) else "FAIL",
         "seed": seed,
         "source_archive": str(archive_path),
         "source_archive_sha256": archive_sha,
         "source_identities": len(components),
         "source_derivative_group_sizes": dict(sorted(source_distribution.items())),
-        "images": dict(split_counts),
+        "source_identities_by_split": dict(split_identity_counts),
+        "images": dict(split_image_counts),
+        "extracted_images": {
+            "train": split_image_counts["train"],
+            "val": split_image_counts["val"],
+            "test": 0,
+        },
         "instances": {split: int(sum(split_class_counts[split].values())) for split in split_class_counts},
         "minimum_train_sibling_similarity": min(minimum_similarities),
         "assignment_optimizer": optimizer,
         "gates": gates,
         "locked_test_manifest_only": True,
         "test_images_extracted": False,
+        "retain_train_siblings": retain_train_siblings,
+        "manifest": str(output_root / manifest_name),
         "training_authorized": False,
     }
     summary_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")

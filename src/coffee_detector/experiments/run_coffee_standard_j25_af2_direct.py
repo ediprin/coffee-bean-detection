@@ -12,7 +12,10 @@ import yaml
 
 from coffee_detector.afab.model import AFABDetectionModel, load_afab_weights
 from coffee_detector.afab.operator import AFABConfig, AFABInputEnhancer
-from coffee_detector.data.prepare_coffee_standard_j25_source_split import FORMAT as DATA_FORMAT
+from coffee_detector.data.prepare_coffee_standard_j25_source_split import (
+    FORMAT as DATA_FORMAT,
+    TRAIN_SIBLINGS_FORMAT,
+)
 from coffee_detector.evaluate import evaluate
 from coffee_detector.experiments.run_faruq_v3_af2_direct import (
     EXPECTED_AF2,
@@ -33,6 +36,8 @@ from coffee_detector.experiments.run_faruq_v3_stb_capacity_control import (
 REPO_ROOT = Path(__file__).resolve().parents[3]
 NATIVE_CONFIG = REPO_ROOT / "configs/coffee_standard_j25/D0DIRECT.yaml"
 AF2_CONFIG = REPO_ROOT / "configs/coffee_standard_j25/AF2DIRECT.yaml"
+NATIVE_CONFIG_V2 = REPO_ROOT / "configs/coffee_standard_j25/D0DIRECT_TRAIN_SIBLINGS.yaml"
+AF2_CONFIG_V2 = REPO_ROOT / "configs/coffee_standard_j25/AF2DIRECT_TRAIN_SIBLINGS.yaml"
 MODEL_YAML = REPO_ROOT / "configs/coffee_fg/models/yolo26n-p3.yaml"
 ARMS = ("D0DIRECT", "AF2DIRECT")
 METRICS = ("macro_map50_95", "bottom3_class_map50_95", "worst_class_map50_95")
@@ -65,14 +70,16 @@ def validate_j25_development(
     data = _yaml(root / "data.yaml")
     names = data.get("names", {})
     class_count = len(names) if isinstance(names, (dict, list)) else 0
+    data_format = contract.get("format")
+    expected_train_images = 695 if data_format == TRAIN_SIBLINGS_FORMAT else 315
     gates = {
-        "development_contract_pass": contract.get("format") == DATA_FORMAT
+        "development_contract_pass": data_format in {DATA_FORMAT, TRAIN_SIBLINGS_FORMAT}
         and contract.get("decision") == "PASS",
         "provenance_pass": provenance.get("decision")
         == "PASS_THESIS_LINEAGE_WITH_ONE_ANNOTATION_DISCREPANCY",
         "same_author_archive_sha256": contract.get("source_archive_sha256")
         == provenance.get("source_archive_sha256"),
-        "exact_train_images": contract.get("images", {}).get("train") == 315,
+        "exact_train_images": contract.get("images", {}).get("train") == expected_train_images,
         "exact_validation_images": contract.get("images", {}).get("val") == 68,
         "exact_25_class_ontology": class_count == NC,
         "test_directory_absent": not (root / "test").exists(),
@@ -87,6 +94,7 @@ def validate_j25_development(
         "source_archive_sha256": contract["source_archive_sha256"],
         "development_contract_sha256": _sha256(development_contract),
         "provenance_summary_sha256": _sha256(provenance_summary),
+        "data_format": data_format,
     }
 
 
@@ -113,12 +121,19 @@ def _build_detector(
 
 
 def run_static_preflight(
-    pretrained_checkpoint: str | Path, output: str | Path, *, seed: int = SEED
+    pretrained_checkpoint: str | Path,
+    output: str | Path,
+    *,
+    seed: int = SEED,
+    protocol: str = "coffee-standard-j25-source-split-af2-direct-seed42-v1",
+    native_config: str | Path = NATIVE_CONFIG,
+    af2_config: str | Path = AF2_CONFIG,
 ) -> dict:
     if seed != SEED:
         raise ValueError("Screen pertama dikunci seed 42")
     checkpoint, pretrained_sha = _require_official_pretrained(pretrained_checkpoint)
-    native_cfg, af2_cfg = _yaml(NATIVE_CONFIG), _yaml(AF2_CONFIG)
+    native_config, af2_config = Path(native_config), Path(af2_config)
+    native_cfg, af2_cfg = _yaml(native_config), _yaml(af2_config)
     if native_cfg["model"] != af2_cfg["model"] or native_cfg["train"] != af2_cfg["train"]:
         raise RuntimeError("Native/AF2 tidak matched")
     if af2_cfg.get("afab") != EXPECTED_AF2:
@@ -155,13 +170,13 @@ def run_static_preflight(
     }
     payload = {
         "format": "coffee_detector.coffee_standard_j25.af2_direct.static.v1",
-        "protocol": "coffee-standard-j25-source-split-af2-direct-seed42-v1",
+        "protocol": protocol,
         "decision": "PASS" if all(gates.values()) else "FAIL",
         "seed": seed,
         "pretrained_checkpoint_sha256": pretrained_sha,
         "common_initialized_detector_state_sha256": _state_fingerprint(native),
-        "native_config_sha256": _sha256(NATIVE_CONFIG),
-        "af2_config_sha256": _sha256(AF2_CONFIG),
+        "native_config_sha256": _sha256(native_config),
+        "af2_config_sha256": _sha256(af2_config),
         "native_parameters": _parameter_count(native),
         "candidate_parameters": _parameter_count(candidate),
         "candidate_weight_transfer": transfer,
@@ -242,10 +257,27 @@ def run_arm(
     checkpoint, _ = _require_official_pretrained(pretrained_checkpoint)
     destination = Path(output_root).expanduser().resolve()
     destination.mkdir(parents=True, exist_ok=True)
+    protocol = (
+        "coffee-standard-j25-train-siblings-af2-direct-seed42-v2"
+        if dataset["data_format"] == TRAIN_SIBLINGS_FORMAT
+        else "coffee-standard-j25-source-split-af2-direct-seed42-v1"
+    )
+    native_config, af2_config = (
+        (NATIVE_CONFIG_V2, AF2_CONFIG_V2)
+        if dataset["data_format"] == TRAIN_SIBLINGS_FORMAT
+        else (NATIVE_CONFIG, AF2_CONFIG)
+    )
     static_path = destination / f"static_preflight_{arm}.json"
-    static = run_static_preflight(checkpoint, static_path, seed=seed)
+    static = run_static_preflight(
+        checkpoint,
+        static_path,
+        seed=seed,
+        protocol=protocol,
+        native_config=native_config,
+        af2_config=af2_config,
+    )
     use_af2 = arm == "AF2DIRECT"
-    native_cfg, af2_cfg = _yaml(NATIVE_CONFIG), _yaml(AF2_CONFIG)
+    native_cfg, af2_cfg = _yaml(native_config), _yaml(af2_config)
     af2 = AFABConfig.from_mapping(af2_cfg["afab"])
     train_args = dict(native_cfg["train"])
     run_dir = destination / arm / f"{arm}_seed{seed}"
@@ -337,6 +369,9 @@ def build_decision(output_root: str | Path, output: str | Path) -> dict:
     }
     if any(row.get("test_images_accessed") is not False for row in values.values()):
         raise RuntimeError("Test lock gagal")
+    protocols = {row.get("protocol") for row in values.values()}
+    if len(protocols) != 1:
+        raise RuntimeError(f"Arm protocols differ: {sorted(protocols)}")
     deltas = {
         metric: values["AF2DIRECT"]["metrics"][metric] - values["D0DIRECT"]["metrics"][metric]
         for metric in METRICS
@@ -345,7 +380,7 @@ def build_decision(output_root: str | Path, output: str | Path) -> dict:
     tail = deltas["macro_map50_95"] >= -0.002 and deltas["bottom3_class_map50_95"] >= 0.01 and deltas["worst_class_map50_95"] >= 0.01
     payload = {
         "format": "coffee_detector.coffee_standard_j25.af2_direct.seed42_decision.v1",
-        "protocol": "coffee-standard-j25-source-split-af2-direct-seed42-v1",
+        "protocol": protocols.pop(),
         "values": {arm: row["metrics"] for arm, row in values.items()},
         "deltas": deltas,
         "criteria": {"overall_route": overall, "lower_tail_route": tail},

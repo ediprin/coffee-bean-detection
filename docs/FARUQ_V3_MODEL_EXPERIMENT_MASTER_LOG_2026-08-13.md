@@ -799,3 +799,25 @@ executed under this protocol.
 - Split result:
   `docs/COFFEE_STANDARD_J25_SOURCE_SPLIT_RESULT_2026-09-18.md`.
 - Builder: `coffee_detector.data.prepare_coffee_standard_j25_source_split`.
+
+# 2026-09-18 - J25 medoid-only screen failed; train-sibling amendment frozen
+
+The matched medoid-only seed-42 screen completed without test access.
+`D0DIRECT` reached 46.15% Macro, 8.10% Bottom-3, and 0.00% Worst-class
+mAP50-95; `AF2DIRECT` reached 44.79%, 6.73%, and 0.00%, respectively.
+AF2 therefore lost 1.36 Macro points and 1.37 Bottom-3 points, and the frozen
+promotion gate failed.
+
+The failure remains the result for the 315-image medoid-only training regime.
+A data-policy audit then found that augmentation siblings assigned wholly to
+train had been unnecessarily discarded. A prospective amendment retains those
+siblings only in train, increasing training support to 695 images and 8,835
+boxes while preserving the exact 68-image validation assignment and the
+manifest-only 68-identity locked test. Both arms restart from the same official
+pretrained state; no prior checkpoint, new model hyperparameter, validation
+change, or test access is permitted.
+
+- Medoid result:
+  `docs/COFFEE_STANDARD_J25_AF2_DIRECT_MEDOID_RESULT_2026-09-18.md`.
+- Frozen amendment:
+  `docs/COFFEE_STANDARD_J25_AF2_DIRECT_TRAIN_SIBLINGS_AMENDMENT_2026-09-18.md`.
