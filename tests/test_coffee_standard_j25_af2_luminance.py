@@ -134,6 +134,9 @@ def test_colab_notebook_is_fresh_matched_and_test_locked():
     assert "retain_train_siblings=True" in code
     assert "run_coffee_standard_j25_af2_luminance" in code
     assert "coffee-standard-j25-af2-luminance-v1" in code
+    assert "find_reference_root" in code
+    assert "Path('/content/drive').rglob('AF2DIRECT_seed42_result.json')" in code
+    assert "training AF2LUM tetap boleh berjalan" in code
     assert "--authorize-training" in code
     assert "build_decision" in code
     assert "test/images" not in code and "--authorize-test" not in code
