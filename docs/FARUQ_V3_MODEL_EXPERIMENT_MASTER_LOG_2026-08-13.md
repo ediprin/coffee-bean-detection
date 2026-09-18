@@ -732,3 +732,24 @@ unless either the frozen Macro or lower-tail Pareto route passes.
   `docs/FARUQ_V3_AF2_CURRICULUM_SFS_PROTOCOL_2026-08-30.md`.
 - Notebook:
   `notebooks/Faruq_V3_AF2_Curriculum_SFS_Seed42_Colab.ipynb`.
+
+# 2026-09-18 - Coffee Standard J25 fixed-holdout feasibility failed
+
+The leakage-controlled J25 v2 artifact contains 253 eligible source
+identities, but box count substantially overstates independent support. Three
+classes (`Biji Berkulit Ari`, `Kerikil`, and `Kopi Gelondong`) occur in only
+four source identities each. After reserving one identity for train, the
+mathematical maximum common support of validation and test is only one
+identity per split.
+
+The dataset therefore fails even the weakest non-degenerate fixed-holdout gate
+of two independent identities per class in both validation and test. This is
+not repairable by another split seed or optimizer. No training or model test
+evaluation was performed. J25 remains usable for grouped cross-validation or
+as a provisional/external dataset, but not as a stable fixed 25-class primary
+benchmark without additional independent captures.
+
+- Result:
+  `docs/COFFEE_STANDARD_J25_FIXED_HOLDOUT_FEASIBILITY_RESULT_2026-09-18.md`.
+- Notebook:
+  `notebooks/Coffee_Standard_J25_Fixed_Holdout_Feasibility_Colab.ipynb`.
