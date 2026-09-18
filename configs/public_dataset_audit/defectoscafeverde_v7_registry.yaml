@@ -1,0 +1,24 @@
+format: coffee_detector.public_dataset_registry.v1
+frozen_at: '2026-09-17'
+purpose: defectoscafeverde-paper-version-eligibility-audit
+minimum_independent_lineages: 1
+minimum_source_images: 100
+
+datasets:
+  - code: defectoscafeverde_v7
+    task: object_detection
+    owner: redtraining
+    project: defectoscafeverde
+    version: 7
+    source_url: https://universe.roboflow.com/redtraining/defectoscafeverde/dataset/7
+    license: CC BY 4.0
+    dataset_root:
+    archive_path:
+    archive_sha256: 88057de9a6f85a1fba8a0af22bd1d35c28942661132806fe5a1feff98c459069
+    declared_augmentation: random rotation, brightness, and blur; 9596 exported images
+    ambiguous_classes: []
+    notes:
+      - Paper-backed dataset linked by Agriculture 2026, 16, 1796.
+      - Version 7 is the closest public export to the paper's stated 9600 images.
+      - Export split 8337/859/400 does not match the paper's stated 6720/1920/960 split.
+      - Audit must verify Roboflow parent leakage and perceptual cross-split candidates before training.
