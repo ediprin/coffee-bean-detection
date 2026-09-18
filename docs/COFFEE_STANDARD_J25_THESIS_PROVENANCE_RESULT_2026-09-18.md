@@ -58,5 +58,13 @@ AP, Bottom-3, uncertainty, and split limitations must be reported. The
 one-annotation test discrepancy and the difference between thesis augmentation
 text (which also mentions flips) and the v8 README remain disclosed.
 
+A follow-up label audit found that the supplied validation omits class 1 and
+the supplied test omits classes 1 and 14. Those official partitions therefore
+cannot support 25-class Macro/Bottom-3/Worst claims. Before any model training,
+the 271 augmentation triplets are recovered using basename plus exact label
+content (never basename alone), visually gated, and combined with the 180
+single-source images into a prospective class-complete source split. See
+`COFFEE_STANDARD_J25_AF2_DIRECT_PROTOCOL_2026-09-18.md`.
+
 Training remains separately gated until the baseline/model protocol is frozen.
 This audit itself neither authorizes training nor opens the test set.

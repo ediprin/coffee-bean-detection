@@ -776,3 +776,26 @@ model test evaluation was performed.
   `docs/COFFEE_STANDARD_J25_THESIS_PROVENANCE_RESULT_2026-09-18.md`.
 - Reproducible audit:
   `coffee_detector.analysis.coffee_standard_j25_thesis_provenance`.
+
+# 2026-09-18 - J25 class-complete source split and AF2 direct screen frozen
+
+The author-supplied validation contains 24/25 classes and test contains 23/25,
+so those partitions cannot support the planned 25-class tail metrics. A
+pre-training reconstruction found exactly 271 train groups when the basename
+is conjoined with exact label content; every group has exactly three images,
+and the minimum normalized structural similarity within a triplet is 0.9844.
+Together with 180 single-source validation/test images this recovers exactly
+451 thesis source identities with zero cross-split identity-key overlap.
+
+A deterministic label-only grouped assignment is frozen at seed 42 and yields
+315 train, 68 validation, and 68 locked-test representatives, with all 25
+classes in every split. Test images are not extracted; only their archive-member
+manifest is frozen. A matched `D0DIRECT` versus parameter-free `AF2DIRECT`
+seed-42 screen from the same official YOLO26n pretrained state is now frozen.
+The arms may run in parallel, validation only. No training has yet been
+executed under this protocol.
+
+- Protocol: `docs/COFFEE_STANDARD_J25_AF2_DIRECT_PROTOCOL_2026-09-18.md`.
+- Split result:
+  `docs/COFFEE_STANDARD_J25_SOURCE_SPLIT_RESULT_2026-09-18.md`.
+- Builder: `coffee_detector.data.prepare_coffee_standard_j25_source_split`.
