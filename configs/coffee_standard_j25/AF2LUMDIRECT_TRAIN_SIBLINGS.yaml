@@ -1,0 +1,26 @@
+code: AF2LUMDIRECT
+dataset: coffee-standard-j25-train-siblings-v2
+variant: af2_luminance_shared_gate
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+weights: yolo26n.pt
+frontend: luminance_shared
+afab:
+  mode: af2
+  patch_size: 32
+  overlap: 0.50
+  radius_ratio: 0.05
+  gamma: 0.10
+  angular_bins: 360
+  chunk_size: 128
+  eps: 1.0e-8
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500

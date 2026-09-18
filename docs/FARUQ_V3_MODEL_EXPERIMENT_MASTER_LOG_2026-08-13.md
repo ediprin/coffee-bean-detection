@@ -821,3 +821,24 @@ change, or test access is permitted.
   `docs/COFFEE_STANDARD_J25_AF2_DIRECT_MEDOID_RESULT_2026-09-18.md`.
 - Frozen amendment:
   `docs/COFFEE_STANDARD_J25_AF2_DIRECT_TRAIN_SIBLINGS_AMENDMENT_2026-09-18.md`.
+
+# 2026-09-18 - J25 train-sibling screen completed; AF2 color isolation frozen
+
+The corrected 695-image matched screen completed without test access.
+`D0DIRECT` reached 60.54% Macro, 19.55% Bottom-3, and 1.90% Worst-class
+mAP50-95. `AF2DIRECT` reached 60.57%, 18.28%, and 0.00%, respectively. AF2 is
+therefore effectively tied on Macro (+0.03 points) while losing 1.28 Bottom-3
+points and 1.90 Worst-class points. The seed-42 gate fails and no additional
+seed or locked-test evaluation is authorized.
+
+A prospective one-arm diagnostic is now frozen to test a narrower cause:
+legacy AF2 derives independent gates from RGB channels, so its signal may mix
+texture with channel-specific color-frequency structure. `AF2LUMDIRECT` keeps
+the detector, initialization, schedule, and AF2 hyperparameters fixed, but
+derives one shared AF2 gate from Rec.709 luminance. It starts fresh from the
+official pretrained checkpoint and stops after seed 42 regardless of outcome.
+
+- Completed result:
+  `docs/COFFEE_STANDARD_J25_AF2_DIRECT_TRAIN_SIBLINGS_RESULT_2026-09-18.md`.
+- Frozen diagnostic:
+  `docs/COFFEE_STANDARD_J25_AF2_LUMINANCE_ISOLATION_PROTOCOL_2026-09-18.md`.
