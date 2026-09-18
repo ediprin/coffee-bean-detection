@@ -18,6 +18,7 @@ def test_arm_notebooks_are_parallel_safe_and_never_extract_test() -> None:
         assert "resolve_drive_project_root(required_relative_paths=" not in source
         assert "prepare_j25_source_split" in source
         assert "CONTRACT=DATA/'coffee_standard_j25_source_split_summary.json'" in source
+        assert "isinstance(old,list) and len(old)==contract['source_identities']" in source
         assert "run_coffee_standard_j25_af2_direct" in source
         assert "last.pt tersimpan di Drive" in source
         assert "test is never extracted" in source
