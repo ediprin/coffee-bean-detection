@@ -753,3 +753,26 @@ benchmark without additional independent captures.
   `docs/COFFEE_STANDARD_J25_FIXED_HOLDOUT_FEASIBILITY_RESULT_2026-09-18.md`.
 - Notebook:
   `notebooks/Coffee_Standard_J25_Fixed_Holdout_Feasibility_Colab.ipynb`.
+
+# 2026-09-18 - Correction: J25 thesis lineage passed; filename-identity audit retracted
+
+Direct audit of Sayid Muhammad Jundullah's thesis and the author's QR-linked
+`data_aug_11.zip` resolves the dataset mismatch. The 993-image export contains
+813 train images (`271 × 3`), 113 validation images, and 67 test images,
+recovering the thesis's 451 originals. Train annotations are
+`11,160 = 3,720 × 3`; validation is exactly 1,606; test is 1,160 versus 1,161
+in the thesis table. The ontology is 25 classes and exact cross-split image
+hash overlap is zero.
+
+The prior 267-component/253-image analysis is retracted. Filename prefixes
+collide and are not authoritative source IDs; they over-merged unrelated
+photographs. The v1/v2 regrouping builders and fixed-holdout audit now fail
+fast. The author-provided official split is restored, and J25 has thesis-backed
+provenance suitable for the primary dataset role, subject to a separately
+frozen model protocol and explicit small-holdout limitations. No training or
+model test evaluation was performed.
+
+- Result:
+  `docs/COFFEE_STANDARD_J25_THESIS_PROVENANCE_RESULT_2026-09-18.md`.
+- Reproducible audit:
+  `coffee_detector.analysis.coffee_standard_j25_thesis_provenance`.

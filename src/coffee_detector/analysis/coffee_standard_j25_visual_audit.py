@@ -12,6 +12,11 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 from coffee_detector.data.prepare_coffee_standard_primary import J25_CLASSES
+
+RETRACTION = (
+    "RETRACTED J25 grouped visual audit: its input artifact was built from non-authoritative "
+    "filename identities. Review the official author split instead."
+)
 from coffee_detector.dataset import Box, collect_records, discover_layout
 
 
@@ -224,6 +229,7 @@ def audit_coffee_standard_j25_visuals(
     flagged_limit: int = 40,
 ) -> dict:
     """Create deterministic evidence sheets; no model is imported or executed."""
+    raise RuntimeError(RETRACTION)
     if samples_per_class < 1:
         raise ValueError("samples_per_class minimal 1")
     if flagged_limit < 4:

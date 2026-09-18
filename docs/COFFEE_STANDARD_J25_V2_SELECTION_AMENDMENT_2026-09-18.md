@@ -1,5 +1,12 @@
 # Coffee Standard J25 v2 Selection Amendment
 
+> **RETRACTED — FILENAME COMPONENTS ARE NOT SOURCE IDENTITIES.** Do not build
+> or use J25 v2. Its 267 components and 253 selected images were derived from
+> non-unique filename prefixes, not authoritative Roboflow asset IDs. The rule
+> can merge unrelated photographs and quarantine valid data. The builder now
+> fails fast. Use the author-provided official split and the thesis-provenance
+> audit instead. The text below is historical only.
+
 Status: **FROZEN DATA AMENDMENT — TRAINING NOT AUTHORIZED**  
 Date: 2026-09-18
 
@@ -45,4 +52,3 @@ Passing the v2 technical gates does not authorize training. A fresh visual audit
 of v2 and resolution of the public-source provenance discrepancy remain required.
 The 451-image/25-class thesis description, 2,000-image/20-class paper description,
 and 993-image public export must not be described as equivalent without evidence.
-

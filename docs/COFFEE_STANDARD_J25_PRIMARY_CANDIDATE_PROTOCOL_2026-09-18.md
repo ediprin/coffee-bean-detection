@@ -1,5 +1,18 @@
 # Coffee Standard J25 Primary-Candidate Protocol
 
+> **SUPERSEDED — OFFICIAL THESIS SPLIT RESTORED.** The filename-grouped rebuild
+> is withdrawn. The stripped filename prefix is not an authoritative source ID.
+
+Direct inspection of Jundullah's thesis and the author's `data_aug_11.zip`
+resolves the apparent 451/993 discrepancy: `813 = 271 × 3` train images and
+`271 + 113 + 67 = 451` original images. Train annotations satisfy
+`11,160 = 3,720 × 3`; validation has exactly 1,606 annotations. Test has 1,160
+annotations, one fewer than the thesis table's 1,161. The author-provided
+official split is restored. The journal paper's 20-class/2,000-image experiment
+is a different version. See
+`COFFEE_STANDARD_J25_THESIS_PROVENANCE_RESULT_2026-09-18.md`. The protocol below
+is retained only for audit history.
+
 Status: **FROZEN DATA PROTOCOL — TRAINING NOT YET AUTHORIZED**  
 Date: 2026-09-18
 
@@ -116,4 +129,3 @@ Primary artifacts:
 - `coffee_standard_j25_components.json`;
 - `coffee_standard_j25_summary.json`;
 - `data.yaml` and grouped YOLO split directories.
-

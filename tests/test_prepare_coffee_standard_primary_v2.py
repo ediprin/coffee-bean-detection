@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import yaml
+import pytest
 from PIL import Image
 
 from coffee_detector.data.prepare_coffee_standard_primary import J25_CLASSES
@@ -53,18 +54,10 @@ def _write_dataset(root: Path) -> None:
 def test_v2_quarantines_disagreement_and_never_authorizes_training(tmp_path: Path) -> None:
     source = tmp_path / "source"
     _write_dataset(source)
-    result = prepare_coffee_standard_primary_v2(
-        source, tmp_path / "grouped", seed=42, link_mode="copy"
-    )
-
-    assert result["source_identity_components"] == 22
-    assert result["quarantined_identity_components"] == 1
-    assert result["eligible_identity_components"] == 21
-    assert result["selected_representatives"] == 21
-    assert result["technical_split_ready"] is True
-    assert result["training_authorized"] is False
-    assert result["test_access_authorized"] is False
-    assert (tmp_path / "grouped" / "coffee_standard_j25_v2_quarantine.json").is_file()
+    with pytest.raises(RuntimeError, match="RETRACTED"):
+        prepare_coffee_standard_primary_v2(
+            source, tmp_path / "grouped", seed=42, link_mode="copy"
+        )
 
 
 def test_v2_visual_medoid_is_not_maximum_box_selector(tmp_path: Path) -> None:

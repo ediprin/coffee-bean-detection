@@ -30,6 +30,10 @@ from coffee_detector.dataset import UnionFind, collect_records, discover_layout,
 
 FORMAT = "coffee_detector.coffee_standard_j25_primary_candidate.v2"
 SELECTION_POLICY = "annotation-consistent identity quarantine plus visual medoid"
+RETRACTION = (
+    "RETRACTED J25 v2 rebuild: stripped Roboflow filenames are not authoritative source IDs. "
+    "The resulting 267/253 component counts over-merge distinct source photographs."
+)
 
 
 def _count_signature(record) -> tuple[int, ...]:
@@ -128,6 +132,7 @@ def prepare_coffee_standard_primary_v2(
     seed: int = 42,
     link_mode: str = "auto",
 ) -> dict:
+    raise RuntimeError(RETRACTION)
     source_root = Path(source_root).expanduser().resolve()
     output_root = Path(output_root).expanduser().resolve()
     if link_mode not in {"auto", "hardlink", "copy"}:

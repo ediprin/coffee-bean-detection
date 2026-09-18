@@ -57,6 +57,10 @@ J25_CLASSES = (
     "Ranting Ukuran Sedang",
 )
 SPLIT_FRACTIONS = {"train": 0.70, "val": 0.15, "test": 0.15}
+RETRACTION = (
+    "RETRACTED J25 rebuild: stripped Roboflow filenames are not authoritative source IDs. "
+    "Use the author-provided official split and the thesis-provenance audit instead."
+)
 
 
 def _resolve_source_root(root: Path) -> Path:
@@ -197,6 +201,7 @@ def prepare_coffee_standard_primary(
     seed: int = 42,
     link_mode: str = "auto",
 ) -> dict:
+    raise RuntimeError(RETRACTION)
     source_root = Path(source_root).expanduser().resolve()
     output_root = Path(output_root).expanduser().resolve()
     if link_mode not in {"auto", "hardlink", "copy"}:

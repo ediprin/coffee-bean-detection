@@ -1,9 +1,19 @@
 # Coffee Standard J25 Fixed-Holdout Feasibility Audit
 
+> **RETRACTED — INVALID SOURCE-IDENTITY PREMISE.** This result must not be
+> used. The audit treated the filename prefix before `.rf.<hash>` as an
+> authoritative source identity. The thesis and original `data_aug_11.zip`
+> establish 451 raw photographs, whereas this rule collapsed the export to 267
+> components. Basenames are reused, so the rule over-merged unrelated photos.
+> The executable audit now fails fast. See
+> `COFFEE_STANDARD_J25_THESIS_PROVENANCE_RESULT_2026-09-18.md`.
+
 Status: **FAIL â€” FIXED 25-CLASS HOLDOUT NOT ADEQUATELY SUPPORTED**  
 Date: 2026-09-18
 
 ## Question
+
+The text below is retained only as a record of the withdrawn analysis.
 
 Can the 253 eligible, leakage-controlled J25 v2 source identities be divided
 into train/validation/test while retaining enough independent source identities

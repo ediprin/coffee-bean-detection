@@ -1,4 +1,4 @@
-"""Audit whether J25 can support an identity-independent fixed holdout.
+"""Retracted audit for J25 identity-independent fixed-holdout support.
 
 This audit is model-free.  Its primary unit is the recoverable source identity,
 not the number of boxes.  A class represented by only one source identity in a
@@ -17,6 +17,11 @@ from coffee_detector.data.prepare_coffee_standard_primary_v2 import FORMAT
 
 
 AUDIT_FORMAT = "coffee_detector.coffee_standard_j25_split_feasibility.v1"
+RETRACTION = (
+    "RETRACTED: stripped Roboflow filenames are not authoritative source identities in J25 v8. "
+    "The thesis and export arithmetic establish 451 source images, while basename grouping produced 267 "
+    "components by merging unrelated photographs. This audit must not be used."
+)
 
 
 def _load_json(path: str | Path):
@@ -43,7 +48,8 @@ def audit_j25_split_feasibility(
     between-capture variability.  Five identities is reported as a recommended
     planning target, not as a universal statistical law.
     """
-    if minimum_heldout_identities < 2:
+    raise RuntimeError(RETRACTION)
+    if minimum_heldout_identities < 2:  # pragma: no cover - historical code below is intentionally unreachable
         raise ValueError("minimum_heldout_identities harus minimal 2")
     if recommended_heldout_identities < minimum_heldout_identities:
         raise ValueError("recommended_heldout_identities tidak boleh lebih kecil dari hard gate")
