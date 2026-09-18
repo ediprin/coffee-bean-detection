@@ -58,6 +58,9 @@ only paired seeds 123 and 2026. It is not a final superiority claim.
 
 The two arm notebooks deterministically reconstruct the same frozen source
 split and can run in parallel Colab accounts.
+Each notebook independently regenerates and validates the thesis-provenance
+report from the SHA-locked author archive, so it does not depend on a
+pre-existing Drive evidence file.
 Each writes a run contract, `last.pt`, `best.pt`, log, validation report, and
 result JSON to the shared Drive output. A separate decision notebook performs
 no training. The test split remains locked throughout this stage.
