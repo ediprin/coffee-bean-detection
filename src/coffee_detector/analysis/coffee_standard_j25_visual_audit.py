@@ -231,7 +231,15 @@ def audit_coffee_standard_j25_visuals(
     grouped_root = Path(grouped_root).expanduser().resolve()
     source_root = Path(source_root).expanduser().resolve()
     output_root = Path(output_root).expanduser().resolve()
-    summary_path = grouped_root / "coffee_standard_j25_summary.json"
+    summary_candidates = (
+        grouped_root / "coffee_standard_j25_v2_summary.json",
+        grouped_root / "coffee_standard_j25_summary.json",
+    )
+    summary_path = next((path for path in summary_candidates if path.is_file()), None)
+    if summary_path is None:
+        raise FileNotFoundError(
+            f"Ringkasan J25 tidak ditemukan; dicari: {[str(path) for path in summary_candidates]}"
+        )
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     if summary.get("technical_split_ready") is not True:
         raise RuntimeError("J25 grouped belum lolos technical split gate")
@@ -304,6 +312,9 @@ def audit_coffee_standard_j25_visuals(
         "format": "coffee_detector.coffee_standard_j25_visual_audit.v1",
         "grouped_root": str(grouped_root),
         "source_root": str(source_root),
+        "grouped_build_format": summary.get("format"),
+        "grouped_selection_policy": summary.get("selection_policy", "v1-most-boxes"),
+        "quarantined_identity_components": summary.get("quarantined_identity_components", 0),
         "selection": "deterministic per-class normalized-box-area quantiles",
         "samples_per_class_per_split": samples_per_class,
         "class_review_sheets": sheets,
