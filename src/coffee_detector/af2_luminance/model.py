@@ -6,7 +6,7 @@ import torch
 from torch import nn
 
 from coffee_detector.afab.operator import AFABConfig
-from .operator import AF2LuminanceInputEnhancer
+from .operator import AF2LuminanceInputEnhancer, AF2LuminanceStochasticInputEnhancer
 
 
 try:
@@ -26,6 +26,24 @@ class AF2LuminanceDetectionModel(DetectionModel):
 
     def predict(self, x, profile=False, visualize=False, augment=False, embed=None):
         enhancer = getattr(self, "af2_luminance", None)
+        if enhancer is not None and isinstance(x, torch.Tensor):
+            x = enhancer(x)
+        return super().predict(
+            x, profile=profile, visualize=visualize, augment=augment, embed=embed
+        )
+
+
+class AF2LuminanceSafeDetectionModel(DetectionModel):
+    """YOLO26 detector with stochastic train/full inference AF2 luminance."""
+
+    def __init__(self, cfg="yolo26.yaml", ch=3, nc=None, verbose=True, afab=None):
+        frozen = AFABConfig.from_mapping(afab)
+        super().__init__(cfg=cfg, ch=ch, nc=nc, verbose=verbose)
+        self.afab_config = frozen
+        self.af2_luminance_safe = AF2LuminanceStochasticInputEnhancer(frozen)
+
+    def predict(self, x, profile=False, visualize=False, augment=False, embed=None):
+        enhancer = getattr(self, "af2_luminance_safe", None)
         if enhancer is not None and isinstance(x, torch.Tensor):
             x = enhancer(x)
         return super().predict(

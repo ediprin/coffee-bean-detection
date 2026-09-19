@@ -1,0 +1,52 @@
+code: AF2LUMSAFE
+dataset: coffee-standard-j25-train-siblings-v2
+variant: af2_luminance_stochastic_semantic_safe
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+weights: yolo26n.pt
+frontend: luminance_shared_stochastic
+afab:
+  mode: af2
+  patch_size: 32
+  overlap: 0.50
+  radius_ratio: 0.05
+  gamma: 0.10
+  angular_bins: 360
+  chunk_size: 128
+  eps: 1.0e-8
+stochastic_strength:
+  distribution: uniform
+  minimum: 0.0
+  maximum: 1.0
+  inference: 1.0
+sampler:
+  mode: identity_repeat_factor
+  threshold: median_positive_train_identity_frequency
+  maximum_repeat: 4.0
+  replacement: true
+  samples_per_epoch: extracted_train_image_count
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  mosaic: 0.0
+  close_mosaic: 0
+  scale: 0.0
+  translate: 0.05
+  degrees: 0.0
+  shear: 0.0
+  perspective: 0.0
+  fliplr: 0.5
+  flipud: 0.0
+  hsv_h: 0.0
+  hsv_s: 0.2
+  hsv_v: 0.2
+  erasing: 0.0
+  mixup: 0.0
+  cutmix: 0.0
+  copy_paste: 0.0
+  max_det: 500

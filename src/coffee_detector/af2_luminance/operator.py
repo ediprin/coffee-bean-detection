@@ -49,3 +49,43 @@ class AF2LuminanceInputEnhancer(nn.Module):
             raise TypeError("AF2 luminance memerlukan tensor floating point")
         gate = self.shared_gate(value)
         return value + value * gate
+
+
+class AF2LuminanceStochasticInputEnhancer(AF2LuminanceInputEnhancer):
+    """Chromaticity-preserving AF2 with train-only stochastic strength.
+
+    Training samples one scalar strength per image from ``Uniform(0, 1)``.
+    Evaluation always uses the complete luminance-derived gate.  The raw RGB
+    image is therefore an endpoint of the training distribution, while every
+    non-zero strength still applies one shared gate to all three channels.
+    """
+
+    def forward_with_strength(
+        self, value: torch.Tensor, strength: torch.Tensor | float
+    ) -> torch.Tensor:
+        if not torch.is_floating_point(value):
+            raise TypeError("AF2 luminance memerlukan tensor floating point")
+        strength = torch.as_tensor(strength, device=value.device, dtype=value.dtype)
+        if strength.ndim == 0:
+            strength = strength.reshape(1, 1, 1, 1)
+        elif strength.ndim == 1 and strength.shape[0] == value.shape[0]:
+            strength = strength.reshape(-1, 1, 1, 1)
+        if strength.ndim != 4 or strength.shape[1:] != (1, 1, 1):
+            raise ValueError("Strength AF2LUM-SAFE harus scalar atau satu nilai per image")
+        if strength.shape[0] not in {1, value.shape[0]}:
+            raise ValueError("Batch strength AF2LUM-SAFE tidak cocok")
+        if not bool(torch.isfinite(strength).all()):
+            raise ValueError("Strength AF2LUM-SAFE harus finite")
+        if bool(((strength < 0) | (strength > 1)).any()):
+            raise ValueError("Strength AF2LUM-SAFE harus berada pada [0, 1]")
+        gate = self.shared_gate(value)
+        return value + value * gate * strength
+
+    def forward(self, value: torch.Tensor) -> torch.Tensor:
+        if self.training:
+            strength = torch.rand(
+                (value.shape[0], 1, 1, 1), device=value.device, dtype=value.dtype
+            )
+        else:
+            strength = value.new_ones((value.shape[0], 1, 1, 1))
+        return self.forward_with_strength(value, strength)

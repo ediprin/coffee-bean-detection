@@ -842,3 +842,33 @@ official pretrained checkpoint and stops after seed 42 regardless of outcome.
   `docs/COFFEE_STANDARD_J25_AF2_DIRECT_TRAIN_SIBLINGS_RESULT_2026-09-18.md`.
 - Frozen diagnostic:
   `docs/COFFEE_STANDARD_J25_AF2_LUMINANCE_ISOLATION_PROTOCOL_2026-09-18.md`.
+
+# 2026-09-19 - J25 luminance result completed; AF2LUM-SAFE screen frozen
+
+The fresh luminance-isolation arm completed on the same 695-image training
+partition and 68-image validation partition without test access.
+`AF2LUMDIRECT` reached 61.50% Macro, 19.22% Bottom-3, and 1.65%
+Worst-class mAP50-95. Relative to legacy RGB-channel AF2, shared Rec.709
+luminance improved the three headline metrics by 0.93, 0.94, and 1.65 points,
+respectively. Relative to native `D0DIRECT`, it improved Macro by 0.96 points,
+while Bottom-3 remained 0.33 points lower and Worst remained 0.25 points
+lower. The result supports channel interference as one cause of AF2's J25
+failure, but it does not establish a complete remedy.
+
+A single prospective final-package screen, `AF2LUMSAFE`, is frozen before
+training. It keeps the exact luminance AF2 operator and detector initialization
+but combines three responses to the observed J25 failure mode: per-image
+stochastic AF2 strength during training, semantic-safe augmentation that does
+not rescale size-defined labels, and train-only source-identity repeat-factor
+sampling. The final package is screened first as one arm, as requested; its
+components are ablated only if it reaches the Pareto frontier. The decision is
+threshold-free Pareto dominance against matched `D0DIRECT` and
+`AF2LUMDIRECT`. The locked test remains closed.
+
+- Frozen protocol:
+  `docs/COFFEE_STANDARD_J25_AF2_LUMINANCE_SAFE_PROTOCOL_2026-09-19.md`.
+- Luminance-isolation result:
+  `docs/COFFEE_STANDARD_J25_AF2_LUMINANCE_ISOLATION_RESULT_2026-09-19.md`.
+- Colab notebook:
+  `notebooks/Coffee_Standard_J25_AF2LUMSAFE_Seed42_Colab.ipynb`.
+- Training executed under this protocol: **false**.
