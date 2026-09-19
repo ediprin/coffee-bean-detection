@@ -60,6 +60,18 @@ class AF2LuminanceStochasticInputEnhancer(AF2LuminanceInputEnhancer):
     non-zero strength still applies one shared gate to all three channels.
     """
 
+    def __init__(self, config: AFABConfig | dict | None = None) -> None:
+        super().__init__(config)
+        # Plain metadata, deliberately not a buffer or parameter: changing the
+        # diagnostic inference strength must not alter the detector state schema.
+        self.inference_strength = 1.0
+
+    def set_inference_strength(self, strength: float) -> None:
+        strength = float(strength)
+        if not torch.isfinite(torch.tensor(strength)) or not 0.0 <= strength <= 1.0:
+            raise ValueError("Inference strength AF2LUM-SAFE harus berada pada [0, 1]")
+        self.inference_strength = strength
+
     def forward_with_strength(
         self, value: torch.Tensor, strength: torch.Tensor | float
     ) -> torch.Tensor:
@@ -87,5 +99,10 @@ class AF2LuminanceStochasticInputEnhancer(AF2LuminanceInputEnhancer):
                 (value.shape[0], 1, 1, 1), device=value.device, dtype=value.dtype
             )
         else:
-            strength = value.new_ones((value.shape[0], 1, 1, 1))
+            # getattr preserves compatibility with the seed-42 checkpoint,
+            # which was serialized before this diagnostic attribute existed.
+            strength = value.new_full(
+                (value.shape[0], 1, 1, 1),
+                float(getattr(self, "inference_strength", 1.0)),
+            )
         return self.forward_with_strength(value, strength)

@@ -872,3 +872,25 @@ threshold-free Pareto dominance against matched `D0DIRECT` and
 - Colab notebook:
   `notebooks/Coffee_Standard_J25_AF2LUMSAFE_Seed42_Colab.ipynb`.
 - Training executed under this protocol: **false**.
+
+# 2026-09-19 - J25 AF2LUMSAFE reached a strong Pareto tradeoff
+
+The fresh seed-42 final-package screen completed without test access.
+`AF2LUMSAFE` reached 65.89% Macro, 25.70% Bottom-3, and 0.00% Worst-class
+mAP50-95. It improved Macro and Bottom-3 over `D0DIRECT` by 5.35 and 6.15
+points and over `AF2LUMDIRECT` by 4.39 and 6.48 points. The Worst loss is
+localized to `Biji Hitam Pecah`, which was already only 1.90% under D0 and
+1.65% under AF2LUM. Two other candidate Bottom-3 classes average 38.55%.
+
+The frozen decision is `PARETO_TRADEOFF`, not rejection. A no-training,
+validation-only sweep of AF2 inference strength at 0, 0.25, 0.50, 0.75, and
+1.00 is frozen to test whether the isolated zero follows from the randomized
+train/full-strength inference mismatch. This diagnostic does not authorize a
+tuned test claim, extra training, or locked-test access.
+
+- Result:
+  `docs/COFFEE_STANDARD_J25_AF2_LUMINANCE_SAFE_RESULT_2026-09-19.md`.
+- Frozen diagnostic:
+  `docs/COFFEE_STANDARD_J25_AF2_LUMINANCE_STRENGTH_SWEEP_PROTOCOL_2026-09-19.md`.
+- Notebook:
+  `notebooks/Coffee_Standard_J25_AF2LUMSAFE_Strength_Sweep_Colab.ipynb`.
