@@ -954,3 +954,23 @@ models before choosing one component ablation. The locked test remains closed.
 - Result: `docs/COFFEE_STANDARD_J25_SAFE_D0_RESULT_2026-09-19.md`.
 - Audit protocol:
   `docs/COFFEE_STANDARD_J25_SAFE_POLICY_ROOT_CAUSE_PROTOCOL_2026-09-19.md`.
+
+# 2026-09-19 - J25 safe-policy audit prioritizes removing the sampler
+
+The no-training audit confirmed 100% raw and final localization/matching for
+all six `Biji Hitam Pecah` validation instances across `D0DIRECT`, `SAFED0`,
+and `AF2LUMSAFE` at lambda zero. Raw correct-class decisions fell from 2/6 in
+`D0DIRECT` to 0/6 in both safe-policy models. `SAFED0` classified three as
+`Biji Pecah` and three as `Kulit Tanduk Ukuran Besar`. The repeat sampler
+changes target exposure by more than 5%, so it is the first component to
+remove.
+
+One fresh `SAFEAUG0` arm is frozen: identical semantic-safe augmentation, no
+repeat sampler, and no AF2. This directly estimates the sampler effect through
+`SAFED0 - SAFEAUG0`. No additional arm or test access is authorized.
+
+- Audit result:
+  `docs/COFFEE_STANDARD_J25_SAFE_POLICY_ROOT_CAUSE_RESULT_2026-09-19.md`.
+- Frozen arm:
+  `docs/COFFEE_STANDARD_J25_SAFE_AUGMENTATION_CONTROL_PROTOCOL_2026-09-19.md`.
+- Configuration: `configs/coffee_standard_j25/SAFEAUG0.yaml`.
