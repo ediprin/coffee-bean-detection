@@ -366,6 +366,7 @@ def diagnose_checkpoint(
     nms_iou: float = 0.7,
     max_det: int = 500,
     device: str = "cpu",
+    inference_strength: float | None = None,
 ) -> dict:
     from ultralytics import YOLO
 
@@ -377,6 +378,13 @@ def diagnose_checkpoint(
     if torch_device.type == "cuda" and not torch.cuda.is_available():
         raise RuntimeError(f"CUDA diminta tetapi tidak tersedia: {torch_device}")
     network = YOLO(str(checkpoint)).model.to(torch_device).eval()
+    if inference_strength is not None:
+        enhancer = getattr(network, "af2_luminance_safe", None)
+        if enhancer is None or not hasattr(enhancer, "set_inference_strength"):
+            raise RuntimeError(
+                "Inference strength hanya valid untuk checkpoint AF2LUMSAFE"
+            )
+        enhancer.set_inference_strength(inference_strength)
     checkpoint_classes = int(_unwrap_head(network).nc)
     if checkpoint_classes != len(layout.names):
         raise ValueError(
@@ -458,6 +466,7 @@ def diagnose_checkpoint(
         "image_size": image_size,
         "iou_threshold": iou_threshold,
         "confidence_threshold": confidence_threshold,
+        "inference_strength": inference_strength,
         "candidate_counts": list(sorted(set(candidate_counts))),
         "branches": finalized,
         "final_detections": _finalize_branch(final_totals, layout.names),

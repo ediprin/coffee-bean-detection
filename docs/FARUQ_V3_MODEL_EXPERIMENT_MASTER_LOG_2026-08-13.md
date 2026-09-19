@@ -894,3 +894,24 @@ tuned test claim, extra training, or locked-test access.
   `docs/COFFEE_STANDARD_J25_AF2_LUMINANCE_STRENGTH_SWEEP_PROTOCOL_2026-09-19.md`.
 - Notebook:
   `notebooks/Coffee_Standard_J25_AF2LUMSAFE_Strength_Sweep_Colab.ipynb`.
+
+# 2026-09-19 - J25 AF2LUMSAFE strength sweep isolated inference behavior
+
+The validation-only strength sweep completed without training or test access.
+Macro/Bottom-3 were highest at zero AF2 inference strength (66.57%/28.05%) and
+decreased monotonically to 65.89%/25.70% at full strength. Worst-class AP and
+`Biji Hitam Pecah` remained 0.00% at every endpoint. Thus full-strength AF2
+inference does not explain the isolated zero, and inference-time AF2 is not the
+source of the package's aggregate gain.
+
+A target-specific, no-training audit is frozen next. It compares native
+`D0DIRECT` with `AF2LUMSAFE` at zero strength using raw top-500 proposals and
+low-confidence final detections to separate localization, class assignment,
+and ranking/selection failure. The locked test remains closed.
+
+- Result:
+  `docs/COFFEE_STANDARD_J25_AF2_LUMINANCE_STRENGTH_SWEEP_RESULT_2026-09-19.md`.
+- Frozen root-cause protocol:
+  `docs/COFFEE_STANDARD_J25_BLACK_BROKEN_ROOT_CAUSE_PROTOCOL_2026-09-19.md`.
+- Notebook:
+  `notebooks/Coffee_Standard_J25_Black_Broken_Root_Cause_Colab.ipynb`.
