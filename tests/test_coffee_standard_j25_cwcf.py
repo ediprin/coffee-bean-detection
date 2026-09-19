@@ -95,6 +95,26 @@ def test_full_model_starts_exact_and_compositional_loss_reaches_adapter():
     assert gradients and sum(float(value.abs().sum()) for value in gradients) > 0
 
 
+def test_fused_end2end_inference_uses_one2one_head():
+    candidate = build_cwcf_model(
+        str(ROOT / "configs/coffee_fg/models/yolo26n-p3.yaml"),
+        nc=25,
+        source=None,
+        seed=42,
+        config=CWCFConfig(),
+        verbose=False,
+    ).eval()
+    image = torch.rand(1, 3, 64, 64)
+    candidate.fuse(verbose=False)
+    with torch.no_grad():
+        output = candidate(image)
+    if isinstance(output, tuple):
+        output = output[0]
+    assert output.ndim == 3
+    assert output.shape[0] == 1
+    assert torch.isfinite(output).all()
+
+
 def test_notebook_is_fresh_resumable_and_test_locked():
     notebook = json.loads(
         (ROOT / "notebooks/Coffee_Standard_J25_CWCF1_Seed42_Colab.ipynb").read_text(

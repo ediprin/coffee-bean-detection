@@ -145,17 +145,29 @@ class ChromaticWaveletDetectHead(nn.Module):
         self._sync_runtime_attributes()
         if not self.training:
             self.last_attribute_logits = None
-        predictions = self._forward_head(
-            features, **self.base_head.one2many, store_attributes=self.training
-        )
+        one2many = self.base_head.one2many
+        fused = one2many.get("box_head") is None or one2many.get("cls_head") is None
+        predictions = None
+        if not fused:
+            predictions = self._forward_head(
+                features, **one2many, store_attributes=self.training
+            )
         if self.end2end:
             detached = [value.detach() for value in features]
             one2one = self._forward_head(
                 detached, **self.base_head.one2one, store_attributes=False
             )
-            predictions = {"one2many": predictions, "one2one": one2one}
+            predictions = (
+                {"one2one": one2one}
+                if fused
+                else {"one2many": predictions, "one2one": one2one}
+            )
+        elif predictions is None:
+            raise RuntimeError("Head CWCF non-end2end tidak memiliki cabang inference")
         self.current_cue = None
         if self.training:
+            if fused:
+                raise RuntimeError("Model fused tidak boleh digunakan untuk training")
             return predictions
         inference = self.base_head._inference(
             predictions["one2one"] if self.end2end else predictions
