@@ -1,0 +1,38 @@
+code: SAFED0
+dataset: coffee-standard-j25-train-siblings-v2
+variant: native_semantic_safe_identity_sampler
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+weights: yolo26n.pt
+frontend: none
+sampler:
+  mode: identity_repeat_factor
+  threshold: median_positive_train_identity_frequency
+  maximum_repeat: 4.0
+  replacement: true
+  samples_per_epoch: extracted_train_image_count
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  mosaic: 0.0
+  close_mosaic: 0
+  scale: 0.0
+  translate: 0.05
+  degrees: 0.0
+  shear: 0.0
+  perspective: 0.0
+  fliplr: 0.5
+  flipud: 0.0
+  hsv_h: 0.0
+  hsv_s: 0.2
+  hsv_v: 0.2
+  erasing: 0.0
+  mixup: 0.0
+  cutmix: 0.0
+  copy_paste: 0.0
+  max_det: 500

@@ -915,3 +915,24 @@ and ranking/selection failure. The locked test remains closed.
   `docs/COFFEE_STANDARD_J25_BLACK_BROKEN_ROOT_CAUSE_PROTOCOL_2026-09-19.md`.
 - Notebook:
   `notebooks/Coffee_Standard_J25_Black_Broken_Root_Cause_Colab.ipynb`.
+
+# 2026-09-19 - J25 black-broken failure is classification, not localization
+
+The validation-only audit found six `Biji Hitam Pecah` instances. Both
+`D0DIRECT` and `AF2LUMSAFE` at zero inference strength localized and matched
+all six at raw top-500 and low-confidence final stages. `D0DIRECT` assigned
+the correct raw class to 2/6 but none finally; `AF2LUMSAFE` assigned the
+correct class to 0/6 already at the raw stage. Thus box localization is not
+the bottleneck, and the AF2LUMSAFE decision-boundary shift was learned during
+training rather than caused by its inference transform.
+
+A fresh `SAFED0` causal control is frozen. It copies the exact safe
+augmentation and identity sampler but removes AF2 from both training and
+inference. It will be compared against `D0DIRECT` and `AF2LUMSAFE` at lambda
+zero; the locked test remains closed.
+
+- Root-cause result:
+  `docs/COFFEE_STANDARD_J25_BLACK_BROKEN_ROOT_CAUSE_RESULT_2026-09-19.md`.
+- Frozen control:
+  `docs/COFFEE_STANDARD_J25_SAFE_D0_CONTROL_PROTOCOL_2026-09-19.md`.
+- Configuration: `configs/coffee_standard_j25/SAFED0.yaml`.
