@@ -5,11 +5,14 @@ from types import SimpleNamespace
 
 import torch
 import yaml
+import pytest
 
 from coffee_detector.j25_cwcf import (
     CWCFConfig,
     build_cwcf_model,
     build_j25_attribute_matrix,
+    attribute_compatibility_logits,
+    balanced_attribute_bce,
     chromatic_wavelet_cue,
     haar_decompose,
 )
@@ -44,6 +47,28 @@ def test_black_broken_is_explicit_composition_not_atomic_guess():
     assert matrix[7, 5:7].tolist() == [1.0, 1.0]
     assert matrix[8, 5:7].tolist() == [1.0, 0.0]
     assert matrix[12, 5:7].tolist() == [0.0, 1.0]
+
+
+def test_explicit_composition_prefers_matching_black_broken_code():
+    matrix = build_j25_attribute_matrix()
+    logits = torch.full((1, 14, 1, 1), -5.0)
+    logits[:, 5:7] = 5.0
+    compatibility = attribute_compatibility_logits(logits, matrix)
+    assert compatibility.shape == (1, 25, 1, 1)
+    assert compatibility[0, 7] > compatibility[0, 8]
+    assert compatibility[0, 7] > compatibility[0, 12]
+
+
+def test_balanced_attribute_loss_equalizes_present_leaf_classes():
+    logits = torch.zeros(4, 2, requires_grad=True)
+    targets = torch.tensor([[1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 1.0]])
+    labels = torch.tensor([0, 0, 0, 1])
+    loss = balanced_attribute_bce(logits, targets, labels)
+    loss.backward()
+    # Three class-0 objects together and the single class-1 object each receive half.
+    assert logits.grad[3].abs().sum() == pytest.approx(
+        logits.grad[:3].abs().sum().item()
+    )
 
 
 def test_config_matches_safeaug0_fresh_schedule():

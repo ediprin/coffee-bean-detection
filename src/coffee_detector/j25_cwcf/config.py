@@ -12,6 +12,9 @@ class CWCFConfig:
     attribute_gain: float = 0.15
     wavelet_levels: int = 2
     cue_clip: float = 4.0
+    explicit_composition: bool = False
+    composition_gain_max: float = 0.5
+    class_balanced_attributes: bool = False
 
     @classmethod
     def from_mapping(
@@ -37,6 +40,8 @@ class CWCFConfig:
             raise ValueError("attribute_gain harus berada di (0,1]")
         if result.cue_clip <= 0:
             raise ValueError("cue_clip harus positif")
+        if not 0.0 < result.composition_gain_max <= 1.0:
+            raise ValueError("composition_gain_max harus berada di (0,1]")
         return result
 
     def to_dict(self) -> dict[str, object]:

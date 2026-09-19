@@ -44,6 +44,47 @@ def build_j25_attribute_matrix() -> torch.Tensor:
     return matrix
 
 
+def attribute_compatibility_logits(
+    attribute_logits: torch.Tensor, attribute_matrix: torch.Tensor
+) -> torch.Tensor:
+    """Map attribute evidence to zero-centered leaf-class compatibility.
+
+    Compatibility is the mean Bernoulli log-likelihood of each class's fixed
+    attribute code. Centering prevents a shared confidence offset from changing
+    every native class score in the same direction.
+    """
+
+    if attribute_logits.ndim != 4:
+        raise ValueError("attribute_logits harus [B,A,H,W]")
+    if attribute_matrix.ndim != 2:
+        raise ValueError("attribute_matrix harus [C,A]")
+    if attribute_logits.shape[1] != attribute_matrix.shape[1]:
+        raise ValueError("Jumlah atribut logits dan matrix berbeda")
+    positive = F.logsigmoid(attribute_logits).unsqueeze(1)
+    negative = F.logsigmoid(-attribute_logits).unsqueeze(1)
+    codes = attribute_matrix.to(
+        device=attribute_logits.device, dtype=attribute_logits.dtype
+    )[None, :, :, None, None]
+    compatibility = (codes * positive + (1.0 - codes) * negative).mean(dim=2)
+    return compatibility - compatibility.mean(dim=1, keepdim=True)
+
+
+def balanced_attribute_bce(
+    logits: torch.Tensor, targets: torch.Tensor, labels: torch.Tensor
+) -> torch.Tensor:
+    """Give every leaf class present in the batch equal aggregate weight."""
+
+    if logits.shape != targets.shape or logits.ndim != 2:
+        raise ValueError("logits/targets atribut harus [N,A] dengan shape sama")
+    if labels.ndim != 1 or labels.shape[0] != logits.shape[0]:
+        raise ValueError("labels atribut harus [N]")
+    per_object = F.binary_cross_entropy_with_logits(logits, targets, reduction="none").mean(1)
+    _, inverse, counts = torch.unique(labels, return_inverse=True, return_counts=True)
+    weights = counts[inverse].to(per_object.dtype).reciprocal()
+    weights = weights / weights.sum().clamp_min(1e-12)
+    return (per_object * weights).sum()
+
+
 def _first_conv_channels(module: nn.Module) -> int:
     for child in module.modules():
         if isinstance(child, nn.Conv2d):
@@ -180,6 +221,57 @@ class ChromaticWaveletDetectHead(nn.Module):
         self.base_head.fuse()
 
 
+class ExplicitCompositionDetectHead(ChromaticWaveletDetectHead):
+    """CWCF head whose attribute predictions directly correct leaf logits."""
+
+    def __init__(self, base_head: nn.Module, config: CWCFConfig) -> None:
+        super().__init__(base_head, config)
+        if not self.config.explicit_composition:
+            raise ValueError("ExplicitCompositionDetectHead memerlukan explicit_composition")
+        self.composition_gates = nn.ParameterList(
+            [nn.Parameter(torch.zeros(())) for _ in range(self.nl)]
+        )
+        self.register_buffer(
+            "attribute_matrix", build_j25_attribute_matrix(), persistent=True
+        )
+
+    def _forward_head(
+        self,
+        features: list[torch.Tensor],
+        *,
+        box_head: nn.Module,
+        cls_head: nn.Module,
+        store_attributes: bool,
+    ) -> dict[str, torch.Tensor]:
+        if self.current_cue is None:
+            raise RuntimeError("Cue CWCF belum disetel")
+        batch = features[0].shape[0]
+        boxes, scores, attributes = [], [], []
+        for index in range(self.nl):
+            feature = features[index]
+            conditioned = self.adapters[index](feature, self.current_cue)
+            attribute = self.attribute_heads[index](conditioned)
+            native_score = cls_head[index](conditioned)
+            compatibility = attribute_compatibility_logits(
+                attribute, self.attribute_matrix
+            )
+            gain = self.config.composition_gain_max * torch.tanh(
+                self.composition_gates[index]
+            )
+            score = native_score + gain * compatibility
+            boxes.append(box_head[index](feature).view(batch, 4 * self.reg_max, -1))
+            scores.append(score.view(batch, self.nc, -1))
+            if store_attributes:
+                attributes.append(attribute.view(batch, len(ATTRIBUTE_NAMES), -1))
+        if store_attributes:
+            self.last_attribute_logits = torch.cat(attributes, dim=-1)
+        return {
+            "boxes": torch.cat(boxes, dim=-1),
+            "scores": torch.cat(scores, dim=-1),
+            "feats": features,
+        }
+
+
 def _aggregate_assigned_attributes(
     logits: torch.Tensor,
     foreground: torch.Tensor,
@@ -252,9 +344,14 @@ class CWCFDetectionLoss:
                 attribute_targets = self.attribute_matrix.to(
                     device=labels.device, dtype=attribute_logits.dtype
                 )[labels]
-                auxiliary = F.binary_cross_entropy_with_logits(
-                    attribute_logits, attribute_targets
-                )
+                if self.config.class_balanced_attributes:
+                    auxiliary = balanced_attribute_bce(
+                        attribute_logits, attribute_targets, labels
+                    )
+                else:
+                    auxiliary = F.binary_cross_entropy_with_logits(
+                        attribute_logits, attribute_targets
+                    )
                 model.last_attribute_loss = auxiliary.detach()
                 loss[1] = loss[1] + self.config.attribute_gain * auxiliary
                 return assignments, loss, loss.detach()
@@ -284,9 +381,12 @@ class CWCFDetectionModel(DetectionModel):
         # Transfer the official detector before changing the native head schema.
         if native_source is not None:
             self.load(native_source)
-        self.model[-1] = ChromaticWaveletDetectHead(
-            self.model[-1], self.cwcf_config
+        head_type = (
+            ExplicitCompositionDetectHead
+            if self.cwcf_config.explicit_composition
+            else ChromaticWaveletDetectHead
         )
+        self.model[-1] = head_type(self.model[-1], self.cwcf_config)
 
     def predict(self, x, profile=False, visualize=False, augment=False, embed=None):
         head = self.model[-1] if hasattr(self, "model") and len(self.model) else None
