@@ -936,3 +936,21 @@ zero; the locked test remains closed.
 - Frozen control:
   `docs/COFFEE_STANDARD_J25_SAFE_D0_CONTROL_PROTOCOL_2026-09-19.md`.
 - Configuration: `configs/coffee_standard_j25/SAFED0.yaml`.
+
+# 2026-09-19 - SAFE-D0 identifies the main J25 gain as training policy
+
+The fresh seed-42 `SAFED0` causal control completed without test access. It
+reached 66.84% Macro, 26.86% Bottom-3, and 0.00% Worst-class mAP50-95. Against
+`D0DIRECT`, the exact semantic-safe augmentation plus identity sampler gained
+6.30 Macro and 7.31 Bottom-3 points. `AF2LUMSAFE` at raw-RGB inference reached
+66.57%/28.05%/0.00%, so stochastic AF2 contributes only a -0.27 Macro/+1.19
+Bottom-3 Pareto shift rather than the large aggregate gain.
+
+`Biji Hitam Pecah` remains 0.00% without AF2, excluding AF2 as the unique
+cause. A no-training audit is frozen to inspect train support, effective
+sampler exposure, co-occurrence, and raw/final confusion across all three
+models before choosing one component ablation. The locked test remains closed.
+
+- Result: `docs/COFFEE_STANDARD_J25_SAFE_D0_RESULT_2026-09-19.md`.
+- Audit protocol:
+  `docs/COFFEE_STANDARD_J25_SAFE_POLICY_ROOT_CAUSE_PROTOCOL_2026-09-19.md`.
