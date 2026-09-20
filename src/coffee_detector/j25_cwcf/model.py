@@ -90,6 +90,84 @@ def balanced_attribute_bce(
     return (per_object * weights).sum()
 
 
+def attribute_asymmetric_loss(
+    logits: torch.Tensor,
+    targets: torch.Tensor,
+    *,
+    gamma_pos: float = 0.0,
+    gamma_neg: float = 4.0,
+    clip: float = 0.05,
+    eps: float = 1e-8,
+    detach_focal_weight: bool = True,
+) -> torch.Tensor:
+    """Elementwise ASL for multi-label attribute supervision.
+
+    This follows the ICCV 2021 ASL formulation used by the official training
+    code: sigmoid probabilities, asymmetric clipping of the negative branch,
+    and stronger focusing on negatives than positives. The returned tensor has
+    the same shape as logits so the caller controls reduction.
+    """
+
+    if logits.shape != targets.shape or logits.ndim != 2:
+        raise ValueError("logits/targets ASL harus [N,A] dengan shape sama")
+    if gamma_pos < 0.0 or gamma_neg < gamma_pos:
+        raise ValueError("ASL memerlukan 0 <= gamma_pos <= gamma_neg")
+    if not 0.0 <= clip < 1.0:
+        raise ValueError("clip ASL harus berada di [0,1)")
+    probabilities = torch.sigmoid(logits)
+    positive_probability = probabilities
+    negative_probability = 1.0 - probabilities
+    if clip > 0.0:
+        negative_probability = (negative_probability + clip).clamp(max=1.0)
+
+    log_likelihood = (
+        targets * torch.log(positive_probability.clamp_min(eps))
+        + (1.0 - targets) * torch.log(negative_probability.clamp_min(eps))
+    )
+
+    if gamma_neg > 0.0 or gamma_pos > 0.0:
+        pt = (
+            positive_probability * targets
+            + negative_probability * (1.0 - targets)
+        )
+        one_sided_gamma = gamma_pos * targets + gamma_neg * (1.0 - targets)
+        base = 1.0 - pt
+        if detach_focal_weight:
+            base = base.detach()
+        asymmetric_weight = torch.pow(base, one_sided_gamma)
+        log_likelihood = log_likelihood * asymmetric_weight
+
+    return -log_likelihood
+
+
+def balanced_attribute_asl(
+    logits: torch.Tensor,
+    targets: torch.Tensor,
+    labels: torch.Tensor,
+    *,
+    gamma_pos: float = 0.0,
+    gamma_neg: float = 4.0,
+    clip: float = 0.05,
+    detach_focal_weight: bool = True,
+) -> torch.Tensor:
+    """Apply ASL per attribute, then preserve optional leaf-class balancing."""
+
+    if labels.ndim != 1 or labels.shape[0] != logits.shape[0]:
+        raise ValueError("labels atribut ASL harus [N]")
+    per_object = attribute_asymmetric_loss(
+        logits,
+        targets,
+        gamma_pos=gamma_pos,
+        gamma_neg=gamma_neg,
+        clip=clip,
+        detach_focal_weight=detach_focal_weight,
+    ).mean(1)
+    _, inverse, counts = torch.unique(labels, return_inverse=True, return_counts=True)
+    weights = counts[inverse].to(per_object.dtype).reciprocal()
+    weights = weights / weights.sum().clamp_min(1e-12)
+    return (per_object * weights).sum()
+
+
 def conditional_confusion_cross_entropy(
     logits: torch.Tensor,
     labels: torch.Tensor,
@@ -384,7 +462,27 @@ class CWCFDetectionLoss:
                 attribute_targets = self.attribute_matrix.to(
                     device=labels.device, dtype=attribute_logits.dtype
                 )[labels]
-                if self.config.class_balanced_attributes:
+                if self.config.attribute_loss == "asl":
+                    if self.config.class_balanced_attributes:
+                        auxiliary = balanced_attribute_asl(
+                            attribute_logits,
+                            attribute_targets,
+                            labels,
+                            gamma_pos=self.config.asl_gamma_pos,
+                            gamma_neg=self.config.asl_gamma_neg,
+                            clip=self.config.asl_clip,
+                            detach_focal_weight=self.config.asl_detach_focal_weight,
+                        )
+                    else:
+                        auxiliary = attribute_asymmetric_loss(
+                            attribute_logits,
+                            attribute_targets,
+                            gamma_pos=self.config.asl_gamma_pos,
+                            gamma_neg=self.config.asl_gamma_neg,
+                            clip=self.config.asl_clip,
+                            detach_focal_weight=self.config.asl_detach_focal_weight,
+                        ).mean()
+                elif self.config.class_balanced_attributes:
                     auxiliary = balanced_attribute_bce(
                         attribute_logits, attribute_targets, labels
                     )
