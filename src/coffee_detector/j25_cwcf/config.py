@@ -19,6 +19,7 @@ class CWCFConfig:
     asl_gamma_pos: float = 0.0
     asl_gamma_neg: float = 4.0
     asl_clip: float = 0.05
+    asl_detach_focal_weight: bool = True
     conditional_confusion_gain: float = 0.0
 
     @classmethod
