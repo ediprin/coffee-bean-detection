@@ -224,6 +224,7 @@ def run_arm(
         "maximum_epochs": int(train_args["epochs"]),
         "training_executed_this_call": training_executed,
         "evaluation_split": "val",
+        "pretrained_source_parameters": int(static["source_parameters"]),
         "comparison_role": "matched nano-scale capacity/family probe; descriptive only",
         "test_images_accessed": False,
         "run_contract": contract,
@@ -322,6 +323,7 @@ def main() -> None:
     parser.add_argument("--provenance-summary")
     parser.add_argument("--pretrained-checkpoint")
     parser.add_argument("--output-root")
+    parser.add_argument("--v8n-result")
     parser.add_argument("--v8s-result")
     parser.add_argument("--safeaug0-result")
     parser.add_argument("--cwcf1-result")
@@ -332,9 +334,14 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.comparison_output:
-        required = (args.v8s_result, args.safeaug0_result, args.cwcf1_result)
+        required = (
+            args.v8n_result,
+            args.v8s_result,
+            args.safeaug0_result,
+            args.cwcf1_result,
+        )
         if any(value is None for value in required):
-            parser.error("Comparison mode requires V8S, SAFEAUG0, and CWCF1 results")
+            parser.error("Comparison mode requires V8N, V8S, SAFEAUG0, and CWCF1 results")
         payload = build_comparison(*required, args.comparison_output)
         print(json.dumps(payload, indent=2), flush=True)
         return
