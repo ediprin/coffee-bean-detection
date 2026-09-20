@@ -199,11 +199,11 @@ def run_static_preflight(
 
     gates = {
         "baseline_protocol_exact": baseline_result.get("protocol") == CWCF1_PROTOCOL,
-        "same_pretrained_checkpoint_as_v8n_baseline":
+        "same_pretrained_checkpoint_as_cwcf1":
             checkpoint_sha == baseline_contract.get("pretrained_checkpoint_sha256"),
-        "same_dataset_as_v8n_baseline":
+        "same_dataset_as_cwcf1":
             config.get("dataset") == baseline_cfg.get("dataset"),
-        "same_training_schedule_as_v8n_baseline":
+        "same_training_schedule_as_cwcf1":
             config.get("train") == baseline_cfg.get("train"),
         "baseline_run_schedule_matches_candidate":
             baseline_contract.get("train") == config.get("train"),
@@ -396,7 +396,7 @@ def run_arm(
     }
 
     if result_path.is_file():
-        old = _json(result_path, "V8N_CWCF1 result")
+        old = _json(result_path, "V8N_CWCF_ASL1 result")
         if old.get("run_contract") != contract:
             raise RuntimeError("Existing V8N_CWCF_ASL1 result berbeda kontrak")
         return old
