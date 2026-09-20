@@ -253,10 +253,24 @@ def build_comparison(
         "SAFEAUG0": {metric: float(safeaug["metrics"][metric]) for metric in METRICS},
         "CWCF1": {metric: float(cwcf["metrics"][metric]) for metric in METRICS},
     }
+    def target_ap(payload: dict, label: str) -> float:
+        if "target_class_map50_95" in payload:
+            return float(payload["target_class_map50_95"])
+        by_class = payload.get("map50_95_by_class")
+        if isinstance(by_class, dict) and TARGET_CLASS in by_class:
+            return float(by_class[TARGET_CLASS])
+        metrics = payload.get("metrics", {})
+        nested = metrics.get("map50_95_by_class") if isinstance(metrics, dict) else None
+        if isinstance(nested, dict) and TARGET_CLASS in nested:
+            return float(nested[TARGET_CLASS])
+        raise KeyError(
+            f"{label} tidak menyimpan AP target {TARGET_CLASS!r} dalam format yang dikenali"
+        )
+
     target_values = {
-        "V8S_MATCHED": float(v8s["target_class_map50_95"]),
-        "SAFEAUG0": float(safeaug["target_class_map50_95"]),
-        "CWCF1": float(cwcf["target_class_map50_95"]),
+        "V8S_MATCHED": target_ap(v8s, "V8S_MATCHED"),
+        "SAFEAUG0": target_ap(safeaug, "SAFEAUG0"),
+        "CWCF1": target_ap(cwcf, "CWCF1"),
     }
     payload = {
         "format": "coffee_detector.coffee_standard_j25.yolov8s_matched.comparison.v1",
