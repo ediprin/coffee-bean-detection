@@ -17,6 +17,11 @@ ATTRIBUTE_NAMES = (
     "immature", "normal", "foreign", "fruit", "large", "small", "medium",
 )
 
+# The only leaf classes that encode the two primitive factors implicated by the
+# J25 validation audit.  The order is frozen and becomes the local target space
+# for the training-only conditional loss below.
+BLACK_BROKEN_CONFUSION_CLASSES = (7, 8, 9, 12)
+
 
 def build_j25_attribute_matrix() -> torch.Tensor:
     """Deterministic class-to-attribute factorization for the frozen J25 labels."""
@@ -80,6 +85,41 @@ def balanced_attribute_bce(
         raise ValueError("labels atribut harus [N]")
     per_object = F.binary_cross_entropy_with_logits(logits, targets, reduction="none").mean(1)
     _, inverse, counts = torch.unique(labels, return_inverse=True, return_counts=True)
+    weights = counts[inverse].to(per_object.dtype).reciprocal()
+    weights = weights / weights.sum().clamp_min(1e-12)
+    return (per_object * weights).sum()
+
+
+def conditional_confusion_cross_entropy(
+    logits: torch.Tensor,
+    labels: torch.Tensor,
+    class_indices: tuple[int, ...] = BLACK_BROKEN_CONFUSION_CLASSES,
+) -> torch.Tensor:
+    """Class-balanced local CE for the black/broken confusion family.
+
+    The native detector still learns all 25 classes with its normal loss.  This
+    term only asks assigned objects from the frozen confusion family to choose
+    correctly *within* that family.  It is training-only and introduces no
+    inference parameter or score rewrite.
+    """
+
+    if logits.ndim != 2 or labels.ndim != 1 or logits.shape[0] != labels.shape[0]:
+        raise ValueError("logits/labels confusion harus [N,C] dan [N]")
+    if not class_indices or len(set(class_indices)) != len(class_indices):
+        raise ValueError("class_indices confusion harus unik dan tidak kosong")
+    indices = torch.tensor(class_indices, device=labels.device, dtype=torch.long)
+    if int(indices.min()) < 0 or int(indices.max()) >= logits.shape[1]:
+        raise ValueError("class_indices confusion di luar jumlah kelas")
+    member = labels[:, None].eq(indices[None, :])
+    selected = member.any(dim=1)
+    if not bool(selected.any()):
+        return logits.sum() * 0.0
+    local_targets = member[selected].to(torch.int64).argmax(dim=1)
+    local_logits = logits[selected][:, indices]
+    per_object = F.cross_entropy(local_logits, local_targets, reduction="none")
+    _, inverse, counts = torch.unique(
+        local_targets, return_inverse=True, return_counts=True
+    )
     weights = counts[inverse].to(per_object.dtype).reciprocal()
     weights = weights / weights.sum().clamp_min(1e-12)
     return (per_object * weights).sum()
@@ -354,6 +394,18 @@ class CWCFDetectionLoss:
                     )
                 model.last_attribute_loss = auxiliary.detach()
                 loss[1] = loss[1] + self.config.attribute_gain * auxiliary
+                if self.config.conditional_confusion_gain > 0.0:
+                    class_logits, class_labels = _aggregate_assigned_attributes(
+                        preds["scores"], foreground, target_gt_index, gt_labels
+                    )
+                    conditional = conditional_confusion_cross_entropy(
+                        class_logits, class_labels
+                    )
+                    model.last_conditional_confusion_loss = conditional.detach()
+                    loss[1] = (
+                        loss[1]
+                        + self.config.conditional_confusion_gain * conditional
+                    )
                 return assignments, loss, loss.detach()
 
         return _BoundCWCFDetectionLoss()
@@ -377,6 +429,7 @@ class CWCFDetectionModel(DetectionModel):
     ) -> None:
         self.cwcf_config = CWCFConfig.from_mapping(cwcf)
         self.last_attribute_loss: torch.Tensor | None = None
+        self.last_conditional_confusion_loss: torch.Tensor | None = None
         super().__init__(cfg, ch=ch, nc=nc, verbose=verbose)
         # Transfer the official detector before changing the native head schema.
         if native_source is not None:

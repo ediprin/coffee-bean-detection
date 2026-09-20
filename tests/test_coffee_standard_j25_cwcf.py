@@ -8,12 +8,14 @@ import yaml
 import pytest
 
 from coffee_detector.j25_cwcf import (
+    BLACK_BROKEN_CONFUSION_CLASSES,
     CWCFConfig,
     build_cwcf_model,
     build_j25_attribute_matrix,
     attribute_compatibility_logits,
     balanced_attribute_bce,
     chromatic_wavelet_cue,
+    conditional_confusion_cross_entropy,
     haar_decompose,
 )
 
@@ -69,6 +71,49 @@ def test_balanced_attribute_loss_equalizes_present_leaf_classes():
     assert logits.grad[3].abs().sum() == pytest.approx(
         logits.grad[:3].abs().sum().item()
     )
+
+
+def test_conditional_confusion_loss_is_local_and_class_balanced():
+    logits = torch.zeros(5, 25, requires_grad=True)
+    labels = torch.tensor([7, 7, 8, 12, 0])
+    loss = conditional_confusion_cross_entropy(logits, labels)
+    loss.backward()
+    assert torch.isfinite(loss)
+    assert BLACK_BROKEN_CONFUSION_CLASSES == (7, 8, 9, 12)
+    # Two class-7 objects together receive the same aggregate weight as each
+    # other present confusion-family class.
+    assert logits.grad[:2].abs().sum() == pytest.approx(
+        logits.grad[2].abs().sum().item()
+    )
+    assert logits.grad[:2].abs().sum() == pytest.approx(
+        logits.grad[3].abs().sum().item()
+    )
+    assert logits.grad[4].abs().sum() == 0
+    outside = sorted(set(range(25)).difference(BLACK_BROKEN_CONFUSION_CLASSES))
+    assert logits.grad[:4, outside].abs().sum() == 0
+
+
+def test_conditional_confusion_loss_is_zero_without_family_member():
+    logits = torch.randn(3, 25, requires_grad=True)
+    loss = conditional_confusion_cross_entropy(logits, torch.tensor([0, 1, 2]))
+    loss.backward()
+    assert loss == 0
+    assert logits.grad is not None and logits.grad.abs().sum() == 0
+
+
+def test_cwcf_hnc_config_matches_cwcf1_except_training_only_gain():
+    candidate = yaml.safe_load(
+        (ROOT / "configs/coffee_standard_j25/CWCFHNC1.yaml").read_text()
+    )
+    baseline = yaml.safe_load(
+        (ROOT / "configs/coffee_standard_j25/CWCF1.yaml").read_text()
+    )
+    assert candidate["model"] == baseline["model"]
+    assert candidate["train"] == baseline["train"]
+    assert candidate["sampler"] == baseline["sampler"] == "none"
+    baseline_cwcf = dict(candidate["cwcf"])
+    assert baseline_cwcf.pop("conditional_confusion_gain") == 0.05
+    assert baseline_cwcf == baseline["cwcf"]
 
 
 def test_config_matches_safeaug0_fresh_schedule():
