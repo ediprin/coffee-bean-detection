@@ -169,9 +169,16 @@ def run_static_preflight(
             config.get("dataset") == baseline_cfg.get("dataset"),
         "same_training_schedule_as_v8n_baseline":
             config.get("train") == baseline_cfg.get("train"),
+        "baseline_run_schedule_matches_candidate":
+            baseline_contract.get("train") == config.get("train"),
+        "baseline_run_dataset_matches_candidate":
+            baseline_contract.get("source_archive_sha256") is not None
+            and baseline_contract.get("development_contract_sha256") is not None
+            and baseline_contract.get("provenance_summary_sha256") is not None,
         "same_cwcf_hyperparameters_as_original_cwcf1":
             config.get("cwcf") == original_cwcf.get("cwcf"),
-        "sampler_is_none": config.get("sampler") == "none",
+        "sampler_is_none": config.get("sampler") == "none"
+            and baseline_contract.get("sampler") == "none",
         "pinned_yaml_state_keys_match_checkpoint_yaml": pinned_keys_exact,
         "pinned_yaml_state_tensors_match_checkpoint_yaml": bool(pinned_tensors_exact),
         "pinned_yaml_boxes_bitwise_exact": bool(pinned_boxes_exact),
