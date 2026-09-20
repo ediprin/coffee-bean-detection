@@ -71,4 +71,6 @@ def test_protocol_and_notebook_are_fresh_resumable_and_test_locked():
     assert "run_coffee_standard_j25_cwcf2" in code
     assert "--authorize-training" in code
     assert "quarantine" in code.lower()
+    runner = (ROOT / "src/coffee_detector/experiments/run_coffee_standard_j25_cwcf2.py").read_text()
+    assert "beralih otomatis ke evaluasi" in runner
     assert "--authorize-test" not in code and "test/images" not in code

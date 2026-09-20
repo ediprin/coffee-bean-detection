@@ -427,11 +427,24 @@ def main() -> None:
             args.output_root, seed=args.seed, device=args.device,
         )
     else:
-        run_arm(
-            args.data_root, args.development_contract, args.provenance_summary,
-            args.pretrained_checkpoint, args.output_root, seed=args.seed,
-            device=args.device, authorize_training=args.authorize_training,
-        )
+        try:
+            run_arm(
+                args.data_root, args.development_contract, args.provenance_summary,
+                args.pretrained_checkpoint, args.output_root, seed=args.seed,
+                device=args.device, authorize_training=args.authorize_training,
+            )
+        except RuntimeError as error:
+            if "results.csv tidak monotonik" not in str(error):
+                raise
+            print(
+                "RUN TUMPANG-TINDIH TERDETEKSI: beralih otomatis ke evaluasi "
+                "quarantine tanpa training.",
+                flush=True,
+            )
+            evaluate_quarantined_run(
+                args.data_root, args.development_contract, args.provenance_summary,
+                args.output_root, seed=args.seed, device=args.device,
+            )
 
 
 if __name__ == "__main__":
