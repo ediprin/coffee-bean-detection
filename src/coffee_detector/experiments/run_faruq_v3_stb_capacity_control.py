@@ -150,12 +150,29 @@ def _recover_from_best(run_dir: Path) -> dict:
     }
 
 
+class _TrainingLease:
+    """Ownership token shared by the heartbeat thread and trainer callbacks."""
+
+    def __init__(self, path: Path, token: str, lost: threading.Event):
+        self.path = path
+        self.token = token
+        self._lost = lost
+
+    def assert_owned(self) -> None:
+        if self._lost.is_set():
+            raise RuntimeError(
+                "Kepemilikan training lock hilang. Runtime lain mencoba menulis output "
+                f"yang sama: {self.path}. Training dihentikan sebelum epoch berikutnya."
+            )
+
+
 @contextmanager
 def _exclusive_training_lock(
     output_root: Path,
     stale_seconds: int = 300,
     *,
     lock_name: str = "CMC0_seed42.training.lock",
+    heartbeat_seconds: float = 5.0,
 ):
     """Drive-visible heartbeat lock preventing concurrent Colab writers."""
 
@@ -176,18 +193,26 @@ def _exclusive_training_lock(
                 )
             lock.unlink(missing_ok=True)
     stopped = threading.Event()
+    lost = threading.Event()
+    lease = _TrainingLease(lock, token, lost)
 
     def heartbeat():
-        while not stopped.wait(30):
+        while not stopped.wait(heartbeat_seconds):
             try:
+                payload = json.loads(lock.read_text(encoding="utf-8"))
+                if payload.get("token") != token:
+                    lost.set()
+                    return
                 lock.touch()
-            except OSError:
+            except (OSError, json.JSONDecodeError):
+                lost.set()
                 return
 
     thread = threading.Thread(target=heartbeat, daemon=True)
     thread.start()
     try:
-        yield lock
+        yield lease
+        lease.assert_owned()
     finally:
         stopped.set()
         thread.join(timeout=2)

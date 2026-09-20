@@ -49,6 +49,17 @@ def test_decision_compares_matched_controls_without_test(tmp_path):
     assert result["test_opened"] is False
 
 
+def test_decision_rejects_quarantined_concurrent_writer_result(tmp_path):
+    paths = [tmp_path / f"{index}.json" for index in range(4)]
+    for path, protocol, values in zip(paths, (DIRECT_PROTOCOL, SAFEAUG_PROTOCOL, CWCF1_PROTOCOL, PROTOCOL), ((.60,.19,.02),(.62,.21,.018),(.636,.246,.014),(.64,.25,.02))):
+        _write(path, protocol, values)
+    payload = json.loads(paths[-1].read_text())
+    payload["valid_for_claims"] = False
+    paths[-1].write_text(json.dumps(payload))
+    with pytest.raises(RuntimeError, match="quarantine"):
+        build_decision(*paths, tmp_path / "decision.json")
+
+
 def test_protocol_and_notebook_are_fresh_resumable_and_test_locked():
     protocol = (ROOT / "docs/COFFEE_STANDARD_J25_CWCF2_PROTOCOL_2026-09-19.md").read_text()
     assert "Status: **frozen before training**" in protocol
@@ -59,5 +70,5 @@ def test_protocol_and_notebook_are_fresh_resumable_and_test_locked():
     assert "BRANCH='codex/j25-chromatic-wavelet-composition'" in code
     assert "run_coffee_standard_j25_cwcf2" in code
     assert "--authorize-training" in code
-    assert "last.pt tersimpan di Drive setiap epoch" in code
+    assert "quarantine" in code.lower()
     assert "--authorize-test" not in code and "test/images" not in code

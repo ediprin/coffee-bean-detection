@@ -3,6 +3,7 @@ import csv
 from pathlib import Path
 
 import torch
+import pytest
 
 from coffee_detector.experiments.run_faruq_v3_stb_capacity_control import (
     _comparison,
@@ -114,3 +115,21 @@ def test_exclusive_lock_can_be_named_per_arm(tmp_path):
     with _exclusive_training_lock(tmp_path, lock_name="STB1_seed123.training.lock"):
         assert (tmp_path / "STB1_seed123.training.lock").is_file()
     assert not (tmp_path / "STB1_seed123.training.lock").exists()
+
+
+def test_exclusive_lock_detects_replaced_owner(tmp_path):
+    import json
+    import time
+
+    from coffee_detector.experiments.run_faruq_v3_stb_capacity_control import (
+        _exclusive_training_lock,
+    )
+
+    lock = tmp_path / "CWCF2_seed42.training.lock"
+    with pytest.raises(RuntimeError, match="kepemilikan training lock hilang|Kepemilikan training lock hilang"):
+        with _exclusive_training_lock(
+            tmp_path, lock_name=lock.name, heartbeat_seconds=0.01
+        ) as lease:
+            lock.write_text(json.dumps({"token": "runtime-lain"}), encoding="utf-8")
+            time.sleep(0.05)
+            lease.assert_owned()

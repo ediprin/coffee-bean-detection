@@ -24,7 +24,7 @@ from coffee_detector.experiments.run_faruq_v3_af2_direct import (
     _sha256,
 )
 from coffee_detector.experiments.run_faruq_v3_stb_capacity_control import (
-    _checkpoint_state, _exclusive_training_lock, _run_complete,
+    _checkpoint_state, _epoch_sequence, _exclusive_training_lock, _run_complete,
 )
 from coffee_detector.j25_cwcf import (
     CWCFConfig,
@@ -230,7 +230,9 @@ def run_arm(
     if not _run_complete(run_dir, int(train_args["epochs"])):
         from ultralytics import YOLO
         epoch, resumable = _checkpoint_state(last)
-        with _exclusive_training_lock(destination, lock_name=f"{ARM}_seed{seed}.training.lock"):
+        with _exclusive_training_lock(
+            destination, lock_name=f"{ARM}_seed{seed}.training.lock"
+        ) as lease:
             if last.is_file() and resumable and epoch is not None and epoch >= 0:
                 model, args = YOLO(str(last)), {"resume": True, "device": device}
             else:
@@ -242,6 +244,11 @@ def run_arm(
                     name=f"{ARM}_seed{seed}", exist_ok=True, seed=seed,
                     deterministic=True, plots=False, verbose=False, device=device,
                 )
+            # The Drive-visible heartbeat detects lock replacement.  Checking the
+            # shared lease at batch boundaries prevents a second Colab runtime
+            # from silently continuing to write this run after taking the lock.
+            model.add_callback("on_train_batch_start", lambda _trainer: lease.assert_owned())
+            model.add_callback("on_val_batch_start", lambda _validator: lease.assert_owned())
             model.train(
                 trainer=_trainer(pretrained=checkpoint, seed=seed, config=frozen), **args
             )
@@ -276,6 +283,82 @@ def run_arm(
     return result
 
 
+def evaluate_quarantined_run(
+    data_root: str | Path,
+    development_contract: str | Path,
+    provenance_summary: str | Path,
+    output_root: str | Path,
+    *,
+    seed: int = SEED,
+    device: str = "0",
+) -> dict:
+    """Evaluate a loadable checkpoint from an interleaved run without legitimizing it.
+
+    This is intentionally diagnostic-only.  It answers whether a clean rerun is
+    worth the compute, while preserving the concurrent-writer failure in evidence.
+    """
+
+    if seed != SEED:
+        raise RuntimeError("Diagnostic CWCF2 dikunci seed 42")
+    root = Path(data_root).expanduser().resolve()
+    dataset = validate_j25_development(root, development_contract, provenance_summary)
+    destination = Path(output_root).expanduser().resolve()
+    run_dir = destination / ARM / f"{ARM}_seed{seed}"
+    best = run_dir / "weights/best.pt"
+    contract_path = run_dir / "run_contract.json"
+    results_path = run_dir / "results.csv"
+    if not best.is_file() or not contract_path.is_file() or not results_path.is_file():
+        raise FileNotFoundError("Artefak run CWCF2 terkontaminasi tidak lengkap")
+    contract = _json(contract_path, "CWCF2 run contract")
+    if (
+        contract.get("protocol") != PROTOCOL
+        or contract.get("seed") != seed
+        or contract.get("test_images_accessed") is not False
+        or contract.get("source_archive_sha256") != dataset["source_archive_sha256"]
+        or contract.get("development_contract_sha256")
+        != dataset["development_contract_sha256"]
+        or contract.get("provenance_summary_sha256")
+        != dataset["provenance_summary_sha256"]
+    ):
+        raise RuntimeError("Kontrak run terkontaminasi tidak cocok dengan dataset J25")
+    sequence = _epoch_sequence(results_path)
+    expected = list(range(sequence[0], sequence[0] + len(sequence))) if sequence else []
+    if sequence == expected:
+        raise RuntimeError("Run monotonik; jalur quarantine tidak boleh digunakan")
+
+    report_path = (
+        destination / "quarantine_reports" / f"{ARM}_seed{seed}_quarantined_val.json"
+    )
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    evaluation = evaluate(best, root, report_path, split="val", device=device)
+    metrics = evaluation["metrics"]
+    if metrics.get("classes_without_ground_truth"):
+        raise RuntimeError("Validation kehilangan kelas")
+    result = {
+        "format": "coffee_detector.coffee_standard_j25.cwcf2.quarantined_diagnostic.v1",
+        "protocol": PROTOCOL,
+        "status": "QUARANTINED_CONCURRENT_WRITER_DIAGNOSTIC_ONLY",
+        "valid_for_claims": False,
+        "seed": seed,
+        "metrics": {metric: float(metrics[metric]) for metric in METRICS},
+        "map50_95_by_class": metrics["map50_95_by_class"],
+        "checkpoint": str(best),
+        "checkpoint_sha256": _sha256(best),
+        "observed_epoch_sequence": sequence,
+        "training_executed_this_call": False,
+        "evaluation_split": "val",
+        "test_images_accessed": False,
+        "run_contract": contract,
+        "next": "CLEAN_SINGLE_WRITER_RERUN_ONLY_IF_DIAGNOSTIC_IS_PROMISING",
+    }
+    output = (
+        destination / "quarantine_reports" / f"{ARM}_seed{seed}_quarantined_result.json"
+    )
+    output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(result, indent=2), flush=True)
+    return result
+
+
 def build_decision(
     direct_result: str | Path,
     safeaug_result: str | Path,
@@ -292,6 +375,8 @@ def build_decision(
     for name, (payload, protocol) in inputs.items():
         if payload.get("protocol") != protocol or payload.get("test_images_accessed") is not False:
             raise RuntimeError(f"Kontrak reference salah: {name}")
+        if payload.get("valid_for_claims") is False:
+            raise RuntimeError(f"Artefak quarantine tidak boleh masuk decision: {name}")
     values = {name: payload["metrics"] for name, (payload, _) in inputs.items()}
     deltas = {
         reference: {
@@ -334,12 +419,19 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=SEED)
     parser.add_argument("--device", default="0")
     parser.add_argument("--authorize-training", action="store_true")
+    parser.add_argument("--quarantine-evaluate-only", action="store_true")
     args = parser.parse_args()
-    run_arm(
-        args.data_root, args.development_contract, args.provenance_summary,
-        args.pretrained_checkpoint, args.output_root, seed=args.seed,
-        device=args.device, authorize_training=args.authorize_training,
-    )
+    if args.quarantine_evaluate_only:
+        evaluate_quarantined_run(
+            args.data_root, args.development_contract, args.provenance_summary,
+            args.output_root, seed=args.seed, device=args.device,
+        )
+    else:
+        run_arm(
+            args.data_root, args.development_contract, args.provenance_summary,
+            args.pretrained_checkpoint, args.output_root, seed=args.seed,
+            device=args.device, authorize_training=args.authorize_training,
+        )
 
 
 if __name__ == "__main__":
