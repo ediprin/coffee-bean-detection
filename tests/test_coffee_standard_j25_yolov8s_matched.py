@@ -63,7 +63,9 @@ def test_comparison_is_descriptive_and_keeps_test_locked(tmp_path):
         {
             **common,
             "metrics": _metrics(.636, .247, .0149),
-            "target_class_map50_95": .0149,
+            # CWCF1's actual arm result stores classwise AP in this map,
+            # not in a top-level target_class_map50_95 field.
+            "map50_95_by_class": {"Biji Hitam Pecah": .0149},
         },
     )
     result = build_comparison(v8s, safeaug, cwcf, tmp_path / "summary.json")
