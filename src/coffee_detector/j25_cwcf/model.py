@@ -141,10 +141,20 @@ class CueAffineResidual(nn.Module):
         nn.init.zeros_(self.affine.weight)
         nn.init.zeros_(self.affine.bias)
 
-    def forward(self, feature: torch.Tensor, cue: torch.Tensor) -> torch.Tensor:
-        resized = F.interpolate(cue, size=feature.shape[-2:], mode="bilinear", align_corners=False)
+    def forward(
+        self,
+        feature: torch.Tensor,
+        cue: torch.Tensor,
+        gain: torch.Tensor | float | None = None,
+    ) -> torch.Tensor:
+        resized = F.interpolate(
+            cue, size=feature.shape[-2:], mode="bilinear", align_corners=False
+        )
         scale, bias = self.affine(resized).chunk(2, dim=1)
-        return feature + feature * torch.tanh(scale) + bias
+        residual = feature * torch.tanh(scale) + bias
+        if gain is None:
+            return feature + residual
+        return feature + residual * gain
 
 
 class ChromaticWaveletDetectHead(nn.Module):
@@ -159,6 +169,13 @@ class ChromaticWaveletDetectHead(nn.Module):
         channels = tuple(_first_conv_channels(branch) for branch in base_head.cv2)
         self.adapters = nn.ModuleList(
             [CueAffineResidual(channel, self.config.cue_channels) for channel in channels]
+        )
+        self.scale_gate_logits = (
+            nn.ParameterList(
+                [nn.Parameter(torch.zeros(())) for _ in range(len(channels))]
+            )
+            if self.config.learnable_scale_gates
+            else None
         )
         self.attribute_heads = nn.ModuleList(
             [nn.Conv2d(channel, len(ATTRIBUTE_NAMES), 1) for channel in channels]
@@ -191,6 +208,13 @@ class ChromaticWaveletDetectHead(nn.Module):
             if hasattr(self, name):
                 setattr(self.base_head, name, getattr(self, name))
 
+    def scale_gate(self, index: int) -> torch.Tensor | None:
+        """Return a bounded scale gain, initialized exactly at one."""
+
+        if self.scale_gate_logits is None:
+            return None
+        return 2.0 * torch.sigmoid(self.scale_gate_logits[index])
+
     def _forward_head(
         self,
         features: list[torch.Tensor],
@@ -205,7 +229,9 @@ class ChromaticWaveletDetectHead(nn.Module):
         boxes, scores, attributes = [], [], []
         for index in range(self.nl):
             feature = features[index]
-            conditioned = self.adapters[index](feature, self.current_cue)
+            conditioned = self.adapters[index](
+                feature, self.current_cue, gain=self.scale_gate(index)
+            )
             boxes.append(box_head[index](feature).view(batch, 4 * self.reg_max, -1))
             scores.append(cls_head[index](conditioned).view(batch, self.nc, -1))
             if store_attributes:
@@ -289,7 +315,9 @@ class ExplicitCompositionDetectHead(ChromaticWaveletDetectHead):
         boxes, scores, attributes = [], [], []
         for index in range(self.nl):
             feature = features[index]
-            conditioned = self.adapters[index](feature, self.current_cue)
+            conditioned = self.adapters[index](
+                feature, self.current_cue, gain=self.scale_gate(index)
+            )
             attribute = self.attribute_heads[index](conditioned)
             native_score = cls_head[index](conditioned)
             compatibility = attribute_compatibility_logits(
