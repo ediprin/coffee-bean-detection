@@ -445,7 +445,11 @@ class CWCFDetectionModel(DetectionModel):
         head = self.model[-1] if hasattr(self, "model") and len(self.model) else None
         if isinstance(x, torch.Tensor) and isinstance(head, ChromaticWaveletDetectHead):
             head.set_cue(
-                chromatic_wavelet_cue(x, clip=self.cwcf_config.cue_clip).detach()
+                chromatic_wavelet_cue(
+                    x,
+                    clip=self.cwcf_config.cue_clip,
+                    detail_mode=self.cwcf_config.wavelet_detail_mode,
+                ).detach()
             )
         return super().predict(
             x, profile=profile, visualize=visualize, augment=augment, embed=embed
