@@ -62,6 +62,10 @@ def chromatic_wavelet_cue(
     Directional mode preserves all signed detail sub-bands:
     [Cb, Cr, LH1, HL1, HH1, LH2, HL2, HH2].
 
+    Hybrid mode keeps the original energy channels and adds the six signed
+    detail sub-bands:
+    [Cb, Cr, D1, D2, LH1, HL1, HH1, LH2, HL2, HH2].
+
     RGB remains untouched for the native detector; cues are consumed only by
     the classification branches.
     """
@@ -70,8 +74,10 @@ def chromatic_wavelet_cue(
         raise ValueError("CWCF input harus [B,3,H,W]")
     if not image.is_floating_point():
         raise TypeError("CWCF input harus floating point")
-    if detail_mode not in {"energy", "directional"}:
-        raise ValueError("detail_mode harus 'energy' atau 'directional'")
+    if detail_mode not in {"energy", "directional", "hybrid"}:
+        raise ValueError(
+            "detail_mode harus 'energy', 'directional', atau 'hybrid'"
+        )
 
     red, green, blue = image[:, 0:1], image[:, 1:2], image[:, 2:3]
     luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
@@ -81,27 +87,30 @@ def chromatic_wavelet_cue(
     _, lh2, hl2, hh2 = haar_bands(ll1)
     size = image.shape[-2:]
 
+    detail1 = torch.sqrt(
+        torch.cat((lh1, hl1, hh1), dim=1).square().mean(dim=1, keepdim=True)
+        + 1e-8
+    )
+    detail2 = torch.sqrt(
+        torch.cat((lh2, hl2, hh2), dim=1).square().mean(dim=1, keepdim=True)
+        + 1e-8
+    )
+    detail1 = F.interpolate(
+        detail1, size=size, mode="bilinear", align_corners=False
+    )
+    detail2 = F.interpolate(
+        detail2, size=size, mode="bilinear", align_corners=False
+    )
+    directional = [
+        F.interpolate(band, size=size, mode="bilinear", align_corners=False)
+        for band in (lh1, hl1, hh1, lh2, hl2, hh2)
+    ]
+
     if detail_mode == "energy":
-        detail1 = torch.sqrt(
-            torch.cat((lh1, hl1, hh1), dim=1).square().mean(dim=1, keepdim=True)
-            + 1e-8
-        )
-        detail2 = torch.sqrt(
-            torch.cat((lh2, hl2, hh2), dim=1).square().mean(dim=1, keepdim=True)
-            + 1e-8
-        )
-        detail1 = F.interpolate(
-            detail1, size=size, mode="bilinear", align_corners=False
-        )
-        detail2 = F.interpolate(
-            detail2, size=size, mode="bilinear", align_corners=False
-        )
         cue = torch.cat((cb, cr, detail1, detail2), dim=1)
-    else:
-        directional = [
-            F.interpolate(band, size=size, mode="bilinear", align_corners=False)
-            for band in (lh1, hl1, hh1, lh2, hl2, hh2)
-        ]
+    elif detail_mode == "directional":
         cue = torch.cat((cb, cr, *directional), dim=1)
+    else:
+        cue = torch.cat((cb, cr, detail1, detail2, *directional), dim=1)
 
     return _standardize(cue, float(clip))
