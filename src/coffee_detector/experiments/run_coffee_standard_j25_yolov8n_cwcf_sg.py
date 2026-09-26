@@ -180,6 +180,8 @@ def run_static_preflight(
     )
     added_parameters = _parameter_count(candidate) - _parameter_count(cwcf1_reference)
     gate_initial = _gate_snapshot_from_head(candidate_head)
+    candidate_initial_state_sha256 = _state_fingerprint(candidate)
+    cwcf1_initial_state_sha256 = _state_fingerprint(cwcf1_reference)
 
     probe = torch.linspace(0.0, 1.0, 3 * 64 * 64).reshape(1, 3, 64, 64)
     native_raw = _raw_predictions(native, probe)
@@ -310,7 +312,8 @@ def run_static_preflight(
         "cwcf1_reference_parameters": _parameter_count(cwcf1_reference),
         "candidate_parameters": _parameter_count(candidate),
         "added_parameters_vs_cwcf1": added_parameters,
-        "candidate_initial_state_sha256": _state_fingerprint(candidate),
+        "candidate_initial_state_sha256": candidate_initial_state_sha256,
+        "cwcf1_initial_state_sha256": cwcf1_initial_state_sha256,
         "initial_scale_gates": gate_initial,
         "probe_scale_gates": changed_gate,
         "cwcf": candidate_frozen.to_dict(),
