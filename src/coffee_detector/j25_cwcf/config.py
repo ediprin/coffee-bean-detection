@@ -11,6 +11,7 @@ class CWCFConfig:
     cue_channels: int = 4
     attribute_gain: float = 0.15
     wavelet_levels: int = 2
+    pyramid_injection: str = "p3p4p5"
     cue_clip: float = 4.0
     explicit_composition: bool = False
     composition_gain_max: float = 0.5
@@ -37,6 +38,16 @@ class CWCFConfig:
             raise ValueError("CWCF v1 dikunci pada empat cue: Cb, Cr, Haar-L1, Haar-L2")
         if result.wavelet_levels != 2:
             raise ValueError("CWCF v1 dikunci pada dua level Haar")
+        if result.pyramid_injection not in {
+            "p3p4p5",
+            "p3p4",
+            "p3p5",
+            "p4p5",
+            "p3",
+            "p4",
+            "p5",
+        }:
+            raise ValueError("pyramid_injection tidak dikenal")
         if not 0.0 < result.attribute_gain <= 1.0:
             raise ValueError("attribute_gain harus berada di (0,1]")
         if result.cue_clip <= 0:
