@@ -11,6 +11,7 @@ class CWCFConfig:
     cue_channels: int = 4
     attribute_gain: float = 0.15
     wavelet_levels: int = 2
+    learnable_scale_gates: bool = False
     cue_clip: float = 4.0
     explicit_composition: bool = False
     composition_gain_max: float = 0.5
