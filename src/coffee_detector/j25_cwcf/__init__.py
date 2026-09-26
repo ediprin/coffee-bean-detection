@@ -13,7 +13,7 @@ from .model import (
     build_j25_attribute_matrix,
     load_cwcf_weights,
 )
-from .operator import chromatic_wavelet_cue, haar_decompose
+from .operator import chromatic_wavelet_cue, haar_bands, haar_decompose
 
 __all__ = [
     "BLACK_BROKEN_CONFUSION_CLASSES",
@@ -27,6 +27,7 @@ __all__ = [
     "build_cwcf_model",
     "build_j25_attribute_matrix",
     "chromatic_wavelet_cue",
+    "haar_bands",
     "haar_decompose",
     "load_cwcf_weights",
 ]
