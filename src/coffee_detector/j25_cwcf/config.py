@@ -37,9 +37,12 @@ class CWCFConfig:
         expected_cue_channels = {
             "energy": 4,
             "directional": 8,
+            "hybrid": 10,
         }.get(result.wavelet_detail_mode)
         if expected_cue_channels is None:
-            raise ValueError("wavelet_detail_mode harus 'energy' atau 'directional'")
+            raise ValueError(
+                "wavelet_detail_mode harus 'energy', 'directional', atau 'hybrid'"
+            )
         if result.cue_channels != expected_cue_channels:
             raise ValueError(
                 f"cue_channels harus {expected_cue_channels} untuk mode "
