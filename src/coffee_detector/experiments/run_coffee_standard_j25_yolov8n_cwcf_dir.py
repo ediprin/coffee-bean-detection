@@ -178,6 +178,13 @@ def run_static_preflight(
     )
     candidate_head = candidate.model[-1]
     baseline_head = cwcf1_reference.model[-1]
+    base_head_initial_equal = _module_state_equal(
+        candidate_head.base_head, baseline_head.base_head
+    )
+    attribute_head_initial_equal = _module_state_equal(
+        candidate_head.attribute_heads, baseline_head.attribute_heads
+    )
+    candidate_initial_state_sha256 = _state_fingerprint(candidate)
 
     probe = torch.linspace(0.0, 1.0, 3 * 64 * 64).reshape(1, 3, 64, 64)
     native_raw = _raw_predictions(native, probe)
@@ -262,12 +269,9 @@ def run_static_preflight(
             torch.allclose(detail1, reconstructed1, atol=0.0, rtol=0.0),
         "haar_energy_reconstructs_level2":
             torch.allclose(detail2, reconstructed2, atol=0.0, rtol=0.0),
-        "native_base_head_state_matches_cwcf1":
-            _module_state_equal(candidate_head.base_head, baseline_head.base_head),
+        "native_base_head_state_matches_cwcf1": bool(base_head_initial_equal),
         "attribute_head_initialization_matches_cwcf1":
-            _module_state_equal(
-                candidate_head.attribute_heads, baseline_head.attribute_heads
-            ),
+            bool(attribute_head_initial_equal),
         "directional_adapters_zero_initialized": bool(adapter_zero),
         "cwcf1_reference_native_boxes_bitwise_exact": bool(baseline_boxes_exact),
         "cwcf1_reference_native_scores_bitwise_exact": bool(baseline_scores_exact),
@@ -299,7 +303,7 @@ def run_static_preflight(
         "candidate_parameters": _parameter_count(candidate),
         "added_parameters_vs_cwcf1":
             _parameter_count(candidate) - _parameter_count(cwcf1_reference),
-        "candidate_state_sha256": _state_fingerprint(candidate),
+        "candidate_initial_state_sha256": candidate_initial_state_sha256,
         "cwcf": frozen.to_dict(),
         "gates": gates,
         "training_authorized": all(gates.values()),
