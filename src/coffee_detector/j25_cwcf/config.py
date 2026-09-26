@@ -11,6 +11,7 @@ class CWCFConfig:
     cue_channels: int = 4
     attribute_gain: float = 0.15
     wavelet_levels: int = 2
+    wavelet_detail_mode: str = "energy"
     cue_clip: float = 4.0
     explicit_composition: bool = False
     composition_gain_max: float = 0.5
@@ -33,8 +34,17 @@ class CWCFConfig:
             result = cls(**value)
         else:
             raise TypeError("CWCF config harus mapping, CWCFConfig, atau None")
-        if result.cue_channels != 4:
-            raise ValueError("CWCF v1 dikunci pada empat cue: Cb, Cr, Haar-L1, Haar-L2")
+        expected_cue_channels = {
+            "energy": 4,
+            "directional": 8,
+        }.get(result.wavelet_detail_mode)
+        if expected_cue_channels is None:
+            raise ValueError("wavelet_detail_mode harus 'energy' atau 'directional'")
+        if result.cue_channels != expected_cue_channels:
+            raise ValueError(
+                f"cue_channels harus {expected_cue_channels} untuk mode "
+                f"{result.wavelet_detail_mode!r}"
+            )
         if result.wavelet_levels != 2:
             raise ValueError("CWCF v1 dikunci pada dua level Haar")
         if not 0.0 < result.attribute_gain <= 1.0:
