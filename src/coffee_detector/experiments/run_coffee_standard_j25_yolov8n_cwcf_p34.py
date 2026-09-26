@@ -156,8 +156,8 @@ def run_static_preflight(
 
     # P5 probe: candidate must ignore the adapter; full CWCF1 must use it.
     with torch.no_grad():
-        candidate_head.adapters[2].affine.weight[0, 0, 0, 0] = 0.25
-        baseline_head.adapters[2].affine.weight[0, 0, 0, 0] = 0.25
+        candidate_head.adapters[2].affine.bias[0] = 0.25
+        baseline_head.adapters[2].affine.bias[0] = 0.25
     candidate_p5_probe = _raw_predictions(candidate, probe)
     baseline_p5_probe = _raw_predictions(cwcf1_reference, probe)
     candidate_p5_scores_unchanged = torch.equal(
@@ -178,7 +178,7 @@ def run_static_preflight(
         str(MODEL_YAML), nc=NC, source=source, seed=seed, config=frozen
     )
     with torch.no_grad():
-        candidate_p3.model[-1].adapters[0].affine.weight[0, 0, 0, 0] = 0.25
+        candidate_p3.model[-1].adapters[0].affine.bias[0] = 0.25
     candidate_p3_probe = _raw_predictions(candidate_p3, probe)
     candidate_p3_scores_change = not torch.equal(
         native_raw["scores"], candidate_p3_probe["scores"]
