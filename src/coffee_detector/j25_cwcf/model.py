@@ -191,6 +191,12 @@ class ChromaticWaveletDetectHead(nn.Module):
             if hasattr(self, name):
                 setattr(self.base_head, name, getattr(self, name))
 
+    def _cue_active(self, index: int) -> bool:
+        if index < 0 or index >= self.nl:
+            raise IndexError("Indeks pyramid CWCF di luar rentang")
+        level = f"p{index + 3}"
+        return level in self.config.pyramid_injection
+
     def _forward_head(
         self,
         features: list[torch.Tensor],
@@ -205,7 +211,11 @@ class ChromaticWaveletDetectHead(nn.Module):
         boxes, scores, attributes = [], [], []
         for index in range(self.nl):
             feature = features[index]
-            conditioned = self.adapters[index](feature, self.current_cue)
+            conditioned = (
+                self.adapters[index](feature, self.current_cue)
+                if self._cue_active(index)
+                else feature
+            )
             boxes.append(box_head[index](feature).view(batch, 4 * self.reg_max, -1))
             scores.append(cls_head[index](conditioned).view(batch, self.nc, -1))
             if store_attributes:
