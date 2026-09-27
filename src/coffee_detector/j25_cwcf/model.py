@@ -163,6 +163,7 @@ class ChromaticWaveletDetectHead(nn.Module):
         self.attribute_heads = nn.ModuleList(
             [nn.Conv2d(channel, len(ATTRIBUTE_NAMES), 1) for channel in channels]
         )
+        self.attribute_count = len(ATTRIBUTE_NAMES)
         self.current_cue: torch.Tensor | None = None
         self.last_attribute_logits: torch.Tensor | None = None
         for name in ("i", "f", "type", "np"):
@@ -211,7 +212,7 @@ class ChromaticWaveletDetectHead(nn.Module):
             if store_attributes:
                 attributes.append(
                     self.attribute_heads[index](conditioned).view(
-                        batch, len(ATTRIBUTE_NAMES), -1
+                        batch, self.attribute_count, -1
                     )
                 )
         if store_attributes:
@@ -302,7 +303,7 @@ class ExplicitCompositionDetectHead(ChromaticWaveletDetectHead):
             boxes.append(box_head[index](feature).view(batch, 4 * self.reg_max, -1))
             scores.append(score.view(batch, self.nc, -1))
             if store_attributes:
-                attributes.append(attribute.view(batch, len(ATTRIBUTE_NAMES), -1))
+                attributes.append(attribute.view(batch, self.attribute_count, -1))
         if store_attributes:
             self.last_attribute_logits = torch.cat(attributes, dim=-1)
         return {

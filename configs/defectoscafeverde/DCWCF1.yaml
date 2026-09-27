@@ -1,0 +1,21 @@
+code: DCWCF1
+dataset: defectoscafeverde-grouped-physical-v1
+variant: classification_only_chromatic_wavelet_semantic_factorization
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+weights: yolo26n.pt
+cwcf:
+  cue_channels: 4
+  attribute_gain: 0.15
+  wavelet_levels: 2
+  cue_clip: 4.0
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500
