@@ -35,11 +35,11 @@ from coffee_detector.experiments.run_coffee_standard_j25_yolov8n_matched import 
 )
 from coffee_detector.experiments.run_faruq_v3_af2_direct import _sha256
 from coffee_detector.j25_cwcf import (
-    ATTRIBUTE_NAMES,
     ChromaticWaveletDetectHead,
     build_j25_attribute_matrix,
     chromatic_wavelet_cue,
 )
+from coffee_detector.j25_cwcf.model import ATTRIBUTE_NAMES
 
 
 PROTOCOL = "coffee-standard-j25-yolov8n-cwcf-target-audit-v1"
