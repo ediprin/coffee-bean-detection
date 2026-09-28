@@ -1,0 +1,25 @@
+code: RAFC1
+dataset: defectoscafeverde-grouped-physical-v1
+variant: raw_anchored_angular_fourier_consistency
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+weights: yolo26n.pt
+rafc:
+  mix_strength: 0.20
+  low_radius: 0.04
+  high_radius: 0.22
+  orientation_bins: 8
+  angular_width_degrees: 45.0
+  consistency_gain: 0.05
+  temperature: 2.0
+  eps: 1.0e-8
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500
