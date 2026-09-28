@@ -1,3 +1,4 @@
+import csv
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -15,6 +16,7 @@ from coffee_detector.experiments.run_defectoscafeverde_cwcf_direct import (
     CANDIDATE_CONFIG,
     NATIVE_CONFIG,
     PROTOCOL,
+    _repair_completed_resume_boundary_csv,
     build_decision,
 )
 from coffee_detector.j25_cwcf import CWCFConfig
@@ -106,3 +108,37 @@ def test_decision_promotes_only_frozen_routes(tmp_path):
     assert result["screen"]["decision"] == "PROMOTE_TO_PAIRED_3_SEED"
     assert result["deltas"]["macro_map50_95"] == pytest.approx(0.01)
     assert result["test_opened"] is False
+
+
+def test_completed_resume_boundary_duplicate_is_repaired_with_raw_backup(
+    tmp_path, monkeypatch
+):
+    run_dir = tmp_path / "run"
+    weights = run_dir / "weights"
+    weights.mkdir(parents=True)
+    (weights / "best.pt").write_bytes(b"best")
+    (weights / "last.pt").write_bytes(b"last")
+    rows = [
+        {"epoch": "1", "metric": "0.1"},
+        {"epoch": "2", "metric": "old"},
+        {"epoch": "2", "metric": "resumed"},
+        {"epoch": "3", "metric": "0.3"},
+    ]
+    with (run_dir / "results.csv").open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=("epoch", "metric"))
+        writer.writeheader()
+        writer.writerows(rows)
+    monkeypatch.setattr(
+        "coffee_detector.experiments.run_defectoscafeverde_cwcf_direct._checkpoint_state",
+        lambda _: (-1, False),
+    )
+
+    report = _repair_completed_resume_boundary_csv(run_dir)
+
+    assert report["status"] == "repaired_adjacent_duplicate_epochs"
+    assert report["duplicate_epochs"] == [2]
+    assert Path(report["raw_backup"]).is_file()
+    with (run_dir / "results.csv").open(newline="", encoding="utf-8") as stream:
+        repaired = list(csv.DictReader(stream))
+    assert [int(row["epoch"]) for row in repaired] == [1, 2, 3]
+    assert repaired[1]["metric"] == "resumed"

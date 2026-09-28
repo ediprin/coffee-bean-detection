@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
+import shutil
+import time
 from pathlib import Path
 
 import torch
@@ -48,6 +51,85 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 CANDIDATE_CONFIG = REPO_ROOT / "configs/defectoscafeverde/DCWCF1.yaml"
 ARMS = ("D0DIRECT", "DCWCF1")
 PROTOCOL = "defectoscafeverde-grouped-dcwcf-direct-seed42-v1"
+
+
+def _repair_completed_resume_boundary_csv(run_dir: Path) -> dict:
+    """Repair only adjacent duplicate epochs after a fully stripped run.
+
+    An interrupted Drive-backed resume can persist the CSV row immediately
+    before the matching checkpoint. Resuming then writes that boundary epoch
+    once more. This is distinct from interleaved writers: after collapsing
+    adjacent equal epochs, the sequence must be gap-free and monotonic.
+    """
+
+    csv_path = run_dir / "results.csv"
+    best, last = run_dir / "weights/best.pt", run_dir / "weights/last.pt"
+    if not csv_path.is_file() or not best.is_file() or not last.is_file():
+        return {"status": "not_applicable"}
+    checkpoint_epoch, resumable = _checkpoint_state(last)
+    if checkpoint_epoch != -1 or resumable:
+        return {"status": "not_completed_stripped"}
+    with csv_path.open(newline="", encoding="utf-8") as stream:
+        reader = csv.DictReader(stream)
+        fields = list(reader.fieldnames or [])
+        rows = list(reader)
+    sequence = [int(float(row["epoch"])) for row in rows]
+    if not sequence:
+        return {"status": "empty"}
+    expected = list(range(sequence[0], sequence[0] + len(sequence)))
+    if sequence == expected:
+        return {"status": "clean", "epochs": len(sequence)}
+
+    repaired: list[dict] = []
+    duplicate_epochs: list[int] = []
+    for row, epoch in zip(rows, sequence):
+        if not repaired:
+            repaired.append(row)
+            continue
+        previous = int(float(repaired[-1]["epoch"]))
+        if epoch == previous:
+            repaired[-1] = row
+            duplicate_epochs.append(epoch)
+        elif epoch == previous + 1:
+            repaired.append(row)
+        else:
+            raise RuntimeError(
+                "results.csv bukan duplikat batas resume yang aman: "
+                f"{sequence}"
+            )
+    repaired_sequence = [int(float(row["epoch"])) for row in repaired]
+    repaired_expected = list(
+        range(repaired_sequence[0], repaired_sequence[0] + len(repaired_sequence))
+    )
+    if not duplicate_epochs or repaired_sequence != repaired_expected:
+        raise RuntimeError("results.csv gagal memenuhi kontrak repair batas resume")
+
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    backup = run_dir / f"results.raw-resume-boundary-{stamp}.csv"
+    shutil.copy2(csv_path, backup)
+    temporary = run_dir / "results.csv.repairing"
+    with temporary.open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.DictWriter(stream, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(repaired)
+    temporary.replace(csv_path)
+    report = {
+        "format": "coffee_detector.results_csv.resume_boundary_repair.v1",
+        "status": "repaired_adjacent_duplicate_epochs",
+        "raw_backup": str(backup),
+        "raw_rows": len(rows),
+        "repaired_rows": len(repaired),
+        "duplicate_epochs": duplicate_epochs,
+        "repaired_sequence_start": repaired_sequence[0],
+        "repaired_sequence_end": repaired_sequence[-1],
+        "best_checkpoint_sha256": _sha256(best),
+        "last_checkpoint_sha256": _sha256(last),
+        "test_images_accessed": False,
+    }
+    (run_dir / "results_csv_repair.json").write_text(
+        json.dumps(report, indent=2) + "\n", encoding="utf-8"
+    )
+    return report
 
 
 def _build_native(checkpoint: Path, seed: int, *, verbose: bool = False):
@@ -317,6 +399,7 @@ def run_arm(
     contract_path.write_text(json.dumps(contract, indent=2) + "\n", encoding="utf-8")
     best, last = run_dir / "weights/best.pt", run_dir / "weights/last.pt"
     training_executed = False
+    csv_repair = _repair_completed_resume_boundary_csv(run_dir)
     if not _run_complete(run_dir, int(train_args["epochs"])):
         from ultralytics import YOLO
 
@@ -349,6 +432,12 @@ def run_arm(
                 **args,
             )
         training_executed = True
+    post_training_repair = _repair_completed_resume_boundary_csv(run_dir)
+    if (
+        post_training_repair.get("status") == "repaired_adjacent_duplicate_epochs"
+        or csv_repair.get("status") != "repaired_adjacent_duplicate_epochs"
+    ):
+        csv_repair = post_training_repair
     if not _run_complete(run_dir, int(train_args["epochs"])) or not best.is_file():
         raise RuntimeError("Run belum selesai secara valid")
     evaluation = evaluate(
@@ -373,6 +462,7 @@ def run_arm(
         "completed_epochs": _completed_epochs(run_dir / "results.csv"),
         "maximum_epochs": int(train_args["epochs"]),
         "training_executed_this_call": training_executed,
+        "results_csv_repair": csv_repair,
         "evaluation_split": "val",
         "test_images_accessed": False,
         "run_contract": contract,
