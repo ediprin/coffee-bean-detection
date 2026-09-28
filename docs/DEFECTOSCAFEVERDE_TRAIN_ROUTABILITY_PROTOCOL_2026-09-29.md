@@ -40,6 +40,12 @@ or validation statistics.  They contain only:
 - RGB/luminance mean and standard deviation plus horizontal/vertical gradient
   energy for the complete input and D0-anchor crop.
 
+Images use the native Ultralytics inference order: OpenCV BGR input is
+converted to RGB before the detector forward pass.  The original v1 audit used
+the diagnostic helper's unconverted BGR tensor and is retained only as a
+non-native exploratory run.  The frozen decision is based exclusively on the
+`v2-rgb-native` output.
+
 Targets without a D0 anchor are retained in the denominator and cannot be
 rescued by this routing formulation.
 

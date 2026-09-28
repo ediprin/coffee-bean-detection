@@ -32,7 +32,6 @@ from coffee_detector.analysis.defectoscafeverde_error_complementarity import (
 def _appearance_features(image: torch.Tensor, box: torch.Tensor) -> list[float]:
     """Return inference-available global and anchor-crop appearance statistics."""
 
-    image = image[:, [2, 1, 0]]  # OpenCV BGR tensor -> RGB statistics.
     _, _, height, width = image.shape
     x1, y1, x2, y2 = box.detach().round().long().tolist()
     x1, x2 = max(0, min(x1, width - 1)), max(1, min(x2, width))
@@ -69,6 +68,13 @@ def _appearance_features(image: torch.Tensor, box: torch.Tensor) -> list[float]:
         ]
 
     return describe(image) + describe(crop)
+
+
+def _native_rgb_letterbox_sample(*args, **kwargs):
+    """Match Ultralytics ``Format(bgr=0)`` channel order exactly."""
+
+    image, boxes, labels, shape = _letterbox_sample(*args, **kwargs)
+    return image[:, [2, 1, 0]], boxes, labels, shape
 
 
 def _kept_final(network: torch.nn.Module, image: torch.Tensor, confidence: float, max_det: int):
@@ -173,6 +179,48 @@ def _ridge_predict(
     penalty[0, 0] = 0.0
     weights = np.linalg.solve(train.T @ train + penalty, train.T @ targets)
     return (test @ weights).argmax(axis=1)
+
+
+def fit_final_router(records: list[dict], subset: tuple[str, ...], class_count: int, alpha: float = 10.0) -> dict:
+    """Fit the frozen full-train ridge router for a later validation screen."""
+
+    anchored = [row for row in records if row["anchor_available"]]
+    if not anchored:
+        raise RuntimeError("Tidak ada anchor untuk fitting router final")
+    features = np.stack([build_router_features(row, subset, class_count) for row in anchored])
+    labels = np.asarray([_preferred_label(row, subset) for row in anchored], dtype=np.int64)
+    mean = features.mean(axis=0)
+    scale = features.std(axis=0)
+    scale[scale < 1e-8] = 1.0
+    normalized = (features - mean) / scale
+    design = np.column_stack((np.ones(len(normalized)), normalized))
+    targets = np.eye(len(subset), dtype=np.float64)[labels]
+    penalty = np.eye(design.shape[1], dtype=np.float64) * alpha
+    penalty[0, 0] = 0.0
+    weights = np.linalg.solve(design.T @ design + penalty, design.T @ targets)
+    return {
+        "format": "coffee_detector.defectoscafeverde.ridge_router.v1",
+        "subset": list(subset),
+        "class_count": class_count,
+        "alpha": alpha,
+        "feature_count": int(features.shape[1]),
+        "training_targets": len(anchored),
+        "mean": mean.tolist(),
+        "scale": scale.tolist(),
+        "weights": weights.tolist(),
+    }
+
+
+def predict_final_router(router: Mapping[str, Any], record: Mapping[str, Any]) -> str:
+    subset = tuple(router["subset"])
+    features = build_router_features(record, subset, int(router["class_count"]))
+    mean = np.asarray(router["mean"], dtype=np.float64)
+    scale = np.asarray(router["scale"], dtype=np.float64)
+    weights = np.asarray(router["weights"], dtype=np.float64)
+    if len(features) != int(router["feature_count"]):
+        raise RuntimeError("Dimensi fitur router berubah")
+    design = np.concatenate(([1.0], (features - mean) / scale))
+    return subset[int((design @ weights).argmax())]
 
 
 def select_minimal_subset(records: list[dict], model_order: tuple[str, ...] = MODEL_ORDER) -> dict:
@@ -348,6 +396,7 @@ def run_train_routability_audit(
             model: contract["models"][model]["checkpoint_sha256"] for model in MODEL_ORDER
         },
         "settings": {
+            "input_color_order": "RGB_native_ultralytics",
             "image_size": image_size,
             "final_confidence": final_confidence,
             "association_iou": association_iou,
@@ -396,7 +445,7 @@ def run_train_routability_audit(
 
     with torch.inference_mode(), record_path.open("a", encoding="utf-8") as record_stream:
         for image_index, (image_path, annotations) in enumerate(pending_samples, 1):
-            image, target_boxes, target_labels, _ = _letterbox_sample(image_path, annotations, image_size, torch_device)
+            image, target_boxes, target_labels, _ = _native_rgb_letterbox_sample(image_path, annotations, image_size, torch_device)
             predictions = {
                 model: _kept_final(networks[model], image, final_confidence, max_det)
                 for model in MODEL_ORDER
@@ -468,6 +517,7 @@ def run_train_routability_audit(
         "scope": "grouped_train_only_oof_deployable_feature_audit",
         "contract": contract,
         "settings": {
+            "input_color_order": "RGB_native_ultralytics",
             "image_size": image_size,
             "final_confidence": final_confidence,
             "association_iou": association_iou,
