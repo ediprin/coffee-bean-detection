@@ -1,0 +1,57 @@
+{
+  "format": "coffee_detector.defectoscafeverde.lif_rpf.result_evidence.v1",
+  "date": "2026-09-28",
+  "evaluation_split": "val",
+  "training_executed_by_gate_audit": false,
+  "test_images_accessed": false,
+  "checkpoint_sha256": "6b093fa71917a1fce930d731a1e1af727edf3303c51c63c8ac7319480ae7a4ed",
+  "values": {
+    "D0DIRECT": {
+      "macro_map50_95": 0.9161970483026481,
+      "bottom3_class_map50_95": 0.867287441822945,
+      "worst_class_map50_95": 0.8452062524370362
+    },
+    "LIFRPF1_ACTIVE": {
+      "macro_map50_95": 0.9082140802835127,
+      "bottom3_class_map50_95": 0.8572467307332623,
+      "worst_class_map50_95": 0.840358894882973
+    },
+    "LIFRPF1_ZERO_GATE": {
+      "macro_map50_95": 0.9082471126119803,
+      "bottom3_class_map50_95": 0.8570979333359139,
+      "worst_class_map50_95": 0.8401981138227874
+    }
+  },
+  "active_minus_d0": {
+    "macro_map50_95": -0.00798296801913545,
+    "bottom3_class_map50_95": -0.010040711089682741,
+    "worst_class_map50_95": -0.004847357554063181
+  },
+  "zero_minus_active": {
+    "macro_map50_95": 0.00003303232846763038,
+    "bottom3_class_map50_95": -0.00014879739734841024,
+    "worst_class_map50_95": -0.00016078106018557747
+  },
+  "raw_gates": [0.004642486572265625, -0.026702880859375, 0.093994140625],
+  "effective_gains": [
+    0.0004642452986445278,
+    -0.002669653622433543,
+    0.009371831081807613
+  ],
+  "active_classwise_delta_vs_d0": {
+    "agrio": 0.0019266544480929237,
+    "broca": -0.026345673722636076,
+    "caracolillo": -0.00032607840663601007,
+    "concha": -0.0027168851637199287,
+    "elefante": 0.003507695162851321,
+    "helado": -0.006322168562360564,
+    "negro": -0.004847357554063181,
+    "normal": -0.012467303636615745,
+    "oreja": -0.026210400413245516,
+    "partido": -0.01866049085858512,
+    "seca": -0.006945508107563447,
+    "triangulo": 0.0036119005848554986
+  },
+  "decision": "STOP_AFTER_SEED42",
+  "attribution": "TRAINING_PATH_DOMINANT_CUE_NEARLY_IGNORED"
+}
