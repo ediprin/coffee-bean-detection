@@ -117,5 +117,11 @@ def test_notebook_is_validation_only_and_names_exact_checkpoints():
     assert "DCWCF1_seed42/weights/best.pt" in source
     assert "LIFRPF1_seed42/weights/best.pt" in source
     assert "RAFC1_seed42/weights/best.pt" in source
+    assert "Drive API fallback" in source
+    assert "14syRwc1tGNs2Lq27q-1X6B0VQwv88qWQ" in source
+    assert "1maWHfcfTkM7CB5V4NpBP9WlI-D74TuKB" in source
+    assert "CHECKPOINT_SHA" in source
+    assert "PROJECT=Path('/content/drive/MyDrive/Coffee_Bean_Detection')" in source
+    assert "Harus ada tepat satu D0 result" not in source
     assert "authorize-training" not in source
     assert "'test'" in source
