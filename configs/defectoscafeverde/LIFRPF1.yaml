@@ -1,0 +1,22 @@
+code: LIFRPF1
+dataset: defectoscafeverde-grouped-physical-v1
+variant: luminance_illumination_preprocessing_raw_preserving_classification_fusion
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+weights: yolo26n.pt
+lif_rpf:
+  cue_channels: 2
+  illumination_kernel: 31
+  maximum_luminance_delta: 0.08
+  cue_clip: 4.0
+  maximum_feature_gain: 0.10
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500
