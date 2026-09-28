@@ -76,6 +76,9 @@ def test_colab_is_train_only_and_has_shared_drive_fallback():
     assert "first=='train'" in source
     assert "VAL/TEST TEREXPOSE" in source
     assert "authorize-training" not in source
+    assert "TORCH PRE-INSTALL" in source
+    assert "--no-deps" in source
+    assert "torch_version_before" in source
     helper = Path("src/coffee_detector/experiments/prepare_defectoscafeverde_routability_colab.py").read_text(encoding="utf-8")
     assert "1maWHfcfTkM7CB5V4NpBP9WlI-D74TuKB" in helper
     assert "CHECKPOINT_SHA" in helper
