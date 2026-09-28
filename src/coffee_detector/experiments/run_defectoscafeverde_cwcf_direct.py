@@ -164,7 +164,10 @@ def run_static_preflight(
         ),
         "test_not_accessed": True,
     }
-    # Restore the pristine candidate before fingerprinting the trainer contract.
+    # Raw train-mode probes update BatchNorm buffers even under no_grad.  Rebuild
+    # both endpoints so the fingerprints describe the pristine trainer state,
+    # not the diagnostic-forward state.
+    native, _ = _build_native(checkpoint, seed)
     candidate = _build_candidate(checkpoint, seed, config)
     payload = {
         "format": "coffee_detector.defectoscafeverde.dcwcf.static.v1",
@@ -300,7 +303,17 @@ def run_arm(
     run_dir.mkdir(parents=True, exist_ok=True)
     contract_path = run_dir / "run_contract.json"
     if contract_path.is_file() and _load_json(contract_path, "Run contract") != contract:
-        raise RuntimeError("Run directory berbeda kontrak")
+        results_csv = run_dir / "results.csv"
+        completed = _completed_epochs(results_csv) if results_csv.is_file() else 0
+        learned_artifacts = (
+            run_dir / "weights/best.pt",
+            run_dir / "weights/last.pt",
+        )
+        if completed > 0 or any(path.is_file() for path in learned_artifacts):
+            raise RuntimeError("Run directory berbeda kontrak")
+        # A fail-fast setup can leave only the old contract.  It contains no
+        # learned state and is safe to replace after a protocol-code repair.
+        contract_path.unlink()
     contract_path.write_text(json.dumps(contract, indent=2) + "\n", encoding="utf-8")
     best, last = run_dir / "weights/best.pt", run_dir / "weights/last.pt"
     training_executed = False
