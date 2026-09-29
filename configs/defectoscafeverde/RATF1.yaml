@@ -1,0 +1,28 @@
+code: RATF1
+dataset: defectoscafeverde-grouped-physical-v1
+variant: redundancy_aware_selective_texture_fusion
+model: configs/coffee_fg/models/yolo26n-p3.yaml
+weights: yolo26n.pt
+ratf:
+  cue_channels: 3
+  dwt_levels: 3
+  gabor_orientations_degrees: [114.0, 172.0]
+  gabor_analysis_downsample: 2
+  gabor_wavelength: 10.0
+  gabor_sigma: 3.0
+  gabor_gamma: 0.5
+  gabor_kernel_size: 15
+  cue_clip: 4.0
+  residual_logit_bound: 2.0
+  orthogonality_epsilon: 1.0e-6
+train:
+  epochs: 50
+  imgsz: 640
+  batch: 16
+  workers: 2
+  patience: 15
+  optimizer: auto
+  pretrained: true
+  cache: false
+  close_mosaic: 10
+  max_det: 500

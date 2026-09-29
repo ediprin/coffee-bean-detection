@@ -974,3 +974,22 @@ repeat sampler, and no AF2. This directly estimates the sampler effect through
 - Frozen arm:
   `docs/COFFEE_STANDARD_J25_SAFE_AUGMENTATION_CONTROL_PROTOCOL_2026-09-19.md`.
 - Configuration: `configs/coffee_standard_j25/SAFEAUG0.yaml`.
+
+# 2026-09-29 - DefectosCafeVerde RATF1 protocol frozen
+
+One fresh seed-42 candidate is frozen on the paper-backed grouped
+DefectosCafeVerde dataset. `RATF1` keeps the native RGB detector and box branch
+unchanged, extracts only the coarse directional texture cues supported by the
+Tulsi et al. study (Haar level-3 vertical and low-frequency oblique Gabor),
+removes the cue component redundant with the learned RGB feature, and adds a
+zero-initialized class-selective score residual. This directly tests texture
+complementarity without another global input transform or routed ensemble.
+
+The existing protocol-compatible D0DIRECT seed-42 result is reused as control.
+RATF1 starts fresh from the same official YOLO26n checkpoint and uses the same
+50-epoch schedule. Promotion uses a frozen Pareto gate over Macro, Bottom-3,
+and Worst-class mAP50-95. Validation only is authorized; test remains locked.
+
+- Protocol: `docs/DEFECTOSCAFEVERDE_RATF1_PROTOCOL_2026-09-29.md`.
+- Configuration: `configs/defectoscafeverde/RATF1.yaml`.
+- Runner: `coffee_detector.experiments.run_defectoscafeverde_ratf`.
