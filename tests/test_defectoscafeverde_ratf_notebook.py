@@ -20,3 +20,7 @@ def test_ratf_notebook_contract_and_test_lock():
     assert "payload.pop('test',None)" in source
     assert "split='test'" not in source
     assert "build_decision(D0,RESULT" in source
+    assert "D0 tidak terlihat lewat mount" in source
+    assert "D0_HEADLINE" in source
+    assert "PROVISIONAL_MISSING_RAW_D0_REFERENCE" in source
+    assert "Drive API" in source
