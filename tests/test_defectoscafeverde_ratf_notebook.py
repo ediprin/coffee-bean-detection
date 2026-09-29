@@ -24,3 +24,7 @@ def test_ratf_notebook_contract_and_test_lock():
     assert "D0_HEADLINE" in source
     assert "PROVISIONAL_MISSING_RAW_D0_REFERENCE" in source
     assert "Drive API" in source
+    assert "defectoscafeverde_ratf_partido_audit" in source
+    assert "VALIDATION-ONLY PARTIDO ROOT-CAUSE AUDIT" in source
+    assert "--ratf-checkpoint" in source
+    assert "ATTRIBUTION:" in source

@@ -993,3 +993,24 @@ and Worst-class mAP50-95. Validation only is authorized; test remains locked.
 - Protocol: `docs/DEFECTOSCAFEVERDE_RATF1_PROTOCOL_2026-09-29.md`.
 - Configuration: `configs/defectoscafeverde/RATF1.yaml`.
 - Runner: `coffee_detector.experiments.run_defectoscafeverde_ratf`.
+
+# 2026-09-30 - DefectosCafeVerde RATF1 stopped after seed 42
+
+The matched RATF1 seed-42 validation screen completed without test access.
+Against D0DIRECT, RATF1 changed Macro/Bottom-3/Worst-class mAP50-95 by
+-0.84/-0.90/-0.58 points and failed both frozen Pareto routes. It improved
+`agrio`, `concha`, and `negro` by +0.71/+0.58/+0.11 points, but reduced
+`partido` by 2.15 points. RATF1 is therefore stopped without extra seeds or
+test access, and D0DIRECT remains the selected DefectosCafeVerde endpoint.
+
+A validation-only causal audit is frozen before further modeling. It compares
+D0DIRECT, active RATF1, and the same RATF1 checkpoint with its class-residual
+projection zeroed in memory. Raw proposal accessibility, localized true/rival
+score margins, class rank, and wrong destinations for every `partido` object
+will separate localization, inference-residual, training-path, and AP-ranking
+effects. No training is authorized.
+
+- Audit protocol:
+  `docs/DEFECTOSCAFEVERDE_RATF1_PARTIDO_ROOT_CAUSE_PROTOCOL_2026-09-30.md`.
+- Audit module:
+  `coffee_detector.analysis.defectoscafeverde_ratf_partido_audit`.
