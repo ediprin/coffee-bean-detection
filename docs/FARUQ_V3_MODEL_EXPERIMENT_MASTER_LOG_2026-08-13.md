@@ -1014,3 +1014,26 @@ effects. No training is authorized.
   `docs/DEFECTOSCAFEVERDE_RATF1_PARTIDO_ROOT_CAUSE_PROTOCOL_2026-09-30.md`.
 - Audit module:
   `coffee_detector.analysis.defectoscafeverde_ratf_partido_audit`.
+
+# 2026-09-30 - RATF1 `partido` first diagnostic completed; AP decomposition frozen
+
+The validation-only target audit found all 131 `partido` objects accessible
+and matched at IoU 0.50 for D0DIRECT, active RATF1, and zero-residual RATF1.
+Final localization-conditioned top-1 accuracy was 97.71% for D0DIRECT and
+99.24% for both RATF endpoints. Active RATF1 also had a higher mean localized
+class margin than D0DIRECT. Therefore, the observed 2.15-point `partido`
+AP50-95 regression is not explained by missing proposals or a simple final
+top-1 classification collapse. Zeroing the residual improved raw top-1 for
+three instances relative to active RATF1, but that narrow effect is
+insufficient to explain the AP regression by itself.
+
+A second validation-only audit is frozen to decompose AP across IoU thresholds
+and quantify confidence ranking, matched-box IoU, duplicate predictions, and
+false-positive composition for D0DIRECT, active RATF1, and the same RATF1
+checkpoint with its residual zeroed. It performs no training and keeps test
+locked.
+
+- Protocol:
+  `docs/DEFECTOSCAFEVERDE_RATF1_PARTIDO_AP_DECOMPOSITION_PROTOCOL_2026-09-30.md`.
+- Runner:
+  `coffee_detector.analysis.defectoscafeverde_ratf_ap_decomposition`.
