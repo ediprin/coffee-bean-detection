@@ -1037,3 +1037,22 @@ locked.
   `docs/DEFECTOSCAFEVERDE_RATF1_PARTIDO_AP_DECOMPOSITION_PROTOCOL_2026-09-30.md`.
 - Runner:
   `coffee_detector.analysis.defectoscafeverde_ratf_ap_decomposition`.
+
+# 2026-09-30 - DefectosCafeVerde FSRC1 protocol frozen
+
+The completed RATF1 diagnostics localized its principal failure to score
+ranking, duplicate predictions, and false positives learned during joint
+training rather than missing proposals or basic localized classification.
+`FSRC1` therefore keeps the completed D0DIRECT detector frozen and adds a
+small frequency-guided reliability calibrator over existing candidates. Fixed
+stationary-Haar features may only suppress confidence; boxes, classes, and
+the native detector state cannot change, and disabling the calibrator returns
+D0 exactly.
+
+One seed-42 train-only calibrator screen is authorized. Validation is used
+only for the frozen endpoint comparison; no validation early stopping,
+additional seed, or test access is authorized.
+
+- Protocol: `docs/DEFECTOSCAFEVERDE_FSRC1_PROTOCOL_2026-09-30.md`.
+- Configuration: `configs/defectoscafeverde/FSRC1.yaml`.
+- Runner: `coffee_detector.experiments.run_defectoscafeverde_fsrc`.

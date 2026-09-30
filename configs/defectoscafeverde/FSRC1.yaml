@@ -1,0 +1,25 @@
+code: FSRC1
+dataset: defectoscafeverde-grouped-physical-v1
+variant: frozen_detector_frequency_guided_selective_reliability_calibration
+base_checkpoint: D0DIRECT_seed42
+fsrc:
+  levels: 2
+  roi_size: 4
+  hidden_channels: 32
+  suppression_floor: 0.25
+  initial_reliability_bias: 5.0
+  overlap_threshold: 0.5
+train:
+  epochs: 20
+  batch: 2048
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  ranking_weight: 1.0
+  preservation_weight: 0.25
+  seed: 42
+detector:
+  imgsz: 640
+  batch: 16
+  workers: 2
+  max_det: 500
+  confidence: 0.001
