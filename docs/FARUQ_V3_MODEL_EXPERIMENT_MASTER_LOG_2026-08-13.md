@@ -1056,3 +1056,32 @@ additional seed, or test access is authorized.
 - Protocol: `docs/DEFECTOSCAFEVERDE_FSRC1_PROTOCOL_2026-09-30.md`.
 - Configuration: `configs/defectoscafeverde/FSRC1.yaml`.
 - Runner: `coffee_detector.experiments.run_defectoscafeverde_fsrc`.
+
+# 2026-09-30 - DefectosCafeVerde FSRC1 stopped after seed 42
+
+The frozen-D0 FSRC1 reliability calibrator completed on 6,903 train candidates
+without detector training or test access. Relative to D0DIRECT it changed
+Macro/Bottom-3/Worst-class mAP50-95 by -0.081/-0.100/-0.503 points. All
+technical gates passed, but every promotion route failed. FSRC1 is stopped
+without additional seeds; suppression-only frequency calibration is not the
+missing mechanism.
+
+- Result: `docs/DEFECTOSCAFEVERDE_FSRC1_RESULT_2026-09-30.md`.
+
+# 2026-09-30 - DefectosCafeVerde dual-view complementarity audit frozen
+
+The source paper acquires Side A and Side B of the same physical bean and uses
+a max-confidence decision across two independent YOLO predictions. The grouped
+rebuild preserved 1,969 two-view physical groups, but all completed model
+screens treated their images independently. Before another model is trained, a
+validation-only audit will compare each side, the published max-confidence
+rule, and a non-deployable pair oracle on exact two-view/single-object groups.
+
+One learned cross-view architecture is authorized only if the frozen pair
+coverage, cross-side complementarity, and oracle headroom gates pass. The audit
+performs no training and keeps test absent.
+
+- Protocol:
+  `docs/DEFECTOSCAFEVERDE_DUAL_VIEW_AUDIT_PROTOCOL_2026-09-30.md`.
+- Runner:
+  `coffee_detector.analysis.defectoscafeverde_dual_view_audit`.
