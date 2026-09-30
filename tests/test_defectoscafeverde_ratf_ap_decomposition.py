@@ -132,6 +132,8 @@ def test_notebook_appends_validation_only_ap_decomposition_cell():
     assert "defectoscafeverde_ratf_ap_decomposition" in text
     assert "PARTIDO_AP_DECOMPOSITION" in text
     assert "--grouped-audit" in text
+    assert "if mydrive_project.is_dir(): PROJECT=mydrive_project.resolve()" in text
+    assert "len(project_candidates)!=1" not in text
     assert tuple(MODEL_ORDER) == (
         "D0DIRECT",
         "RATF1_ACTIVE",
