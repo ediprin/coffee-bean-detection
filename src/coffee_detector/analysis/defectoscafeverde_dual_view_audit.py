@@ -18,14 +18,15 @@ from pathlib import Path
 from typing import Any, Mapping
 
 import torch
+import yaml
 from torchvision.ops import box_iou
 
 from coffee_detector.analysis.coffee_fg_diagnostics import (
     _letterbox_sample,
     _raw_branches,
-    _split_samples,
     _unwrap_head,
 )
+from coffee_detector.dataset import IMAGE_SUFFIXES, parse_label
 
 
 FORMAT = "coffee_detector.defectoscafeverde.dual_view_audit.v1"
@@ -46,6 +47,42 @@ def _load_json(path: str | Path, label: str) -> Any:
     if not source.is_file():
         raise FileNotFoundError(f"{label}: {source}")
     return json.loads(source.read_text(encoding="utf-8"))
+
+
+def _validation_samples(
+    data_root: str | Path,
+) -> tuple[dict[int, str], list[tuple[Path, tuple]]]:
+    """Load a YOLO validation split without requiring train to be present."""
+
+    root = Path(data_root).expanduser().resolve()
+    yaml_path = root / "data.yaml"
+    if not yaml_path.is_file():
+        raise FileNotFoundError(f"data.yaml tidak ditemukan: {yaml_path}")
+    payload = yaml.safe_load(yaml_path.read_text(encoding="utf-8")) or {}
+    raw_names = payload.get("names")
+    if isinstance(raw_names, list):
+        names = {index: str(name) for index, name in enumerate(raw_names)}
+    elif isinstance(raw_names, dict):
+        names = {int(index): str(name) for index, name in raw_names.items()}
+    else:
+        raise ValueError(f"Ontologi names tidak valid: {yaml_path}")
+    if set(names) != set(range(len(names))):
+        raise ValueError("ID kelas data.yaml harus kontigu mulai dari nol")
+    image_root, label_root = root / "val/images", root / "val/labels"
+    if not image_root.is_dir() or not label_root.is_dir():
+        raise FileNotFoundError(
+            f"Split validation tidak lengkap: {image_root}, {label_root}"
+        )
+    samples = []
+    for image_path in sorted(
+        path for path in image_root.rglob("*") if path.suffix.lower() in IMAGE_SUFFIXES
+    ):
+        relative = image_path.relative_to(image_root)
+        label_path = (label_root / relative).with_suffix(".txt")
+        samples.append((image_path, parse_label(label_path, set(names))))
+    if not samples:
+        raise RuntimeError(f"Split validation kosong: {image_root}")
+    return names, samples
 
 
 def _source_order(source_name: str) -> tuple[str, int, str]:
@@ -247,8 +284,7 @@ def run_dual_view_audit(
     expected_audit_sha = reference["result"]["run_contract"]["dataset_audit_sha256"]
     if _sha256(grouped_audit) != expected_audit_sha:
         raise RuntimeError("Grouped audit SHA berbeda dari kontrak D0DIRECT")
-    layout, samples = _split_samples(root, "val")
-    names = {int(index): str(name) for index, name in layout.names.items()}
+    names, samples = _validation_samples(root)
     if len(names) != 12:
         raise RuntimeError(f"Ontologi harus 12 kelas, ditemukan {len(names)}")
     grouped, manifest_stats = _manifest_pairs(grouped_manifest, samples)

@@ -4,6 +4,7 @@ from pathlib import Path
 from coffee_detector.analysis.defectoscafeverde_dual_view_audit import (
     _eligible_pairs,
     _source_order,
+    _validation_samples,
     summarize_pairs,
 )
 
@@ -35,6 +36,26 @@ def test_eligibility_requires_two_single_object_views_with_same_label():
     )
     assert not disagreement
     assert rejected["paired_labels_disagree"] == 1
+
+
+def test_validation_loader_does_not_require_train_split(tmp_path: Path):
+    (tmp_path / "val/images").mkdir(parents=True)
+    (tmp_path / "val/labels").mkdir(parents=True)
+    (tmp_path / "data.yaml").write_text(
+        "path: ignored\nval: val/images\nnames:\n  0: agrio\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "val/images/A0.jpg").write_bytes(b"not-decoded-by-loader")
+    (tmp_path / "val/labels/A0.txt").write_text(
+        "0 0.5 0.5 0.25 0.25\n", encoding="utf-8"
+    )
+
+    names, samples = _validation_samples(tmp_path)
+
+    assert names == {0: "agrio"}
+    assert len(samples) == 1
+    assert samples[0][1][0].class_id == 0
+    assert not (tmp_path / "train").exists()
 
 
 def test_pair_summary_separates_paper_rule_from_oracle():
