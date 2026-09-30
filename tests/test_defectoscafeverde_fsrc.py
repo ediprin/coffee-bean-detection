@@ -168,3 +168,11 @@ def test_protocol_config_and_notebook_freeze_safe_frozen_d0_screen():
     assert "TEST TEREXPOSE" in source
     assert "--authorize-training" in source
     assert "detector tetap frozen" in source
+
+
+def test_runtime_gate_expresses_frozen_detector_as_positive_predicate():
+    source = Path(
+        "src/coffee_detector/experiments/run_defectoscafeverde_fsrc.py"
+    ).read_text(encoding="utf-8")
+    assert '"detector_training_not_executed": True' in source
+    assert '"detector_training_executed": False,\n        "test_not_opened"' not in source

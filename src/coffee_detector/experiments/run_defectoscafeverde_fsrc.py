@@ -724,7 +724,10 @@ def run_fsrc1(
         "all_12_validation_classes_present": all(
             not result["classes_without_ground_truth"] for result in results.values()
         ),
-        "detector_training_executed": False,
+        # Gate entries are positive predicates because the aggregate below
+        # requires every value to be true.  Detector training is intentionally
+        # forbidden in this frozen-D0 study.
+        "detector_training_not_executed": True,
         "test_not_opened": True,
     }
     if not all(gates.values()):
