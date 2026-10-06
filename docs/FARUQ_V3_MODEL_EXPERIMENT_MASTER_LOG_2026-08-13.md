@@ -1161,3 +1161,26 @@ on failure. Test remains locked.
 - Protocol: `docs/DEFECTOSCAFEVERDE_DVF2_PROTOCOL_2026-10-06.md`.
 - Configuration: `configs/defectoscafeverde/DVF2.yaml`.
 - Runner: `coffee_detector.experiments.run_defectoscafeverde_dvf2`.
+
+# 2026-10-06 - DVF2 failed; DVF1 confirmation frozen
+
+DVF2 matched DVF1 physical-pair, Bottom-3, and worst-class accuracy and changed
+Macro by only +0.008 point. It rescued one `concha` pair but regressed one
+`agrio` pair, producing zero net-correct pairs. The selective gate activated on
+16 of 21 paper-wrong pairs, but the correction expert did not turn that
+detection into additional correct decisions. DVF2 therefore failed both frozen
+promotion routes and is stopped; no DVF3 is authorized on this validation
+split.
+
+The previously authorized DVF1 fuser-only confirmation now proceeds with seeds
+123 and 2026. Both reuse the immutable train/validation caches and exact DVF1
+configuration. The detector is not loaded or retrained, each epoch-100 endpoint
+is evaluated once, and test remains locked.
+
+- DVF2 decision: `FAIL`; next: `RETAIN_DVF1`.
+- Confirmation protocol:
+  `docs/DEFECTOSCAFEVERDE_DVF1_CONFIRMATION_PROTOCOL_2026-10-06.md`.
+- Arm runner:
+  `coffee_detector.experiments.run_defectoscafeverde_dvf1_confirmation`.
+- Decision runner:
+  `coffee_detector.experiments.run_defectoscafeverde_dvf1_confirmation_decision`.
