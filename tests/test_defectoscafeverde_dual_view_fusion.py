@@ -175,3 +175,4 @@ def test_colab_compiles_and_keeps_test_locked():
     assert "first in {'train','val'}" in source
     assert "if (DATA/'test').exists()" in source
     assert "--authorize-training" in source
+    assert "LOG.open('w'" in source
