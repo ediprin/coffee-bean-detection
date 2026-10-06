@@ -1184,3 +1184,26 @@ is evaluated once, and test remains locked.
   `coffee_detector.experiments.run_defectoscafeverde_dvf1_confirmation`.
 - Decision runner:
   `coffee_detector.experiments.run_defectoscafeverde_dvf1_confirmation_decision`.
+
+# 2026-10-06 - DVF1 three-seed fuser confirmation passed
+
+The frozen seed-123 and seed-2026 DVF1 fusers completed on the immutable D0
+pair caches and were aggregated with seed 42. Relative to the paper
+maximum-confidence rule, mean physical-pair/Macro/Bottom-3 accuracy improved by
+1.064/1.005/2.904 points, while mean worst-class accuracy was unchanged. The
+physical-pair, Macro, and Bottom-3 improvements occurred in all 3/3 seeds;
+physical-pair standard deviation was 0.217 point and Bottom-3/worst-class
+standard deviation was zero.
+
+All frozen confirmation gates passed. The D0 detector was not loaded or
+trained for the new seeds, the aggregation performed no training, and test was
+not accessed. DVF1 is promoted as the selected dual-view fusion method. This
+confirms fuser-seed stability on reused validation evidence, not detector-seed
+or locked-test generalization.
+
+- Decision: `PASS`.
+- Next: `PROMOTE_DVF1_DUAL_VIEW_FUSION`.
+- Result:
+  `docs/DEFECTOSCAFEVERDE_DVF1_CONFIRMATION_RESULT_2026-10-06.md`.
+- Drive aggregate:
+  `experiments/defectoscafeverde-dvf1-confirmation-v1/DVF1_three_seed_confirmation.json`.
