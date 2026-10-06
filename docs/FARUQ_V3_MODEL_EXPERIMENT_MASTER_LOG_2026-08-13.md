@@ -1108,3 +1108,25 @@ test remains absent.
 - Configuration: `configs/defectoscafeverde/DVF1.yaml`.
 - Runner:
   `coffee_detector.experiments.run_defectoscafeverde_dual_view_fusion`.
+
+# 2026-10-06 - DVF1 seed-42 screen passed; pair review frozen
+
+The 2,844-parameter DVF1 fuser completed its fixed 100-epoch train-only
+schedule while D0 remained frozen. Against the source paper's
+maximum-confidence rule, physical-pair/Macro/Bottom-3 accuracy improved by
+1.06/1.00/2.90 points and worst-class accuracy was unchanged. All scientific
+and runtime gates passed. The class-level effect was concentrated in `agrio`
+(+15.15 points), with a `concha` regression (-3.12 points) and unchanged
+accuracy for the other ten classes.
+
+Before authorizing more fuser seeds, a validation-only transition review is
+frozen. It will reproduce the saved endpoints, count per-pair rescues and
+regressions, run exact McNemar, and perform 10,000 class-stratified
+physical-pair bootstrap iterations. It performs no training and keeps test
+locked.
+
+- DVF1 decision: `PASS`; next: `REVIEW_BEFORE_MULTISEED`.
+- Review protocol:
+  `docs/DEFECTOSCAFEVERDE_DVF1_REVIEW_PROTOCOL_2026-10-06.md`.
+- Review runner:
+  `coffee_detector.analysis.defectoscafeverde_dvf1_review`.
