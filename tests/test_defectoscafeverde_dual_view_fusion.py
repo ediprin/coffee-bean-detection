@@ -11,6 +11,7 @@ from coffee_detector.defectos_dual_view.model import paper_base_logits
 from coffee_detector.experiments.run_defectoscafeverde_dual_view_fusion import (
     _cache_reuse_mode,
     _decision,
+    _metrics,
     _train_fuser,
     run_static_audit,
 )
@@ -134,6 +135,16 @@ def test_only_legacy_train_cache_can_be_upgraded_without_rebuilding():
     assert _cache_reuse_mode(legacy, expected, "train") == "upgrade_train_only"
     assert _cache_reuse_mode(legacy, expected, "val") == "rebuild"
     assert _cache_reuse_mode({"checkpoint": "wrong"}, expected, "train") == "rebuild"
+
+
+def test_physical_accuracy_uses_exact_integer_ratio_not_float32_mean():
+    correct = torch.zeros(376, dtype=torch.bool)
+    correct[:355] = True
+    labels = torch.zeros(376, dtype=torch.long)
+
+    result = _metrics(correct, labels, {0: "agrio"})
+
+    assert result["physical_pair_accuracy"] == 355 / 376
 
 
 def test_protocol_precedes_training_and_locks_test():

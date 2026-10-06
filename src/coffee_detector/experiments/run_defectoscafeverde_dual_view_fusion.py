@@ -470,10 +470,17 @@ def _metrics(correct: torch.Tensor, labels: torch.Tensor, names: Mapping[int, st
         if not bool(selected.any()):
             missing.append(name)
             continue
-        per_class[name] = float(correct[selected].float().mean())
+        class_total = int(selected.sum().item())
+        class_correct = int(correct[selected].sum().item())
+        per_class[name] = class_correct / class_total
     ordered = sorted(per_class.values())
+    total = int(correct.numel())
+    total_correct = int(correct.sum().item())
     return {
-        "physical_pair_accuracy": float(correct.float().mean()),
+        # Integer ratios match the authorization audit exactly. A float32
+        # tensor mean differs by ~1e-8 and must not fail a scientific endpoint
+        # gate when the underlying correct/total counts are identical.
+        "physical_pair_accuracy": total_correct / total,
         "macro_class_accuracy": float(np.mean(ordered)),
         "bottom3_class_accuracy": float(np.mean(ordered[:3])),
         "worst_class_accuracy": float(ordered[0]),
