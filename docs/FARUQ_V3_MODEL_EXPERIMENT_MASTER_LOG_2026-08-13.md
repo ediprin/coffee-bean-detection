@@ -1207,3 +1207,27 @@ or locked-test generalization.
   `docs/DEFECTOSCAFEVERDE_DVF1_CONFIRMATION_RESULT_2026-10-06.md`.
 - Drive aggregate:
   `experiments/defectoscafeverde-dvf1-confirmation-v1/DVF1_three_seed_confirmation.json`.
+
+# 2026-10-06 - DVF1 residual error analysis; train-only side-routability audit frozen
+
+DVF1 is confirmed, but it captures only four of the eleven validation pairs
+recoverable by choosing the correct native side. Seven remaining DVF1 errors
+still contain one correct native side, while ten have neither side correct.
+The next mechanism is therefore restricted to **side reliability selection**,
+not another free residual-logit correction.
+
+The frozen DVSR audit reads only the immutable grouped DVF1 train cache. A
+shared swap-equivariant linear scorer uses native per-view score-distribution
+evidence to select Side A or Side B. It is evaluated out-of-fold over physical
+train groups and cannot synthesize a class, modify a box, load validation, or
+open test. One later DVSR1 validation screen is authorized only if the learned
+selector gains at least 0.5 point over maximum confidence, captures at least
+25% of train oracle headroom, yields at least three net rescues, and is
+positive in at least three of five folds.
+
+- Protocol:
+  `docs/DEFECTOSCAFEVERDE_DVSR_ROUTABILITY_PROTOCOL_2026-10-06.md`.
+- Audit notebook:
+  `notebooks/DefectosCafeVerde_DVSR_Routability_Audit_Colab.ipynb`.
+- Status: frozen; train-only audit not yet executed.
+- Detector training: false; validation access: forbidden; test access: false.
