@@ -1231,3 +1231,26 @@ positive in at least three of five folds.
   `notebooks/DefectosCafeVerde_DVSR_Routability_Audit_Colab.ipynb`.
 - Status: frozen; train-only audit not yet executed.
 - Detector training: false; validation access: forbidden; test access: false.
+
+# 2026-10-06 - Train-only side-routability audit passed; DVSR1 screen frozen
+
+The grouped five-fold OOF audit covered 1,266 physical train pairs. The learned
+side selector improved pair accuracy from 96.76% under paper maximum confidence
+to 98.50%, versus a 98.66% pair oracle. It produced 24 rescues, two
+regressions, 22 net rescues, and positive net changes in all five folds. The
+selector captured 91.67% of train oracle headroom without detector training,
+validation access, or test access.
+
+Exactly one validation screen is now frozen. DVSR1 applies the final train-only
+selector unchanged to the immutable DVF1 validation cache and compares it with
+paper maximum confidence, the confirmed three-seed DVF1 mean, and pair oracle.
+No validation fitting or post-result threshold change is allowed.
+
+- Decision: `AUTHORIZE_DVSR1_VALIDATION_SCREEN`.
+- Result:
+  `docs/DEFECTOSCAFEVERDE_DVSR_ROUTABILITY_RESULT_2026-10-06.md`.
+- DVSR1 protocol:
+  `docs/DEFECTOSCAFEVERDE_DVSR1_PROTOCOL_2026-10-06.md`.
+- Notebook:
+  `notebooks/DefectosCafeVerde_DVSR1_Validation_Screen_Colab.ipynb`.
+- Test access: false.
