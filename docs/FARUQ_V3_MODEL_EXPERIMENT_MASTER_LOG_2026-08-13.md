@@ -1170,6 +1170,37 @@ trigger tuning or another architecture.
   `notebooks/DefectosCafeVerde_DVSR1_Locked_Test_Colab.ipynb`.
 - Test status at freeze: unopened.
 
+# 2026-10-07 - DVSR1 final locked-test generalization confirmed
+
+The one authorized locked-test evaluation completed on 165 eligible physical
+pairs from 403 images and 213 source groups. Every dataset, checkpoint,
+test-only runtime, ontology, and no-training gate passed. DVSR1 improved over
+both paper maximum confidence and the three-seed DVF1 mean by +2.42 points
+physical-pair accuracy, +1.91 points Macro, +5.37 points Bottom-3, and +11.76
+points worst-class accuracy.
+
+Final endpoints were 95.15% physical-pair accuracy, 95.99% Macro, 85.92%
+Bottom-3, and 76.47% worst-class accuracy for DVSR1. Pair oracle reached
+95.76%, 96.48%, 85.92%, and 76.47%, respectively. DVSR1 recovered four of the
+five pairs available above the paper endpoint, produced five rescues and one
+regression, and captured 80% of test oracle headroom. All three confirmed DVF1
+fuser seeds reproduced the paper endpoint exactly on test.
+
+The improvement direction was consistent across train OOF (+1.74 points),
+validation (+1.86), and locked test (+2.42). The final claim is restricted to
+eligible label-consistent physical pairs with exactly two single-object views.
+The `concha` class declined by 5.88 points and is preserved without post-test
+tuning.
+
+- Decision: `FINAL_DVSR1_GENERALIZATION_CONFIRMED`.
+- Next: `REPORT_LOCKED_TEST_AND_STOP`.
+- Final result:
+  `docs/DEFECTOSCAFEVERDE_DVSR1_LOCKED_TEST_RESULT_2026-10-07.md`.
+- Raw Drive artifact:
+  `experiments/defectoscafeverde-dvsr1-locked-test-v1/DVSR1_locked_test_result.json`.
+- Training during final evaluation: false.
+- Test accessed: true; further tuning or method selection from test is forbidden.
+
 # 2026-10-06 - One exploratory DVF2 maximization screen frozen
 
 The user chose one final architecture-maximization screen before DVF1
