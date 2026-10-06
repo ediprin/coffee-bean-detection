@@ -1145,6 +1145,31 @@ a confirmatory superiority claim.
 - Decision: `AUTHORIZE_DVF1_FUSER_MULTISEED`.
 - Test access: false.
 
+# 2026-10-06 - DVSR1 validation passed; final locked test frozen
+
+The deterministic train-only side selector passed its one authorized
+validation screen. DVSR1 reached 96.28% physical-pair accuracy, 95.74% Macro,
+89.38% Bottom-3, and 86.36% worst-class accuracy. Against the confirmed DVF1
+three-seed mean, gains were +0.80, +1.89, +6.03, and +10.17 points,
+respectively. Nine paper errors were rescued and two paper-correct pairs
+regressed. Both frozen validation decision routes passed with exact endpoint
+calibration and no training or test access.
+
+DVSR1 is now the selected dual-view method. Its final locked-test protocol is
+frozen before extracting any test image. The test will evaluate paper, all
+three confirmed DVF1 fusers, DVSR1, and pair oracle on one immutable paired
+cache. The outcome will be reported once and the study stops; test cannot
+trigger tuning or another architecture.
+
+- Decision: `PROMOTE_DVSR1_SIDE_RELIABILITY`.
+- Validation result:
+  `docs/DEFECTOSCAFEVERDE_DVSR1_VALIDATION_RESULT_2026-10-06.md`.
+- Locked-test protocol:
+  `docs/DEFECTOSCAFEVERDE_DVSR1_LOCKED_TEST_PROTOCOL_2026-10-06.md`.
+- Locked-test notebook:
+  `notebooks/DefectosCafeVerde_DVSR1_Locked_Test_Colab.ipynb`.
+- Test status at freeze: unopened.
+
 # 2026-10-06 - One exploratory DVF2 maximization screen frozen
 
 The user chose one final architecture-maximization screen before DVF1

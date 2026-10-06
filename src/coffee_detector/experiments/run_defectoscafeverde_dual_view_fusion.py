@@ -137,8 +137,8 @@ def run_static_audit(output: str | Path) -> dict:
 def _split_samples(
     root: Path, split: str
 ) -> tuple[dict[int, str], list[tuple[Path, tuple]]]:
-    if split not in {"train", "val"}:
-        raise ValueError("DVF1 hanya mengizinkan train atau val")
+    if split not in {"train", "val", "test"}:
+        raise ValueError("Split harus train, val, atau test")
     payload = yaml.safe_load((root / "data.yaml").read_text(encoding="utf-8")) or {}
     raw_names = payload.get("names")
     if isinstance(raw_names, list):
