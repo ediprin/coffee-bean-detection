@@ -1130,3 +1130,34 @@ locked.
   `docs/DEFECTOSCAFEVERDE_DVF1_REVIEW_PROTOCOL_2026-10-06.md`.
 - Review runner:
   `coffee_detector.analysis.defectoscafeverde_dvf1_review`.
+
+# 2026-10-06 - DVF1 transition review passed
+
+The frozen validation-only review reproduced the paper and DVF1 endpoints
+exactly. Across 376 eligible physical pairs, DVF1 produced five rescues, one
+regression, and four net-correct pairs. The rescues were concentrated in
+`agrio`; the single regression was `concha`. A 10,000-iteration class-stratified
+bootstrap estimated a 94.86% probability of positive physical-pair gain, while
+the exact two-sided McNemar result was not significant (`p=0.21875`). The review
+therefore authorized inexpensive DVF1 fuser confirmation, but did not establish
+a confirmatory superiority claim.
+
+- Decision: `AUTHORIZE_DVF1_FUSER_MULTISEED`.
+- Test access: false.
+
+# 2026-10-06 - One exploratory DVF2 maximization screen frozen
+
+The user chose one final architecture-maximization screen before DVF1
+confirmation. DVF2 keeps the D0 detector absent and immutable, reuses the exact
+DVF1 train/validation caches, and separates a richer symmetric correction
+expert from a train-supervised fallback gate. Gate-negative inference returns
+the paper maximum-confidence endpoint exactly.
+
+This study is explicitly exploratory because its architecture was designed
+after inspecting reused validation aggregates. It is fixed to one seed-42
+candidate, one validation evaluation after epoch 100, and no subsequent DVF3
+on failure. Test remains locked.
+
+- Protocol: `docs/DEFECTOSCAFEVERDE_DVF2_PROTOCOL_2026-10-06.md`.
+- Configuration: `configs/defectoscafeverde/DVF2.yaml`.
+- Runner: `coffee_detector.experiments.run_defectoscafeverde_dvf2`.

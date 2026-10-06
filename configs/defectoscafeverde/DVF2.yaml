@@ -1,0 +1,25 @@
+code: DVF2
+protocol: defectoscafeverde-selective-dual-view-fusion-seed42-v1
+fuser:
+  classes: 12
+  hidden: 32
+  expert_hidden: 48
+  gate_hidden: 24
+  residual_limit: 2.0
+  gate_threshold: 0.5
+train:
+  seed: 42
+  epochs: 100
+  batch: 64
+  learning_rate: 0.001
+  weight_decay: 0.001
+  label_smoothing: 0.05
+  gate_loss_weight: 0.25
+  rescue_loss_weight: 0.5
+  preservation_weight: 0.10
+decision:
+  overall_gain_over_dvf1: 0.005
+  macro_floor_vs_dvf1: 0.0
+  bottom3_floor_vs_dvf1: 0.0
+  worst_drop_limit_vs_dvf1: 0.02
+  tail_gain_over_dvf1: 0.02
