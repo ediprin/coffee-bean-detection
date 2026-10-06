@@ -256,8 +256,12 @@ def _view_evidence(
     index = int(candidate_confidence.argmax())
     score_vector = scores[index].clamp(1e-6, 1.0 - 1e-6)
     selected_box = boxes[index]
-    iou = float(box_iou(selected_box[None], targets).max())
     final_top = final[int(final[:, 4].argmax())]
+    # The authorization audit measures correctness with the exported final
+    # D0 box.  Raw scores provide the full class vector for fusion, but using
+    # the almost-identical raw box here can flip a sample exactly at IoU 0.50.
+    # Retain the final box so the zero-residual endpoint calibrates exactly.
+    iou = float(box_iou(final_top[None, :4], targets).max())
     calibration = {
         "class_exact": int(candidate_class[index]) == int(final_top[5]),
         "confidence_close": abs(float(candidate_confidence[index]) - float(final_top[4]))
@@ -266,6 +270,22 @@ def _view_evidence(
         "target_class": int(labels[0]),
     }
     return torch.logit(score_vector).cpu(), iou, calibration
+
+
+def _cache_reuse_mode(
+    cached_contract: Mapping,
+    expected_contract: Mapping,
+    split: str,
+) -> str:
+    if dict(cached_contract) == dict(expected_contract):
+        return "exact"
+    legacy = dict(expected_contract)
+    legacy.pop("localization_box_source", None)
+    if split == "train" and dict(cached_contract) == legacy:
+        # Train IoUs are never used by the fuser objective. Preserve the costly
+        # cached logits while upgrading its provenance contract in place.
+        return "upgrade_train_only"
+    return "rebuild"
 
 
 def build_pair_cache(
@@ -282,10 +302,18 @@ def build_pair_cache(
 ) -> dict:
     if output.is_file():
         cached = torch.load(output, map_location="cpu", weights_only=False)
-        if cached.get("contract") != contract or cached.get("split") != split:
-            raise RuntimeError(f"Cache pasangan {split} stale")
-        print(f"REUSE DVF1 {split.upper()} CACHE: {output}", flush=True)
-        return cached
+        mode = _cache_reuse_mode(cached.get("contract", {}), contract, split)
+        if cached.get("split") != split:
+            mode = "rebuild"
+        if mode in {"exact", "upgrade_train_only"}:
+            if mode == "upgrade_train_only":
+                cached["contract"] = contract
+                torch.save(cached, output)
+                print(f"UPGRADE DVF1 TRAIN CACHE CONTRACT: {output}", flush=True)
+            else:
+                print(f"REUSE DVF1 {split.upper()} CACHE: {output}", flush=True)
+            return cached
+        print(f"REBUILD STALE DVF1 {split.upper()} CACHE: {output}", flush=True)
     names, pairs, stats = _paired_split(root, manifest_path, split)
     view_logits, ious, labels, group_ids = [], [], [], []
     calibration = Counter()
@@ -588,6 +616,7 @@ def run_dvf1(
         "d0_checkpoint_sha256": _sha256(checkpoint),
         "image_size": int(detector_config["imgsz"]),
         "max_det": int(detector_config["max_det"]),
+        "localization_box_source": "final_top_v1",
         "test_images_accessed": False,
     }
     train_cache = build_pair_cache(

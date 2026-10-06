@@ -9,6 +9,7 @@ from coffee_detector.defectos_dual_view import (
 )
 from coffee_detector.defectos_dual_view.model import paper_base_logits
 from coffee_detector.experiments.run_defectoscafeverde_dual_view_fusion import (
+    _cache_reuse_mode,
     _decision,
     _train_fuser,
     run_static_audit,
@@ -120,6 +121,19 @@ def test_completed_fuser_checkpoint_is_reused_without_training(tmp_path: Path):
     assert "generator_state" in state
     probe = cache["view_logits"][:2]
     assert torch.equal(trained(probe), reused(probe))
+
+
+def test_only_legacy_train_cache_can_be_upgraded_without_rebuilding():
+    expected = {
+        "checkpoint": "abc",
+        "localization_box_source": "final_top_v1",
+    }
+    legacy = {"checkpoint": "abc"}
+
+    assert _cache_reuse_mode(expected, expected, "val") == "exact"
+    assert _cache_reuse_mode(legacy, expected, "train") == "upgrade_train_only"
+    assert _cache_reuse_mode(legacy, expected, "val") == "rebuild"
+    assert _cache_reuse_mode({"checkpoint": "wrong"}, expected, "train") == "rebuild"
 
 
 def test_protocol_precedes_training_and_locks_test():
