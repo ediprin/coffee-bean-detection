@@ -1,0 +1,23 @@
+code: DVF1
+protocol: defectoscafeverde-dual-view-fusion-seed42-v1
+detector:
+  imgsz: 640
+  confidence: 0.001
+  max_det: 500
+fuser:
+  classes: 12
+  hidden: 24
+  residual_limit: 2.0
+train:
+  seed: 42
+  epochs: 100
+  batch: 64
+  learning_rate: 0.001
+  weight_decay: 0.001
+  label_smoothing: 0.05
+  preservation_weight: 0.05
+decision:
+  overall_gain: 0.005
+  macro_floor: 0.0
+  bottom3_floor: 0.0
+  worst_drop_limit: 0.02

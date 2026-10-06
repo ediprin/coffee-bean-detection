@@ -1085,3 +1085,26 @@ performs no training and keeps test absent.
   `docs/DEFECTOSCAFEVERDE_DUAL_VIEW_AUDIT_PROTOCOL_2026-09-30.md`.
 - Runner:
   `coffee_detector.analysis.defectoscafeverde_dual_view_audit`.
+
+# 2026-10-06 - Dual-view audit passed; DVF1 protocol frozen
+
+The validation-only paired-side audit completed on 376 eligible physical
+beans (92.16% of validation groups) without training or test access. Side A,
+Side B, and the published max-confidence rule reached 90.43%, 92.55%, and
+94.41% physical-pair accuracy. The non-deployable pair oracle reached 97.34%,
+leaving 2.93 points of headroom over the paper rule. Exactly one side was
+correct for 44 beans, and complementarity occurred in 10 of 12 classes. All
+four scientific authorization gates passed.
+
+One seed-42 `DVF1` screen is therefore frozen. The completed D0 detector is a
+shared frozen evidence extractor; only a 2,844-parameter, order-invariant,
+bounded-residual fuser is trained on eligible train physical pairs. Its zero
+initialization exactly reproduces the paper max-confidence rule. Training is
+fixed at 100 epochs with no validation fitting or checkpoint selection, and
+test remains absent.
+
+- Audit decision: `AUTHORIZE_ONE_LEARNED_DUAL_VIEW_ARCHITECTURE_SCREEN`.
+- Protocol: `docs/DEFECTOSCAFEVERDE_DVF1_PROTOCOL_2026-10-06.md`.
+- Configuration: `configs/defectoscafeverde/DVF1.yaml`.
+- Runner:
+  `coffee_detector.experiments.run_defectoscafeverde_dual_view_fusion`.
