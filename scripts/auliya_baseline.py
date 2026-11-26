@@ -11,7 +11,6 @@ import csv
 import hashlib
 import json
 import math
-import os
 from pathlib import Path, PurePosixPath
 import shutil
 
@@ -42,13 +41,6 @@ def parse_polygon(line):
     if x1 <= x0 or y1 <= y0:
         raise ValueError("Degenerate polygon: " + line)
     return c, (c, (x0+x1)/2, (y0+y1)/2, x1-x0, y1-y0)
-
-
-def link_or_copy(source, target):
-    try:
-        os.link(source, target)
-    except OSError:
-        shutil.copy2(source, target)
 
 
 def prepare(a):
@@ -123,7 +115,7 @@ def prepare(a):
         for split, rel, image, label, parsed, *_ in records:
             # Prefix original split to avoid collisions if basenames repeat.
             name = PurePosixPath(rel).parts[0] + "__" + image.name
-            link_or_copy(image, root / split / "images" / name)
+            shutil.copy2(image, root / split / "images" / name)
             target = root / split / "labels" / Path(name).with_suffix(".txt")
             if task == "segment":
                 shutil.copy2(label, target)
