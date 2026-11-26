@@ -49,8 +49,8 @@ class FrequencySegmentationModel(SegmentationModel):
         else:
             raise ValueError(f"Unknown arm: {arm}")
 
-    def predict(self, x, profile=False, visualize=False, augment=False, embed=None):
+    def predict(self, x, *args, **kwargs):
         # Ultralytics infers strides via dummy input during super().__init__.
         if hasattr(self, "input_enhancer"):
             x = self.input_enhancer(x)
-        return super().predict(x, profile=profile, visualize=visualize, augment=augment, embed=embed)
+        return super().predict(x, *args, **kwargs)
