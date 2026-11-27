@@ -63,14 +63,15 @@ def _ensure_runtime(weights: Path) -> None:
         raise ValueError("Pretrained asset does not match the official YOLO26s-seg SHA-256")
 
 
-def preflight(development: Path, weights: Path) -> dict:
+def preflight(development: Path, weights: Path, arm: str | None = None) -> dict:
     """CPU-safe; initialize from the official asset and verify paired weights without training."""
     _ensure_runtime(weights)
     data = validate_official_fold(development.resolve())
     contract = json.loads((data.parent / "official_fold_contract.json").read_text(encoding="utf-8"))
     native = YOLO(str(weights), task="segment").model
     models = {}
-    for arm in ARMS:
+    selected = ARMS if arm is None else ("RGB",) if arm == "RGB" else ("RGB", arm)
+    for arm in selected:
         trainer = object.__new__(trainer_for(arm))
         trainer.data = {"nc": 21, "channels": 3, "names": dict(enumerate(contract["names"]))}
         trainer.args = SimpleNamespace(cls_remap=True)
@@ -87,7 +88,7 @@ def preflight(development: Path, weights: Path) -> dict:
     sample = torch.rand((1, 3, 96, 96), generator=torch.Generator().manual_seed(1))
     with torch.inference_mode():
         outputs = {arm: model(sample)[0][0] for arm, model in models.items()}
-    active = {arm: not torch.equal(outputs[arm], outputs["RGB"]) for arm in ("AF2", "HAAR")}
+    active = {arm: not torch.equal(outputs[arm], outputs["RGB"]) for arm in selected if arm != "RGB"}
     if not all(same.values()) or not all(active.values()) or not all(x.isfinite().all() for x in outputs.values()):
         raise RuntimeError(f"Paired frontend audit failed: state={same}, active={active}")
     return {"protocol": PROTOCOL, "fold": "A", "held_out": "A", "images": contract["images"],
@@ -119,6 +120,7 @@ def run_arm(arm: str, development: Path, weights: Path, output: Path, device: st
         "pretrained_sha256": WEIGHTS_SHA256, "ultralytics": ULTRALYTICS_VERSION,
         "torch": str(torch.__version__), "gpu": torch.cuda.get_device_name(int(device)),
         "development_contract_sha256": _sha256(data.parent / "official_fold_contract.json"),
+        "development_provenance": json.loads((data.parent / "official_fold_contract.json").read_text(encoding="utf-8")),
     }
     last = persistent / "weights" / "last.pt"
     best = persistent / "weights" / "best.pt"
@@ -191,6 +193,11 @@ def run_arm(arm: str, development: Path, weights: Path, output: Path, device: st
             batch=SCHEDULE["batch"], workers=SCHEDULE["workers"], device=device,
             project=str(local), name="best_validation", plots=False)
         metrics = _summarize_masks(evaluated.seg, evaluated.names)
+        box = _summarize_masks(evaluated.box, evaluated.names)
+        metrics.update({k.replace("mask", "box"): v for k, v in box.items()})
+        # Preserve the actual validation selection fitness, not a test result.
+        metrics["mask_map50_21"] = float(evaluated.seg.map50)
+        metrics["box_map50_21"] = float(evaluated.box.map50)
     report = {"arm": arm, "completed_epochs": final_state["epoch"], "evaluation_split": "val",
         "metrics": metrics, "run_contract": contract, "checkpoint_sha256": final_state["best_sha256"],
         "test_images_accessed": False}
@@ -212,7 +219,7 @@ def main() -> None:
             parser.error("training requires --arm and --output")
         value = run_arm(args.arm, args.development, args.weights, args.output, args.device)
     else:
-        value = preflight(args.development, args.weights)
+        value = preflight(args.development, args.weights, args.arm)
     print(json.dumps(value, indent=2))
 
 
