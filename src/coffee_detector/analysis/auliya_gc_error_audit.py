@@ -12,6 +12,8 @@ import torch
 import ultralytics
 from scipy.optimize import linear_sum_assignment
 from ultralytics import YOLO
+from ultralytics.utils.nms import non_max_suppression
+from ultralytics.utils.ops import xywh2xyxy
 
 from coffee_detector.analysis.auliya_representation_audit import box_iou, HARD
 from coffee_detector.experiments import run_auliya_controlled_generalization as gc
@@ -64,28 +66,62 @@ def load_scene(data,path):
     return rgb,np.asarray(gt),np.asarray(y)
 
 
+def select_validation_head(model, train_args, names):
+    """Match v8.4.210 validator: nms=None/True -> external NMS, False -> O2O."""
+    actual = [model.names[i] for i in range(21)]
+    if actual != names:
+        raise ValueError(f"Class order mismatch: checkpoint={actual!r}; dataset={names!r}")
+    if getattr(model.model[-1],"nc",None)!=21:
+        raise ValueError("Checkpoint head must have 21 classes")
+    if train_args.get("nms") is not None:
+        raise ValueError(f"Unexpected historical nms setting: {train_args.get('nms')!r}")
+    model.end2end = False
+    head=model.model[-1]
+    if head.end2end or getattr(head,"cv2",None) is None or getattr(head,"cv3",None) is None:
+        raise ValueError("Historical external-NMS head not available")
+    if train_args.get("iou") not in (None,.7) or train_args.get("max_det",300)!=300 or train_args.get("agnostic_nms",False):
+        raise ValueError("Unexpected historical validation NMS contract")
+    print(f"Verified class order; head={type(head).__name__}; end2end={head.end2end}; nms={train_args.get('nms')}; val_iou=0.7",flush=True)
+
+
 def audit_scene(model,device,data,path,source,target):
     image,gt,y=load_scene(data,path)
     x=torch.from_numpy(image.transpose(2,0,1).copy()).to(device).float()[None]/255
     with torch.inference_mode():
         (post,_),raw=model(x)
-        raw=raw["one2one"]
-        boxes=model.model[-1]._get_decode_boxes(raw)[0].T.float().cpu().numpy()
+        head=model.model[-1]
+        # Dual-head checkpoints return both branches; use the same one as validation.
+        raw=raw["one2many"] if "one2many" in raw else raw
+        decoded=head._get_decode_boxes(raw)[0].T.float()
+        if not head.xyxy:
+            decoded=xywh2xyxy(decoded)
+        boxes=decoded.cpu().numpy()
         logits=raw["scores"][0].T.float().cpu().numpy()
-        native=post[0].float().cpu().numpy()[:,:6]
-    if boxes.shape!=(8400,4) or logits.shape!=(8400,21) or native.ndim!=2 or native.shape[1]!=6:
-        raise ValueError("Unexpected raw or native output")
-    if not all(np.isfinite(v).all() for v in (boxes,logits,native)):
+        if post.ndim!=3 or post.shape[0]!=1 or post.shape[2]!=8400:
+            raise ValueError(f"Expected external-NMS BCN output, got {tuple(post.shape)}")
+        # Validation NMS uses multi_label=True, class-aware, IoU=.7, max_det=300.
+        # Run at each threshold separately, as the validator would.
+        native={}
+        for conf in THRESHOLDS:
+            pred=non_max_suppression(post.clone(),conf_thres=conf,iou_thres=.7,
+                nc=21,multi_label=True,agnostic=False,max_det=300,end2end=False,
+                max_time_img=10.0)[0][:,:6].float().cpu().numpy()
+            if pred.ndim!=2 or pred.shape[1]!=6 or not np.isfinite(pred).all():
+                raise ValueError("Unexpected NMS output")
+            pred[:,:4]=np.clip(pred[:,:4],0,640)
+            native[conf]=pred
+    if boxes.shape!=(8400,4) or logits.shape!=(8400,21):
+        raise ValueError("Unexpected raw output")
+    if not all(np.isfinite(v).all() for v in (boxes,logits)):
         raise ValueError("Nonfinite outputs")
     boxes=np.clip(boxes,0,640)
-    native[:,:4]=np.clip(native[:,:4],0,640)
     iou=box_iou(gt,boxes)
     rows=[]
     for threshold in IOUS:
         raw_match=assign(iou,threshold)
         # Raw rank is conditional on a geometry-only unique anchor assignment.
         for conf in THRESHOLDS:
-            pred=native[native[:,4]>=conf]
+            pred=native[conf]
             piou=box_iou(gt,pred[:,:4])
             match=assign(piou,threshold)
             for k,c in enumerate(y):
@@ -147,8 +183,7 @@ def run(args):
         if wrapper.ckpt["epoch"]!=79 or any(wrapper.ckpt["train_args"].get(k)!=v for k,v in gc.SCHEDULE.items()):
             raise ValueError("Checkpoint epoch/schedule mismatch")
         model=wrapper.model.to(device).float().eval().requires_grad_(False)
-        if [model.names[i] for i in range(21)]!=names or not model.model[-1].end2end:
-            raise ValueError("Wrong classes or head")
+        select_validation_head(model,wrapper.ckpt["train_args"],names)
         for target in "BC":
             paths=[p.removeprefix("./source/") for p in (args.data/f"gc_{target}_eval.txt").read_text().splitlines()]
             rows=[]
@@ -165,9 +200,9 @@ def run(args):
         w=csv.DictWriter(f,fieldnames=list(all_rows[0]))
         w.writeheader()
         w.writerows(all_rows)
-    gc._write_json(args.output/"report.json",{"protocol":"auliya-gc-e1-v1","split":split,
+    gc._write_json(args.output/"report.json",{"protocol":"auliya-gc-e1-v2","split":split,
         "checkpoints":CHECKPOINTS,"runner_sha256":_sha256(Path(__file__)),
-        "inference":"square640_FP32_native_end2end_topk; geometry-only bipartite matching",
+        "inference":"square640_FP32_one2many_external_class_aware_NMS_iou0.7_multi_label_maxdet300; geometry-only bipartite matching",
         "results":results,"test_A_images_accessed":False,"training_executed":False})
 
 
