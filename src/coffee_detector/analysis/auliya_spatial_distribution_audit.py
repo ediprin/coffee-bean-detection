@@ -19,6 +19,10 @@ from coffee_detector.analysis import auliya_representation_audit as a
 
 PROTOCOL = "auliya-spatial-distribution-audit-v1"
 EXPECTED_CONTENT = "12d60838ae810a2841607fd5a09afe6b77c8a48977ea2b9c6bc3a52394d55166"
+INSTANCE_SHA = {
+    "train":"8e4bd62eec0eaaffdf86056bfd5e7db238da13127098b8ae2be29c87e3a3731f",
+    "val":"06850043b601a0775fbb1e99b7cf64d4d80fbb25ad3207353cd5489cfc85a796",
+}
 LEVELS = ("P2", "P3")
 CODES = [f"{level}_R{i}" for level in LEVELS for i in range(1,5)]
 BASE = {
@@ -104,7 +108,7 @@ class SpatialEncoder(a.FrozenFeatures):
             self.model(x)
             p2 = self.cache["P2"][0].float().cpu().numpy()
             p3 = self.cache["pyramid"][0][0].float().cpu().numpy()
-        if [p2.shape[1:],p3.shape[1:]] != [(160,160),(80,80)]:
+        if [p2.shape,p3.shape] != [(64,160,160),(64,80,80)]:
             raise ValueError("Unexpected spatial feature shapes")
         return dict(zip(LEVELS,(p2,p3)))
 
@@ -274,6 +278,9 @@ def run(args):
             raise ValueError("Class count mismatch")
         if len(set(arrays["ids"]))!=len(arrays["ids"]):
             raise ValueError("Duplicate instance ids")
+        identity = hashlib.sha256("".join(f"{i}\t{int(y)}\n" for i,y in zip(arrays["ids"],arrays["y"],strict=True)).encode()).hexdigest()
+        if identity != INSTANCE_SHA[role]:
+            raise ValueError("Instance identities/order differ from previous F1/F2 audit")
         a.write_npz(out/f"{role}_features.npz",**arrays)
         return arrays
     tr,va=collect("train"),collect("val")
