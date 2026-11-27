@@ -53,10 +53,14 @@ def overlap(a,b):
 
 def soft_mask(box,h,w):
     x,y,x2,y2=box
-    # Full-resolution equivalent of source smoothed box masks.
-    mask=np.zeros((h,w),np.float32)
-    mask[y:y2,x:x2]=1
-    return cv2.GaussianBlur(mask,(0,0),max((x2-x)*.2,.5),sigmaY=max((y2-y)*.2,.5))
+    # Source-style low-resolution mask blur, then resize for mixing.
+    hh,ww=max(1,h//4),max(1,w//4)
+    mask=np.zeros((hh,ww),np.float32)
+    a,b=int(x*ww/w),int(y*hh/h)
+    c,d=min(ww,max(a+1,int(np.ceil(x2*ww/w)))),min(hh,max(b+1,int(np.ceil(y2*hh/h))))
+    mask[b:d,a:c]=1
+    mask=cv2.GaussianBlur(mask,(0,0),max((c-a)*.2,.5),sigmaY=max((d-b)*.2,.5))
+    return cv2.resize(mask,(w,h))
 
 
 def photo(image,rng):
