@@ -81,7 +81,7 @@ def preflight(weights,data,device):
             "synthetic_checks":checks,"training_executed":False}
 
 
-def rank_audit(checkpoint,data,source,device):
+def rank_audit(checkpoint,data,source,device,output):
     wrapper=YOLO(str(checkpoint),task="segment")
     names=json.loads((data/"official_fold_contract.json").read_text())["names"]
     model=wrapper.model.to(device).float().eval().requires_grad_(False)
@@ -98,6 +98,7 @@ def rank_audit(checkpoint,data,source,device):
                 rows.extend(e3.eval_rows(model,post,raw,g,y,source,t,path,"original"))
             if len(rows)!=e3.gc.EXPECTED_COUNTS[t+"_eval"]:
                 raise ValueError("Ranking support mismatch")
+            e3.csv_write(output/f"rank_{t}.csv",rows)
             results[t]={"clean18":e3.metrics([r for r in rows if r["true_class"]<18]),
                         "hard5":e3.metrics([r for r in rows if r["true_class"] in hard])}
     return results
@@ -165,9 +166,11 @@ def train_group(arm,group,data,weights,output,device,split):
             def log_aux(trainer):
                 if not aux_stats or not np.isfinite(aux_stats).all():
                     raise RuntimeError("No finite auxiliary batch log")
-                with (root/"auxiliary.jsonl").open("a") as f:
-                    f.write(json.dumps({"epoch":trainer.epoch+1,"batches":len(aux_stats),"mean_aux":float(np.mean(aux_stats)),
-                                       "native_o2m_weight":trainer.model.criterion.o2m})+"\n")
+                aux_dir=root/"auxiliary"
+                aux_dir.mkdir(exist_ok=True)
+                _write_json(aux_dir/f"epoch-{trainer.epoch+1:03d}.json",
+                    {"epoch":trainer.epoch+1,"batches":len(aux_stats),"mean_aux":float(np.mean(aux_stats)),
+                     "native_o2m_weight":trainer.model.criterion.o2m})
                 aux_stats.clear()
             model.add_callback("on_train_batch_end",track)
             model.add_callback("on_train_epoch_end",log_aux)
@@ -195,8 +198,11 @@ def train_group(arm,group,data,weights,output,device,split):
                 imgsz=SCHEDULE["imgsz"],batch=SCHEDULE["batch"],workers=SCHEDULE["workers"],
                 device=device,project=str(local),name=f"endpoint_{target}",plots=False)
             evaluations[target]=summarize(value)
-    ranking=rank_audit(last,data,group,torch.device("cuda:"+device))
-    report={"run_contract":contract,"completed_epochs":80,"ranking":ranking,
+    aux_history=[json.loads((root/"auxiliary"/f"epoch-{epoch:03d}.json").read_text()) for epoch in range(1,81)]
+    if not all(a["epoch"]==i+1 and a["batches"]>0 and np.isfinite(a["mean_aux"]) for i,a in enumerate(aux_history)):
+        raise ValueError("Incomplete or nonfinite auxiliary telemetry")
+    ranking=rank_audit(last,data,group,torch.device("cuda:"+device),root)
+    report={"run_contract":contract,"completed_epochs":80,"ranking":ranking,"auxiliary_epoch_count":len(aux_history),
             "checkpoint_sha256":end["last_sha256"],"evaluations":evaluations,
             "test_A_images_accessed":False}
     _write_json(result,report)
@@ -236,6 +242,9 @@ def main():
     elif args.authorize_training:
         if not (args.output/"preflight.json").is_file():
             raise ValueError("Run real-model preflight first")
+        check=json.loads((args.output/"preflight.json").read_text())
+        if check.get("identical_initial_state") is not True or set(check.get("synthetic_checks",{}))!=set(ARMS):
+            raise ValueError("Invalid preflight evidence")
         train_group(args.arm,args.group,args.data.resolve(),args.weights,args.output,args.device,split)
 
 if __name__=="__main__":
