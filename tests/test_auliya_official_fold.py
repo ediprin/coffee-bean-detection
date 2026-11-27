@@ -56,3 +56,35 @@ def test_fold_rejects_test_reference_and_extra_payload(development):
     (development / "source/test/images/not_in_development.jpg").write_bytes(b"fixture")
     with pytest.raises(ValueError, match="inventory changed"):
         fold.validate_official_fold(development)
+
+
+def test_extracted_contract_validates_staged_bytes(development):
+    hashes = {
+        p.relative_to(development).as_posix(): fold._sha256(p)
+        for p in (development / "source").rglob("*") if p.is_file()
+    }
+    inventory = development / "source_hashes.json"
+    inventory.write_text(json.dumps(hashes, sort_keys=True))
+    marker = development / "official_fold_contract.json"
+    c = json.loads(marker.read_text())
+    c["pilot_sha256"] = None
+    c["extracted_provenance"] = {
+        "input_mode": "EXTRACTED_MANIFEST_VERIFIED",
+        "original_pilot_zip_sha256_verified": False,
+        "development_content_sha256": fold.EXTRACTED_CONTENT_SHA256,
+        "source_hashes_sha256": fold._sha256(inventory),
+    }
+    marker.write_text(json.dumps(c))
+    assert fold.validate_official_fold(development) == development / "data.yaml"
+    (development / "source/test/images/a.jpg").write_bytes(b"changed")
+    with pytest.raises(ValueError, match="Materialized source content changed"):
+        fold.validate_official_fold(development)
+
+
+def test_extracted_fingerprint_cannot_claim_original_zip(development):
+    marker = development / "official_fold_contract.json"
+    c = json.loads(marker.read_text())
+    c["extracted_provenance"] = {"original_pilot_zip_sha256_verified": False}
+    marker.write_text(json.dumps(c))
+    with pytest.raises(ValueError, match="train/val-only"):
+        fold.validate_official_fold(development)
