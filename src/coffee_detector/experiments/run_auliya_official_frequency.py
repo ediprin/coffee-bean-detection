@@ -22,6 +22,7 @@ from coffee_detector.auliya_frequency_model import ARMS, FrequencySegmentationMo
 from coffee_detector.auliya_mask2 import (
     MASK2_ARM, MASK2_PROTOCOL, CommonMaskGridValidator, HaarMask2Model, prototypes_at_grid,
 )
+from coffee_detector.auliya_rival_margin import RIVAL_ARM, RIVAL_CONTRACT, RIVAL_PROTOCOL, RivalMarginSegmentationModel
 from coffee_detector.experiments.prepare_auliya_official_fold import PROTOCOL, validate_official_fold
 from coffee_detector.experiments.run_auliya_robusta_frequency import (
     _publish_file, _restore_results, _summarize_masks, _write_json,
@@ -31,7 +32,8 @@ MODEL = "yolo26s-seg.pt"
 WEIGHTS_URL = f"https://github.com/ultralytics/assets/releases/download/v8.4.0/{MODEL}"
 WEIGHTS_SHA256 = "3da1d83e31caec96f9300eb4064f4f62882c133c7c264d63dfe61a7c197837a4"
 ULTRALYTICS_VERSION = "8.4.210"
-SCREEN_ARMS = (*ARMS, MASK2_ARM)
+SCREEN_ARMS = (*ARMS, MASK2_ARM, RIVAL_ARM)
+ARM_PROTOCOLS = {MASK2_ARM: MASK2_PROTOCOL, RIVAL_ARM: RIVAL_PROTOCOL}
 SCHEDULE = {
     "epochs": 80, "patience": 25, "imgsz": 640, "batch": 16, "workers": 4, "seed": 0,
     "optimizer": "AdamW", "lr0": 0.001, "weight_decay": 0.0005, "cos_lr": True,
@@ -53,10 +55,13 @@ def trainer_for(arm: str) -> type[SegmentationTrainer]:
             if arm == "RGB":
                 return super().get_model(cfg, weights, verbose)
             params = {"nc": self.data["nc"], "ch": self.data["channels"], "verbose": verbose}
-            model = self.set_model_names_for_load(
-                HaarMask2Model(cfg, **params) if arm == MASK2_ARM
-                else FrequencySegmentationModel(cfg, arm=arm, **params)
-            )
+            if arm == MASK2_ARM:
+                model = HaarMask2Model(cfg, **params)
+            elif arm == RIVAL_ARM:
+                model = RivalMarginSegmentationModel(cfg, **params)
+            else:
+                model = FrequencySegmentationModel(cfg, arm=arm, **params)
+            model = self.set_model_names_for_load(model)
             if weights is not None:
                 model.load(weights)
             return model
@@ -201,18 +206,18 @@ def _validate_resume(checkpoint, arm: str) -> int:
     return epoch
 
 
-def _require_haar_reference(folder: Path, treatment_contract: dict) -> str:
+def _require_reference(folder: Path, treatment_contract: dict, arm: str) -> str:
     reference = json.loads((folder / "validation_result.json").read_text(encoding="utf-8"))
-    expected = {**treatment_contract, "arm": "HAAR", "protocol": PROTOCOL, "schedule": SCHEDULE}
-    if (reference.get("run_contract") != expected or reference.get("arm") != "HAAR"
+    expected = {**treatment_contract, "arm": arm, "protocol": PROTOCOL, "schedule": SCHEDULE}
+    if (reference.get("run_contract") != expected or reference.get("arm") != arm
             or reference.get("evaluation_split") != "val" or reference.get("test_images_accessed") is not False
             or reference.get("checkpoint_sha256") != _sha256(folder / "weights" / "best.pt")):
-        raise RuntimeError("HAAR baseline and treatment must share dataset, training recipe, GPU and software versions")
+        raise RuntimeError(f"{arm} baseline and treatment must share dataset, training recipe, GPU and software versions")
     return reference["checkpoint_sha256"]
 
 
 def run_arm(arm: str, development: Path, weights: Path, output: Path, device: str,
-            *, haar_reference: Path | None = None) -> dict:
+            *, haar_reference: Path | None = None, rgb_reference: Path | None = None) -> dict:
     if arm not in SCREEN_ARMS:
         raise ValueError(f"Unknown arm: {arm}")
     if not device.isdecimal() or int(device) >= torch.cuda.device_count():
@@ -222,7 +227,7 @@ def run_arm(arm: str, development: Path, weights: Path, output: Path, device: st
     persistent = output.resolve() / arm
     schedule = _schedule_for(arm)
     contract = {
-        "protocol": MASK2_PROTOCOL if arm == MASK2_ARM else PROTOCOL,
+        "protocol": ARM_PROTOCOLS.get(arm, PROTOCOL),
         "arm": arm, "fold": "A", "model": MODEL, "schedule": schedule,
         "pretrained_sha256": WEIGHTS_SHA256, "ultralytics": ULTRALYTICS_VERSION,
         "torch": str(torch.__version__), "gpu": torch.cuda.get_device_name(int(device)),
@@ -231,7 +236,15 @@ def run_arm(arm: str, development: Path, weights: Path, output: Path, device: st
     if arm == MASK2_ARM:
         if haar_reference is None:
             raise ValueError("HAAR_MASK2 requires the existing HAAR run directory")
-        contract["haar_reference_checkpoint_sha256"] = _require_haar_reference(haar_reference, contract)
+        contract["haar_reference_checkpoint_sha256"] = _require_reference(haar_reference, contract, "HAAR")
+    if arm == RIVAL_ARM:
+        if rgb_reference is None:
+            raise ValueError(f"{arm} requires the existing RGB run directory")
+        contract["rgb_reference_checkpoint_sha256"] = _require_reference(rgb_reference, contract, "RGB")
+        from coffee_detector.experiments.audit_auliya_rival_margin import preflight_rival_margin
+
+        contract["classification_objective"] = RIVAL_CONTRACT
+        preflight_rival_margin(development, weights, device=f"cuda:{device}")
     last = persistent / "weights" / "last.pt"
     best = persistent / "weights" / "best.pt"
     marker = persistent / "run_contract.json"
@@ -319,13 +332,18 @@ def main() -> None:
     parser.add_argument("--arm", choices=SCREEN_ARMS)
     parser.add_argument("--device", default="0")
     parser.add_argument("--haar-reference", type=Path)
+    parser.add_argument("--rgb-reference", type=Path)
     parser.add_argument("--authorize-training", action="store_true")
     args = parser.parse_args()
     if args.authorize_training:
         if args.arm is None or args.output is None:
             parser.error("training requires --arm and --output")
         value = run_arm(args.arm, args.development, args.weights, args.output, args.device,
-            haar_reference=args.haar_reference)
+            haar_reference=args.haar_reference, rgb_reference=args.rgb_reference)
+    elif args.arm == RIVAL_ARM:
+        from coffee_detector.experiments.audit_auliya_rival_margin import preflight_rival_margin
+
+        value = preflight_rival_margin(args.development, args.weights, device=args.device)
     else:
         value = (preflight_mask2 if args.arm == MASK2_ARM else preflight)(args.development, args.weights)
     print(json.dumps(value, indent=2))
