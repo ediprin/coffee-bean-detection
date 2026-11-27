@@ -41,6 +41,31 @@ bundle instead of re-auditing the full source archive. The preflight rejects
 class order, image geometry, EXIF orientation (nonidentity requires review),
 checkpoint version/arm/schedule, and polygon instance count mismatches.
 
+### Kaggle-extracted input (compatibility amendment)
+
+Kaggle may unpack the pilot ZIP into a mounted directory. The runner also
+accepts its `development/` directory with the unchanged embedded contract
+(SHA above), plus the official metadata ZIP from Zenodo record 24346584
+(expected SHA-256 798bb53b0cfad35dfcfbcc463fbcb79ff4af61f9807803d6bcc65d37f7c8feaa).
+The metadata verifies exact B/C membership, per-image object counts and
+class order. The contract verifies aggregate per-class counts. All B/C
+image/label files receive individual SHA-256 fingerprints; exact cross-split
+duplicate image bytes are rejected. Only whitelisted development paths are
+read; bundled code, pretrained weights and group-A pixels are not used.
+The extracted input cannot be proven byte-identical to the original ZIP
+using this metadata alone. Reports explicitly record
+`original_pilot_zip_sha256_verified: false`, input mode and content
+fingerprint. This is a development-only audit, not a reproduced benchmark.
+No fabricated/repacked ZIP hash is accepted.
+
+The notebook discovers an exact extracted development directory, downloads
+and verifies the official metadata if not already mounted, and independently
+verifies the trained RGB checkpoint. If the checkpoint is missing, visual
+audit can proceed with an explicit skip message for feature audit; do not
+substitute the bundled generic YOLO pretrained weights. For a later feature
+run, attach the exact RGB checkpoint. Keep the same input fingerprint,
+runtime and pinned code for resume.
+
 ## Visual stage
 
 All colour/texture features use a masked 128x128 crop with the same descriptor
@@ -127,7 +152,7 @@ Predeclared interpretation for further *diagnosis*, not model promotion:
 ## Kaggle run
 
 Import notebooks/Auliya_Discriminative_Representation_Audit_Kaggle.ipynb,
-attach the two exact input files, enable Internet (public GitHub + package
+attach the exact pilot ZIP or extracted development folder and the trained RGB checkpoint, enable Internet (public GitHub + package
 install) and GPU (feature stage, single GPU enough), then Run All.
 Visual-only CPU run is possible by disabling RUN_FEATURES in the notebook.
 The notebook checks out the exact scientific-code commit, runs the focused
