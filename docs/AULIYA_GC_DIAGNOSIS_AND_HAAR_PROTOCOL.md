@@ -2,7 +2,7 @@
 
 The controlled G1/G2 experiment established large within-to-cross-group
 gaps. The method remains open; the old proposal does not constrain the
-choice. E1 is a no-training diagnostic. E2 is an optional separate paired
+choice. E1 v2 is a no-training diagnostic. E2 is an optional separate paired
 training screen. E3 (assignment, gradient, feature stability) is deferred
 until E1 results identify what to test. Do not tune on group A.
 
@@ -10,8 +10,14 @@ until E1 results identify what to test. Do not tune on group A.
 Reuse exact G1/G2 last.pt SHA256 values from the verified results report.
 Reconstruct the same frozen B/C split from the audited dataset. Run both
 models on both 75-image eval sets (300 forward passes), FP32 square 640
-letterbox. Use the pinned Ultralytics 8.4.210 raw one-to-one output and native
-top-k output before external confidence filtering. No weights change.
+letterbox. Use the pinned Ultralytics 8.4.210 raw one-to-many output and native
+external class-aware NMS (multi-label, IoU .7, max_det 300) at each confidence.
+The original training logs show nms=None. In this version validator sets
+end2end=(nms is False); thus external NMS is the baseline inference mode.
+E1 v1 incorrectly assumed one-to-one, and stopped before inference. V2
+preserves exact checkpoint and class order, explicitly selects historical
+mode, converts decoded raw xywh to xyxy and uses the native NMS function.
+NMS time limit extended to avoid partial outputs in single-image audit. No weights change.
 At IoU .50 and .75, match GT to candidates one-to-one, maximizing valid
 match count then total IoU, ignoring class. For raw 8400 anchors record
 coverage, rank of true label, logit margin, true sigmoid score and top1.
@@ -51,5 +57,6 @@ runs/B/weights/last.pt and runs/C/weights/last.pt, and corresponding reports.
 A report-only zip is insufficient for E1. Default RUN_E1=True, RUN_HAAR=False
 for fast diagnosis. For independent E2 session set RUN_E1=False,
 RUN_HAAR=True. Save Version and retain full checkpoint output for resume.
+V2 uses a new diagnosis output directory to avoid mixing old code pins and results.
 If both enabled, runs E1 first then HAAR. Report archive excludes weights.
 No actual runtime execution or tests claimed in implementation.
