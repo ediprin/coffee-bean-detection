@@ -298,11 +298,23 @@ def run(args):
         if device.type=="cuda": torch.cuda.empty_cache()
     if len(ar)!=2*(976+900) or len(ev)!=2*len(VIEWS)*(265+230):
         raise ValueError(f"Unexpected record counts: {len(ar)} {len(ev)}")
+    # Reproduce E1 geometry-only ranking on original views before interpreting E3.
+    refs={"B->B":(226,154,183),"B->C":(196,53,103),
+          "C->B":(226,80,141),"C->C":(196,124,153)}
+    replication={}
+    for case,expected in refs.items():
+        source,target=case.split("->")
+        subset=[r for r in ev if r["source"]==source and r["target"]==target and r["view"]=="original" and r["true_class"]<18 and r["geometry_anchor"]>=0]
+        actual=(len(subset),sum(r["geometry_rank"]==1 for r in subset),sum(r["geometry_rank"]<=3 for r in subset))
+        replication[case]={"E1":list(expected),"E3":list(actual),"exact":actual==expected}
+        if any(abs(a-b)>2 for a,b in zip(actual,expected)):
+            raise ValueError(f"E3 original ranking differs materially from E1: {case}: {actual} vs {expected}")
     csv_write(args.output/"assignment.csv",ar)
     csv_write(args.output/"evaluation.csv",ev)
     gc._write_json(args.output/"report.json",{"protocol":"auliya-gc-e3-v1","split":split,
         "checkpoints":CHECKPOINTS,"runner_sha256":_sha256(Path(__file__)),
         "assignment_records":len(ar),"evaluation_records":len(ev),"views":list(VIEWS),
+        "e1_original_replication":replication,
         "iou_threshold":IOU,"training_executed":False,"test_A_images_accessed":False,
         "results":summarize(ar,ev,names)})
 
