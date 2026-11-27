@@ -59,3 +59,49 @@ def test_bad_bundle_hash_fails_before_zip_open(tmp_path):
     bundle.write_bytes(b"not a zip")
     with pytest.raises(ValueError,match="exact original"):
         a.run(Namespace(bundle=bundle,output=tmp_path/"output",stage="visual",checkpoint=None,device="cpu"))
+
+
+def _fake_development(tmp_path):
+    root = tmp_path / "development"
+    root.mkdir()
+    (root / "development_contract.json").write_bytes(b"fixture")
+    for role in ("train", "val"):
+        for kind in ("images", "labels"):
+            (root / role / kind).mkdir(parents=True)
+        (root / role / "images" / "train__example.jpg").write_bytes(role.encode())
+        (root / role / "labels" / "train__example.txt").write_text("0 0.1 0.1 0.9 0.1 0.5 0.9\n")
+    return root
+
+
+def test_extracted_adapter_whitelists_development(tmp_path):
+    root = _fake_development(tmp_path)
+    (tmp_path / "repo").mkdir()
+    (tmp_path / "repo" / "ignored.py").write_text("raise RuntimeError()")
+    with a.DevelopmentFolder(root) as folder:
+        assert len(folder.namelist()) == 5
+        assert folder.read("development/train/images/train__example.jpg") == b"train"
+        with pytest.raises(KeyError):
+            folder.read("repo/ignored.py")
+
+
+def test_extracted_adapter_rejects_test_directory(tmp_path):
+    root = _fake_development(tmp_path)
+    (root / "test").mkdir()
+    with pytest.raises(ValueError, match="Unexpected test"):
+        a.DevelopmentFolder(root)
+
+
+def test_extracted_adapter_rejects_symlink(tmp_path):
+    root = _fake_development(tmp_path)
+    image = root / "train/images/train__example.jpg"
+    image.unlink()
+    image.symlink_to(root / "val/images/train__example.jpg")
+    with pytest.raises(ValueError, match="symlink"):
+        a.DevelopmentFolder(root)
+
+
+def test_extracted_adapter_requires_metadata(tmp_path):
+    root = _fake_development(tmp_path)
+    with a.DevelopmentFolder(root) as folder:
+        with pytest.raises(ValueError, match="official Zenodo metadata"):
+            a.validate_extracted(folder, None, {}, {})
