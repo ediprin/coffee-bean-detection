@@ -80,6 +80,119 @@ def inventory(z):
     return c, records
 
 
+class DevelopmentFolder:
+    """Read only B/C files from a Kaggle-extracted development directory."""
+
+    def __init__(self, root):
+        self.root = Path(root).resolve(strict=True)
+        if not self.root.is_dir():
+            raise ValueError("Expected development directory")
+        self.members = {}
+        contract = self.root / "development_contract.json"
+        if not contract.is_file():
+            raise ValueError("Missing development_contract.json")
+        self._add(contract)
+        if (self.root / "test").exists() or (self.root / "test.txt").exists():
+            raise ValueError("Unexpected test directory/list in development")
+        for role in COUNTS:
+            for kind, suffix in (("images", ".jpg"), ("labels", ".txt")):
+                folder = self.root / role / kind
+                if not folder.is_dir():
+                    raise ValueError(f"Missing development folder: {folder}")
+                for p in sorted(folder.iterdir()):
+                    if not p.is_file() or p.suffix != suffix:
+                        raise ValueError(f"Unexpected development member: {p}")
+                    self._add(p)
+
+    def _add(self, p):
+        # Reject file symlinks or nested symlink escapes.
+        if p.is_symlink() or p.resolve() != p.absolute():
+            raise ValueError(f"External/symlink development member: {p}")
+        self.members["development/" + p.relative_to(self.root).as_posix()] = p
+
+    def namelist(self):
+        return list(self.members)
+
+    def read(self, name):
+        return self.members[name].read_bytes()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+def open_development(path):
+    return DevelopmentFolder(path) if path.is_dir() else ZipFile(path)
+
+
+def validate_extracted(folder, metadata, contract, records):
+    """Verify group membership against hash-pinned author manifest and fingerprint all B/C bytes.
+
+    The extracted content fingerprint is NOT the original ZIP hash or proof of
+    byte identity with the original archive. No group-A image/label bytes are read.
+    """
+    from coffee_detector.analysis.auliya_robusta_preflight import (
+        METADATA_SHA256, _load_manifest, _load_folds, _read_text,
+    )
+    import yaml
+    if metadata is None or sha(metadata) != METADATA_SHA256:
+        raise ValueError("Extracted inputs require the exact official Zenodo metadata ZIP")
+    with ZipFile(metadata) as z:
+        manifest = _load_manifest(z)
+        folds = _load_folds(z, manifest)
+        names = yaml.safe_load(_read_text(z, "splits/data_v4_ujiA.yaml"))["names"]
+    if names != contract["names"]:
+        raise ValueError("Class mapping differs from official metadata")
+    if len(folds["A"]["test"]) != 1351:
+        raise ValueError("Unexpected held-out group size")
+    expected = {}
+    for role, group in (("train", "B"), ("val", "C")):
+        expected[role] = {}
+        for original, row in manifest.items():
+            if row["group"] != group:
+                continue
+            split, _, basename = original.split("/")
+            member = f"development/{role}/images/{split}__{basename}"
+            expected[role][member] = row["objects"]
+        if set(expected[role]) != set(records[role]):
+            raise ValueError(f"Extracted {role} membership differs from the official manifest")
+    # Membership is now known before opening any images.
+    files = []
+    hashes = {}
+    for role, images in records.items():
+        counts = Counter()
+        for member in images:
+            label = member.replace("/images/", "/labels/")[:-4] + ".txt"
+            rows = polygons(folder, member, 1, 1)
+            if len(rows) != expected[role][member]:
+                raise ValueError(f"Instance count differs from manifest: {member}")
+            counts.update(y for y, _ in rows)
+            for name in (member, label):
+                digest = sha(folder.members[name])
+                files.append({"path":name, "sha256":digest})
+                if name == member:
+                    hashes.setdefault(digest, set()).add(role)
+        if dict(counts) != {int(k):v for k,v in contract["polygon_instances_by_class"][role].items()}:
+            raise ValueError(f"Extracted class counts differ: {role}")
+    cross_split = sum(len(v) > 1 for v in hashes.values())
+    if cross_split:
+        raise ValueError(f"Exact duplicate image bytes across B/C: {cross_split}")
+    files.sort(key=lambda x:x["path"])
+    fingerprint = hashlib.sha256(json.dumps(files, sort_keys=True, separators=(",",":")).encode()).hexdigest()
+    return {
+        "input_mode":"EXTRACTED_MANIFEST_VERIFIED",
+        "original_pilot_zip_sha256_verified":False,
+        "expected_original_pilot_zip_sha256":PILOT_SHA,
+        "development_contract_sha256":DEV_SHA,
+        "metadata_sha256":METADATA_SHA256,
+        "development_content_sha256":fingerprint,
+        "cross_split_exact_duplicate_hashes":cross_split,
+        "files":files,
+    }
+
+
 def read_image(z, member):
     raw = z.read(member)
     with Image.open(io.BytesIO(raw)) as im:
@@ -349,10 +462,19 @@ def run(args):
     cv2.setNumThreads(1)
     out = args.output.resolve()
     out.mkdir(parents=True,exist_ok=True)
-    if sha(args.bundle) != PILOT_SHA:
+    extracted = args.bundle.is_dir()
+    if not extracted and sha(args.bundle) != PILOT_SHA:
         raise ValueError("Expected exact original B/C pilot Colab bundle")
+    with open_development(args.bundle) as source:
+        dev, records = inventory(source)
+        evidence = (validate_extracted(source, getattr(args,"metadata",None), dev, records)
+                    if extracted else {"input_mode":"ORIGINAL_ZIP_VERIFIED",
+                                       "original_pilot_zip_sha256_verified":True,
+                                       "expected_original_pilot_zip_sha256":PILOT_SHA})
+    print("Input provenance:", json.dumps({k:v for k,v in evidence.items() if k!="files"}), flush=True)
     codes = V_CODES if args.stage=="visual" else F_CODES
-    contract = {"protocol":PROTOCOL,"stage":args.stage,"bundle_sha":PILOT_SHA,
+    contract = {"protocol":PROTOCOL,"stage":args.stage,"bundle_sha":None if extracted else PILOT_SHA,
+                "data_provenance":{k:v for k,v in evidence.items() if k!="files"},
                 "checkpoint_sha":RGB_SHA if args.stage=="features" else None,
                 "runner_sha":sha(__file__),"python":platform.python_version(),
                 "numpy":np.__version__,"sklearn":sklearn.__version__,"opencv":cv2.__version__,
@@ -371,9 +493,10 @@ def run(args):
     if not marker.exists() and any(out.iterdir()):
         raise ValueError("Nonempty output without run contract")
     write_json(marker,contract)
+    write_json(out/"input_provenance.json",evidence)
     shard_dir = out/"shards"
     shard_dir.mkdir(exist_ok=True)
-    with ZipFile(args.bundle) as z:
+    with open_development(args.bundle) as z:
         dev, records = inventory(z)
         names = dev["names"]
         if args.stage=="features":
@@ -460,7 +583,8 @@ def run(args):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--bundle",type=Path,required=True)
+    p.add_argument("--bundle",type=Path,required=True,help="Exact pilot ZIP or extracted development directory")
+    p.add_argument("--metadata",type=Path,help="Official metadata ZIP required for extracted input")
     p.add_argument("--checkpoint",type=Path)
     p.add_argument("--stage",choices=("visual","features"),required=True)
     p.add_argument("--output",type=Path,required=True)
