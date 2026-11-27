@@ -84,6 +84,12 @@ def decode(model,raw):
         raise ValueError(f"Unexpected predictions: {boxes.shape}, {scores.shape}")
     if not torch.isfinite(boxes).all() or not torch.isfinite(scores).all():
         raise ValueError("Nonfinite predictions")
+    # Cross-check independent raw decode against the exact E1/native decoder.
+    if not model.model[-1].end2end and not model.model[-1].xyxy:
+        from ultralytics.utils.ops import xywh2xyxy
+        expected=xywh2xyxy(head._get_decode_boxes(raw).permute(0,2,1))
+        if not torch.allclose(boxes,expected,atol=2e-4,rtol=1e-5):
+            raise ValueError("Raw decode disagrees with native head")
     return boxes,scores,anchors*stride
 
 
@@ -95,11 +101,11 @@ def infer(model,x,device):
     return post,raw
 
 
-def assignment_rows(model,raw,gt,y,polys,source,path):
+def assignment_rows(model,raw,gt,y,polys,source,path,train_args):
     device=next(model.parameters()).device
-    args=model.args
-    overlap=bool(args["overlap_mask"])
-    ratio=int(args["mask_ratio"])
+    # YOLO._load filters model.args; use the original saved training contract.
+    overlap=bool(train_args["overlap_mask"])
+    ratio=int(train_args["mask_ratio"])
     if overlap:
         masks,order=polygons2masks_overlap((640,640),polys,downsample_ratio=ratio)
         masks=torch.from_numpy(masks).to(device)[None]
@@ -278,7 +284,7 @@ def run(args):
                 image,gt,y,polys,region=scene(args.data,path)
                 x,_=view_transform(image,gt,region,"original")
                 _,raw=infer(model,x,device)
-                ar.extend(assignment_rows(model,raw,gt,y,polys,s,path))
+                ar.extend(assignment_rows(model,raw,gt,y,polys,s,path,wrapper.ckpt["train_args"]))
                 if (i+1)%50==0: print("E3.1",s,i+1,flush=True)
             for t in "BC":
                 for i,path in enumerate(paths(args.data,t+"_eval")):
