@@ -88,8 +88,11 @@ def install(model, arm):
     if arm not in ARMS:
         raise ValueError(arm)
     h = model.model[-1]
-    if type(h) is not Segment26 or not h.end2end:
-        raise TypeError("Require unfused native dual-head Segment26")
+    # In v8.4.210, end2end selects the inference mode, not whether O2O exists.
+    # A dual-head model can legitimately use external NMS (end2end=False).
+    branches = ("cv2", "cv3", "cv4", "one2one_cv2", "one2one_cv3", "one2one_cv4")
+    if type(h) is not Segment26 or any(getattr(h, name, None) is None for name in branches):
+        raise TypeError("Require unfused native dual-head Segment26 with both sets of towers")
     sem = h.proto.semseg
     if len(sem) != 3 or not isinstance(sem[-1], nn.Conv2d):
         raise RuntimeError("Unexpected native semantic branch")
