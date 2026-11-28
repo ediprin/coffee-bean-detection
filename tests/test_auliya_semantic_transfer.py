@@ -2,6 +2,7 @@
 from copy import deepcopy
 from types import SimpleNamespace
 import torch
+import pytest
 from ultralytics.nn.modules.head import Segment26
 from coffee_detector.auliya_semantic_transfer import install, ARMS
 
@@ -24,9 +25,12 @@ def variant(h,arm):
     return m.model[-1]
 
 
-def test_initial_outputs_native_train_eval():
+@pytest.mark.parametrize('mode', [False, True])
+def test_initial_outputs_native_train_eval(mode):
     native=head()
+    native.end2end=mode
     candidates=[variant(native,a) for a in ARMS]
+    assert all(h.end2end == mode for h in candidates)
     x=inputs()
     for training in (True,False):
         native.train(training)
@@ -44,6 +48,8 @@ def test_initial_outputs_native_train_eval():
                     assert all(torch.equal(a,b) for a,b in zip(p,q))
                 else:
                     assert torch.equal(p,q)
+            if not training:
+                assert torch.equal(result[0][0], r[0][0])
 
 
 def test_gradient_routes_and_only_p3():
@@ -89,3 +95,12 @@ def test_fuse_both_inference_modes_and_equal_parameters():
                     assert torch.equal(selected[k],selected2[k]), (mode,arm,k)
             counts.append(sum(p.numel() for p in h.parameters()))
         assert counts[0]==counts[1],counts
+
+
+def test_install_rejects_missing_dual_towers():
+    h=head().eval()
+    h.end2end=False
+    h.fuse()
+    assert h.one2one_cv2 is None
+    with pytest.raises(TypeError,match="both sets of towers"):
+        variant(h,"S1")
